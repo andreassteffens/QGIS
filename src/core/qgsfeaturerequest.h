@@ -625,7 +625,10 @@ class CORE_EXPORT QgsFeatureRequest
      * \since QGIS 3.0
      */
     std::function< void( const QgsFeature & ) > transformErrorCallback() const { return mTransformErrorCallback; } SIP_SKIP
+	
 
+	void sbSetRenderMinPixelSizeFilter(double dRenderMinPixelSize, int iRenderMinPixelSizeMaxScale, double dScaleFactor, double dMapUnitsPerPixel, double dCurrentScale, QgsWkbTypes::GeometryType mSbGeometryType);
+	bool sbTestRenderMinPixelSizeFilter(const QgsFeature& f);
 
     /**
      * Check if a feature is accepted by this requests filter
@@ -727,6 +730,13 @@ class CORE_EXPORT QgsFeatureRequest
     QgsCoordinateTransformContext mTransformContext;
     int mTimeout = -1;
     int mRequestMayBeNested = false;
+
+	double mSbRenderMinPixelSize;
+	int mSbRenderMinPixelSizeMaxScale;
+	double mSbScaleFactor;
+	double mSbMapUnitsPerPixel;
+	double mSbCurrentScale;
+	QgsWkbTypes::GeometryType mSbGeometryType;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS( QgsFeatureRequest::Flags )

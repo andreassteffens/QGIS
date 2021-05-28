@@ -153,6 +153,10 @@ class CORE_EXPORT QgsJsonExporter
      */
     QgsCoordinateReferenceSystem sourceCrs() const;
 
+	void sbSetDestinationCrs( const QgsCoordinateReferenceSystem &crs ) SIP_SKIP;
+	
+	QgsCoordinateReferenceSystem sbDestinationCrs() const SIP_SKIP;
+
     /**
      * Sets whether geometries should be transformed in EPSG 4326 (default
      * behavior) or just keep as it is.
@@ -275,6 +279,8 @@ class CORE_EXPORT QgsJsonExporter
     QgsCoordinateReferenceSystem mCrs;
 
     QgsCoordinateTransform mTransform;
+
+	QgsCoordinateReferenceSystem mSbDestCrs;
 
     bool mAttributeDisplayName = false;
 

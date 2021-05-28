@@ -1031,7 +1031,7 @@ class CORE_EXPORT QgsLayoutItemMap : public QgsLayoutItem, public QgsTemporalRan
     */
     bool mFollowVisibilityPreset = false;
 
-    /**
+	/**
      * Map theme name to be used for map's layers and styles in case mFollowVisibilityPreset
      * is TRUE. May be overridden by data-defined expression.
     */

@@ -829,6 +829,34 @@
                       </property>
                      </spacer>
                     </item>
+					<item>
+                     <widget class="QToolButton" name="pbnSbOsmScales">
+                      <property name="toolTip">
+                       <string>[EMERGY] Generate OSM scales</string>
+                      </property>
+                      <property name="text">
+                       <string>…</string>
+                      </property>
+                      <property name="icon">
+                       <iconset resource="../../images/images.qrc">
+                        <normaloff>:/images/themes/default/mSbOsmScales.svg</normaloff>:/images/themes/default/mSbOsmScales.svg</iconset>
+                      </property>
+                     </widget>
+                    </item>
+					<item>
+                     <widget class="QToolButton" name="pbnSbAutoScales">
+                      <property name="toolTip">
+                       <string>[EMERGY] Generate scales starting at current scale</string>
+                      </property>
+                      <property name="text">
+                       <string>…</string>
+                      </property>
+                      <property name="icon">
+                       <iconset resource="../../images/images.qrc">
+                        <normaloff>:/images/themes/default/mSbAutoScales.svg</normaloff>:/images/themes/default/mSbAutoScales.svg</iconset>
+                      </property>
+                     </widget>
+                    </item>
                    </layout>
                   </item>
                  </layout>
@@ -2921,10 +2949,17 @@
                     <item>
                      <widget class="QPushButton" name="pbnLaunchOWSChecker">
                       <property name="text">
-                       <string>Launch</string>
+                       <string>[EMERGY] Launch</string>
                       </property>
                      </widget>
                     </item>
+					<item>
+					 <widget class="QPushButton" name="pbnSbFillLayerShortNames">
+                      <property name="text">
+                       <string>[EMERGY] WebGIS optimizations</string>
+                      </property>
+                     </widget>
+					</item>
                     <item>
                      <spacer name="horizontalSpacer_7">
                       <property name="orientation">
@@ -3204,6 +3239,8 @@
   <tabstop>pbnRemoveScale</tabstop>
   <tabstop>pbnImportScales</tabstop>
   <tabstop>pbnExportScales</tabstop>
+  <tabstop>pbnSbOsmScales</tabstop>
+  <tabstop>pbnSbAutoScales</tabstop>
   <tabstop>lstScales</tabstop>
   <tabstop>scrollArea</tabstop>
   <tabstop>scrollArea_4</tabstop>
@@ -3289,6 +3326,7 @@
   <tabstop>pbnWCSLayersDeselectAll</tabstop>
   <tabstop>mWCSUrlLineEdit</tabstop>
   <tabstop>pbnLaunchOWSChecker</tabstop>
+  <tabstop>pbnSbFillLayerShortNames</tabstop>
   <tabstop>teOWSChecker</tabstop>
  </tabstops>
  <resources>

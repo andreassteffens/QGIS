@@ -22,6 +22,8 @@
 #include "qgsmaprenderercustompainterjob.h"
 #include "qgsapplication.h"
 
+#include "libProfiler.h"
+
 namespace QgsWms
 {
 
@@ -39,7 +41,8 @@ namespace QgsWms
 #endif
     if ( mParallelRendering )
     {
-      QgsApplication::setMaxThreads( maxThreads );
+		if(QgsApplication::maxThreads() != maxThreads)
+			QgsApplication::setMaxThreads( maxThreads );
       QgsMessageLog::logMessage( QStringLiteral( "Parallel rendering activated with %1 threads" ).arg( maxThreads ), QStringLiteral( "server" ), Qgis::Info );
     }
     else
@@ -52,11 +55,17 @@ namespace QgsWms
   {
     if ( mParallelRendering )
     {
+	  PROFILER_START(mapRendererJobProxy_1);
+
       QgsMapRendererParallelJob renderJob( mapSettings );
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
       renderJob.setFeatureFilterProvider( mFeatureFilterProvider );
 #endif
       renderJob.start();
+
+	  PROFILER_END();
+
+	  PROFILER_START(mapRendererJobProxy_2);
 
       // Allows the main thread to manage blocking call coming from rendering
       // threads (see discussion in https://github.com/qgis/QGIS/issues/26819).
@@ -64,21 +73,36 @@ namespace QgsWms
       QObject::connect( &renderJob, &QgsMapRendererParallelJob::finished, &loop, &QEventLoop::quit );
       loop.exec();
 
+	  PROFILER_END();
+
+	  PROFILER_START(mapRendererJobProxy_3);
+
       renderJob.waitForFinished();
       *image = renderJob.renderedImage();
       mPainter.reset( new QPainter( image ) );
 
       mErrors = renderJob.errors();
+
+	  PROFILER_END();
     }
     else
     {
+  	  PROFILER_START(mapRendererJobProxy_4);
+
       mPainter.reset( new QPainter( image ) );
       QgsMapRendererCustomPainterJob renderJob( mapSettings, mPainter.get() );
+
+	  PROFILER_END();
+
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
       renderJob.setFeatureFilterProvider( mFeatureFilterProvider );
 #endif
+	  PROFILER_START(mapRendererJobProxy_5);
+
       renderJob.renderSynchronously();
       mErrors = renderJob.errors();
+
+	  PROFILER_END();
     }
   }
 

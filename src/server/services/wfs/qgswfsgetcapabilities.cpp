@@ -160,7 +160,6 @@ namespace QgsWfs
     filterCapabilitiesElement.appendChild( idCapabilitiesElement );
 
     return doc;
-
   }
 
   QDomElement getServiceIdentificationElement( QDomDocument &doc, const QgsProject *project )
@@ -583,6 +582,32 @@ namespace QgsWfs
       QgsRectangle layerExtent = layer->extent();
       //transform the layers native CRS into WGS84
       QgsCoordinateReferenceSystem wgs84 = QgsCoordinateReferenceSystem::fromOgcWmsCrs( geoEpsgCrsAuthId() );
+
+	  if (layerExtent.isNull() || layerExtent.isEmpty())
+	  {
+		  QgsLayerMetadata meta = layer->metadata();
+		  if (meta.extent().spatialExtents().count() > 0)
+		  {
+			  QgsLayerMetadata::SpatialExtent spext = meta.extent().spatialExtents().first();
+			  bool bValid = spext.extentCrs.isValid();
+			  if (bValid)
+			  {
+				  if (spext.bounds.width() > 0 && spext.bounds.height() > 0)
+				  {
+					  QgsRectangle rectExtent = QgsRectangle(spext.bounds.xMinimum(), spext.bounds.yMinimum(), spext.bounds.xMaximum(), spext.bounds.yMaximum());
+
+					  if (layer->crs() == spext.extentCrs)
+						  layerExtent = rectExtent;
+					  else
+					  {
+						  QgsCoordinateTransform trans(spext.extentCrs, layer->crs(), project);
+						  layerExtent = trans.transformBoundingBox(rectExtent);
+					  }
+				  }
+			  }
+		  }
+	  }
+
       int wgs84precision = 6;
       QgsRectangle wgs84BoundingRect;
       if ( !layerExtent.isNull() )
@@ -603,8 +628,10 @@ namespace QgsWfs
       bBoxElement.setAttribute( QStringLiteral( "dimensions" ), QStringLiteral( "2" ) );
       QDomElement lCornerElement = doc.createElement( QStringLiteral( "ows:LowerCorner" ) );
       QDomText lCornerText = doc.createTextNode( qgsDoubleToString( QgsServerProjectUtils::floorWithPrecision( wgs84BoundingRect.xMinimum(), wgs84precision ), wgs84precision ) + " " + qgsDoubleToString( QgsServerProjectUtils::floorWithPrecision( wgs84BoundingRect.yMinimum(), wgs84precision ), wgs84precision ) );
+
       lCornerElement.appendChild( lCornerText );
       bBoxElement.appendChild( lCornerElement );
+      
       QDomElement uCornerElement = doc.createElement( QStringLiteral( "ows:UpperCorner" ) );
       QDomText uCornerText = doc.createTextNode( qgsDoubleToString( QgsServerProjectUtils::ceilWithPrecision( wgs84BoundingRect.xMaximum(), wgs84precision ), wgs84precision ) + " " + qgsDoubleToString( QgsServerProjectUtils::ceilWithPrecision( wgs84BoundingRect.yMaximum(), wgs84precision ), wgs84precision ) );
       uCornerElement.appendChild( uCornerText );

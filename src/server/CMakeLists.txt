@@ -49,12 +49,20 @@ set(QGIS_SERVER_SRCS
   qgsfeaturefilter.cpp
   qgsstorebadlayerinfo.cpp
   qgsserverquerystringparameter.cpp
+  SimpleCrypt.cpp
+  sbservercachefilter.cpp
+  sbUnloadProjectFileWatcher.cpp
 )
 
 set (QGIS_SERVER_HDRS
   qgscapabilitiescache.h
   qgsconfigcache.h
   qgsmapserviceexception.h
+  SimpleCrypt.h
+  sbconstants.h
+  sbutils.h
+  sbServerCacheFilter.h
+  sbUnloadProjectFileWatcher.h
   qgsserverapi.h
   qgsserverapicontext.h
   qgsserverlogger.h
@@ -177,9 +185,11 @@ set(QGIS_SERVER_TESTRCCS ../../tests/testdata/testdata.qrc)
 
 add_executable(qgis_mapserv.fcgi qgis_map_serv.cpp ${QGIS_SERVER_TESTRCCS})
 add_executable(qgis_mapserver qgis_mapserver.cpp ${QGIS_SERVER_TESTRCCS})
+ADD_EXECUTABLE(sb_mapserver sb_mapserver.cpp ${QGIS_SERVER_TESTRCC_SRCS} ${QGIS_SERVER_IMAGERCC_SRCS})
 
 target_link_libraries(qgis_mapserv.fcgi qgis_server)
 target_link_libraries(qgis_mapserver qgis_server)
+TARGET_LINK_LIBRARIES(sb_mapserver qgis_server)
 
 # clang-tidy
 if(CLANG_TIDY_EXE)
@@ -203,7 +213,12 @@ install(TARGETS
   DESTINATION ${QGIS_BIN_DIR}
 )
 
-install(FILES
+INSTALL(TARGETS
+  sb_mapserver
+  DESTINATION ${QGIS_BIN_DIR}
+)
+
+INSTALL(FILES
   admin.sld
   wms_metadata.xml
   DESTINATION ${QGIS_CGIBIN_DIR}

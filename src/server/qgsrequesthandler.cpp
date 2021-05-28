@@ -22,6 +22,7 @@
 #include "qgsmessagelog.h"
 #include "qgsserverrequest.h"
 #include "qgsserverresponse.h"
+#include "qgsmessagelog.h"
 #include <QByteArray>
 #include <QDomDocument>
 #include <QUrl>
@@ -203,27 +204,52 @@ void QgsRequestHandler::parseInput()
     else
     {
       QString inputString( mRequest.data() );
+
       QDomDocument doc;
       QString errorMsg;
       int line = -1;
       int column = -1;
-      if ( !doc.setContent( inputString, true, &errorMsg, &line, &column ) )
+
+			bool bProcessAsQueryString = false;
+
+			QString qstrFormat = parameter("SBPOSTFORMAT");
+			if (!qstrFormat.isNull())
       {
+				if (!qstrFormat.isEmpty())
+					bProcessAsQueryString = qstrFormat.startsWith("QUERYSTRING", Qt::CaseSensitivity::CaseInsensitive);
+			}
+
+			if (!bProcessAsQueryString)
+				bProcessAsQueryString = !doc.setContent(inputString, true, &errorMsg, &line, &column);
+
+			if (bProcessAsQueryString)
+			{
         // XXX Output error but continue processing request ?
-        QgsMessageLog::logMessage( QStringLiteral( "Warning: error parsing post data as XML: at line %1, column %2: %3. Assuming urlencoded query string sent in the post body." )
-                                   .arg( line ).arg( column ).arg( errorMsg ) );
+			  /*QgsMessageLog::logMessage( QStringLiteral( "Warning: error parsing post data as XML: at line %1, column %2: %3. Assuming urlencoded query string sent in the post body." )
+										 .arg( line ).arg( column ).arg( errorMsg ) );*/
 
         // Process input string as a simple query text
-
+				try
+				{
         typedef QPair<QString, QString> pair_t;
         QUrlQuery query( inputString );
         const QList<pair_t> items = query.queryItems();
+
         for ( const pair_t &pair : items )
         {
-          mRequest.setParameter( pair.first, pair.second );
+          // QUrl::fromPercentEncoding doesn't replace '+' with space
+          const QString key = QUrl::fromPercentEncoding(QString(pair.first).replace('+', ' ').toUtf8());
+          const QString value = QUrl::fromPercentEncoding(QString(pair.second).replace('+', ' ').toUtf8());
+
+          mRequest.setParameter(key.toUpper(), value);
         }
         setupParameters();
       }
+				catch (...)
+				{
+					QgsMessageLog::logMessage(QStringLiteral("!!! Exception while parsing query string! !!!"), QStringLiteral("Server"), Qgis::Critical);
+				}
+			}
       else
       {
         // we have an XML document
@@ -252,7 +278,7 @@ void QgsRequestHandler::parseInput()
 
           mRequest.setParameter( attrName.toUpper(), attr.value() );
         }
-        mRequest.setParameter( QStringLiteral( "REQUEST_BODY" ), inputString.replace( '+', QLatin1String( "%2B" ) ) );
+				mRequest.setParameter(QStringLiteral("REQUEST_BODY"), inputString.replace('+', QStringLiteral("%2B")));
       }
     }
   }

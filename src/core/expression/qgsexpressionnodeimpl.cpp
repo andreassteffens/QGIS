@@ -1243,10 +1243,10 @@ QString QgsExpressionNodeLiteral::dump() const
   {
     case QVariant::Int:
       return QString::number( mValue.toInt() );
+	case QVariant::LongLong:
+	  return QString::number( mValue.toLongLong() );
     case QVariant::Double:
       return QString::number( mValue.toDouble() );
-    case QVariant::LongLong:
-      return QString::number( mValue.toLongLong() );
     case QVariant::String:
       return QgsExpression::quotedString( mValue.toString() );
     case QVariant::Bool:

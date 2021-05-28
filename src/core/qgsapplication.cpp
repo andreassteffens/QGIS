@@ -173,7 +173,7 @@ QgsApplication::QgsApplication( int &argc, char **argv, bool GUIenabled, const Q
     {
       QgsDebugMsgLevel( QStringLiteral( "loading of qgis translation failed %1/qgis_%2" ).arg( i18nPath(), *sTranslation() ), 2 );
     }
-
+	
     /* Translation file for Qt.
      * The strings from the QMenuBar context section are used by Qt/Mac to shift
      * the About, Preferences and Quit items to the Mac Application menu.
@@ -1091,7 +1091,7 @@ QString QgsApplication::userStylePath()
 
 QRegExp QgsApplication::shortNameRegExp()
 {
-  return QRegExp( "^[A-Za-z][A-Za-z0-9\\._-]*" );
+  return QRegExp( "^[A-Za-z_][A-Za-z0-9\\._-]*" );
 }
 
 QString QgsApplication::userLoginName()
@@ -1841,6 +1841,11 @@ int QgsApplication::maxConcurrentConnectionsPerPool() const
 void QgsApplication::setTranslation( const QString &translation )
 {
   *sTranslation() = translation;
+}
+
+QString QgsApplication::sbTranslation() 
+{ 
+	return *sTranslation(); 
 }
 
 void QgsApplication::collectTranslatableObjects( QgsTranslationContext *translationContext )

@@ -18,6 +18,7 @@
 #include "qgssimplifymethod.h"
 #include "qgsexception.h"
 #include "qgsexpressionsorter.h"
+#include "qgsmessagelog.h"
 
 QgsAbstractFeatureIterator::QgsAbstractFeatureIterator( const QgsFeatureRequest &request )
   : mRequest( request )
@@ -49,20 +50,31 @@ bool QgsAbstractFeatureIterator::nextFeature( QgsFeature &f )
   }
   else
   {
-    switch ( mRequest.filterType() )
-    {
-      case QgsFeatureRequest::FilterExpression:
-        dataOk = nextFeatureFilterExpression( f );
-        break;
+	  while (true)
+	  {
+		  switch (mRequest.filterType())
+		  {
+		  case QgsFeatureRequest::FilterExpression:
+			  dataOk = nextFeatureFilterExpression(f);
+			  break;
 
-      case QgsFeatureRequest::FilterFids:
-        dataOk = nextFeatureFilterFids( f );
-        break;
+		  case QgsFeatureRequest::FilterFids:
+			  dataOk = nextFeatureFilterFids(f);
+			  break;
 
-      default:
-        dataOk = fetchFeature( f );
-        break;
-    }
+		  default:
+			  dataOk = fetchFeature(f);
+			  break;
+		  }
+
+		  if (dataOk)
+		  {
+			  if (mRequest.sbTestRenderMinPixelSizeFilter(f))
+				  break;
+		  }
+		  else
+			  break;
+	  }
   }
 
   if ( dataOk )

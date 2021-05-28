@@ -163,7 +163,7 @@ bool QgsServerCacheManager::setCachedImage( const QByteArray *img, const QgsProj
   {
     if ( scIterator.value()->setCachedImage( img, project, request, key ) )
     {
-      return true;
+        return true;
     }
   }
   return false;
@@ -200,7 +200,7 @@ bool QgsServerCacheManager::deleteCachedImages( const QgsProject *project ) cons
 
 void QgsServerCacheManager::registerServerCache( QgsServerCacheFilter *serverCache, int priority )
 {
-  mPluginsServerCaches->insert( priority, serverCache );
+    mPluginsServerCaches->insert( priority, serverCache );
 }
 
 QString QgsServerCacheManager::getCacheKey( bool &cache, QgsAccessControl *accessControl ) const

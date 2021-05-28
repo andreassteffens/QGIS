@@ -122,6 +122,12 @@ class QgsVectorLayerRenderer : public QgsMapLayerRenderer
     QgsFields mFields; // TODO: use fields from mSource
 
     QgsFeatureIds mSelectedFeatureIds;
+	bool mSbRenderSelectionOnly;
+	double mSbRenderMinPixelSize;
+	int mSbRenderMinPixelSizeMaxScale;
+	bool mSbRenderMinPixelSizeDebug;
+	double mSbScaleFactor;
+	double mSbMapUnitsPerPixel;
 
     QString mTemporalFilter;
 

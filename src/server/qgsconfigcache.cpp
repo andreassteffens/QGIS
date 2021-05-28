@@ -17,9 +17,14 @@
 
 #include "qgsconfigcache.h"
 #include "qgsmessagelog.h"
+#include "qgsaccesscontrol.h"
+#include "qgsproject.h"
+#include "qgsmapsettings.h"
+#include "qgsserverprojectutils.h"
 #include "qgsserverexception.h"
 #include "qgsstorebadlayerinfo.h"
-#include "qgsserverprojectutils.h"
+
+#include "sbutils.h"
 
 #include <QFile>
 
@@ -38,10 +43,33 @@ QgsConfigCache::QgsConfigCache()
   QObject::connect( &mFileSystemWatcher, &QFileSystemWatcher::fileChanged, this, &QgsConfigCache::removeChangedEntry );
 }
 
+QStringList QgsConfigCache::sbLoadedProjects()
+{
+	QStringList listProjects;
+
+	QList<QString> listPaths = mProjectCache.keys();
+	for (int i = 0; i < listPaths.count(); i++)
+		listProjects.append(listPaths[i]);
+
+	return listProjects;
+}
+
+void QgsConfigCache::sbPurge()
+{
+	while (!mProjectCache.isEmpty())
+	{
+		QString strKey = *mProjectCache.keys().begin();
+		removeChangedEntry(strKey);
+	}
+}
 
 const QgsProject *QgsConfigCache::project( const QString &path, QgsServerSettings *settings )
 {
-  if ( ! mProjectCache[ path ] )
+  QgsProject::ReadFlags readFlags = QgsProject::ReadFlag();
+
+  QString strLoadingPath = sbGetStandardizedPath(path);
+
+  if ( ! mProjectCache[ strLoadingPath ] )
   {
 
     std::unique_ptr<QgsProject> prj( new QgsProject() );
@@ -52,8 +80,19 @@ const QgsProject *QgsConfigCache::project( const QString &path, QgsServerSetting
     QgsStoreBadLayerInfo *badLayerHandler = new QgsStoreBadLayerInfo();
     prj->setBadLayerHandler( badLayerHandler );
 
-    // Always skip original styles storage
-    QgsProject::ReadFlags readFlags = QgsProject::ReadFlag() | QgsProject::ReadFlag::FlagDontStoreOriginalStyles ;
+	QObject::connect(prj.get(), &QgsProject::readProject, this, &QgsConfigCache::loadProjectCanvas);
+	QObject::connect(prj.get(), &QgsProject::oldProjectVersionWarning, this, &QgsConfigCache::logOldProjectVersionWarning);
+	QObject::connect(prj.get(), &QgsProject::loadingLayerMessageReceived, this, &QgsConfigCache::logLoadingLayerMessage);
+	QObject::connect(prj.get(), &QgsProject::cleared, this, &QgsConfigCache::logProjectCleared);
+
+	mLoadingPath = strLoadingPath;
+
+	if (!mProjectWarnings.contains(mLoadingPath))
+	{
+		std::unique_ptr<QStringList> list(new QStringList());
+		mProjectWarnings.insert(mLoadingPath, list.release());
+	}
+	
     if ( settings )
     {
       // Activate trust layer metadata flag
@@ -68,7 +107,7 @@ const QgsProject *QgsConfigCache::project( const QString &path, QgsServerSetting
       }
     }
 
-    if ( prj->read( path, readFlags ) )
+    if ( prj->read(strLoadingPath, readFlags ) )
     {
       if ( !badLayerHandler->badLayers().isEmpty() )
       {
@@ -95,29 +134,131 @@ const QgsProject *QgsConfigCache::project( const QString &path, QgsServerSetting
           if ( ! settings || ! settings->ignoreBadLayers() )
           {
             QgsMessageLog::logMessage(
-              QStringLiteral( "Error, Layer(s) %1 not valid in project %2" ).arg( unrestrictedBadLayers.join( QLatin1String( ", " ) ), path ),
+              QStringLiteral( "Error, Layer(s) %1 not valid in project %2" ).arg( unrestrictedBadLayers.join( QLatin1String( ", " ) ), strLoadingPath),
               QStringLiteral( "Server" ), Qgis::Critical );
             throw QgsServerException( QStringLiteral( "Layer(s) not valid" ) );
           }
           else
           {
             QgsMessageLog::logMessage(
-              QStringLiteral( "Warning, Layer(s) %1 not valid in project %2" ).arg( unrestrictedBadLayers.join( QLatin1String( ", " ) ), path ),
+              QStringLiteral( "Warning, Layer(s) %1 not valid in project %2" ).arg( unrestrictedBadLayers.join( QLatin1String( ", " ) ), strLoadingPath),
               QStringLiteral( "Server" ), Qgis::Warning );
           }
         }
       }
-      mProjectCache.insert( path, prj.release() );
-      mFileSystemWatcher.addPath( path );
+      mProjectCache.insert(strLoadingPath, prj.release() );
+      mFileSystemWatcher.addPath(strLoadingPath);
     }
     else
     {
-      QgsMessageLog::logMessage(
-        QStringLiteral( "Error when loading project file '%1': %2 " ).arg( path, prj->error() ),
-        QStringLiteral( "Server" ), Qgis::Critical );
+      QgsMessageLog::logMessage(tr( "Error when loading project file '%1': %2 " ).arg(strLoadingPath, prj->error()), QStringLiteral( "Server" ), Qgis::Critical);
     }
   }
-  return mProjectCache[ path ];
+  
+  QgsProject::setInstance( mProjectCache[ strLoadingPath ] );
+  return mProjectCache[ strLoadingPath ];
+}
+
+QStringList *QgsConfigCache::projectWarnings(const QString &path)
+{
+	QString strPath = sbGetStandardizedPath(path);
+
+	if (mProjectWarnings[strPath])
+		return mProjectWarnings[strPath];
+	
+	return NULL;
+}
+
+QgsMapSettings *QgsConfigCache::mapSettings(const QString &path)
+{
+	QString strPath = sbGetStandardizedPath(path);
+
+	if (mMapSettingsCache.contains(strPath))
+		return mMapSettingsCache[strPath];
+
+	return NULL;
+}
+
+void QgsConfigCache::logOldProjectVersionWarning(const QString &warning)
+{
+	if (mLoadingPath.isEmpty())
+		return;
+
+	if (!mProjectWarnings.contains(mLoadingPath))
+		return;
+
+	mProjectWarnings[mLoadingPath]->append("(WARNING) " + warning);
+}
+
+void QgsConfigCache::logProjectCleared()
+{
+	QgsMessageLog::logMessage(QStringLiteral("[sb] Project has been cleared!"), QStringLiteral("Server"), Qgis::Critical);
+}
+
+void QgsConfigCache::logLoadingLayerMessage(const QString &t1, const QList<QgsReadWriteContext::ReadWriteMessage> &listMessages)
+{
+	if (mLoadingPath.isEmpty())
+		return;
+
+	if (!mProjectWarnings.contains(mLoadingPath))
+		return;
+
+	for (int i = 0; i < listMessages.size(); i++)
+	{
+		QString strLevel = "None";
+		switch (listMessages[i].level())
+		{
+			case Qgis::Warning:
+				strLevel = "WARNING";
+				break;
+			case Qgis::Info:
+				strLevel = "INFO";
+				break;
+			case Qgis::Critical:
+				strLevel = "CRITICAL";
+				break;
+			case Qgis::Success:
+				strLevel = "SUCESS";
+				break;
+			case Qgis::None:
+				strLevel = "NONE";
+				break;
+		}
+
+		QString qstrMessage = "[Layer '" + t1 + "'] (" + strLevel + ") " + listMessages[i].message();
+		mProjectWarnings[mLoadingPath]->append(qstrMessage);
+	}
+}
+
+void QgsConfigCache::loadProjectCanvas(const QDomDocument &doc)
+{
+	if (mLoadingPath.isEmpty())
+		return;
+
+	QDomNodeList nodes = doc.elementsByTagName(QStringLiteral("mapcanvas"));
+	if (nodes.count())
+	{
+		// Search the specific MapCanvas node using the name
+		for (int i = 0; i < nodes.size(); ++i)
+		{
+			QDomElement elementNode = nodes.at(i).toElement();
+
+			if (elementNode.hasAttribute(QStringLiteral("name")) && elementNode.attribute(QStringLiteral("name")) == "theMapCanvas")
+			{
+				QDomNode node = nodes.at(i);
+				
+				QgsMapSettings *settings = new QgsMapSettings();
+				settings->readXml(node);
+				
+				if(mMapSettingsCache.contains(mLoadingPath))
+					mMapSettingsCache.remove(mLoadingPath);
+
+				mMapSettingsCache.insert(mLoadingPath, settings);
+
+				break;
+			}
+		}
+	}
 }
 
 QDomDocument *QgsConfigCache::xmlDocument( const QString &filePath )
@@ -136,8 +277,10 @@ QDomDocument *QgsConfigCache::xmlDocument( const QString &filePath )
     return nullptr;
   }
 
+  QString strPath = sbGetStandardizedPath(filePath);
+
   // first get cache
-  QDomDocument *xmlDoc = mXmlDocumentCache.object( filePath );
+  QDomDocument *xmlDoc = mXmlDocumentCache.object( strPath );
   if ( !xmlDoc )
   {
     //then create xml document
@@ -151,7 +294,7 @@ QDomDocument *QgsConfigCache::xmlDocument( const QString &filePath )
       delete xmlDoc;
       return nullptr;
     }
-    mXmlDocumentCache.insert( filePath, xmlDoc );
+    mXmlDocumentCache.insert( strPath, xmlDoc );
     mFileSystemWatcher.addPath( filePath );
     xmlDoc = mXmlDocumentCache.object( filePath );
     Q_ASSERT( xmlDoc );
@@ -159,18 +302,26 @@ QDomDocument *QgsConfigCache::xmlDocument( const QString &filePath )
   return xmlDoc;
 }
 
-void QgsConfigCache::removeChangedEntry( const QString &path )
+bool QgsConfigCache::removeChangedEntry( const QString &path )
 {
-  mProjectCache.remove( path );
+	QString strPath = sbGetStandardizedPath(path);
 
-  //xml document must be removed last, as other config cache destructors may require it
-  mXmlDocumentCache.remove( path );
+	bool bRes = mProjectCache.remove( strPath );
 
-  mFileSystemWatcher.removePath( path );
+	//xml document must be removed last, as other config cache destructors may require it
+	mXmlDocumentCache.remove( strPath );
+
+	mMapSettingsCache.remove(strPath);
+	mProjectWarnings.remove(strPath);
+  
+	mFileSystemWatcher.removePath(strPath);
+
+	return bRes;
 }
 
-
-void QgsConfigCache::removeEntry( const QString &path )
+bool QgsConfigCache::removeEntry( const QString &path )
 {
-  removeChangedEntry( path );
+	QString strPath = sbGetStandardizedPath(path);
+
+	return removeChangedEntry( strPath );
 }

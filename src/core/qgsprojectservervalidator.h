@@ -50,6 +50,11 @@ class CORE_EXPORT QgsProjectServerValidator
       LayerEncoding = 2,  //!< Encoding is not correctly set on a vector layer.
       ProjectShortName = 3,  //!< The project short name is not valid.
       ProjectRootNameConflict = 4,  //!< The project root name is already used by a layer or a group.
+	  sbRasterLayerMissingTiledConstraint = 5,
+	  sbRasterLayerPublishableForClientFetching = 6,
+	  sbRasterLayerPublishedSourceNotSecure = 7,
+	  sbRasterLayerCheckEnabledLegend = 8,
+	  sbRequiredWfsNotEnabled = 9,
     };
 
     /**
@@ -95,8 +100,9 @@ class CORE_EXPORT QgsProjectServerValidator
     static bool validate( QgsProject *project, QList< QgsProjectServerValidator::ValidationResult > &results SIP_OUT );
 
   private:
-    static void browseLayerTree( QgsLayerTreeGroup *treeGroup, QStringList &owsNames, QStringList &encodingMessages );
+	static void browseLayerTree(QgsProject *project, QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &owsNames, QStringList &encodingMessages, QStringList &checkLegendMessages, QStringList &insecureSourceMessages, QStringList &tiledSourceMessages, QStringList &clientSidePublishingMessages, QStringList &toolInconsistencyMessages );
 
+	static void sbResolveLayerPath(QgsLayerTreeNode *pNode, QString &rstrPath);
 };
 
 #endif // QGSPROJECTSERVERVALIDATOR_H

@@ -23,6 +23,8 @@
 #include "qgswmsrenderer.h"
 #include "qgswmsserviceexception.h"
 
+#include "libProfiler.h"
+
 #include <QImage>
 
 namespace QgsWms
@@ -45,16 +47,24 @@ namespace QgsWms
     context.setFlag( QgsWmsRenderContext::AddExternalLayers );
     context.setFlag( QgsWmsRenderContext::SetAccessControl );
     context.setFlag( QgsWmsRenderContext::UseTileBuffer );
-    context.setParameters( parameters );
-
-    // rendering
+    
+	context.setParameters( parameters );
+	
+	PROFILER_START(writeGetMap_setup);
+    QgsWmsParameters wmsParameters( QUrlQuery( request.url() ) );
     QgsRenderer renderer( context );
-    std::unique_ptr<QImage> result( renderer.getMap() );
+	PROFILER_END();
 
+    PROFILER_START(writeGetMap_getMap);
+    std::unique_ptr<QImage> result( renderer.getMap() );
+	PROFILER_END();
+	
     if ( result )
     {
-      const QString format = request.parameters().value( QStringLiteral( "FORMAT" ), QStringLiteral( "PNG" ) );
-      writeImage( response, *result, format, context.imageQuality() );
+      PROFILER_START(writeGetMap_writeImage);
+	  const QString format = request.parameters().value( QStringLiteral( "FORMAT" ), QStringLiteral( "PNG" ) );
+      writeImage( response, *result, format, context.imageQuality() );	  
+	  PROFILER_END();
     }
     else
     {

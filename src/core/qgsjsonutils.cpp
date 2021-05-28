@@ -41,8 +41,8 @@ QgsJsonExporter::QgsJsonExporter( QgsVectorLayer *vectorLayer, int precision )
     mCrs = vectorLayer->crs();
     mTransform.setSourceCrs( mCrs );
   }
-  mTransform.setDestinationCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) );
-}
+  mSbDestCrs = QgsCoordinateReferenceSystem(QStringLiteral("EPSG:4326"));
+  mTransform.setDestinationCrs( mSbDestCrs );}
 
 void QgsJsonExporter::setVectorLayer( QgsVectorLayer *vectorLayer )
 {
@@ -68,6 +68,17 @@ void QgsJsonExporter::setSourceCrs( const QgsCoordinateReferenceSystem &crs )
 QgsCoordinateReferenceSystem QgsJsonExporter::sourceCrs() const
 {
   return mCrs;
+}
+
+void QgsJsonExporter::sbSetDestinationCrs(const QgsCoordinateReferenceSystem &crs)
+{
+	mSbDestCrs = crs;
+	mTransform.setDestinationCrs(mSbDestCrs);
+}
+
+QgsCoordinateReferenceSystem QgsJsonExporter::sbDestinationCrs() const
+{
+	return mSbDestCrs;
 }
 
 QString QgsJsonExporter::exportFeature( const QgsFeature &feature, const QVariantMap &extraProperties,
@@ -107,7 +118,7 @@ json QgsJsonExporter::exportFeatureToJsonObject( const QgsFeature &feature, cons
   QgsGeometry geom = feature.geometry();
   if ( !geom.isNull() && mIncludeGeometry )
   {
-    if ( mCrs.isValid() )
+    if ( mCrs.isValid() && mSbDestCrs.isValid() )
     {
       try
       {

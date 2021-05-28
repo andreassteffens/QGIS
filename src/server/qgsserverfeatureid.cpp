@@ -20,6 +20,7 @@
 #include "qgsfeaturerequest.h"
 #include "qgsvectordataprovider.h"
 #include "qgsexpression.h"
+#include "qgsmessagelog.h"
 
 QString QgsServerFeatureId::getServerFid( const QgsFeature &feature, const QgsAttributeList &pkAttributes )
 {
@@ -48,6 +49,7 @@ QgsFeatureRequest QgsServerFeatureId::updateFeatureRequestFromServerFids( QgsFea
       fids.insert( STRING_TO_FID( serverFid ) );
     }
     featureRequest.setFilterFids( fids );
+
     return featureRequest;
   }
 

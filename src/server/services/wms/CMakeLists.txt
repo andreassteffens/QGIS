@@ -21,6 +21,7 @@ set (WMS_SRCS
   qgswmsparameters.cpp
   qgswmsrestorer.cpp
   qgswmsrendercontext.cpp
+  libProfiler.cpp
 )
 
 set (WMS_HDRS
@@ -37,9 +38,13 @@ add_library (wms MODULE ${WMS_SRCS} ${WMS_HDRS})
 include_directories(SYSTEM
   ${GDAL_INCLUDE_DIR}
   ${POSTGRES_INCLUDE_DIR}
+  ${QCA_INCLUDE_DIR}
+  ${QTKEYCHAIN_INCLUDE_DIR}
 )
 
 include_directories(
+  ${CMAKE_SOURCE_DIR}/src/core/auth
+  ${CMAKE_SOURCE_DIR}/src/providers/wms
   ${CMAKE_SOURCE_DIR}/external
   ${CMAKE_SOURCE_DIR}/external/nlohmann
   ${CMAKE_SOURCE_DIR}/src/core
@@ -75,6 +80,8 @@ include_directories(
 target_link_libraries(wms
   qgis_core
   qgis_server
+  wmsprovider_a
+  winmm.lib
 )
 
 

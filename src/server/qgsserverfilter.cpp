@@ -42,7 +42,6 @@ void QgsServerFilter::responseComplete()
   QgsDebugMsg( QStringLiteral( "QgsServerFilter plugin default responseComplete called" ) );
 }
 
-
 void QgsServerFilter::sendResponse()
 {
   QgsDebugMsg( QStringLiteral( "QgsServerFilter plugin default sendResponse called" ) );

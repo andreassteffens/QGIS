@@ -624,13 +624,16 @@ bool QgsWmsCapabilities::parseCapabilitiesDom( const QByteArray &xml, QgsWmsCapa
         QgsDebugMsgLevel( QStringLiteral( "  Contents." ), 2 );
         parseWMTSContents( element );
       }
+	  else if ( element.tagName() == QLatin1String( "ServiceMetadataURL" ))
+	  {
+		  capabilitiesProperty.wmtsServiceMetadataUrl = QUrl::fromEncoded(element.attribute(QStringLiteral("xlink:href")).toUtf8()).toString();
+	  }
     }
     node = node.nextSibling();
   }
 
   return true;
 }
-
 
 void QgsWmsCapabilities::parseService( const QDomElement &element, QgsWmsServiceProperty &serviceProperty )
 {
@@ -1375,11 +1378,11 @@ void QgsWmsCapabilities::parseLayer( const QDomElement &element, QgsWmsLayerProp
       }
       else if ( tagName == QLatin1String( "MinScaleDenominator" ) )
       {
-        // TODO
+        layerProperty.minimumScaleDenominator = nodeElement.text().toDouble();
       }
       else if ( tagName == QLatin1String( "MaxScaleDenominator" ) )
       {
-        // TODO
+        layerProperty.maximumScaleDenominator = nodeElement.text().toDouble();
       }
       // If we got here then it's not in the WMS 1.3 standard
 

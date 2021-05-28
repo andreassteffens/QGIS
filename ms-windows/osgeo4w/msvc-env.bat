@@ -18,7 +18,7 @@ if not "%PROGRAMFILES(X86)%"=="" set PF86=%PROGRAMFILES(X86)%
 if "%PF86%"=="" set PF86=%PROGRAMFILES%
 if "%PF86%"=="" (echo PROGRAMFILES not set & goto error)
 
-if "%VCSDK%"=="" set VCSDK=10.0.14393.0
+if "%VCSDK%"=="" set VCSDK=10.0.18362.0
 
 set ARCH=%1
 if "%ARCH%"=="x86" goto x86

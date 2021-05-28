@@ -68,7 +68,7 @@ int spatialite_database_unique_ptr::open_v2( const QString &path, int flags, con
   std::unique_ptr< sqlite3, QgsSpatialiteCloser>::reset( database );
 
   if ( result == SQLITE_OK )
-    spatialite_init_ex( database, deleter.mSpatialiteContext, 0 );
+    spatialite_init_ex( database, deleter.mSpatialiteContext, 1 );
 
 #ifdef SPATIALITE_PRINT_ALL_SQL
   // Log all queries

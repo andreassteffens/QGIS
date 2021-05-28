@@ -709,6 +709,7 @@ struct QgsWmsCapabilitiesProperty
   QgsWmsServiceProperty         service;
   QgsWmsCapabilityProperty      capability;
   QString                       version;
+  QString						wmtsServiceMetadataUrl;
 };
 
 //! Formats supported by QImageReader

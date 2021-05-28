@@ -38,7 +38,7 @@ namespace QgsWms
    */
   void checkParameters( QgsWmsParameters &parameters );
 
-  QgsLayerTreeModel *legendModel( const QgsWmsRenderContext &context, QgsLayerTree &tree );
+  QgsLayerTreeModel *legendModel( QgsWmsRenderContext &context, QgsLayerTree &tree );
 
   QgsLayerTree *layerTree( const QgsWmsRenderContext &context );
 

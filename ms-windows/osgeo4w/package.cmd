@@ -105,7 +105,7 @@ touch %SRCDIR%\CMakeLists.txt
 echo CMAKE: %DATE% %TIME%
 if errorlevel 1 goto error
 
-if "%CMAKEGEN%"=="" set CMAKEGEN=Ninja
+if "%CMAKEGEN%"=="" set CMAKEGEN=Visual Studio 14 2015 Win64
 if "%CC%"=="" set CC="%CMAKE_COMPILER_PATH:\=/%/cl.exe"
 if "%CXX%"=="" set CXX="%CMAKE_COMPILER_PATH:\=/%/cl.exe"
 if "%OSGEO4W_CXXFLAGS%"=="" set OSGEO4W_CXXFLAGS=/MD /Z7 /MP /O2 /Ob2 /D NDEBUG
@@ -126,13 +126,20 @@ cmake -G "%CMAKEGEN%" ^
 	-D PEDANTIC=TRUE ^
 	-D WITH_QSPATIALITE=TRUE ^
 	-D WITH_SERVER=TRUE ^
-	-D SERVER_SKIP_ECW=TRUE ^
-	-D WITH_GRASS=TRUE ^
+	-D WITH_SERVER_PLUGINS=TRUE ^
+	-D SERVER_SKIP_ECW=FALSE ^
+	-D WITH_GRASS=FALSE ^
 	-D WITH_3D=TRUE ^
-	-D WITH_GRASS7=TRUE ^
+	-D WITH_GRASS7=FALSE ^
 	-D GRASS_PREFIX7=%GRASS_PREFIX:\=/% ^
 	-D WITH_ORACLE=TRUE ^
 	-D WITH_CUSTOM_WIDGETS=TRUE ^
+	-D ENABLE_TESTS=FALSE ^
+	-D ENABLE_TESTING=FALSE ^
+	-D CMAKE_CXX_FLAGS_RELEASE="/MD /Zi /MP /O2 /Ob2 /D NDEBUG" ^
+	-D CMAKE_SHARED_LINKER_FLAGS_RELEASE="/INCREMENTAL:NO /DEBUG /OPT:REF /OPT:ICF" ^
+	-D CMAKE_MODULE_LINKER_FLAGS_RELEASE="/INCREMENTAL:NO /DEBUG /OPT:REF /OPT:ICF" ^
+	-D CMAKE_PDB_OUTPUT_DIRECTORY_RELEASE=%BUILDDIR%\apps\%PACKAGENAME%\pdb ^
 	-D CMAKE_BUILD_TYPE=%BUILDCONF% ^
 	-D CMAKE_CONFIGURATION_TYPES=%BUILDCONF% ^
 	-D SETUPAPI_LIBRARY="%SETUPAPI_LIBRARY%" ^
@@ -408,45 +415,45 @@ if not exist %ARCH%\release\qgis\%PACKAGENAME%-pdb mkdir %ARCH%\release\qgis\%PA
 	apps/%PACKAGENAME%/pdb
 if errorlevel 1 (echo tar failed & goto error)
 
-%TAR% -C %OSGEO4W_ROOT% -cjf %ARCH%/release/qgis/%PACKAGENAME%-grass-plugin-common/%PACKAGENAME%-grass-plugin-common-%VERSION%-%PACKAGE%.tar.bz2 ^
-	--exclude-from exclude ^
-	--exclude "*.pyc" ^
-	--exclude "apps/%PACKAGENAME%/grass/modules/qgis.d.rast6.exe" ^
-	--exclude "apps/%PACKAGENAME%/grass/modules/qgis.d.rast7.exe" ^
-	--exclude "apps/%PACKAGENAME%/grass/modules/qgis.g.info6.exe" ^
-	--exclude "apps/%PACKAGENAME%/grass/modules/qgis.g.info7.exe" ^
-	--exclude "apps/%PACKAGENAME%/grass/modules/qgis.r.in6.exe" ^
-	--exclude "apps/%PACKAGENAME%/grass/modules/qgis.r.in7.exe" ^
-	--exclude "apps/%PACKAGENAME%/grass/modules/qgis.v.in6.exe" ^
-	--exclude "apps/%PACKAGENAME%/grass/modules/qgis.v.in7.exe" ^
-	--exclude "apps/%PACKAGENAME%/grass/bin/qgis.g.browser6.exe" ^
-	--exclude "apps/%PACKAGENAME%/grass/bin/qgis.g.browser7.exe" ^
-	"apps/%PACKAGENAME%/grass" ^
-	"etc/postinstall/%PACKAGENAME%-grass-plugin-common.bat" ^
-	"etc/preremove/%PACKAGENAME%-grass-plugin-common.bat"
-if errorlevel 1 (echo tar grass-plugin failed & goto error)
+REM %TAR% -C %OSGEO4W_ROOT% -cjf %ARCH%/release/qgis/%PACKAGENAME%-grass-plugin-common/%PACKAGENAME%-grass-plugin-common-%VERSION%-%PACKAGE%.tar.bz2 ^
+REM 	--exclude-from exclude ^
+REM 	--exclude "*.pyc" ^
+REM 	--exclude "apps/%PACKAGENAME%/grass/modules/qgis.d.rast6.exe" ^
+REM 	--exclude "apps/%PACKAGENAME%/grass/modules/qgis.d.rast7.exe" ^
+REM 	--exclude "apps/%PACKAGENAME%/grass/modules/qgis.g.info6.exe" ^
+REM 	--exclude "apps/%PACKAGENAME%/grass/modules/qgis.g.info7.exe" ^
+REM 	--exclude "apps/%PACKAGENAME%/grass/modules/qgis.r.in6.exe" ^
+REM 	--exclude "apps/%PACKAGENAME%/grass/modules/qgis.r.in7.exe" ^
+REM 	--exclude "apps/%PACKAGENAME%/grass/modules/qgis.v.in6.exe" ^
+REM 	--exclude "apps/%PACKAGENAME%/grass/modules/qgis.v.in7.exe" ^
+REM 	--exclude "apps/%PACKAGENAME%/grass/bin/qgis.g.browser6.exe" ^
+REM 	--exclude "apps/%PACKAGENAME%/grass/bin/qgis.g.browser7.exe" ^
+REM 	"apps/%PACKAGENAME%/grass" ^
+REM 	"etc/postinstall/%PACKAGENAME%-grass-plugin-common.bat" ^
+REM 	"etc/preremove/%PACKAGENAME%-grass-plugin-common.bat"
+REM if errorlevel 1 (echo tar grass-plugin failed & goto error)
 
-for %%g IN (%GRASS_VERSIONS%) do (
-	for /f "usebackq tokens=1" %%a in (`%%g --config version`) do set gv=%%a
-	for /F "delims=." %%i in ("!gv!") do set v=%%i
-	set w=!v!
-	if !v!==6 set w=
+REM for %%g IN (%GRASS_VERSIONS%) do (
+REM 	for /f "usebackq tokens=1" %%a in (`%%g --config version`) do set gv=%%a
+REM 	for /F "delims=." %%i in ("!gv!") do set v=%%i
+REM 	set w=!v!
+REM 	if !v!==6 set w=
 
-	%TAR% -C %OSGEO4W_ROOT% -cjf %ARCH%/release/qgis/%PACKAGENAME%-grass-plugin!w!/%PACKAGENAME%-grass-plugin!w!-%VERSION%-%PACKAGE%.tar.bz2 ^
-		"apps/%PACKAGENAME%/bin/qgisgrass!v!.dll" ^
-		"apps/%PACKAGENAME%/grass/bin/qgis.g.browser!v!.exe" ^
-		"apps/%PACKAGENAME%/grass/modules/qgis.d.rast!v!.exe" ^
-		"apps/%PACKAGENAME%/grass/modules/qgis.g.info!v!.exe" ^
-		"apps/%PACKAGENAME%/grass/modules/qgis.r.in!v!.exe" ^
-		"apps/%PACKAGENAME%/grass/modules/qgis.v.in!v!.exe" ^
-		"apps/%PACKAGENAME%/plugins/grassplugin!v!.dll" ^
-		"apps/%PACKAGENAME%/plugins/grassprovider!v!.dll" ^
-		"apps/%PACKAGENAME%/plugins/grassrasterprovider!v!.dll" ^
-		"bin/%PACKAGENAME%-grass!v!.bat.tmpl" ^
-		"etc/postinstall/%PACKAGENAME%-grass-plugin!w!.bat" ^
-		"etc/preremove/%PACKAGENAME%-grass-plugin!w!.bat"
-	if errorlevel 1 (echo tar grass-plugin!w! failed & goto error)
-)
+REM 	%TAR% -C %OSGEO4W_ROOT% -cjf %ARCH%/release/qgis/%PACKAGENAME%-grass-plugin!w!/%PACKAGENAME%-grass-plugin!w!-%VERSION%-%PACKAGE%.tar.bz2 ^
+REM 		"apps/%PACKAGENAME%/bin/qgisgrass!v!.dll" ^
+REM 		"apps/%PACKAGENAME%/grass/bin/qgis.g.browser!v!.exe" ^
+REM 		"apps/%PACKAGENAME%/grass/modules/qgis.d.rast!v!.exe" ^
+REM 		"apps/%PACKAGENAME%/grass/modules/qgis.g.info!v!.exe" ^
+REM 		"apps/%PACKAGENAME%/grass/modules/qgis.r.in!v!.exe" ^
+REM 		"apps/%PACKAGENAME%/grass/modules/qgis.v.in!v!.exe" ^
+REM 		"apps/%PACKAGENAME%/plugins/grassplugin!v!.dll" ^
+REM 		"apps/%PACKAGENAME%/plugins/grassprovider!v!.dll" ^
+REM 		"apps/%PACKAGENAME%/plugins/grassrasterprovider!v!.dll" ^
+REM 		"bin/%PACKAGENAME%-grass!v!.bat.tmpl" ^
+REM 		"etc/postinstall/%PACKAGENAME%-grass-plugin!w!.bat" ^
+REM 		"etc/preremove/%PACKAGENAME%-grass-plugin!w!.bat"
+REM 	if errorlevel 1 (echo tar grass-plugin!w! failed & goto error)
+REM )
 
 %TAR% -C %OSGEO4W_ROOT% -cjf %ARCH%/release/qgis/%PACKAGENAME%-oracle-provider/%PACKAGENAME%-oracle-provider-%VERSION%-%PACKAGE%.tar.bz2 ^
 	"apps/%PACKAGENAME%/plugins/oracleprovider.dll" ^

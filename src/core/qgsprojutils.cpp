@@ -21,6 +21,7 @@
 #include <QString>
 #include <QSet>
 #include <QRegularExpression>
+#include <qdir.h>
 
 #if PROJ_VERSION_MAJOR>=6
 #include <proj.h>
@@ -39,6 +40,22 @@ QgsProjContext::QgsProjContext()
 {
 #if PROJ_VERSION_MAJOR>=6
   mContext = proj_context_create();
+
+  QString strDbPath = proj_context_get_database_path(mContext);
+  if (strDbPath.isEmpty())
+  {
+	  QString strProjLibPath = getenv("PROJ_LIB");
+	  if (!strProjLibPath.isEmpty())
+	  {
+		  strProjLibPath = strProjLibPath.replace("\r", "");
+		  strProjLibPath = strProjLibPath.replace("\n", "");
+		  strDbPath = QDir(strProjLibPath).filePath("proj.db");
+		  strDbPath = strDbPath.replace("/", "\\");
+		  
+		  proj_context_set_database_path(mContext, strDbPath.toUtf8().constData(), NULL, NULL);
+	  }
+  }
+  
 #else
   mContext = pj_ctx_alloc();
 #endif

@@ -369,7 +369,7 @@ bool QgsMapLayer::readLayerXml( const QDomElement &layerElement, QgsReadWriteCon
     mMetadataUrlType = metaUrlElem.attribute( QStringLiteral( "type" ), QString() );
     mMetadataUrlFormat = metaUrlElem.attribute( QStringLiteral( "format" ), QString() );
   }
-
+  
   // mMetadata.readFromLayer( this );
   QDomElement metadataElem = layerElement.firstChildElement( QStringLiteral( "resourceMetadata" ) );
   mMetadata.readMetadataXml( metadataElem );

@@ -227,7 +227,7 @@ namespace QgsWms
     }
   }
 
-  QgsLayerTreeModel *legendModel( const QgsWmsRenderContext &context, QgsLayerTree &tree )
+  QgsLayerTreeModel *legendModel( QgsWmsRenderContext &context, QgsLayerTree &tree )
   {
 
     const QgsWmsParameters parameters = context.parameters();

@@ -605,6 +605,19 @@ QSizeF QgsSymbolLegendNode::drawSymbol( const QgsLegendSettings &settings, ItemC
 
   if ( QgsMarkerSymbol *markerSymbol = dynamic_cast<QgsMarkerSymbol *>( s ) )
   {
+	  if (settings.sbScaleIndependentSymbol() && markerSymbol->sizeUnit() == QgsUnitTypes::RenderMapUnits)
+	  {
+		  for (int i = 0; i < 20; i++) 
+		  {
+			  double dPainterSize = markerSymbol->size(*context);
+			  if (dPainterSize >= 10)
+				  break;
+
+			  context->setRendererScale(context->rendererScale() * 1.5);
+		  }
+	  }
+
+    // allow marker symbol to occupy bigger area if necessary
     double size = markerSymbol->size( *context ) / context->scaleFactor();
     height = size;
     width = size;
@@ -632,6 +645,12 @@ QSizeF QgsSymbolLegendNode::drawSymbol( const QgsLegendSettings &settings, ItemC
     double currentYCoord = ctx->top + ( itemHeight - desiredHeight ) / 2;
     QPainter *p = ctx->painter;
 
+	if (settings.sbNoWidthHeightOffset())
+	{
+		heightOffset = 0;
+		widthOffset = currentYCoord = 0.4;
+	}
+		
     //setup painter scaling to dots so that raster symbology is drawn to scale
     double dotsPerMM = context->scaleFactor();
 

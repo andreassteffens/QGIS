@@ -29,6 +29,8 @@
 #include "qgis_sip.h"
 #include "qgsproject.h"
 #include "qgsserversettings.h"
+#include "qgsmapsettings.h"
+#include "SimpleCrypt.h"
 
 /**
  * \ingroup server
@@ -49,7 +51,11 @@ class SERVER_EXPORT QgsConfigCache : public QObject
      * Removes an entry from cache.
      * \param path The path of the project
      */
-    void removeEntry( const QString &path );
+    bool removeEntry( const QString &path );
+
+	QStringList sbLoadedProjects();
+
+	void sbPurge();
 
     /**
      * If the project is not cached yet, then the project is read from the
@@ -64,22 +70,37 @@ class SERVER_EXPORT QgsConfigCache : public QObject
      * \since QGIS 3.0
      */
     const QgsProject *project( const QString &path, QgsServerSettings *settings = nullptr );
+	
+	QgsMapSettings *mapSettings( const QString &path );
+	QStringList *projectWarnings(const QString &path);
 
   private:
-    QgsConfigCache() SIP_FORCE;
+	QgsConfigCache() SIP_FORCE;
 
-    //! Check for configuration file updates (remove entry from cache if file changes)
+	//! Check for configuration file updates (remove entry from cache if file changes)
     QFileSystemWatcher mFileSystemWatcher;
 
     //! Returns xml document for project file / sld or 0 in case of errors
     QDomDocument *xmlDocument( const QString &filePath );
 
     QCache<QString, QDomDocument> mXmlDocumentCache;
-    QCache<QString, QgsProject> mProjectCache;
+    
+	QCache<QString, QgsProject> mProjectCache;
 
+	QCache<QString, QgsMapSettings> mMapSettingsCache;
+
+	QCache<QString, QStringList> mProjectWarnings;
+
+	QString mLoadingPath;
+	
   private slots:
     //! Removes changed entry from this cache
-    void removeChangedEntry( const QString &path );
+    bool removeChangedEntry( const QString &path );
+	
+	void loadProjectCanvas(const QDomDocument &doc);
+	void logOldProjectVersionWarning(const QString &warning);
+	void logLoadingLayerMessage(const QString &layer, const QList<QgsReadWriteContext::ReadWriteMessage> & listMessages);
+	void logProjectCleared();
 };
 
 #endif // QGSCONFIGCACHE_H

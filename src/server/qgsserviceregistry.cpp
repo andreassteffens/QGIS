@@ -104,7 +104,7 @@ QgsService *QgsServiceRegistry::getService( const QString &name, const QString &
     else
     {
       // Return the default version
-      QgsMessageLog::logMessage( QString( "Service %1 %2 not found, returning default" ).arg( name, version ) );
+      QgsMessageLog::logMessage( QString( "Service %1 %2 not found, returning default" ).arg( name, version ), QStringLiteral("Server"), Qgis::Info );
       service = mServices[v->second].get();
     }
   }
@@ -124,11 +124,11 @@ void QgsServiceRegistry::registerService( QgsService *service )
   QString key = makeServiceKey( name, version );
   if ( mServices.constFind( key ) != mServices.constEnd() )
   {
-    QgsMessageLog::logMessage( QStringLiteral( "Error Service %1 %2 is already registered" ).arg( name, version ) );
+    QgsMessageLog::logMessage( QString( "Error Service %1 %2 is already registered" ).arg( name, version ), QStringLiteral("Server"), Qgis::MessageLevel::Warning);
     return;
   }
 
-  QgsMessageLog::logMessage( QStringLiteral( "Adding service %1 %2" ).arg( name, version ), QStringLiteral( "Server" ), Qgis::Info );
+  QgsMessageLog::logMessage( QString( "Adding service %1 %2" ).arg( name, version ), QStringLiteral("Server"), Qgis::MessageLevel::Info );
   mServices.insert( key, std::shared_ptr<QgsService>( service ) );
 
   // Check the default version

@@ -220,5 +220,4 @@ class QgsXyzTileDataItemProvider : public QgsDataItemProvider
     QVector<QgsDataItem *> createDataItems( const QString &path, QgsDataItem *parentItem ) override;
 };
 
-
 #endif // QGSWMSDATAITEMS_H

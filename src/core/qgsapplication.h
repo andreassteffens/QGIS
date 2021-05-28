@@ -900,6 +900,13 @@ class CORE_EXPORT QgsApplication : public QApplication
     static void setTranslation( const QString &translation );
 
     /**
+	* Retrieve translation
+	*
+	* \since QGIS 3.4.5
+	*/
+	static QString sbTranslation();
+
+    /**
      * Emits the signal to collect all the strings of .qgs to be included in ts file
      *
      * \since QGIS 3.4

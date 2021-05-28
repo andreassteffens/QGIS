@@ -35,9 +35,9 @@ namespace QgsWmts
     QgsCoordinateReferenceSystem wgs84 = QgsCoordinateReferenceSystem::fromOgcWmsCrs( geoEpsgCrsAuthId() );
 
     // Constant
-    int tileSize = 256;
-    double POINTS_TO_M = 2.83464567 / 10000.0;
-
+    const int tileSize = 256;
+    const double POINTS_TO_M = 2.800005600011068 / 10000.0;
+	
     QMap< QString, tileMatrixInfo> fixedTileMatrixInfoMap = populateFixedTileMatrixInfoMap();
     QMap< QString, tileMatrixInfo> calculatedTileMatrixInfoMap; // for project without WMTSGrids configuration
   }
@@ -114,6 +114,7 @@ namespace QgsWmts
     // Update extent to get a square one
     QgsRectangle extent = tmi.extent;
     double res = POINTS_TO_M * scaleDenominator / UNIT_TO_M;
+
     int col = std::ceil( ( extent.xMaximum() - extent.xMinimum() ) / ( tileSize * res ) );
     int row = std::ceil( ( extent.yMaximum() - extent.yMinimum() ) / ( tileSize * res ) );
     if ( col > 1 || row > 1 )
@@ -296,10 +297,13 @@ namespace QgsWmts
             // firstly transform CRS bounds expressed in WGS84 to CRS
             QgsRectangle extent = crsTransform.transformBoundingBox( crs.bounds() );
             // Calculate resolution based on scale denominator
+			
             resolution = POINTS_TO_M * minScale / QgsUnitTypes::fromUnitToUnitFactor( tmi.unit, QgsUnitTypes::DistanceMeters );
+
             // Get numbers of column and row for the resolution to cover the extent
             col = std::ceil( ( extent.xMaximum() - extent.xMinimum() ) / ( tileSize * resolution ) );
             row = std::ceil( ( extent.yMaximum() - extent.yMinimum() ) / ( tileSize * resolution ) );
+			
             // Calculate extent
             double bottom =  fixedTop - row * tileSize * resolution;
             double right =  fixedLeft + col * tileSize * resolution;
@@ -313,7 +317,7 @@ namespace QgsWmts
         }
         // get lastLevel
         tmi.lastLevel = QVariant( config[4] ).toInt();
-
+		
         QList< tileMatrixDef > tileMatrixList;
         for ( int i = 0; i <= tmi.lastLevel; ++i )
         {
@@ -412,6 +416,32 @@ namespace QgsWmts
         pLayer.wgs84BoundingRect = QgsRectangle( -180, -90, 180, 90 );
       }
 
+
+	  QStringList wmtsGridConfigList = project->readListEntry(QStringLiteral("WMTSGrids"), QStringLiteral("Config"));
+	  for (const QString &c : wmtsGridConfigList)
+	  {
+		  QStringList config = c.split(',');
+		  QString crsStr = config[0];
+		  
+		  if (!fixedTileMatrixInfoMap.contains(crsStr))
+		  {
+			  QgsCoordinateReferenceSystem gridCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs(crsStr);
+			  QgsCoordinateTransform gridTransform = QgsCoordinateTransform(projCrs, gridCrs, project);
+			  
+			  try
+			  {
+				  QgsRectangle gridRect = gridTransform.transformBoundingBox(projRect);
+				  if(!pLayer.sbCrsBoundingRects.contains(gridCrs.authid()))
+					pLayer.sbCrsBoundingRects.insert(gridCrs.authid(), gridRect);
+			  }
+			  catch (const QgsCsException &)
+			  {
+				  // nothing to be done here for now
+			  }
+		  }
+	  }
+
+
       // Formats
       bool wmtsPngProject = project->readBoolEntry( QStringLiteral( "WMTSPngLayers" ), QStringLiteral( "Project" ) );
       if ( wmtsPngProject )
@@ -476,6 +506,36 @@ namespace QgsWmts
           {
             wgs84BoundingRect.combineExtentWith( QgsRectangle( -180, -90, 180, 90 ) );
           }
+
+
+		  QStringList wmtsGridConfigList = project->readListEntry(QStringLiteral("WMTSGrids"), QStringLiteral("Config"));
+		  for (const QString &c : wmtsGridConfigList)
+		  {
+			  QStringList config = c.split(',');
+			  QString crsStr = config[0];
+
+			  if (!fixedTileMatrixInfoMap.contains(crsStr))
+			  {
+				  QgsCoordinateReferenceSystem gridCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs(crsStr);
+				  QgsCoordinateTransform gridTransform = QgsCoordinateTransform(layerCrs, gridCrs, project);
+
+				  try
+				  {
+					  QgsRectangle gridRect = gridTransform.transformBoundingBox(l->extent());
+					  
+					  if (pLayer.sbCrsBoundingRects.contains(gridCrs.authid()))
+						  pLayer.sbCrsBoundingRects[gridCrs.authid()].combineExtentWith(gridRect);
+					  else
+						  pLayer.sbCrsBoundingRects.insert(gridCrs.authid(), gridRect);
+				  }
+				  catch (const QgsCsException &)
+				  {
+					  // nothing to be done here for now
+				  }
+			  }
+		  }
+
+
           if ( !queryable && l->flags().testFlag( QgsMapLayer::Identifiable ) )
           {
             queryable = true;
@@ -549,6 +609,32 @@ namespace QgsWmts
         pLayer.wgs84BoundingRect = QgsRectangle( -180, -90, 180, 90 );
       }
 
+
+	  QStringList wmtsGridConfigList = project->readListEntry(QStringLiteral("WMTSGrids"), QStringLiteral("Config"));
+	  for (const QString &c : wmtsGridConfigList)
+	  {
+		  QStringList config = c.split(',');
+		  QString crsStr = config[0];
+
+		  if (!fixedTileMatrixInfoMap.contains(crsStr))
+		  {
+			  QgsCoordinateReferenceSystem gridCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs(crsStr);
+			  QgsCoordinateTransform gridTransform = QgsCoordinateTransform(layerCrs, gridCrs, project);
+
+			  try
+			  {
+				  QgsRectangle gridRect = gridTransform.transformBoundingBox(l->extent());
+				  if (!pLayer.sbCrsBoundingRects.contains(gridCrs.authid()))
+					  pLayer.sbCrsBoundingRects.insert(gridCrs.authid(), gridRect);
+			  }
+			  catch (const QgsCsException &)
+			  {
+				  // nothing to be done here for now
+			  }
+		  }
+	  }
+
+
       // Formats
       if ( wmtsPngLayerIdList.contains( lId ) )
         pLayer.formats << QStringLiteral( "image/png" );
@@ -583,15 +669,24 @@ namespace QgsWmts
     if ( tms.ref != QLatin1String( "EPSG:4326" ) )
     {
       QgsCoordinateReferenceSystem crs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( tms.ref );
-      QgsCoordinateTransform exGeoTransform( wgs84, crs, project );
-      try
-      {
-        rect = exGeoTransform.transformBoundingBox( layer.wgs84BoundingRect );
-      }
-      catch ( const QgsCsException & )
-      {
-        return tmsl;
-      }
+      
+	  if (layer.sbCrsBoundingRects.contains(crs.authid()))
+	  {
+		  rect = layer.sbCrsBoundingRects[crs.authid()];
+	  }
+	  else
+	  {
+		  QgsCoordinateTransform exGeoTransform(wgs84, crs, project);
+
+		  try
+		  {
+			  rect = exGeoTransform.transformBoundingBox(layer.wgs84BoundingRect);
+		  }
+		  catch (const QgsCsException &)
+		  {
+			  return tmsl;
+		  }
+	  }
     }
     tmsl.ref = tms.ref;
 
@@ -744,10 +839,10 @@ namespace QgsWmts
       throw QgsRequestNotWellFormedException( QStringLiteral( "TileMatrix is unknown" ) );
     }
     tileMatrixDef tm = tms.tileMatrixList.at( tm_idx );
-
+	
     //defining TileRow
     int tr = params.tileRowAsInt();
-    //read TileRow
+	//read TileRow
     if ( tr < 0 || tm.row <= tr )
     {
       throw QgsRequestNotWellFormedException( QStringLiteral( "TileRow is unknown" ) );
@@ -761,6 +856,8 @@ namespace QgsWmts
       throw QgsRequestNotWellFormedException( QStringLiteral( "TileCol is unknown" ) );
     }
 
+	
+
     double res = tm.resolution;
     double minx = tm.left + tc * ( tileSize * res );
     double miny = tm.top - ( tr + 1 ) * ( tileSize * res );
@@ -769,17 +866,17 @@ namespace QgsWmts
     QString bbox;
     if ( tms.hasAxisInverted )
     {
-      bbox = qgsDoubleToString( miny, 6 ) + ',' +
-             qgsDoubleToString( minx, 6 ) + ',' +
-             qgsDoubleToString( maxy, 6 ) + ',' +
-             qgsDoubleToString( maxx, 6 );
+      bbox = qgsDoubleToString( miny, 9 ) + ',' +
+             qgsDoubleToString( minx, 9 ) + ',' +
+             qgsDoubleToString( maxy, 9 ) + ',' +
+             qgsDoubleToString( maxx, 9 );
     }
     else
     {
-      bbox = qgsDoubleToString( minx, 6 ) + ',' +
-             qgsDoubleToString( miny, 6 ) + ',' +
-             qgsDoubleToString( maxx, 6 ) + ',' +
-             qgsDoubleToString( maxy, 6 );
+      bbox = qgsDoubleToString( minx, 9 ) + ',' +
+             qgsDoubleToString( miny, 9 ) + ',' +
+             qgsDoubleToString( maxx, 9 ) + ',' +
+             qgsDoubleToString( maxy, 9 );
     }
 
     QUrlQuery query;

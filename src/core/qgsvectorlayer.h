@@ -791,6 +791,10 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer, public QgsExpressionConte
      */
     Q_INVOKABLE void selectByIds( const QgsFeatureIds &ids, QgsVectorLayer::SelectBehavior behavior = QgsVectorLayer::SetSelection );
 
+	void sbSetRenderSelectionOnly(bool bRenderSelectionOnly) SIP_SKIP;
+	
+	bool sbRenderSelectionOnly() const SIP_SKIP;
+
     /**
      * Modifies the current selection on this layer
      *
@@ -1092,6 +1096,8 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer, public QgsExpressionConte
      */
     bool writeSld( QDomNode &node, QDomDocument &doc, QString &errorMessage, const QgsStringMap &props = QgsStringMap() ) const;
 
+	bool writeSldLabeling(QDomNode &node, const QgsStringMap &props) const SIP_SKIP;
+	
     bool readSld( const QDomNode &node, QString &errorMessage ) FINAL;
 
     /**
@@ -2840,6 +2846,9 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer, public QgsExpressionConte
     QVariant minimumOrMaximumValue( int index, bool minimum ) const;
 
   private:                       // Private attributes
+	QList<QgsLayerMetadata::Constraint> mSbConstraints SIP_SKIP;
+	bool mSbRenderSelectionOnly SIP_SKIP;
+
     QgsConditionalLayerStyles *mConditionalStyles = nullptr;
 
     //! Pointer to data provider derived from the abastract base class QgsDataProvider

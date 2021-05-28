@@ -20,6 +20,7 @@
 #include "qgis.h"
 #include "qgsfcgiserverrequest.h"
 #include "qgsserverlogger.h"
+#include "qgsserverexception.h"
 #include "qgsmessagelog.h"
 #include <fcgi_stdio.h>
 #include <QDebug>
@@ -114,8 +115,24 @@ QgsFcgiServerRequest::QgsFcgiServerRequest()
 
   if ( method == PostMethod || method == PutMethod )
   {
-    // Get post/put data
-    readData();
+	  try
+	  {
+		  // Get post/put data
+		  readData();
+	  }
+	  catch (QgsServerException &ex)
+	  {
+		  QgsMessageLog::logMessage(QStringLiteral("QgsServerException: %1").arg(ex.what()), QStringLiteral("Server"), Qgis::Critical);
+	  }
+	  catch (QgsException &ex)
+	  {
+		  // Internal server error
+		  QgsMessageLog::logMessage(QStringLiteral("QgsServerException: %1").arg(ex.what()), QStringLiteral("Server"), Qgis::Critical);
+	  }
+	  catch (...)
+	  {
+		  QgsMessageLog::logMessage(QStringLiteral("Unknown exception"), QStringLiteral("Server"), Qgis::Critical);
+	  }
   }
 
   setUrl( url );
@@ -175,14 +192,14 @@ void QgsFcgiServerRequest::readData()
     }
     else
     {
-      QgsMessageLog::logMessage( "fcgi: Failed to parse CONTENT_LENGTH",
+      QgsMessageLog::logMessage( QStringLiteral("fcgi: Failed to parse CONTENT_LENGTH"),
                                  QStringLiteral( "Server" ), Qgis::Critical );
       mHasError = true;
     }
   }
   else
   {
-    QgsMessageLog::logMessage( "fcgi: No POST data" );
+    QgsMessageLog::logMessage( QStringLiteral("fcgi: No POST data") );
   }
 }
 

@@ -43,8 +43,8 @@ void QgsWmsRenderContext::setParameters( const QgsWmsParameters &parameters )
   mParameters = parameters;
 
   initRestrictedLayers();
-  initNicknameLayers();
 
+  initNicknameLayers();
   searchLayersToRender();
   removeUnwantedLayers();
   checkLayerReadPermissions();
@@ -124,6 +124,11 @@ QgsWmsParametersLayer QgsWmsRenderContext::parameters( const QgsMapLayer &layer 
   }
 
   return parameters;
+}
+
+void QgsWmsRenderContext::sbAddRenderSelectionOnlyLayer(QString strLayer)
+{
+	mParameters.sbAddRenderSelectionOnlyLayer(strLayer);
 }
 
 int QgsWmsRenderContext::imageQuality() const
@@ -428,11 +433,14 @@ void QgsWmsRenderContext::searchLayersToRender()
     for ( const QString &layerName : queryLayerNames )
     {
       const QList<QgsMapLayer *> layers = mNicknameLayers.values( layerName );
+
       for ( QgsMapLayer *lyr : layers )
+	  {
         if ( !mLayersToRender.contains( lyr ) )
         {
           mLayersToRender.append( lyr );
         }
+	  }
     }
   }
 
@@ -443,10 +451,12 @@ void QgsWmsRenderContext::searchLayersToRender()
     {
       const QList<QgsMapLayer *> layers = mNicknameLayers.values( layerName );
       for ( QgsMapLayer *lyr : layers )
+	  {
         if ( !mLayersToRender.contains( lyr ) )
         {
           mLayersToRender.append( lyr );
         }
+	  }
     }
   }
 }

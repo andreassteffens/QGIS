@@ -26,6 +26,7 @@
 #include "qgslogger.h"
 #include "qgssvgcache.h"
 #include "qgsunittypes.h"
+#include "qgsmessagelog.h"
 
 #include <QPainter>
 #include <QSvgRenderer>
@@ -292,10 +293,71 @@ QRectF QgsSimpleMarkerSymbolLayerBase::bounds( QPointF point, QgsSymbolRenderCon
   if ( !qgsDoubleNear( angle, 0.0 ) )
     transform.rotate( angle );
 
-  return transform.mapRect( QRectF( -scaledSize / 2.0,
-                                    -scaledSize / 2.0,
-                                    scaledSize,
-                                    scaledSize ) );
+  QRectF rect(-scaledSize / 2.0,
+	  -scaledSize / 2.0,
+	  scaledSize,
+	  scaledSize);
+
+  return transform.mapRect( rect );
+}
+
+double QgsSimpleMarkerSymbolLayerBase::sbPainterSize(QgsSymbolRenderContext &context)
+{
+	QPainter *p = context.renderContext().painter();
+	if (!p)
+	{
+		return 0;
+	}
+
+	bool hasDataDefinedSize = false;
+	double scaledSize = calculateSize(context, hasDataDefinedSize);
+
+	bool hasDataDefinedRotation = false;
+	QPointF offset;
+	double angle = 0;
+	calculateOffsetAndRotation(context, scaledSize, hasDataDefinedRotation, offset, angle);
+
+	//data defined shape?
+	bool createdNewPath = false;
+	bool ok = true;
+	Shape symbol = mShape;
+	if (mDataDefinedProperties.isActive(QgsSymbolLayer::PropertyName))
+	{
+		context.setOriginalValueVariable(encodeShape(symbol));
+		QVariant exprVal = mDataDefinedProperties.value(QgsSymbolLayer::PropertyName, context.renderContext().expressionContext());
+		if (exprVal.isValid())
+		{
+			Shape decoded = decodeShape(exprVal.toString(), &ok);
+			if (ok)
+			{
+				symbol = decoded;
+
+				if (!prepareMarkerShape(symbol)) // drawing as a polygon
+				{
+					prepareMarkerPath(symbol); // drawing as a painter path
+				}
+				createdNewPath = true;
+			}
+		}
+		else
+		{
+			symbol = mShape;
+		}
+	}
+
+	double dRet = 0;
+
+	// resize if necessary
+	if (hasDataDefinedSize || createdNewPath)
+	{
+		double s = context.renderContext().convertToPainterUnits(scaledSize, mSizeUnit, mSizeMapUnitScale);
+		dRet = s / 2.0;
+		 	
+	} 
+	else 
+		dRet = context.renderContext().convertToPainterUnits(scaledSize, mSizeUnit, mSizeMapUnitScale);
+
+	return dRet;
 }
 
 QgsSimpleMarkerSymbolLayerBase::Shape QgsSimpleMarkerSymbolLayerBase::decodeShape( const QString &name, bool *ok )

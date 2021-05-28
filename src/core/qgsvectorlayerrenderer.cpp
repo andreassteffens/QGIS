@@ -55,6 +55,40 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
 
   mRenderer = layer->renderer() ? layer->renderer()->clone() : nullptr;
   mSelectedFeatureIds = layer->selectedFeatureIds();
+  
+  mSbRenderSelectionOnly = layer->sbRenderSelectionOnly();
+  
+  mSbRenderMinPixelSize = -1;
+  mSbRenderMinPixelSizeMaxScale = -1;
+  mSbRenderMinPixelSizeDebug = false;
+  QList<QgsLayerMetadata::Constraint> qlistConstraints = layer->metadata().constraints();
+  for (int iConstraint = 0; iConstraint < qlistConstraints.count(); iConstraint++)
+  {
+	  bool bOk = false;
+	  if (qlistConstraints[iConstraint].type.compare("sb:RENDER_MIN_PIXEL_SIZE", Qt::CaseInsensitive) == 0)
+	  {
+		  double dValue = 0;
+		  dValue = qlistConstraints[iConstraint].constraint.toDouble(&bOk);
+		  if (bOk)
+			  mSbRenderMinPixelSize = dValue;
+
+	  }
+
+	  bOk = false;
+	  if (qlistConstraints[iConstraint].type.compare("sb:RENDER_MIN_PIXEL_SIZE_MAX_SCALE", Qt::CaseInsensitive) == 0)
+	  {
+		  double dValue = 0;
+		  dValue = qlistConstraints[iConstraint].constraint.toDouble(&bOk);
+		  if (bOk)
+			  mSbRenderMinPixelSizeMaxScale = dValue;
+	  }
+
+	  if (qlistConstraints[iConstraint].type.compare("sb:RENDER_MIN_PIXEL_SIZE_DEBUG", Qt::CaseInsensitive) == 0)
+		  mSbRenderMinPixelSizeDebug = qlistConstraints[iConstraint].constraint.compare("true", Qt::CaseInsensitive) == 0;
+  }
+  
+  mSbScaleFactor = context.coordinateTransform().scaleFactor(mLayer->extent());
+  mSbMapUnitsPerPixel = context.mapToPixel().mapUnitsPerPixel();
 
   mDrawVertexMarkers = nullptr != layer->editBuffer();
 
@@ -203,11 +237,14 @@ bool QgsVectorLayerRenderer::render()
       mDiagramProvider->setClipFeatureGeometry( mLabelClipFeatureGeom );
   }
   mRenderer->modifyRequestExtent( requestExtent, context );
-
+  
   QgsFeatureRequest featureRequest = QgsFeatureRequest()
                                      .setFilterRect( requestExtent )
                                      .setSubsetOfAttributes( mAttrNames, mFields )
                                      .setExpressionContext( context.expressionContext() );
+
+  featureRequest.sbSetRenderMinPixelSizeFilter(mSbRenderMinPixelSize, mSbRenderMinPixelSizeMaxScale, mSbScaleFactor, mSbMapUnitsPerPixel, renderContext()->rendererScale(), mGeometryType);
+
   if ( mRenderer->orderByEnabled() )
   {
     featureRequest.setOrderBy( mRenderer->orderBy() );
@@ -325,9 +362,9 @@ bool QgsVectorLayerRenderer::render()
   }
 
   mInterruptionChecker.reset();
+
   return true;
 }
-
 
 void QgsVectorLayerRenderer::drawRenderer( QgsFeatureIterator &fit )
 {
@@ -343,6 +380,7 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureIterator &fit )
   }
 
   QgsFeature fet;
+  
   while ( fit.nextFeature( fet ) )
   {
     try
@@ -353,11 +391,20 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureIterator &fit )
         break;
       }
 
-      if ( !fet.hasGeometry() || fet.geometry().isEmpty() )
+	  if ( !fet.hasGeometry() || fet.geometry().isEmpty() )
         continue; // skip features without geometry
 
-      if ( clipEngine && !clipEngine->intersects( fet.geometry().constGet() ) )
-        continue; // skip features outside of clipping region
+	  if (mSbRenderSelectionOnly)
+	  {
+		  if (!mSelectedFeatureIds.contains(fet.id()))
+			  continue;
+	  }
+
+	  if (mSbRenderMinPixelSizeDebug)
+		  continue;
+
+	  if (clipEngine && !clipEngine->intersects(fet.geometry().constGet()))
+		  continue; // skip features outside of clipping region
 
       if ( mApplyClipGeometries )
         context.setFeatureClipGeometry( mClipFeatureGeom );
@@ -414,7 +461,6 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureIterator &fit )
                    .arg( fet.id() ).arg( cse.what() ) );
     }
   }
-
   delete context.expressionContext().popScope();
 
   stopRenderer( nullptr );
@@ -462,8 +508,17 @@ void QgsVectorLayerRenderer::drawRendererLevels( QgsFeatureIterator &fit )
     if ( !fet.hasGeometry() )
       continue; // skip features without geometry
 
-    if ( clipEngine && !clipEngine->intersects( fet.geometry().constGet() ) )
-      continue; // skip features outside of clipping region
+	if (mSbRenderSelectionOnly)
+	{
+		if (!mSelectedFeatureIds.contains(fet.id()))
+			continue;
+	}
+
+	if (mSbRenderMinPixelSizeDebug)
+		continue;
+
+	if (clipEngine && !clipEngine->intersects(fet.geometry().constGet()))
+		continue; // skip features outside of clipping region
 
     context.expressionContext().setFeature( fet );
     QgsSymbol *sym = mRenderer->symbolForFeature( fet, context );
@@ -596,8 +651,6 @@ void QgsVectorLayerRenderer::stopRenderer( QgsSingleSymbolRenderer *selRenderer 
     delete selRenderer;
   }
 }
-
-
 
 
 void QgsVectorLayerRenderer::prepareLabeling( QgsVectorLayer *layer, QSet<QString> &attributeNames )

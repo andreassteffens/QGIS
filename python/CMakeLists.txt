@@ -33,6 +33,7 @@ add_custom_target(staged-plugins-pyc DEPENDS staged-plugins
 # Other custom commands will be added, per staged resource
 add_custom_target(clean-staged-plugins
   COMMAND ${CMAKE_COMMAND} -E remove_directory "${PYTHON_OUTPUT_DIRECTORY}/plugins"
+  COMMENT "Blah 1"
 )
 
 # Macro to byte-compile a target's staged Python resource(s)
@@ -373,6 +374,7 @@ if(WITH_QSCIAPI)
   add_custom_command(TARGET qsci-pap-src
     POST_BUILD
     COMMAND ${PYTHON_EXECUTABLE} "${APIS_SRC_DIR}/generate_console_pap.py" "${APIS_SRC_DIR}/${PAP_NAME}" "${APIS_SRC_DIR}" "${APIS_BIN_DIR}"
+	# MESSAGE WARNING "message to display ${PYTHON_EXECUTABLE} ${APIS_SRC_DIR}/${PAP_NAME} ${APIS_SRC_DIR} ${APIS_BIN_DIR}"
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
     COMMENT "Generating ${PAP_NAME} for console auto-completion (MAY TAKE > 1 MINUTE!)" VERBATIM)
 endif()
@@ -399,6 +401,7 @@ foreach(pyfile ${PY_FILES})
     COMMAND ${CMAKE_COMMAND} -E copy ${pyfile} "${QGIS_PYTHON_OUTPUT_DIRECTORY}"
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     DEPENDS ${pyfile}
+	COMMENT "Blah 2"
   )
   PY_COMPILE(pyutils "${QGIS_PYTHON_OUTPUT_DIRECTORY}/${pyfile}")
 endforeach(pyfile)
@@ -429,6 +432,7 @@ foreach(module ${PY_MODULES})
       COMMAND ${CMAKE_COMMAND} -E copy ${pyfile} "${QGIS_PYTHON_OUTPUT_DIRECTORY}/${subdir}"
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       DEPENDS ${PY_FILES}
+	  COMMENT "Blah 3"
     )
   endforeach(pyfile)
   PY_COMPILE(py${module} "${QGIS_PYTHON_OUTPUT_DIRECTORY}/${module}")

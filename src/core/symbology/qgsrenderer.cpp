@@ -316,10 +316,6 @@ QDomElement QgsFeatureRenderer::writeSld( QDomDocument &doc, const QString &styl
 {
   QDomElement userStyleElem = doc.createElement( QStringLiteral( "UserStyle" ) );
 
-  QDomElement nameElem = doc.createElement( QStringLiteral( "se:Name" ) );
-  nameElem.appendChild( doc.createTextNode( styleName ) );
-  userStyleElem.appendChild( nameElem );
-
   QDomElement featureTypeStyleElem = doc.createElement( QStringLiteral( "se:FeatureTypeStyle" ) );
   toSld( doc, featureTypeStyleElem, props );
   userStyleElem.appendChild( featureTypeStyleElem );

@@ -20,12 +20,17 @@
 #include "qgsserverinterfaceimpl.h"
 #include "qgsconfigcache.h"
 
+#include <qstringlist.h>
+
 //! Constructor
-QgsServerInterfaceImpl::QgsServerInterfaceImpl( QgsCapabilitiesCache *capCache, QgsServiceRegistry *srvRegistry, QgsServerSettings *settings )
+QgsServerInterfaceImpl::QgsServerInterfaceImpl( QgsCapabilitiesCache *capCache, QgsServiceRegistry *srvRegistry, QgsServerSettings *settings, QgsConfigCache *configCache, const QString& strTenant )
   : mCapabilitiesCache( capCache )
   , mServiceRegistry( srvRegistry )
   , mServerSettings( settings )
+  , mConfigCache( configCache )
 {
+  mSbTenant = strTenant;
+
   mRequestHandler = nullptr;
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
   mAccessControls = new QgsAccessControl();
@@ -116,5 +121,16 @@ QgsServiceRegistry *QgsServerInterfaceImpl::serviceRegistry()
 
 QgsServerSettings *QgsServerInterfaceImpl::serverSettings()
 {
+	
   return mServerSettings;
+}
+
+QStringList QgsServerInterfaceImpl::sbLoadedProjects()
+{
+	return mConfigCache->sbLoadedProjects();
+}
+
+const QString& QgsServerInterfaceImpl::sbTenant()
+{
+	return mSbTenant;
 }

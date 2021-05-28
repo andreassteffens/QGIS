@@ -108,6 +108,8 @@ namespace QgsWmts
 
     QgsRectangle wgs84BoundingRect;
 
+	QMap<QString, QgsRectangle> sbCrsBoundingRects;
+
     QStringList formats;
 
     bool queryable = false;

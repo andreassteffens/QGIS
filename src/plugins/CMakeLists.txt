@@ -14,6 +14,12 @@ add_subdirectory(geometry_checker)
 if (GRASS_FOUND)
   add_subdirectory(grass)
 endif()
+ADD_SUBDIRECTORY(sb_address_services)
+ADD_SUBDIRECTORY(sb_elevation_services)
+
+IF (GRASS_FOUND)
+  ADD_SUBDIRECTORY(grass)
+ENDIF (GRASS_FOUND)
 
 if (CUSTOM_PLUGINS)
   add_subdirectory(${CUSTOM_PLUGINS})
