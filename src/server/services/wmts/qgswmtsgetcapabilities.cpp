@@ -422,6 +422,20 @@ namespace QgsWmts
 
           QDomElement bboxElement = doc.createElement( QStringLiteral( "ows:BoundingBox" ) );
           bboxElement.setAttribute( QStringLiteral( "crs" ), tms.ref );
+
+          // lower corner
+          double firstCoord = rect.xMinimum();
+          double secondCoord = rect.yMinimum();
+
+          if ( crs.hasAxisInverted() )
+          {
+            std::swap( firstCoord, secondCoord );
+          }
+
+          QString firstCoordStr = qgsDoubleToString( QgsServerProjectUtils::floorWithPrecision( firstCoord, precision ), precision );
+          QString secondCoordStr = qgsDoubleToString( QgsServerProjectUtils::floorWithPrecision( secondCoord, precision ), precision );
+          const QDomText lowerCornerText = doc.createTextNode( QString( "%1 %2" ).arg( firstCoordStr, secondCoordStr ) );
+
           QDomElement lowerCornerElement = doc.createElement( QStringLiteral( "ows:LowerCorner" ) );
           
 		  if (invert)
@@ -436,6 +450,20 @@ namespace QgsWmts
 		  }
 		  
           bboxElement.appendChild( lowerCornerElement );
+
+          // upper corner
+          firstCoord = rect.xMaximum();
+          secondCoord = rect.yMaximum();
+
+          if ( crs.hasAxisInverted() )
+          {
+            std::swap( firstCoord, secondCoord );
+          }
+
+          firstCoordStr = qgsDoubleToString( QgsServerProjectUtils::ceilWithPrecision( firstCoord, precision ), precision );
+          secondCoordStr = qgsDoubleToString( QgsServerProjectUtils::ceilWithPrecision( secondCoord, precision ), precision );
+          const QDomText upperCornerText = doc.createTextNode( QString( "%1 %2" ).arg( firstCoordStr, secondCoordStr ) );
+
           QDomElement upperCornerElement = doc.createElement( QStringLiteral( "ows:UpperCorner" ) );
           
 		  if (invert)
@@ -450,6 +478,8 @@ namespace QgsWmts
 		  }
           
 		  bboxElement.appendChild( upperCornerElement );
+
+          // update layer element
           layerElem.appendChild( bboxElement );
         }
 

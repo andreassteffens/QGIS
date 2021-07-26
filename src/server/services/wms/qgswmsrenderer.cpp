@@ -3264,19 +3264,24 @@ namespace QgsWms
 
   void QgsRenderer::setLayerSelection( QgsMapLayer *layer, const QStringList &fids, bool bRenderOnlySelection ) const
   {
-    if ( layer->type() == QgsMapLayerType::VectorLayer )
+    if ( !fids.empty() && layer->type() == QgsMapLayerType::VectorLayer )
     {
-      QgsFeatureIds selectedIds;
-
-      for ( const QString &id : fids )
-      {
-        selectedIds.insert( STRING_TO_FID( id ) );
-      }
-
       QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( layer );
+
+      QgsFeatureRequest request;
+      QgsServerFeatureId::updateFeatureRequestFromServerFids( request, fids, vl->dataProvider() );
+      const QgsFeatureIds selectedIds = request.filterFids();
+
+      if ( selectedIds.empty() )
+      {
+        vl->selectByExpression( request.filterExpression()->expression() );
+      }
+      else
+      {
       vl->selectByIds( selectedIds );
 	  vl->sbSetRenderSelectionOnly(bRenderOnlySelection);
     }
+  }
   }
 
   void QgsRenderer::setLayerAccessControlFilter( QgsMapLayer *layer ) const
@@ -3410,6 +3415,11 @@ namespace QgsWms
 	  PROFILER_END();
 
 	  PROFILER_START(getMap_setLayerSelection);
+      if ( mContext.testFlag( QgsWmsRenderContext::SetAccessControl ) )
+      {
+        setLayerAccessControlFilter( layer );
+      }
+
       if ( mContext.testFlag( QgsWmsRenderContext::UseSelection ) )
       {
         setLayerSelection( layer, param.mSelection, param.mRenderSelectionOnly );
@@ -3421,13 +3431,7 @@ namespace QgsWms
       {
         updateExtent( layer, *settings );
       }
-	  PROFILER_END();
-
-      if ( mContext.testFlag( QgsWmsRenderContext::SetAccessControl ) )
-      {
-        setLayerAccessControlFilter( layer );
       }
-    }
 
     if ( mContext.testFlag( QgsWmsRenderContext::AddHighlightLayers ) )
     {
