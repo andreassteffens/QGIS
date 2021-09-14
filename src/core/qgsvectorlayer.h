@@ -1599,7 +1599,10 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer, public QgsExpressionConte
     /**
      * Adds topological points for every vertex of the geometry.
      * \param geom the geometry where each vertex is added to segments of other features
+     * \returns -1 in case of layer error (invalid or non editable)
      * \returns 0 in case of success
+     * \returns 1 in case of geometry error (non spatial or null geometry)
+     * \returns 2 in case no vertices needed to be added
      * \note geom is not going to be modified by the function
      * \note Calls to addTopologicalPoints() are only valid for layers in which edits have been enabled
      * by a call to startEditing(). Changes made to features using this method are not committed
@@ -1614,7 +1617,10 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer, public QgsExpressionConte
      * no additional vertex is inserted. This method is useful for topological
      * editing.
      * \param p position of the vertex
+     * \returns -1 in case of layer error (invalid or non editable)
      * \returns 0 in case of success
+     * \returns 1 in case of geometry error (non spatial or null geometry)
+     * \returns 2 in case no vertices needed to be added
      * \note Calls to addTopologicalPoints() are only valid for layers in which edits have been enabled
      * by a call to startEditing(). Changes made to features using this method are not committed
      * to the underlying data provider until a commitChanges() call is made. Any uncommitted
@@ -1629,7 +1635,10 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer, public QgsExpressionConte
      * no additional vertex is inserted. This method is useful for topological
      * editing.
      * \param p position of the vertex
+     * \returns -1 in case of layer error (invalid or non editable)
      * \returns 0 in case of success
+     * \returns 1 in case of geometry error (non spatial or null geometry)
+     * \returns 2 in case no vertices needed to be added
      * \note Calls to addTopologicalPoints() are only valid for layers in which edits have been enabled
      * by a call to startEditing(). Changes made to features using this method are not committed
      * to the underlying data provider until a commitChanges() call is made. Any uncommitted
@@ -1644,7 +1653,10 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer, public QgsExpressionConte
      * no additional vertex is inserted. This method is useful for topological
      * editing.
      * \param ps point sequence of the vertices
+     * \returns -1 in case of layer error (invalid or non editable)
      * \returns 0 in case of success
+     * \returns 1 in case of geometry error (non spatial or null geometry)
+     * \returns 2 in case no vertices needed to be added
      * \note Calls to addTopologicalPoints() are only valid for layers in which edits have been enabled
      * by a call to startEditing(). Changes made to features using this method are not committed
      * to the underlying data provider until a commitChanges() call is made. Any uncommitted
