@@ -61,6 +61,7 @@ namespace QgsWms
 	bool mLabels; // list of display rules;
     QStringList mSelection; // list of string fid
 	bool mRenderSelectionOnly;
+	QStringList mQuerySubstitutions;
     QString mStyle;
     QString mExternalUri;
   };
@@ -158,6 +159,7 @@ namespace QgsWms
 		SBWITHLABEL,
 		SBALWAYSRENDERSELECTION,
 		SBALLOWUNSAFE,
+		SBQUERYSUBSTITUTIONS,
         FORMAT,
         INFO_FORMAT,
         I,
@@ -507,6 +509,12 @@ namespace QgsWms
        * \returns the list of selection
        */
       QStringList selections() const;
+
+	  /**
+	  * Returns the list of substitution values inserted into feature source queries found in SBQUERYSUBSTITUTIONS parameter.
+	  * \returns the list of substitutions
+	  */
+	  QStringList sbQuerySubstitutions() const;
 
 	  /**
 	  * Returns the list of display rules found in SBLABELS parameter.
@@ -1379,6 +1387,7 @@ namespace QgsWms
 
 	  QMultiMap<QString, QgsWmsParametersRules> sbAllLayerRules() const;
 	  QMultiMap<QString, bool> sbAllLayerLabels() const;
+	  QStringList sbLayerQuerySubstitutions(const QString &layer) const;
 
     private:
       static bool isExternalLayer( const QString &name );
@@ -1397,7 +1406,7 @@ namespace QgsWms
       QMultiMap<QString, QgsWmsParametersFilter> layerFilters( const QStringList &layers ) const;
 	  QMultiMap<QString, QgsWmsParametersRules> sbLayerRules(const QStringList &layers) const;
 	  QMultiMap<QString, bool> sbLayerLabels(const QStringList &layers) const;
-
+	  
       QMap<QgsWmsParameter::Name, QgsWmsParameter> mWmsParameters;
       QMap<QString, QMap<QString, QString> > mExternalWMSParameters;
 	  QMap<QString, QString> mSbRenderSelectionOnlyLayers;

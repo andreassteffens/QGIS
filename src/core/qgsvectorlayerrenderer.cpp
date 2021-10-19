@@ -54,6 +54,7 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
   mSource = new QgsVectorLayerFeatureSource( layer );
 
   mRenderer = layer->renderer() ? layer->renderer()->clone() : nullptr;
+
   mSelectedFeatureIds = layer->selectedFeatureIds();
   
   mSbRenderSelectionOnly = layer->sbRenderSelectionOnly();
@@ -71,7 +72,6 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
 		  dValue = qlistConstraints[iConstraint].constraint.toDouble(&bOk);
 		  if (bOk)
 			  mSbRenderMinPixelSize = dValue;
-
 	  }
 
 	  bOk = false;
@@ -87,7 +87,11 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
 		  mSbRenderMinPixelSizeDebug = qlistConstraints[iConstraint].constraint.compare("true", Qt::CaseInsensitive) == 0;
   }
   
-  mSbScaleFactor = context.coordinateTransform().scaleFactor(mLayer->extent());
+  if (mLayer->extent().isFinite() && !mLayer->extent().isNull())
+	  mSbScaleFactor = context.coordinateTransform().scaleFactor(mLayer->extent());
+  else
+	  mSbScaleFactor = 1;
+  
   mSbMapUnitsPerPixel = context.mapToPixel().mapUnitsPerPixel();
 
   mDrawVertexMarkers = nullptr != layer->editBuffer();
@@ -148,6 +152,7 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
   }
   renderContext()->expressionContext() << QgsExpressionContextUtils::layerScope( layer );
 
+
   mAttrNames = mRenderer->usedAttributes( context );
   if ( context.hasRenderedFeatureHandlers() )
   {
@@ -158,6 +163,7 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
 
   //register label and diagram layer to the labeling engine
   prepareLabeling( layer, mAttrNames );
+
   prepareDiagrams( layer, mAttrNames );
 
   mClippingRegions = QgsMapClippingUtils::collectClippingRegionsForLayer( context, layer );

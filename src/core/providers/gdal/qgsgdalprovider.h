@@ -246,6 +246,9 @@ class QgsGdalProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
     // update mode
     bool mUpdate;
 
+
+	QList<sbRasterBandStatistics> mlistSbRasterBandStatistics;
+
 #if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3,0,0)
     // initialize CRS from wkt
     bool crsFromWkt( const char *wkt );
