@@ -185,6 +185,11 @@ namespace QgsWfs
 
 	const QgsWfsParameter pSbOutputType = QgsWfsParameter(QgsWfsParameter::SBGEOMETRYOUTPUT);
 	save(pSbOutputType);
+
+	const QgsWfsParameter pSbWithMapTip = QgsWfsParameter(QgsWfsParameter::SBWITHMAPTIP,
+		QVariant::Bool,
+		QVariant(false));
+	save(pSbWithMapTip);
   }
 
   QgsWfsParameters::QgsWfsParameters( const QgsServerParameters &parameters )
@@ -435,6 +440,11 @@ namespace QgsWfs
   bool QgsWfsParameters::sbAllowEmptyPropertyList() const
   {
 	  return mWfsParameters[QgsWfsParameter::SBALLOWEMPTYPROPERTYLIST].toBool();
+  }
+
+  bool QgsWfsParameters::sbWithMapTip() const
+  {
+	  return mWfsParameters[QgsWfsParameter::SBWITHMAPTIP].toBool();
   }
 
   QgsProjectVersion QgsWfsParameters::versionAsNumber() const

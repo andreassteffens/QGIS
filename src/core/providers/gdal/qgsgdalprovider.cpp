@@ -149,6 +149,7 @@ QgsGdalProvider::QgsGdalProvider( const QString &uri, const ProviderOptions &opt
   , mpParent( new QgsGdalProvider * ( this ) )
   , mpLightRefCounter( new QAtomicInt( 1 ) )
   , mUpdate( update )
+  , mlistSbRasterBandStatistics( options.sbRasterBandStatistics )
 {
   mGeoTransform[0] = 0;
   mGeoTransform[1] = 1;
@@ -2784,8 +2785,19 @@ QgsRasterBandStats QgsGdalProvider::bandStatistics( int bandNo, int stats, const
   // see above and https://trac.osgeo.org/gdal/ticket/4857
   // -> Cannot used cached GDAL stats for exact
 
-  CPLErr myerval =
-    GDALGetRasterStatistics( myGdalBand, bApproxOK, true, &pdfMin, &pdfMax, &pdfMean, &pdfStdDev );
+  CPLErr myerval = CE_None;
+  
+  if (mlistSbRasterBandStatistics.length() > bandNo - 1)
+  {
+	  pdfMin = mlistSbRasterBandStatistics[bandNo - 1].min;
+	  pdfMax = mlistSbRasterBandStatistics[bandNo - 1].max;
+	  pdfMean = mlistSbRasterBandStatistics[bandNo - 1].mean;
+	  pdfStdDev = mlistSbRasterBandStatistics[bandNo - 1].stdDev;
+
+	  bApproxOK = true;
+  }
+  else
+	  myerval = GDALGetRasterStatistics( myGdalBand, bApproxOK, true, &pdfMin, &pdfMax, &pdfMean, &pdfStdDev );
 
   QgsDebugMsgLevel( QStringLiteral( "myerval = %1" ).arg( myerval ), 2 );
 

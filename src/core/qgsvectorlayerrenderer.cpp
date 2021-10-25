@@ -40,6 +40,7 @@
 #include "qgsrenderedfeaturehandlerinterface.h"
 #include "qgsvectorlayertemporalproperties.h"
 #include "qgsmapclippingutils.h"
+#include "qgsproject.h"
 
 #include <QPicture>
 
@@ -54,13 +55,40 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
   mSource = new QgsVectorLayerFeatureSource( layer );
 
   mRenderer = layer->renderer() ? layer->renderer()->clone() : nullptr;
+
   mSelectedFeatureIds = layer->selectedFeatureIds();
   
   mSbRenderSelectionOnly = layer->sbRenderSelectionOnly();
   
+  bool bOk = false;
   mSbRenderMinPixelSize = -1;
   mSbRenderMinPixelSizeMaxScale = -1;
   mSbRenderMinPixelSizeDebug = false;
+
+  if(QgsProject::instance()->metadata().keywords().contains("sb:RENDER_MIN_PIXEL_SIZE"))
+  {
+	  QString strValue = QgsProject::instance()->metadata().keywords("sb:RENDER_MIN_PIXEL_SIZE")[0];
+	  double dValue = 0;
+	  dValue = strValue.toDouble(&bOk);
+	  if (bOk)
+		  mSbRenderMinPixelSize = dValue;
+  }
+
+  if (QgsProject::instance()->metadata().keywords().contains("sb:RENDER_MIN_PIXEL_SIZE_MAX_SCALE"))
+  {
+	  QString strValue = QgsProject::instance()->metadata().keywords("sb:RENDER_MIN_PIXEL_SIZE_MAX_SCALE")[0];
+	  double dValue = 0;
+	  dValue = strValue.toDouble(&bOk);
+	  if (bOk)
+		  mSbRenderMinPixelSizeMaxScale = dValue;
+  }
+
+  if (QgsProject::instance()->metadata().keywords().contains("sb:RENDER_MIN_PIXEL_SIZE_DEBUG"))
+  {
+	  QString strValue = QgsProject::instance()->metadata().keywords("sb:RENDER_MIN_PIXEL_SIZE_DEBUG")[0];
+	  mSbRenderMinPixelSizeDebug = strValue.compare("true", Qt::CaseInsensitive) == 0;
+  }
+
   QList<QgsLayerMetadata::Constraint> qlistConstraints = layer->metadata().constraints();
   for (int iConstraint = 0; iConstraint < qlistConstraints.count(); iConstraint++)
   {
@@ -71,7 +99,6 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
 		  dValue = qlistConstraints[iConstraint].constraint.toDouble(&bOk);
 		  if (bOk)
 			  mSbRenderMinPixelSize = dValue;
-
 	  }
 
 	  bOk = false;
@@ -87,7 +114,11 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
 		  mSbRenderMinPixelSizeDebug = qlistConstraints[iConstraint].constraint.compare("true", Qt::CaseInsensitive) == 0;
   }
   
-  mSbScaleFactor = context.coordinateTransform().scaleFactor(mLayer->extent());
+  if (mLayer->extent().isFinite() && !mLayer->extent().isNull())
+	  mSbScaleFactor = context.coordinateTransform().scaleFactor(mLayer->extent());
+  else
+	  mSbScaleFactor = 1;
+  
   mSbMapUnitsPerPixel = context.mapToPixel().mapUnitsPerPixel();
 
   mDrawVertexMarkers = nullptr != layer->editBuffer();
@@ -148,6 +179,7 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
   }
   renderContext()->expressionContext() << QgsExpressionContextUtils::layerScope( layer );
 
+
   mAttrNames = mRenderer->usedAttributes( context );
   if ( context.hasRenderedFeatureHandlers() )
   {
@@ -158,6 +190,7 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
 
   //register label and diagram layer to the labeling engine
   prepareLabeling( layer, mAttrNames );
+
   prepareDiagrams( layer, mAttrNames );
 
   mClippingRegions = QgsMapClippingUtils::collectClippingRegionsForLayer( context, layer );

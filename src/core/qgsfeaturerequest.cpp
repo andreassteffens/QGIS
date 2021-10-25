@@ -121,6 +121,7 @@ QgsFeatureRequest &QgsFeatureRequest::operator=( const QgsFeatureRequest &rh )
   mSbMapUnitsPerPixel = rh.mSbMapUnitsPerPixel;
   mSbCurrentScale = rh.mSbCurrentScale;
   mSbGeometryType = rh.mSbGeometryType;
+  mSbQuerySubstitutions = rh.mSbQuerySubstitutions;
 
   return *this;
 }
@@ -143,6 +144,11 @@ QgsFeatureRequest &QgsFeatureRequest::setFilterFids( const QgsFeatureIds &fids )
   mFilter = FilterFids;
   mFilterFids = fids;
   return *this;
+}
+
+void QgsFeatureRequest::sbSetQuerySubstitutions(const QStringList &substitutions)
+{
+	mSbQuerySubstitutions = substitutions;
 }
 
 QgsFeatureRequest &QgsFeatureRequest::setInvalidGeometryCheck( QgsFeatureRequest::InvalidGeometryCheck check )

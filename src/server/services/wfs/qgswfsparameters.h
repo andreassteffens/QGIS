@@ -63,7 +63,8 @@ namespace QgsWfs
 		SBJSONNOTRANSFORM,
 		SBGEOMETRYOUTPUT,
 		SBALLOWEMPTYPROPERTYLIST,
-		SBRULES
+		SBRULES,
+		SBWITHMAPTIP
       };
       Q_ENUM( Name )
 
@@ -306,6 +307,7 @@ namespace QgsWfs
 
 	  bool sbJsonNoTransform() const;
 	  bool sbAllowEmptyPropertyList() const;
+	  bool sbWithMapTip() const;
 
 	  QMultiMap<QString, QgsWfsParametersRules> sbLayerRules(const QStringList &layers) const;
 

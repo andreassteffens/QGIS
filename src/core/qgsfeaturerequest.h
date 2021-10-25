@@ -93,7 +93,7 @@ class CORE_EXPORT QgsFeatureRequest
       FilterNone,       //!< No filter is applied
       FilterFid,        //!< Filter using feature ID
       FilterExpression, //!< Filter using expression
-      FilterFids        //!< Filter using feature IDs
+      FilterFids       //!< Filter using feature IDs
     };
 
     //! Handling of features with invalid geometries
@@ -344,6 +344,9 @@ class CORE_EXPORT QgsFeatureRequest
     QgsFeatureRequest &setFilterFids( const QgsFeatureIds &fids );
     //! Gets feature IDs that should be fetched.
     const QgsFeatureIds &filterFids() const { return mFilterFids; }
+
+	void sbSetQuerySubstitutions(const QStringList &substitutions);
+	const QStringList &sbQuerySubstitutions() const { return mSbQuerySubstitutions; }
 
     /**
      * Sets invalid geometry checking behavior.
@@ -716,6 +719,7 @@ class CORE_EXPORT QgsFeatureRequest
     QgsRectangle mFilterRect;
     QgsFeatureId mFilterFid = -1;
     QgsFeatureIds mFilterFids;
+	QStringList mSbQuerySubstitutions;
     std::unique_ptr< QgsExpression > mFilterExpression;
     QgsExpressionContext mExpressionContext;
     Flags mFlags = Flags();
