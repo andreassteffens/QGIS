@@ -440,25 +440,25 @@ namespace QgsWfs
       {
         while ( fit.nextFeature( feature ) && ( aRequest.maxFeatures == -1 || sentFeatures < aRequest.maxFeatures ) )
         {
-			if (renderer)
-			{
-				renderContext.expressionContext().setFeature(feature);
-				QSet<QString> set = renderer->legendKeysForFeature(feature, renderContext);
+		  if (renderer)
+		  {
+			renderContext.expressionContext().setFeature(feature);
+			QSet<QString> set = renderer->legendKeysForFeature(feature, renderContext);
 				
-				bool bAdd = false;
-				QMap<QString, QgsWfsParametersRules>::const_iterator iter = mapRules.constFind(typeName);
-				if (iter != mapRules.constEnd())
-				{
-					for (int iRule = 0; iRule < iter->mRules.count() && !bAdd; iRule++)
-					{
-						if (iter->mRules[iRule].second)
-							bAdd = set.contains(iter->mRules[iRule].first);
-					}
-				}
-
-				if (!bAdd)
-					continue;
+			bool bAdd = false;
+			QMap<QString, QgsWfsParametersRules>::const_iterator iter = mapRules.constFind(typeName);
+			if (iter != mapRules.constEnd())
+			{
+			  for (int iRule = 0; iRule < iter->mRules.count() && !bAdd; iRule++)
+			  {
+			    if (iter->mRules[iRule].second)
+				  bAdd = set.contains(iter->mRules[iRule].first);
+			  }
 			}
+
+			if (!bAdd)
+			  continue;
+		  }
 
           if ( iteratedFeatures >= aRequest.startIndex )
           {
@@ -482,24 +482,26 @@ namespace QgsWfs
 		
         while ( fit.nextFeature( feature ) && ( aRequest.maxFeatures == -1 || sentFeatures < aRequest.maxFeatures ) )
         {
+		  if(renderer || mWfsParameters.sbWithMapTip())
+			  renderContext.expressionContext().setFeature(feature);
+
 		  if (renderer)
 		  {
-			  renderContext.expressionContext().setFeature(feature);
-			  QSet<QString> set = renderer->legendKeysForFeature(feature, renderContext);
+			QSet<QString> set = renderer->legendKeysForFeature(feature, renderContext);
 			  
-			  bool bAdd = false;
-			  QMap<QString, QgsWfsParametersRules>::const_iterator iter = mapRules.constFind(typeName);
-		      if (iter !=  mapRules.constEnd())
+			bool bAdd = false;
+			QMap<QString, QgsWfsParametersRules>::const_iterator iter = mapRules.constFind(typeName);
+		    if (iter !=  mapRules.constEnd())
+			{
+			  for (int iRule = 0; iRule < iter->mRules.count() && !bAdd; iRule++)
 			  {
-				  for (int iRule = 0; iRule < iter->mRules.count() && !bAdd; iRule++)
-				  {
-					  if (iter->mRules[iRule].second)
-						  bAdd = set.contains(iter->mRules[iRule].first);
-				  }
-			  }
+			    if (iter->mRules[iRule].second)
+				  bAdd = set.contains(iter->mRules[iRule].first);
+		      }
+			}
 
-			  if (!bAdd)
-				  continue;
+			if (!bAdd)
+			  continue;
 		  }
 
           if ( iteratedFeatures == aRequest.startIndex )
