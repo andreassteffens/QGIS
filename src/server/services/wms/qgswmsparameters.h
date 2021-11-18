@@ -529,8 +529,8 @@ namespace QgsWms
 	  QStringList sbRules() const;
 
 	  /**
-	  * Returns the the API key authorizing access to specialized EMERGY functions found in RULES parameter.
-	  * \returns EMERGY API key
+	  * Returns the the API key authorizing access to specialized Atapa functions found in RULES parameter.
+	  * \returns Atapa API key
 	  */
 	  QString sbKey() const;
 

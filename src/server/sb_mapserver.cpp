@@ -131,7 +131,7 @@ int main(int iArgCount, char** ppszArgs)
 
 	QCoreApplication::setOrganizationName(QgsApplication::QGIS_ORGANIZATION_NAME);
 	QCoreApplication::setOrganizationDomain(QgsApplication::QGIS_ORGANIZATION_DOMAIN);
-	QCoreApplication::setApplicationName("EMERGY Geoservice GmbH EnderGI Server");
+	QCoreApplication::setApplicationName("Atapa GmbH EnderGI Server");
 	QCoreApplication::setApplicationVersion("1.0");
 
 	if (!withDisplay)

@@ -169,7 +169,6 @@ QgsLayerRestorer::~QgsLayerRestorer()
 			continue;
 
 		QgsLayerSettings settings = mLayerSettings[layer];
-		layer->setName(mLayerSettings[layer].name);
 
 		QgsMapLayerStyleManager *styleManager = layer->styleManager();
 		if (styleManager)
@@ -183,7 +182,11 @@ QgsLayerRestorer::~QgsLayerRestorer()
 				styleManager->removeStyle(sldStyleName);
 				layer->removeCustomProperty("sldStyleName");
 			}
+			
+			styleManager->setCurrentStyle( settings.mNamedStyle );
 		}
+
+		layer->setName(mLayerSettings[layer].name);
 
 		switch (layer->type())
 		{

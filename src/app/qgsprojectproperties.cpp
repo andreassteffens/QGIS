@@ -1992,7 +1992,7 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
   teOWSChecker->document()->setDefaultStyleSheet( myStyle );
   
   QString strContent;
-  strContent += "<h1>" + tr("[EMERGY] Performing QGIS Server check. Hold on to your hat...") + "</h1>";
+  strContent += "<h1>" + tr("[Atapa] Performing QGIS Server check. Hold on to your hat...") + "</h1>";
 
   if (!QgsProject::instance()->trustLayerMetadata() || !QgsProject::instance()->autoTransaction())
   {
@@ -2011,7 +2011,7 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
   }
   else
   {
-	  strContent += "<h3>" + tr("[EMERGY] Main database performance options seem to be in order") + "</h3>";
+	  strContent += "<h3>" + tr("[Atapa] Main database performance options seem to be in order") + "</h3>";
   }
 
 
@@ -2137,11 +2137,11 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
   }
   if (!strMessage.isEmpty())
   {
-	  strMessage = "<h3 style='color: #f00;'>" + tr("[EMERGY] Some inconsistent settings with regard to WebGIS tools have to be reviewed:") + "</h3><ul>" + strMessage + "</ul>";
+	  strMessage = "<h3 style='color: #f00;'>" + tr("[Atapa] Some inconsistent settings with regard to Atlas tools have to be reviewed:") + "</h3><ul>" + strMessage + "</ul>";
 	  strContent += strMessage;
   }
   else
-	  strContent += "<h3>" + tr("[EMERGY] All WebGIS related tool settings are consistent") + "</h3>";
+	  strContent += "<h3>" + tr("[Atapa] All Atlas related tool settings are consistent") + "</h3>";
 
   strMessage = "";
   for (int iResult = 0; iResult < validationResults.count(); iResult++)
@@ -2156,14 +2156,14 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
   }
   if (!strMessage.isEmpty())
   {
-	  strMessage = "<h3 style='color: #f00;'>" + tr("[EMERGY] The publishing settings for some layers need to be reviewed:") + "</h3><ul>" + strMessage + "</ul>";
+	  strMessage = "<h3 style='color: #f00;'>" + tr("[Atlas] The publishing settings for some layers need to be reviewed:") + "</h3><ul>" + strMessage + "</ul>";
 	  strContent += strMessage;
   }
   else
-	  strContent += "<h3>" + tr("[EMERGY] All WebGIS related tool settings are consistent") + "</h3>";
+	  strContent += "<h3>" + tr("[Atlas] All Atlas related tool settings are consistent") + "</h3>";
 
   strContent += "<hr>";
-  strContent += "<h1>" + tr("[EMERGY] QGIS Server check done! Hat still on?") + "</h1>";
+  strContent += "<h1>" + tr("[Atlas] QGIS Server check done! Hat still on?") + "</h1>";
 
   teOWSChecker->setHtml(strContent);
 }
@@ -2403,7 +2403,7 @@ void QgsProjectProperties::pbnSbFillLayerShortNames_clicked()
 	teOWSChecker->document()->setDefaultStyleSheet(myStyle);
 
 	QString strContent;
-	strContent = "<h1>" + tr("Performing project optimizations for EMERGY WebGIS publication...") + "</h1>";
+	strContent = "<h1>" + tr("Performing project optimizations for Atapa Atlas publication...") + "</h1>";
 	
 	strContent += "<hr>";
 	
@@ -2476,7 +2476,7 @@ void QgsProjectProperties::pbnSbFillLayerShortNames_clicked()
 	}
 
 	strContent += "<hr>";
-	strContent += "<h1>" + tr("EMERGY WebGIS optimizations done!") + "</h1>";
+	strContent += "<h1>" + tr("Atapa Atlas optimizations done!") + "</h1>";
 
 	teOWSChecker->setHtml(strContent);
 }

@@ -150,11 +150,11 @@ QVariant QgsLayerCapabilitiesModel::headerData( int section, Qt::Orientation ori
         case RequiredColumn:
           return tr( "Required" );
 		case sbNavigableColumn:
-		  return tr("[EMERGY] Navigable");
+		  return tr("[Atapa] Navigable");
 		case sbSelectableColumn:
-			return tr("[EMERGY] Selectable");
+			return tr("[Atapa] Selectable");
 		case sbSnappableColumn:
-			return tr("[EMERGY] Snappable");
+			return tr("[Atapa] Snappable");
         default:
           return QVariant();
       }
@@ -171,11 +171,11 @@ QVariant QgsLayerCapabilitiesModel::headerData( int section, Qt::Orientation ori
 		case RequiredColumn:
           return tr( "Layers which are protected from inadvertent removal from the project." );
 		case sbNavigableColumn:
-		  return tr("Layers whose features can be navigated to using the Google Maps Tool integrated into the EMERGY WebGIS.");
+		  return tr("Layers whose features can be navigated to using the Google Maps Tool integrated into the Atapa Atlas.");
 		case sbSelectableColumn:
-			return tr("Layers whose features can be selected using the Object Selection Tool integrated into the EMERGY WebGIS.");
+			return tr("Layers whose features can be selected using the Object Selection Tool integrated into the Atapa Atlas.");
 		case sbSnappableColumn:
-			return tr("Layers whose features can be snapped to using the Snapping Tool integrated into the EMERGY WebGIS.");
+			return tr("Layers whose features can be snapped to using the Snapping Tool integrated into the Atapa Atlas.");
 		default:
           return QVariant();
       }

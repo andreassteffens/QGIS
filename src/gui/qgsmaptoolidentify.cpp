@@ -758,7 +758,7 @@ QMap< QString, QString > QgsMapToolIdentify::featureDerivedAttributes( const Qgs
 		if (layer->crs().authid().compare("EPSG:4326", Qt::CaseInsensitive) == 0)
 			iPrecision = 6;
 
-		derivedAttributes.insert(tr("[EMERGY] Minimal Bounding Rectangle"), rcBounds.toString(iPrecision));
+		derivedAttributes.insert(tr("[Atapa] Minimal Bounding Rectangle"), rcBounds.toString(iPrecision));
 
 		if (layer->crs() != mCanvas->mapSettings().destinationCrs())
 		{
@@ -770,7 +770,7 @@ QMap< QString, QString > QgsMapToolIdentify::featureDerivedAttributes( const Qgs
 					iPrecision = 6;
 
 				QgsRectangle rcBoundsTranformed = ct.transformBoundingBox(rcBounds);
-				derivedAttributes.insert(tr("[EMERGY] Minimal Bounding Rectangle (transformed)"), rcBoundsTranformed.toString(iPrecision));
+				derivedAttributes.insert(tr("[Atapa] Minimal Bounding Rectangle (transformed)"), rcBoundsTranformed.toString(iPrecision));
 			}
 		}
 	}	
