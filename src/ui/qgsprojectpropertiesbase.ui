@@ -832,7 +832,7 @@
 					<item>
                      <widget class="QToolButton" name="pbnSbOsmScales">
                       <property name="toolTip">
-                       <string>[EMERGY] Generate OSM scales</string>
+                       <string>[Atapa] Generate OSM scales</string>
                       </property>
                       <property name="text">
                        <string>…</string>
@@ -846,7 +846,7 @@
 					<item>
                      <widget class="QToolButton" name="pbnSbAutoScales">
                       <property name="toolTip">
-                       <string>[EMERGY] Generate scales starting at current scale</string>
+                       <string>[Atapa] Generate scales starting at current scale</string>
                       </property>
                       <property name="text">
                        <string>…</string>
@@ -2949,14 +2949,14 @@
                     <item>
                      <widget class="QPushButton" name="pbnLaunchOWSChecker">
                       <property name="text">
-                       <string>[EMERGY] Launch</string>
+                       <string>[Atapa] Launch</string>
                       </property>
                      </widget>
                     </item>
 					<item>
 					 <widget class="QPushButton" name="pbnSbFillLayerShortNames">
                       <property name="text">
-                       <string>[EMERGY] WebGIS optimizations</string>
+                       <string>[Atapa] WebGIS optimizations</string>
                       </property>
                      </widget>
 					</item>

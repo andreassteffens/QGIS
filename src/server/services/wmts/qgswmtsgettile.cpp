@@ -70,6 +70,13 @@ namespace QgsWmts
 				break;
 			}
 		}
+
+		if (strCacheMaxAge.isEmpty())
+		{
+			QStringList qlistMetadata = project->metadata().keywords("sb:CACHE_MAX_AGE");
+			if (qlistMetadata.count() > 0)
+				strCacheMaxAge = qlistMetadata[0];
+		}
 	}
 
     // Get cached image

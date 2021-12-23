@@ -50,6 +50,7 @@
 #include "qgsrasterrenderer.h"
 #include "qgssymbollayerutils.h"
 #include "qgsvectorlayerserverproperties.h"
+#include "qgsprojectviewsettings.h"
 
 #include "qgswmsprovider.h"
 namespace QgsWms
@@ -575,6 +576,9 @@ namespace QgsWms
 				}
 			}
 
+			QDomElement scalesElem = doc.createElement(QStringLiteral("sbMapScales"));
+			serviceElem.appendChild(scalesElem);
+
 			bool bUseScales = project->readBoolEntry(QStringLiteral("Scales"), QStringLiteral("/useProjectScales"));
 			if (bUseScales)
 			{
@@ -582,10 +586,7 @@ namespace QgsWms
 
 				if (qstrlistScales.count() > 0)
 				{
-					QDomElement scalesElem = doc.createElement(QStringLiteral("sbMapScales"));
-					serviceElem.appendChild(scalesElem);
-
-					for (QStringList::iterator it = qstrlistScales.begin(); it != qstrlistScales.end(); ++it)
+					for (QStringList::const_iterator it = qstrlistScales.constBegin(); it != qstrlistScales.constEnd(); ++it)
 					{
 						QDomElement scaleElem = doc.createElement(QStringLiteral("sbScale"));
 						QDomText scaleText = doc.createTextNode(*it);
@@ -595,6 +596,19 @@ namespace QgsWms
 				}
 			}
 
+			bUseScales = project->viewSettings()->useProjectScales();
+			if(bUseScales) 
+			{
+				QVector<double> vecScales = project->viewSettings()->mapScales();
+				for(QVector<double>::const_iterator it = vecScales.constBegin(); it != vecScales.constEnd(); ++it)
+				{
+					QDomElement scaleElem = doc.createElement(QStringLiteral("sbScale"));
+					QDomText scaleText = doc.createTextNode(QString::number(*it));
+					scaleElem.appendChild(scaleText);
+					scalesElem.appendChild(scaleElem);
+				}
+			}
+				
 			QgsMapThemeCollection* pThemes = project->mapThemeCollection();
 			if (pThemes->mapThemes().count() > 0)
 			{
