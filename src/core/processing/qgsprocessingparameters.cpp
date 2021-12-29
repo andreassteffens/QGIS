@@ -1649,8 +1649,13 @@ QVariantList QgsProcessingParameters::parameterAsMatrix( const QgsProcessingPara
 
   QVariantList result;
   const auto constSplit = resultString.split( ',' );
+  bool ok;
+  double number;
   for ( const QString &s : constSplit )
-    result << s;
+  {
+    number = s.toDouble( &ok );
+    result << ( ok ? QVariant( number ) : s );
+  }
 
   return result;
 }
@@ -3420,37 +3425,7 @@ QString QgsProcessingParameterMatrix::valueAsPythonString( const QVariant &value
   p.insert( name(), value );
   QVariantList list = QgsProcessingParameters::parameterAsMatrix( this, p, context );
 
-  QStringList parts;
-  const auto constList = list;
-  for ( const QVariant &v : constList )
-  {
-    if ( v.type() == QVariant::List )
-    {
-      QStringList parts2;
-      const auto constToList = v.toList();
-      for ( const QVariant &v2 : constToList )
-      {
-        if ( v2.isNull() || !v2.isValid() )
-          parts2 << QStringLiteral( "None" );
-        else if ( v2.toString().isEmpty() )
-          parts2 << QStringLiteral( "''" );
-        else
-          parts2 << v2.toString();
-      }
-      parts << parts2.join( ',' ).prepend( '[' ).append( ']' );
-    }
-    else
-    {
-      if ( v.isNull() || !v.isValid() )
-        parts << QStringLiteral( "None" );
-      else if ( v.toString().isEmpty() )
-        parts << QStringLiteral( "''" );
-      else
-        parts << v.toString();
-    }
-  }
-
-  return parts.join( ',' ).prepend( '[' ).append( ']' );
+  return QgsProcessingUtils::variantToPythonLiteral( list );
 }
 
 QString QgsProcessingParameterMatrix::asPythonString( const QgsProcessing::PythonOutputType outputType ) const
@@ -3462,8 +3437,8 @@ QString QgsProcessingParameterMatrix::asPythonString( const QgsProcessing::Pytho
       QString code = QStringLiteral( "QgsProcessingParameterMatrix('%1', '%2'" ).arg( name(), description() );
       if ( mFlags & FlagOptional )
         code += QLatin1String( ", optional=True" );
-      code += QStringLiteral( ", numberRows=" ).arg( mNumberRows );
-      code += QStringLiteral( ", hasFixedNumberRows=" ).arg( mFixedNumberRows ? QStringLiteral( "True" ) : QStringLiteral( "False" ) );
+      code += QStringLiteral( ", numberRows=%1" ).arg( mNumberRows );
+      code += QStringLiteral( ", hasFixedNumberRows=%1" ).arg( mFixedNumberRows ? QStringLiteral( "True" ) : QStringLiteral( "False" ) );
 
       QStringList headers;
       headers.reserve( mHeaders.size() );

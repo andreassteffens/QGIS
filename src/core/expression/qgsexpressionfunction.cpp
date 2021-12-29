@@ -2840,6 +2840,10 @@ static QVariant fcnMakePolygon( const QVariantList &values, const QgsExpressionC
   }
 
   QgsGeometry outerRing = QgsExpressionUtils::getGeometry( values.at( 0 ), parent );
+
+  if ( outerRing.type() == QgsWkbTypes::PolygonGeometry )
+    return outerRing; // if it's already a polygon we have nothing to do
+
   if ( outerRing.type() != QgsWkbTypes::LineGeometry || outerRing.isNull() )
     return QVariant();
 
@@ -5817,7 +5821,7 @@ static QVariant executeGeomOverlay( const QVariantList &values, const QgsExpress
     intDomain.grow( bboxGrow ); //optional parameter to enlarge boundary context for touches and equals methods
   }
 
-  const QString cacheBase { QStringLiteral( "%1:%2" ).arg( targetLayer->id(), subExpString ) };
+  const QString cacheBase { QStringLiteral( "%1:%2:%3" ).arg( targetLayer->id(), subExpString, filterString ) };
 
   // Cache (a local spatial index) is always enabled for nearest function (as we need QgsSpatialIndex::nearestNeighbor)
   // Otherwise, it can be toggled by the user
