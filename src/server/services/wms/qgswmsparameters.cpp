@@ -1704,8 +1704,6 @@ namespace QgsWms
 
 			QMultiMap<QString, QgsWmsParametersRules>::iterator it = mapRules.find(strLayer);
 
-			int iActiveCount = 0;
-
 			QStringList listLayerRuleTerms = listLayerParts[1].split(',');
 			for (int iRule = 0; iRule < listLayerRuleTerms.count(); iRule++)
 			{
@@ -1719,13 +1717,7 @@ namespace QgsWms
 				bool bState = listRuleParts[1].compare("true", Qt::CaseInsensitive) == 0;
 
 				it->mRules.append(QPair<QString, bool>(strRule, bState));
-
-				if (bState)
-					iActiveCount++;
 			}
-
-			if (iActiveCount == listLayerRuleTerms.count())
-				mapRules.erase(it);
 		}
 
 		return mapRules;

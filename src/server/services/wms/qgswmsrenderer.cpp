@@ -331,6 +331,8 @@ namespace QgsWms
 		const QString templateName = mWmsParameters.composerTemplate();
 		if (templateName.isEmpty())
 		{
+			throw QgsBadRequestException(QgsServiceException::QGIS_MissingParameterValue,
+				QgsWmsParameter::TEMPLATE);
 		}
 
 		// check template
@@ -384,23 +386,23 @@ namespace QgsWms
 			}
 			else
 			{
-        const QgsAttributeList pkIndexes = cLayer->primaryKeyAttributes();
-        if ( pkIndexes.size() == 0 )
+				const QgsAttributeList pkIndexes = cLayer->primaryKeyAttributes();
+				if (pkIndexes.size() == 0)
 				{
-          QgsDebugMsgLevel( QStringLiteral( "Atlas print: layer %1 has no primary key attributes" ).arg( cLayer->name() ), 2 );
+					QgsDebugMsgLevel(QStringLiteral("Atlas print: layer %1 has no primary key attributes").arg(cLayer->name()), 2);
 				}
 
-        // Handles the pk-less case
-        const int pkIndexesSize {std::max( pkIndexes.size(), 1 )};
+				// Handles the pk-less case
+				const int pkIndexesSize{ std::max(pkIndexes.size(), 1) };
 
 				QStringList pkAttributeNames;
-        for ( int pkIndex : qgis::as_const( pkIndexes ) )
+				for (int pkIndex : qgis::as_const(pkIndexes))
 				{
-          pkAttributeNames.append( cLayer->fields().at( pkIndex ).name() );
+					pkAttributeNames.append(cLayer->fields().at(pkIndex).name());
 				}
 
-        const int nAtlasFeatures = atlasPk.size() / pkIndexesSize;
-        if ( nAtlasFeatures * pkIndexesSize != atlasPk.size() ) //Test if atlasPk.size() is a multiple of pkIndexesSize. Bail out if not
+				const int nAtlasFeatures = atlasPk.size() / pkIndexesSize;
+				if (nAtlasFeatures * pkIndexesSize != atlasPk.size()) //Test if atlasPk.size() is a multiple of pkIndexesSize. Bail out if not
 				{
 					throw QgsBadRequestException(QgsServiceException::QGIS_InvalidParameterValue,
 						QStringLiteral("Wrong number of ATLAS_PK parameters"));
@@ -410,7 +412,7 @@ namespace QgsWms
 				if (nAtlasFeatures > maxAtlasFeatures)
 				{
 					throw QgsBadRequestException(QgsServiceException::QGIS_InvalidParameterValue,
-                                        QString( "%1 atlas features have been requested, but the project configuration only allows printing %2 atlas features at a time" )
+						QString("%1 atlas features have been requested, but the project configuration only allows printing %2 atlas features at a time")
 						.arg(nAtlasFeatures).arg(maxAtlasFeatures));
 				}
 
@@ -426,22 +428,23 @@ namespace QgsWms
 
 					filterString.append("( ");
 
-          // If the layer has no PK attributes, assume FID
-          if ( pkAttributeNames.isEmpty() )
-          {
-            filterString.append( QStringLiteral( "$id = %1" ).arg( atlasPk.at( currentAtlasPk ) ) );
-            ++currentAtlasPk;
-          }
-          else
-          {
-					for (int j = 0; j < pkIndexes.size(); ++j)
+					// If the layer has no PK attributes, assume FID
+					if (pkAttributeNames.isEmpty())
 					{
-						if (j > 0)
-						{
-							filterString.append(" AND ");
-						}
-						filterString.append( QgsExpression::createFieldEqualityExpression( pkAttributeNames.at( j ), atlasPk.at( currentAtlasPk ) ) );
+						filterString.append(QStringLiteral("$id = %1").arg(atlasPk.at(currentAtlasPk)));
 						++currentAtlasPk;
+					}
+					else
+					{
+						for (int j = 0; j < pkIndexes.size(); ++j)
+						{
+							if (j > 0)
+							{
+								filterString.append(" AND ");
+							}
+							filterString.append(QgsExpression::createFieldEqualityExpression(pkAttributeNames.at(j), atlasPk.at(currentAtlasPk)));
+							++currentAtlasPk;
+						}
 					}
 
 					filterString.append(" )");
@@ -452,7 +455,7 @@ namespace QgsWms
 				atlas->setFilterExpression(filterString, errorString);
 				if (!errorString.isEmpty())
 				{
-          throw QgsException( QStringLiteral( "An error occurred during the Atlas print: %1" ).arg( errorString ) );
+					throw QgsException(QStringLiteral("An error occurred during the Atlas print: %1").arg(errorString));
 				}
 			}
 		}
@@ -2557,7 +2560,7 @@ namespace QgsWms
 #else
 		return QByteArray::fromStdString(json.dump());
 #endif
-	}
+		}
 
 	QDomElement QgsRenderer::createFeatureGML(
 		const QgsFeature *feat,
@@ -3545,4 +3548,4 @@ namespace QgsWms
 
 		return settings;
 	}
-} // namespace QgsWms
+	} // namespace QgsWms
