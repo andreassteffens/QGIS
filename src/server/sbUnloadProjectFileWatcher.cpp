@@ -127,46 +127,53 @@ void sbUnloadProjectFileWatcher::readUnloadProjects()
 {
 	m_mutexProjectFiles.lock();
 	{
-		m_mapUnloadProjectFiles.clear();
-
-		QgsMessageLog::logMessage(QStringLiteral("[sb] Reading unload projects from path '%1'").arg(m_strUnloadFilename), QStringLiteral("Server"), Qgis::Critical);
-
-		QFile unloadFile(m_strUnloadFilename);
-
-		if (unloadFile.open(QIODevice::ReadOnly | QIODevice::Text))
+		try
 		{
-			QTextStream streamIn(&unloadFile);
-			QString strLine;
-			while (streamIn.readLineInto(&strLine))
+			m_mapUnloadProjectFiles.clear();
+
+			QgsMessageLog::logMessage(QStringLiteral("[sb] Reading unload projects from path '%1'").arg(m_strUnloadFilename), QStringLiteral("Server"), Qgis::Critical);
+
+			QFile unloadFile(m_strUnloadFilename);
+
+			if (unloadFile.open(QIODevice::ReadOnly | QIODevice::Text))
 			{
-				if (strLine.isNull() || strLine.isEmpty())
-					continue;
+				QTextStream streamIn(&unloadFile);
+				QString strLine;
+				while (streamIn.readLineInto(&strLine))
+				{
+					if (strLine.isNull() || strLine.isEmpty())
+						continue;
 
-				strLine = sbGetStandardizedPath(strLine);
+					strLine = sbGetStandardizedPath(strLine);
 
-				if (!m_mapUnloadProjectFiles.contains(strLine))
-					m_mapUnloadProjectFiles.insert(strLine, strLine);
+					if (!m_mapUnloadProjectFiles.contains(strLine))
+						m_mapUnloadProjectFiles.insert(strLine, strLine);
 
-				bool bRes = QgsConfigCache::instance()->removeEntry(strLine);
+					bool bRes = QgsConfigCache::instance()->removeEntry(strLine);
 
-				QgsMessageLog::logMessage(QStringLiteral("[sb] Trying to unload project '%1' ... %2").arg(strLine).arg(bRes), QStringLiteral("Server"), Qgis::Critical);
+					QgsMessageLog::logMessage(QStringLiteral("[sb] Trying to unload project '%1' ... %2").arg(strLine).arg(bRes), QStringLiteral("Server"), Qgis::Critical);
+				}
+
+				unloadFile.close();
+
+				int iSplitIndex = m_strUnloadFilename.lastIndexOf("/");
+				if (iSplitIndex < 0)
+					iSplitIndex = m_strUnloadFilename.lastIndexOf("\\");
+
+				QString strDirectory = m_strUnloadFilename.left(iSplitIndex + 1);
+				QString strFilename = m_strUnloadFilename.right(m_strUnloadFilename.length() - iSplitIndex - 1);
+				QString strTimestampFilename = strDirectory + "." + strFilename;
+				QFile timestampFile(strTimestampFilename);
+				if (timestampFile.open(QIODevice::ReadWrite | QIODevice::Text | QIODevice::Truncate))
+					timestampFile.close();
 			}
-
-			unloadFile.close();
-
-			int iSplitIndex = m_strUnloadFilename.lastIndexOf("/");
-			if (iSplitIndex < 0)
-				iSplitIndex = m_strUnloadFilename.lastIndexOf("\\");
-
-			QString strDirectory = m_strUnloadFilename.left(iSplitIndex + 1);
-			QString strFilename = m_strUnloadFilename.right(m_strUnloadFilename.length() - iSplitIndex - 1);
-			QString strTimestampFilename = strDirectory + "." + strFilename;
-			QFile timestampFile(strTimestampFilename);
-			if (timestampFile.open(QIODevice::ReadWrite | QIODevice::Text | QIODevice::Truncate))
-				timestampFile.close();
+			else
+				QgsMessageLog::logMessage(QStringLiteral("[sb] Failed to open unload projects file '%1'").arg(m_strUnloadFilename), QStringLiteral("Server"), Qgis::Critical);
 		}
-		else
-			QgsMessageLog::logMessage(QStringLiteral("[sb] Failed to open unload projects file '%1'").arg(m_strUnloadFilename), QStringLiteral("Server"), Qgis::Critical);
+		catch (...)
+		{
+			QgsMessageLog::logMessage(QStringLiteral("sbUnloadProjectFileWatcher - Unknown exception"), QStringLiteral("Server"), Qgis::Critical);
+		}
 	}
 	m_mutexProjectFiles.unlock();
 }

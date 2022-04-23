@@ -336,6 +336,8 @@ class CORE_EXPORT QgsEditFormConfig
      */
     static const QgsPropertiesDefinition &propertyDefinitions();
 
+	int sbGetFieldIndex( const QString &fieldName) const SIP_SKIP;
+
   private:
 
     /**

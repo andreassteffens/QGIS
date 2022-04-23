@@ -14,6 +14,7 @@
  ***************************************************************************/
 #include "qgseditformconfig_p.h"
 #include "qgseditformconfig.h"
+#include "qgsattributeeditorelement.h"
 #include "qgsnetworkcontentfetcherregistry.h"
 #include "qgspathresolver.h"
 #include "qgsproject.h"
@@ -43,6 +44,25 @@ void QgsEditFormConfig::setDataDefinedFieldProperties( const QString &fieldName,
 QgsPropertyCollection QgsEditFormConfig::dataDefinedFieldProperties( const QString &fieldName ) const
 {
   return d->mDataDefinedFieldProperties.value( fieldName );
+}
+
+int QgsEditFormConfig::sbGetFieldIndex(const QString &fieldName) const
+{
+	if (d.data() == NULL)
+		return -1;
+	
+	const QList<QgsAttributeEditorElement*> listChildren = d->mInvisibleRootContainer->children();
+	for(int iChild = 0; iChild < listChildren.count(); iChild++)
+	{
+		if (listChildren[iChild]->type() != QgsAttributeEditorElement::AeTypeField)
+			continue;
+	
+		QgsAttributeEditorField* pField = (QgsAttributeEditorField*)listChildren[iChild];
+		if (pField->name().compare(fieldName) == 0)
+			return iChild;
+	}
+
+	return -1;
 }
 
 const QgsPropertiesDefinition &QgsEditFormConfig::propertyDefinitions()

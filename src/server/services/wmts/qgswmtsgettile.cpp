@@ -121,9 +121,7 @@ namespace QgsWmts
     QgsServerParameters wmsParams( query );
     QgsServerRequest wmsRequest( "?" + query.query( QUrl::FullyDecoded ) );
 
-	QgsMessageLog::logMessage(QStringLiteral("Translated WMTS => WMS Query: %1").arg(query.toString()), QStringLiteral("Server"), Qgis::Critical);
-
-    QgsService *service = serverIface->serviceRegistry()->getService( wmsParams.service(), wmsParams.version() );
+	QgsService *service = serverIface->serviceRegistry()->getService( wmsParams.service(), wmsParams.version() );
     service->executeRequest( wmsRequest, response, project );
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
     if ( cacheManager )

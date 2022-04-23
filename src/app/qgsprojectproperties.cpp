@@ -2173,7 +2173,7 @@ void QgsProjectProperties::sbCollectLayerShortNames(QgsLayerTreeGroup *treeGroup
 	// nothing to be done here for now
 }
 
-QString QgsProjectProperties::sbDeterminShortName(QString strTitle, QMultiMap<QString, QString> &mapShortNames)
+QString QgsProjectProperties::sbDetermineShortName(QString strTitle, QMultiMap<QString, QString> &mapShortNames)
 {
 	QString strName = strTitle.toLower().replace("Ü", "Ue");
 	strName = strName.replace("ü", "ue");
@@ -2231,7 +2231,7 @@ void QgsProjectProperties::sbBuildLayerPath(QgsLayerTreeNode* node, QString &pat
 		sbBuildLayerPath(node->parent(), path);
 }
 
-void QgsProjectProperties::sbFillLayerShortNames(QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapShortNames)
+void QgsProjectProperties::sbFillLayerShortNames(QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapShortNames, bool bSynchronizeTreeAndWmsTitles)
 {
 	QList< QgsLayerTreeNode * > treeGroupChildren = treeGroup->children();
 	for (int i = 0; i < treeGroupChildren.size(); ++i)
@@ -2251,12 +2251,12 @@ void QgsProjectProperties::sbFillLayerShortNames(QgsLayerTreeGroup *treeGroup, Q
 				continue;
 			
 			QString strTitle = treeGroupChild->name().trimmed();
-			strShortName = sbDeterminShortName(strTitle, mapShortNames);
+			strShortName = sbDetermineShortName(strTitle, mapShortNames);
 
 			treeGroupChild->setCustomProperty(QStringLiteral("wmsShortName"), strShortName);
 			treeGroupChild->setCustomProperty(QStringLiteral("wmsTitle"), strTitle);
 
-			sbFillLayerShortNames(treeGroupChild, mapShortNames);
+			sbFillLayerShortNames(treeGroupChild, mapShortNames, bSynchronizeTreeAndWmsTitles);
 		}
 		else
 		{
@@ -2272,11 +2272,11 @@ void QgsProjectProperties::sbFillLayerShortNames(QgsLayerTreeGroup *treeGroup, Q
 
 				if (!bSetName)
 					continue;
-
+				
 				QString strTitle = l->title();
-				if (strTitle.isEmpty())
+				if (strTitle.isEmpty() || bSynchronizeTreeAndWmsTitles)
 					strTitle = treeLayer->name();
-				strShortName = sbDeterminShortName(strTitle, mapShortNames);
+				strShortName = sbDetermineShortName(strTitle, mapShortNames);
 
 				l->setShortName(strShortName);
 				l->setTitle(strTitle);
@@ -2397,6 +2397,10 @@ void QgsProjectProperties::sbCollectWfsToolLayerIds(QgsLayerTreeGroup *treeGroup
 
 void QgsProjectProperties::pbnSbFillLayerShortNames_clicked()
 {
+	bool bSynchronizeTreeAndWmsTitles = (QMessageBox::question(this,
+		tr("Synchronize WMS layer titles"),
+		tr("Do you want to synchronize WMS layer titles with the layer names in the QGIS layer tree? (Existing WMS layer titles will be overriden!)")) == QMessageBox::Yes);
+
 	QString myStyle = QgsApplication::reportStyleSheet();
 	myStyle.append(QStringLiteral("body { margin: 10px; }\n "));
 	teOWSChecker->clear();
@@ -2408,7 +2412,7 @@ void QgsProjectProperties::pbnSbFillLayerShortNames_clicked()
 	strContent += "<hr>";
 	
 	QMultiMap<QString, QString> mapShortNames;
-	sbFillLayerShortNames(QgisApp::instance()->layerTreeView()->layerTreeModel()->rootGroup(), mapShortNames);
+	sbFillLayerShortNames(QgisApp::instance()->layerTreeView()->layerTreeModel()->rootGroup(), mapShortNames, bSynchronizeTreeAndWmsTitles);
 	if (mapShortNames.count() > 0)
 	{
 		QStringList listMessages;

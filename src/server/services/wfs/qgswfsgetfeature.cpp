@@ -37,6 +37,7 @@
 #include "qgsexpressioncontextutils.h"
 #include "qgswkbtypes.h"
 #include "qgsrenderer.h"
+#include "qalgorithms.h"
 
 #include "qgswfsgetfeature.h"
 
@@ -274,6 +275,7 @@ namespace QgsWfs
         for ( plstIt = propertyList.constBegin(); plstIt != propertyList.constEnd(); ++plstIt )
         {
           fieldName = *plstIt;
+
           int fieldNameIdx = propertynames.indexOf( fieldName );
           if ( fieldNameIdx == -1 )
           {

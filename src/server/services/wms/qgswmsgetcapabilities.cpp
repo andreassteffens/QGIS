@@ -2544,6 +2544,10 @@ namespace QgsWms
 						attributeElem.setAttribute(QStringLiteral("sbWms"), bExcludeWms ? "false" : "true");
 						attributeElem.setAttribute(QStringLiteral("sbWfs"), bExcludeWfs ? "false" : "true");
 
+						//form index
+						int iDisplayIdx = vLayer->editFormConfig().sbGetFieldIndex(field.name());
+						attributeElem.setAttribute(QStringLiteral("sbDisplayIndex"), QString::number(iDisplayIdx));
+
 						attributesElem.appendChild(attributeElem);
 					}
 

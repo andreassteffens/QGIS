@@ -227,7 +227,7 @@ class CORE_EXPORT QgsJsonExporter
      * \returns json object
      * \see exportFeatures()
      */
-    json exportFeatureToJsonObject( const QgsFeature &feature,
+    ordered_json exportFeatureToJsonObject( const QgsFeature &feature,
                                     const QVariantMap &extraProperties = QVariantMap(),
                                     const QVariant &id = QVariant() ) const SIP_SKIP;
 
@@ -248,7 +248,7 @@ class CORE_EXPORT QgsJsonExporter
      * \see exportFeatures()
      * \since QGIS 3.10
      */
-    json exportFeaturesToJsonObject( const QgsFeatureList &features ) const SIP_SKIP;
+    ordered_json exportFeaturesToJsonObject( const QgsFeatureList &features ) const SIP_SKIP;
 
   private:
 
@@ -346,7 +346,7 @@ class CORE_EXPORT QgsJsonUtils
      * \note Not available in Python bindings
      * \since QGIS 3.8
      */
-    static json exportAttributesToJsonObject( const QgsFeature &feature, QgsVectorLayer *layer = nullptr,
+    static ordered_json exportAttributesToJsonObject( const QgsFeature &feature, QgsVectorLayer *layer = nullptr,
         const QVector<QVariant> &attributeWidgetCaches = QVector<QVariant>() ) SIP_SKIP;
 
     /**
@@ -365,7 +365,7 @@ class CORE_EXPORT QgsJsonUtils
      * \note Not available in Python bindings
      * \since QGIS 3.8
      */
-    static json jsonFromVariant( const QVariant &v ) SIP_SKIP;
+    static ordered_json jsonFromVariant( const QVariant &v ) SIP_SKIP;
 
     /**
      * Converts JSON \a jsonString to a QVariant, in case of parsing error an invalid QVariant is returned.

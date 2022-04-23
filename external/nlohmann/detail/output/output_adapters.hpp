@@ -2,12 +2,17 @@
 
 #include <algorithm> // copy
 #include <cstddef> // size_t
-#include <ios> // streamsize
 #include <iterator> // back_inserter
 #include <memory> // shared_ptr, make_shared
-#include <ostream> // basic_ostream
 #include <string> // basic_string
 #include <vector> // vector
+
+#ifndef JSON_NO_IO
+    #include <ios>      // streamsize
+    #include <ostream>  // basic_ostream
+#endif  // JSON_NO_IO
+
+#include <nlohmann/detail/macro_scope.hpp>
 
 namespace nlohmann
 {
@@ -19,6 +24,12 @@ template<typename CharType> struct output_adapter_protocol
     virtual void write_character(CharType c) = 0;
     virtual void write_characters(const CharType* s, std::size_t length) = 0;
     virtual ~output_adapter_protocol() = default;
+
+    output_adapter_protocol() = default;
+    output_adapter_protocol(const output_adapter_protocol&) = default;
+    output_adapter_protocol(output_adapter_protocol&&) noexcept = default;
+    output_adapter_protocol& operator=(const output_adapter_protocol&) = default;
+    output_adapter_protocol& operator=(output_adapter_protocol&&) noexcept = default;
 };
 
 /// a type to simplify interfaces
@@ -39,6 +50,7 @@ class output_vector_adapter : public output_adapter_protocol<CharType>
         v.push_back(c);
     }
 
+    JSON_HEDLEY_NON_NULL(2)
     void write_characters(const CharType* s, std::size_t length) override
     {
         std::copy(s, s + length, std::back_inserter(v));
@@ -48,6 +60,7 @@ class output_vector_adapter : public output_adapter_protocol<CharType>
     std::vector<CharType>& v;
 };
 
+#ifndef JSON_NO_IO
 /// output adapter for output streams
 template<typename CharType>
 class output_stream_adapter : public output_adapter_protocol<CharType>
@@ -62,6 +75,7 @@ class output_stream_adapter : public output_adapter_protocol<CharType>
         stream.put(c);
     }
 
+    JSON_HEDLEY_NON_NULL(2)
     void write_characters(const CharType* s, std::size_t length) override
     {
         stream.write(s, static_cast<std::streamsize>(length));
@@ -70,6 +84,7 @@ class output_stream_adapter : public output_adapter_protocol<CharType>
   private:
     std::basic_ostream<CharType>& stream;
 };
+#endif  // JSON_NO_IO
 
 /// output adapter for basic_string
 template<typename CharType, typename StringType = std::basic_string<CharType>>
@@ -85,6 +100,7 @@ class output_string_adapter : public output_adapter_protocol<CharType>
         str.push_back(c);
     }
 
+    JSON_HEDLEY_NON_NULL(2)
     void write_characters(const CharType* s, std::size_t length) override
     {
         str.append(s, length);
@@ -101,8 +117,10 @@ class output_adapter
     output_adapter(std::vector<CharType>& vec)
         : oa(std::make_shared<output_vector_adapter<CharType>>(vec)) {}
 
+#ifndef JSON_NO_IO
     output_adapter(std::basic_ostream<CharType>& s)
         : oa(std::make_shared<output_stream_adapter<CharType>>(s)) {}
+#endif  // JSON_NO_IO
 
     output_adapter(StringType& s)
         : oa(std::make_shared<output_string_adapter<CharType, StringType>>(s)) {}

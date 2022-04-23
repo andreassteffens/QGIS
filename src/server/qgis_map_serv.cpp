@@ -30,6 +30,10 @@
 #include <QFontDatabase>
 #include <QString>
 
+#ifdef Q_OS_WIN
+  #include <eh.h>
+#endif
+
 int fcgi_accept()
 {
 #ifdef Q_OS_WIN
@@ -54,6 +58,23 @@ void Debug(QString &strMessage)
 	out << strMessage;
 }
 
+#ifdef Q_OS_WIN
+  void SETranslator(unsigned int u, struct _EXCEPTION_POINTERS *pExp) 
+  {
+	  std::string error = "SE Exception: ";
+	  switch (u) {
+	  case 0xC0000005:
+		  error += "Access Violation";
+		  break;
+	  default:
+		  char result[11];
+		  sprintf_s(result, 11, "0x%08X", u);
+		  error += result;
+	  };
+	  throw std::exception(error.c_str());
+  }
+#endif
+
 int main( int argc, char *argv[] )
 {
   // Test if the environment variable DISPLAY is defined
@@ -77,6 +98,10 @@ int main( int argc, char *argv[] )
   Debug(QStringLiteral("argc: %1\n").arg(argc));
   for (int i = 0; i < argc; i++)
 	  Debug(QStringLiteral("argv[%1]: %2\n").arg(QString::number(i)).arg(argv[i]));
+
+#ifdef Q_OS_WIN
+  _set_se_translator(SETranslator);
+#endif
 
   // since version 3.0 QgsServer now needs a qApp so initialize QgsApplication
   QgsApplication app( argc, argv, withDisplay, QString(), QStringLiteral( "server" ) );
