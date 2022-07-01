@@ -44,13 +44,15 @@ QString QgsProjectServerValidator::displayValidationError( QgsProjectServerValid
 	case QgsProjectServerValidator::sbRasterLayerPublishedSourceNotSecure:
 		return QObject::tr("The layer is published for client-side fetching but doesn't have a secure datasource. Be aware of mixed-content browser issues!");
 	case QgsProjectServerValidator::sbRequiredWfsNotEnabled:
-		return QObject::tr("The layer has been marked to be used in a WebGIS tool that requires accessing the layer's features through WFS ... butt access is not granted through WFS!");
+		return QObject::tr("The layer has been marked to be used in a WebGIS tool that requires accessing the layer's features through WFS ... but access is not granted through WFS!");
+	case QgsProjectServerValidator::sbVectorLayerSearchNotDefined:
+		return QObject::tr("The layer has been marked searchable ... but no search expression has been defined!");
   }
 
   return QString();
 }
 
-void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &owsNames, QStringList &encodingMessages, QStringList &checkLegendMessages, QStringList &insecureSourceMessages, QStringList &tiledSourceMessages, QStringList &clientSidePublishingMessages, QStringList &toolInconsistencyMessages )
+void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &owsNames, QStringList &encodingMessages, QStringList &checkLegendMessages, QStringList &insecureSourceMessages, QStringList &tiledSourceMessages, QStringList &clientSidePublishingMessages, QStringList &missingWfsLayerMessages, QStringList &missingSearchTermMessages )
 {
   QList< QgsLayerTreeNode * > treeGroupChildren = treeGroup->children();
   for ( int i = 0; i < treeGroupChildren.size(); ++i )
@@ -68,7 +70,7 @@ void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTr
       else
         owsNames.append(QPair<QString, QString>(shortName, strPath));
 
-      browseLayerTree( project, treeGroupChild, owsNames, encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, toolInconsistencyMessages);
+      browseLayerTree( project, treeGroupChild, owsNames, encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages);
     }
     else
     {
@@ -107,7 +109,8 @@ void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTr
 
 			QString strLegendUrl = layer->legendUrl();
 			bool bIsLegendDisabled = strLegendUrl.compare("0") == 0;
-			if (!bIsLegendDisabled)
+			bool bIsHardCodedLegend = strLegendUrl.startsWith("http", Qt::CaseInsensitive);
+			if (!bIsLegendDisabled && !bIsHardCodedLegend)
 			{
 				if (!strPath.isEmpty())
 					checkLegendMessages << layer->name() + " (" + strPath + ")";
@@ -198,8 +201,8 @@ bool QgsProjectServerValidator::validate( QgsProject *project, QList<QgsProjectS
     return false;
 
   QList<QPair<QString, QString>> owsNames;
-  QStringList encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, toolInconsistencyMessages;
-  browseLayerTree( project, project->layerTreeRoot(), owsNames, encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, toolInconsistencyMessages );
+  QStringList encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages;
+  browseLayerTree( project, project->layerTreeRoot(), owsNames, encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages);
 
   QStringList duplicateNames, regExpMessages;
   QRegExp snRegExp = QgsApplication::shortNameRegExp();
@@ -278,12 +281,20 @@ bool QgsProjectServerValidator::validate( QgsProject *project, QList<QgsProjectS
 		results << ValidationResult( QgsProjectServerValidator::sbRasterLayerPublishableForClientFetching, clientSidePublishingMessages[i] );
   }
 
-  if (!toolInconsistencyMessages.empty())
+  if (!missingWfsLayerMessages.empty())
   {
 	result = false;
 
-	for (int i = 0; i < toolInconsistencyMessages.count(); i++)
-		results << ValidationResult(QgsProjectServerValidator::sbRequiredWfsNotEnabled, toolInconsistencyMessages[i]);
+	for (int i = 0; i < missingWfsLayerMessages.count(); i++)
+		results << ValidationResult(QgsProjectServerValidator::sbRequiredWfsNotEnabled, missingWfsLayerMessages[i]);
+  }
+
+  if (!missingSearchTermMessages.empty())
+  {
+	  result = false;
+
+	  for (int i = 0; i < missingSearchTermMessages.count(); i++)
+		  results << ValidationResult(QgsProjectServerValidator::sbVectorLayerSearchNotDefined, missingSearchTermMessages[i]);
   }
 
   // Determine the root layername
@@ -320,7 +331,12 @@ bool QgsProjectServerValidator::validate( QgsProject *project, QList<QgsProjectS
 void QgsProjectServerValidator::sbResolveLayerPath(QgsLayerTreeNode *pNode, QString &rstrPath)
 {
 	if (!pNode)
+	{
+		if (rstrPath.endsWith("/"))
+			rstrPath.truncate(rstrPath.length() - 1);
+
 		return;
+	}
 
 	rstrPath = pNode->name() + "/" + rstrPath;
 

@@ -280,8 +280,8 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
 	//! Fill layer short names
 	void sbResolveLayerPath(QgsLayerTreeNode *pNode, QString &rstrPath);
 	void sbCollectLayerShortNames(QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapShortNames);
-	void sbFillLayerShortNames(QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapShortNames, bool bSynchronizeTreeAndWmsTitles);
-	QString sbDetermineShortName(QString strTitle, QMultiMap<QString, QString> &mapShortNames);
+	void sbFillLayerShortNames(QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QPair<QString, QString>> &mapShortNames, bool bSynchronizeTreeAndWmsTitles);
+	QString sbDetermineShortName(QString strTitle, QString strPath, QMultiMap<QString, QPair<QString, QString>> &mapShortNames);
 
 	//! Ensure consistent layer settings
 	void sbCollectWfsToolLayerIds(QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapLayerIds);
