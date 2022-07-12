@@ -13,6 +13,7 @@
  *                                                                         *
  ***************************************************************************/
 
+#include <QKeyEvent>
 #include <QHeaderView>
 #include <QDoubleSpinBox>
 #include <QLineEdit>
@@ -26,9 +27,8 @@
 #include "qgsgcplistmodel.h"
 
 QgsGCPListWidget::QgsGCPListWidget( QWidget *parent )
-  : QTableView( parent )
+  : QgsTableView( parent )
   , mGCPListModel( new QgsGCPListModel( this ) )
-  , mNonEditableDelegate( new QgsNonEditableDelegate( this ) )
   , mDmsAndDdDelegate( new QgsDmsAndDdDelegate( this ) )
   , mCoordDelegate( new QgsCoordDelegate( this ) )
 {
@@ -41,20 +41,16 @@ QgsGCPListWidget::QgsGCPListWidget( QWidget *parent )
   setSortingEnabled( true );
 
   setContextMenuPolicy( Qt::CustomContextMenu );
-  setFocusPolicy( Qt::NoFocus );
+  setFocusPolicy( Qt::ClickFocus );
 
   verticalHeader()->hide();
   setAlternatingRowColors( true );
 
   // set delegates for items
-  setItemDelegateForColumn( 1, mNonEditableDelegate ); // id
-  setItemDelegateForColumn( 2, mCoordDelegate ); // srcX
-  setItemDelegateForColumn( 3, mCoordDelegate ); // srcY
-  setItemDelegateForColumn( 4, mDmsAndDdDelegate ); // dstX
-  setItemDelegateForColumn( 5, mDmsAndDdDelegate ); // dstY
-  setItemDelegateForColumn( 6, mNonEditableDelegate ); // dX
-  setItemDelegateForColumn( 7, mNonEditableDelegate ); // dY
-  setItemDelegateForColumn( 8, mNonEditableDelegate ); // residual
+  setItemDelegateForColumn( static_cast< int >( QgsGCPListModel::Column::SourceX ), mCoordDelegate );
+  setItemDelegateForColumn( static_cast< int >( QgsGCPListModel::Column::SourceY ), mCoordDelegate );
+  setItemDelegateForColumn( static_cast< int >( QgsGCPListModel::Column::DestinationX ), mDmsAndDdDelegate );
+  setItemDelegateForColumn( static_cast< int >( QgsGCPListModel::Column::DestinationY ), mDmsAndDdDelegate );
 
   connect( this, &QAbstractItemView::doubleClicked,
            this, &QgsGCPListWidget::itemDoubleClicked );
@@ -63,10 +59,12 @@ QgsGCPListWidget::QgsGCPListWidget( QWidget *parent )
   connect( this, &QWidget::customContextMenuRequested,
            this, &QgsGCPListWidget::showContextMenu );
 
-  connect( mDmsAndDdDelegate, &QAbstractItemDelegate::closeEditor,
-           this, &QgsGCPListWidget::updateItemCoords );
-  connect( mCoordDelegate, &QAbstractItemDelegate::closeEditor,
-           this, &QgsGCPListWidget::updateItemCoords );
+  connect( mGCPListModel, &QgsGCPListModel::pointEnabled, this, [ = ]( QgsGeorefDataPoint * point, int row )
+  {
+    emit pointEnabled( point, row );
+    adjustTableContent();
+    return;
+  } );
 }
 
 void QgsGCPListWidget::setGCPList( QgsGCPList *theGCPList )
@@ -83,9 +81,15 @@ void QgsGCPListWidget::setGeorefTransform( QgsGeorefTransform *georefTransform )
   adjustTableContent();
 }
 
-void QgsGCPListWidget::updateGCPList()
+void QgsGCPListWidget::setTargetCrs( const QgsCoordinateReferenceSystem &targetCrs, const QgsCoordinateTransformContext &context )
 {
-  mGCPListModel->updateModel();
+  mGCPListModel->setTargetCrs( targetCrs, context );
+  adjustTableContent();
+}
+
+void QgsGCPListWidget::updateResiduals()
+{
+  mGCPListModel->updateResiduals();
   adjustTableContent();
 }
 
@@ -98,80 +102,72 @@ void QgsGCPListWidget::closeEditors()
   }
 }
 
-void QgsGCPListWidget::itemDoubleClicked( QModelIndex index )
+void QgsGCPListWidget::itemDoubleClicked( const QModelIndex &index )
 {
-  index = static_cast<const QSortFilterProxyModel *>( model() )->mapToSource( index );
-  QStandardItem *item = mGCPListModel->item( index.row(), 1 );
-  bool ok;
-  int id = item->text().toInt( &ok );
-
-  if ( ok )
-  {
-    emit jumpToGCP( id );
-  }
+  const QModelIndex sourceIndex = static_cast<const QSortFilterProxyModel *>( model() )->mapToSource( index );
+  jumpToSourcePoint( sourceIndex );
 }
 
-void QgsGCPListWidget::itemClicked( QModelIndex index )
+void QgsGCPListWidget::itemClicked( const QModelIndex &index )
 {
-  index = static_cast<const QSortFilterProxyModel *>( model() )->mapToSource( index );
-  QStandardItem *item = mGCPListModel->item( index.row(), index.column() );
-  if ( item->isCheckable() )
-  {
-    QgsGeorefDataPoint *p = mGCPList->at( index.row() );
-    if ( item->checkState() == Qt::Checked )
-    {
-      p->setEnabled( true );
-    }
-    else // Qt::Unchecked
-    {
-      p->setEnabled( false );
-    }
+  const QModelIndex sourceIndex = static_cast<const QSortFilterProxyModel *>( model() )->mapToSource( index );
 
-    mGCPListModel->updateModel();
-    emit pointEnabled( p, index.row() );
-    adjustTableContent();
-  }
-
-  mPrevRow = index.row();
-  mPrevColumn = index.column();
+  mPrevRow = sourceIndex.row();
+  mPrevColumn = sourceIndex.column();
 }
 
-void QgsGCPListWidget::updateItemCoords( QWidget *editor )
+void QgsGCPListWidget::keyPressEvent( QKeyEvent *e )
 {
-  QLineEdit *lineEdit = qobject_cast<QLineEdit *>( editor );
-  QgsGeorefDataPoint *dataPoint = mGCPList->at( mPrevRow );
-  if ( lineEdit )
+  if ( e->key() == Qt::Key_Delete )
   {
-    double value = lineEdit->text().toDouble();
-    QgsPointXY newMapCoords( dataPoint->mapCoords() );
-    QgsPointXY newPixelCoords( dataPoint->pixelCoords() );
-    if ( mPrevColumn == 2 ) // srcX
+    const QModelIndex index = currentIndex();
+    if ( index.isValid() )
     {
-      newPixelCoords.setX( value );
+      removeRow();
+      if ( model()->rowCount() > 0 )
+      {
+        setCurrentIndex( model()->index( index.row() == model()->rowCount() ? index.row() - 1 : index.row(), index.column() ) );
+        return;
+      }
     }
-    else if ( mPrevColumn == 3 ) // srcY
+  }
+  else if ( e->key() == Qt::Key_Up )
+  {
+    const QModelIndex index = currentIndex();
+    if ( index.isValid() && index.row() > 0 )
     {
-      newPixelCoords.setY( value );
-    }
-    else if ( mPrevColumn == 4 ) // dstX
-    {
-      newMapCoords.setX( value );
-    }
-    else if ( mPrevColumn == 5 ) // dstY
-    {
-      newMapCoords.setY( value );
-    }
-    else
-    {
+      setCurrentIndex( model()->index( index.row() - 1, index.column() ) );
       return;
     }
-
-    dataPoint->setPixelCoords( newPixelCoords );
-    dataPoint->setMapCoords( newMapCoords );
   }
-
-  dataPoint->updateCoords();
-  updateGCPList();
+  else if ( e->key() == Qt::Key_Down )
+  {
+    const QModelIndex index = currentIndex();
+    if ( index.isValid() && index.row() < ( model()->rowCount() - 1 ) )
+    {
+      setCurrentIndex( model()->index( index.row() + 1, index.column() ) );
+      return;
+    }
+  }
+  else if ( e->key() == Qt::Key_Left )
+  {
+    const QModelIndex index = currentIndex();
+    if ( index.isValid() && index.column() > 0 )
+    {
+      setCurrentIndex( model()->index( index.row(), index.column() - 1 ) );
+      return;
+    }
+  }
+  else if ( e->key() == Qt::Key_Right )
+  {
+    const QModelIndex index = currentIndex();
+    if ( index.isValid() && index.column() < ( model()->columnCount() - 1 ) )
+    {
+      setCurrentIndex( model()->index( index.row(), index.column() + 1 ) );
+      return;
+    }
+  }
+  e->ignore();
 }
 
 void QgsGCPListWidget::showContextMenu( QPoint p )
@@ -180,7 +176,7 @@ void QgsGCPListWidget::showContextMenu( QPoint p )
     return;
 
   QMenu m;// = new QMenu(this);
-  QModelIndex index = indexAt( p );
+  const QModelIndex index = indexAt( p );
   if ( index == QModelIndex() )
     return;
 
@@ -188,7 +184,13 @@ void QgsGCPListWidget::showContextMenu( QPoint p )
   setCurrentIndex( index );
 
   QAction *jumpToPointAction = new QAction( tr( "Recenter" ), this );
-  connect( jumpToPointAction, &QAction::triggered, this, &QgsGCPListWidget::jumpToPoint );
+  connect( jumpToPointAction, &QAction::triggered, this, [ = ]
+  {
+    const QModelIndex sourceIndex = static_cast<const QSortFilterProxyModel *>( model() )->mapToSource( currentIndex() );
+    mPrevRow = sourceIndex.row();
+    mPrevColumn = sourceIndex.column();
+    jumpToSourcePoint( sourceIndex );
+  } );
   m.addAction( jumpToPointAction );
 
   QAction *removeAction = new QAction( tr( "Remove" ), this );
@@ -199,21 +201,17 @@ void QgsGCPListWidget::showContextMenu( QPoint p )
 
 void QgsGCPListWidget::removeRow()
 {
-  QModelIndex index = static_cast<const QSortFilterProxyModel *>( model() )->mapToSource( currentIndex() );
+  const QModelIndex index = static_cast<const QSortFilterProxyModel *>( model() )->mapToSource( currentIndex() );
   emit deleteDataPoint( index.row() );
 }
 
-void QgsGCPListWidget::editCell()
+void QgsGCPListWidget::jumpToSourcePoint( const QModelIndex &modelIndex )
 {
-  edit( currentIndex() );
-}
-
-void QgsGCPListWidget::jumpToPoint()
-{
-  QModelIndex index = static_cast<const QSortFilterProxyModel *>( model() )->mapToSource( currentIndex() );
-  mPrevRow = index.row();
-  mPrevColumn = index.column();
-  emit jumpToGCP( index.row() );
+  const QgsPointXY sourcePoint = mGCPListModel->data( modelIndex, static_cast< int >( QgsGCPListModel::Role::SourcePointRole ) ).value< QgsPointXY >();
+  if ( !sourcePoint.isEmpty() )
+  {
+    emit jumpToGCP( sourcePoint );
+  }
 }
 
 void QgsGCPListWidget::adjustTableContent()

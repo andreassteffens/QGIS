@@ -10,16 +10,16 @@
 
 class QgsScrollArea : QScrollArea
 {
-%Docstring
+%Docstring(signature="appended")
 A QScrollArea subclass with improved scrolling behavior.
 
-QgsScrollArea should be used instead of QScrollArea widgets.
-In most cases the use is identical, however QgsScrollArea
+:py:class:`QgsScrollArea` should be used instead of QScrollArea widgets.
+In most cases the use is identical, however :py:class:`QgsScrollArea`
 has extra logic to avoid wheel events changing child widget
 values when the mouse cursor is temporarily located over
 a child widget during a scroll event.
 
-All QGIS code and plugins should use QgsScrollArea in place
+All QGIS code and plugins should use :py:class:`QgsScrollArea` in place
 of QScrollArea.
 
 .. versionadded:: 3.0
@@ -46,6 +46,7 @@ QScrollArea itself or its child :py:func:`~QgsScrollArea.viewport`.
 Returns ``True`` if a scroll recently occurred within
 the QScrollArea or its child :py:func:`~QgsScrollArea.viewport`
 %End
+
 
     void setVerticalOnly( bool verticalOnly );
 %Docstring

@@ -57,12 +57,22 @@ QgsLayoutItemAbstractGuiMetadata *QgsLayoutItemGuiRegistry::itemMetadata( int me
   return mMetadata.value( metadataId );
 }
 
+int QgsLayoutItemGuiRegistry::metadataIdForItemType( int type ) const
+{
+  for ( auto it = mMetadata.constBegin(); it != mMetadata.constEnd(); ++it )
+  {
+    if ( it.value()->type() == type )
+      return it.key();
+  }
+  return -1;
+}
+
 bool QgsLayoutItemGuiRegistry::addLayoutItemGuiMetadata( QgsLayoutItemAbstractGuiMetadata *metadata )
 {
   if ( !metadata )
     return false;
 
-  int id = mMetadata.count();
+  const int id = mMetadata.count();
   mMetadata[id] = metadata;
   emit typeAdded( id );
   return true;
@@ -91,16 +101,23 @@ QgsLayoutItem *QgsLayoutItemGuiRegistry::createItem( int metadataId, QgsLayout *
   if ( item )
     return item.release();
 
-  int type = mMetadata.value( metadataId )->type();
+  const int type = mMetadata.value( metadataId )->type();
   return QgsApplication::layoutItemRegistry()->createItem( type, layout );
 }
 
-void QgsLayoutItemGuiRegistry::newItemAddedToLayout( int metadataId, QgsLayoutItem *item )
+void QgsLayoutItemGuiRegistry::newItemAddedToLayout( int metadataId, QgsLayoutItem *item, const QVariantMap &properties )
 {
   if ( !mMetadata.contains( metadataId ) )
     return;
 
-  mMetadata.value( metadataId )->newItemAddedToLayout( item );
+  if ( QgsLayoutItemGuiMetadata *metadata = dynamic_cast<QgsLayoutItemGuiMetadata *>( mMetadata.value( metadataId ) ) )
+  {
+    metadata->newItemAddedToLayout( item, properties );
+  }
+  else
+  {
+    mMetadata.value( metadataId )->newItemAddedToLayout( item );
+  }
 }
 
 QgsLayoutItemBaseWidget *QgsLayoutItemGuiRegistry::createItemWidget( QgsLayoutItem *item ) const
@@ -153,5 +170,11 @@ QgsLayoutItem *QgsLayoutItemGuiMetadata::createItem( QgsLayout *layout )
 void QgsLayoutItemGuiMetadata::newItemAddedToLayout( QgsLayoutItem *item )
 {
   if ( mAddedToLayoutFunc )
-    mAddedToLayoutFunc( item );
+    mAddedToLayoutFunc( item, QVariantMap() );
+}
+
+void QgsLayoutItemGuiMetadata::newItemAddedToLayout( QgsLayoutItem *item, const QVariantMap &properties )
+{
+  if ( mAddedToLayoutFunc )
+    mAddedToLayoutFunc( item, properties );
 }

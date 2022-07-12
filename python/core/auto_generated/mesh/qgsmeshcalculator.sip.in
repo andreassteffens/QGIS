@@ -10,9 +10,10 @@
 
 
 
+
 class QgsMeshCalculator
 {
-%Docstring
+%Docstring(signature="appended")
 Performs mesh layer calculations.
 
 Mesh calculator can do various mathematical operations

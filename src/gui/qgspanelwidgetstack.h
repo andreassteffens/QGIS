@@ -91,6 +91,9 @@ class GUI_EXPORT QgsPanelWidgetStack : public QWidget, private Ui::QgsRendererWi
      */
     QgsPanelWidget *currentPanel();
 
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
+
   public slots:
 
     /**
@@ -102,7 +105,7 @@ class GUI_EXPORT QgsPanelWidgetStack : public QWidget, private Ui::QgsRendererWi
     void acceptCurrentPanel();
 
     /**
-     * Accepts all panel widgets open in the stack in turn until until only the mainPanel()
+     * Accepts all panel widgets open in the stack in turn until only the mainPanel()
      * remains.
      * \see acceptCurrentPanel();
      * \since QGIS 3.0

@@ -23,6 +23,7 @@
 #include "qgssettings.h"
 #include "qgsproject.h"
 #include "qgscolorrampshaderwidget.h"
+#include "qgscolorrampimpl.h"
 #include "qgslocaleawarenumericlineeditdelegate.h"
 
 #include <QColorDialog>
@@ -30,6 +31,8 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QMenu>
+#include <QMimeData>
+#include <QTextStream>
 
 #ifdef ENABLE_MODELTEST
 #include "modeltest.h"
@@ -78,11 +81,7 @@ QgsPalettedRendererWidget::QgsPalettedRendererWidget( QgsRasterLayer *layer, con
   mValueDelegate = new QgsLocaleAwareNumericLineEditDelegate( Qgis::DataType::UnknownDataType, this );
   mTreeView->setItemDelegateForColumn( QgsPalettedRendererModel::ValueColumn, mValueDelegate );
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 11, 0)
-  mTreeView->setColumnWidth( QgsPalettedRendererModel::ColorColumn, Qgis::UI_SCALE_FACTOR * fontMetrics().width( 'X' ) * 6.6 );
-#else
   mTreeView->setColumnWidth( QgsPalettedRendererModel::ColorColumn, Qgis::UI_SCALE_FACTOR * fontMetrics().horizontalAdvance( 'X' ) * 6.6 );
-#endif
   mTreeView->setContextMenuPolicy( Qt::CustomContextMenu );
   mTreeView->setSelectionMode( QAbstractItemView::ExtendedSelection );
   mTreeView->setDragEnabled( true );
@@ -836,6 +835,18 @@ void QgsPalettedRendererModel::deleteAll()
   emit classesChanged();
 }
 
+//
+// QgsPalettedRendererClassGatherer
+//
+
+QgsPalettedRendererClassGatherer::QgsPalettedRendererClassGatherer( QgsRasterLayer *layer, int bandNumber, const QgsPalettedRasterRenderer::ClassData &existingClasses, QgsColorRamp *ramp )
+  : mLayer( layer )
+  , mBandNumber( bandNumber )
+  , mRamp( ramp )
+  , mClasses( existingClasses )
+  , mWasCanceled( false )
+{}
+
 void QgsPalettedRendererClassGatherer::run()
 {
   mWasCanceled = false;
@@ -853,7 +864,7 @@ void QgsPalettedRendererClassGatherer::run()
   for ( ; classIt != newClasses.end(); ++classIt )
   {
     // check if existing classes contains this same class
-    for ( const QgsPalettedRasterRenderer::Class &existingClass : qgis::as_const( mClasses ) )
+    for ( const QgsPalettedRasterRenderer::Class &existingClass : std::as_const( mClasses ) )
     {
       if ( existingClass.value == classIt->value )
       {

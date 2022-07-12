@@ -10,7 +10,7 @@
 
 class QgsLabelingEngineSettings
 {
-%Docstring
+%Docstring(signature="appended")
 Stores global configuration for labeling engine
 
 .. versionadded:: 3.0
@@ -29,6 +29,7 @@ Stores global configuration for labeling engine
       DrawLabelRectOnly,
       DrawCandidates,
       DrawUnplacedLabels,
+      CollectUnplacedLabels,
     };
     typedef QFlags<QgsLabelingEngineSettings::Flag> Flags;
 
@@ -114,7 +115,7 @@ Sets the maximum number of polygon label ``candidates`` per centimeter squared.
 Gets number of candidate positions that will be generated for each label feature.
 
 .. deprecated:: QGIS 3.12
-   use maximumPolygonCandidatesPerCmSquared() and maximumLineCandidatesPerCm() instead.
+   use :py:func:`~QgsLabelingEngineSettings.maximumPolygonCandidatesPerCmSquared` and :py:func:`~QgsLabelingEngineSettings.maximumLineCandidatesPerCm` instead.
 %End
 
  void setNumCandidatePositions( int candPoint, int candLine, int candPolygon ) /Deprecated/;
@@ -122,7 +123,7 @@ Gets number of candidate positions that will be generated for each label feature
 Sets the number of candidate positions that will be generated for each label feature.
 
 .. deprecated:: QGIS 3.12
-   use setMaximumPolygonCandidatesPerCmSquared() and setMaximumLineCandidatesPerCm() instead.
+   use :py:func:`~QgsLabelingEngineSettings.setMaximumPolygonCandidatesPerCmSquared` and :py:func:`~QgsLabelingEngineSettings.setMaximumLineCandidatesPerCm` instead.
 %End
 
  void setSearchMethod( Search s ) /Deprecated/;
@@ -151,7 +152,7 @@ Write configuration of the labeling engine to a project
 %End
 
 
-    QgsRenderContext::TextRenderFormat defaultTextRenderFormat() const;
+    Qgis::TextRenderFormat defaultTextRenderFormat() const;
 %Docstring
 Returns the default text rendering format for the labels.
 
@@ -160,7 +161,7 @@ Returns the default text rendering format for the labels.
 .. versionadded:: 3.4.3
 %End
 
-    void setDefaultTextRenderFormat( QgsRenderContext::TextRenderFormat format );
+    void setDefaultTextRenderFormat( Qgis::TextRenderFormat format );
 %Docstring
 Sets the default text rendering ``format`` for the labels.
 

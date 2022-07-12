@@ -54,10 +54,11 @@ Build-Depends:
  python3-psycopg2,
  python3-pyqt5,
  python3-pyqt5.qsci,
+ python3-pyqt5.qtpositioning,
  python3-pyqt5.qtsql,
  python3-pyqt5.qtsvg,
- python3-sip-dev,
- python3-sip,
+#bullseye focal hirsute# python3-sip-dev, python3-sip,
+#sid impish jammy# python3-pyqtbuild, sip-tools,
  python3-termcolor,
  python3-yaml,
  qt3d5-dev,
@@ -71,8 +72,10 @@ Build-Depends:
  qtpositioning5-dev,
  qttools5-dev-tools,
  qttools5-dev,
+#!sid# libpdal-dev, pdal,
  libprotobuf-dev,
  protobuf-compiler,
+ libzstd-dev,
  saga,
  git,
  doxygen,
@@ -386,6 +389,7 @@ Depends:
  python3-pyqt5,
  python3-pyqt5.qsci,
  python3-pyqt5.qtsql,
+ python3-pyqt5.qtpositioning,
  python3-pyqt5.qtsvg,
  python3-pyqt5.qtwebkit,
  python3-requests,
@@ -411,7 +415,6 @@ Architecture: all
 Section: python
 Depends:
  gdal-bin,
-#buster# python-gdal,
  python3-gdal,
  python3-matplotlib,
  libqgis-customwidgets (>= ${source:Version}),
@@ -420,7 +423,7 @@ Depends:
 Breaks: python-qgis-common (<< ${source:Version})
 Replaces: python-qgis-common (<< ${source:Version})
 Suggests:
-#hirsute focal buster sid# otb-qgis,
+#focal hirsute impish jammy bullseye sid# otb-qgis,
  saga
 Description: Python bindings to QGIS - architecture-independent files
  QGIS is a Geographic Information System (GIS) which manages, analyzes and
@@ -439,6 +442,7 @@ Depends:
  libqca-qt5-2-plugins,
  libqt5sql5-sqlite,
  qt5-image-formats-plugins,
+#bulleye sid hirsute impish jammy# qt5-image-formats-plugin-pdf,
  ${shlibs:Depends},
  ${misc:Depends}
 Breaks: qgis (<= 1.6)

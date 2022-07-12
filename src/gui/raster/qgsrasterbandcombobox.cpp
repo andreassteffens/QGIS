@@ -101,7 +101,7 @@ void QgsRasterBandComboBox::setLayer( QgsMapLayer *layer )
     {
       setEditable( false );
       //fill available bands into combo box
-      int nBands = provider->bandCount();
+      const int nBands = provider->bandCount();
       for ( int i = 1; i <= nBands; ++i ) //band numbering seem to start at 1
       {
         addItem( displayBandName( provider, i ), i );
@@ -166,12 +166,5 @@ QString QgsRasterBandComboBox::displayBandName( QgsRasterDataProvider *provider,
   if ( !provider )
     return QString();
 
-  QString name = provider->generateBandName( band );
-
-  QString colorInterp = provider->colorInterpretationName( band );
-  if ( colorInterp != QLatin1String( "Undefined" ) )
-  {
-    name.append( QStringLiteral( " (%1)" ).arg( colorInterp ) );
-  }
-  return name;
+  return provider->displayBandName( band );
 }

@@ -23,6 +23,7 @@
 #include "qgsmaplayer.h"
 #include "qgsdataprovider.h"
 #include "qgsproject.h"
+#include <utility>
 
 /**
  * Internal structure to keep weak pointer to QgsMapLayer or layerId
@@ -159,7 +160,7 @@ struct _LayerRef
     return nullptr;
   }
 
-  bool layerMatchesWeakly( QgsMapLayer *layer, MatchType matchType = MatchType::All )
+  bool layerMatchesWeakly( QgsMapLayer *layer, MatchType matchType = MatchType::All ) const
   {
     // First match the name
     if ( matchType & MatchType::Name && ( layer->name().isEmpty() || layer->name() != name ) )
@@ -229,9 +230,9 @@ struct _LayerRef
       {
         layers = project->mapLayers().values();
       }
-      for ( QgsMapLayer *l : qgis::as_const( layers ) )
+      for ( auto it = layers.constBegin(); it != layers.constEnd(); ++it )
       {
-        if ( TYPE *tl = qobject_cast< TYPE *>( l ) )
+        if ( TYPE *tl = qobject_cast< TYPE *>( *it ) )
         {
           if ( layerMatchesWeakly( tl, matchType ) )
           {

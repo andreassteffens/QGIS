@@ -16,7 +16,7 @@
 
 class QgsProcessingAlgorithm
 {
-%Docstring
+%Docstring(signature="appended")
 Abstract base class for processing algorithms.
 
 .. versionadded:: 3.0
@@ -82,7 +82,7 @@ and outputs according to this configuration. This is generally used only for
 algorithms in a model, allowing them to adjust their behavior at run time
 according to some user configuration.
 
-Raises a QgsProcessingException if a new algorithm instance could not be created,
+Raises a :py:class:`QgsProcessingException` if a new algorithm instance could not be created,
 e.g. if there is an issue with the subclass' :py:func:`~QgsProcessingAlgorithm.createInstance` method.
 
 .. seealso:: :py:func:`initAlgorithm`
@@ -342,7 +342,7 @@ is passed in order to make a best guess determination of the output properties.
 %Docstring
 Executes the algorithm using the specified ``parameters``. This method internally
 creates a copy of the algorithm before running it, so it is safe to call
-on algorithms directly retrieved from QgsProcessingRegistry and :py:class:`QgsProcessingProvider`.
+on algorithms directly retrieved from :py:class:`QgsProcessingRegistry` and :py:class:`QgsProcessingProvider`.
 
 The ``context`` argument specifies the context in which the algorithm is being run.
 
@@ -350,7 +350,7 @@ Algorithm progress should be reported using the supplied ``feedback`` object.
 
 If specified, ``ok`` will be set to ``True`` if algorithm was successfully run.
 
-If ``catchExceptions`` is set to ``False``, then QgsProcessingExceptions raised during
+If ``catchExceptions`` is set to ``False``, then :py:class:`QgsProcessingException` raised during
 the algorithm run will not be automatically caught and will be raised instead.
 
 :return: A map of algorithm outputs. These may be output layer references, or calculated
@@ -359,7 +359,7 @@ the algorithm run will not be automatically caught and will be raised instead.
 .. note::
 
    this method can only be called from the main thread. Use :py:func:`~QgsProcessingAlgorithm.prepare`, :py:func:`~QgsProcessingAlgorithm.runPrepared` and :py:func:`~QgsProcessingAlgorithm.postProcess`
-   if you need to run algorithms from a background thread, or use the QgsProcessingAlgRunnerTask class.
+   if you need to run algorithms from a background thread, or use the :py:class:`QgsProcessingAlgRunnerTask` class.
 %End
 
     bool prepare( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback );
@@ -375,7 +375,7 @@ calling :py:func:`~QgsProcessingAlgorithm.runPrepared` (which is safe to do in a
 .. note::
 
    This method modifies the algorithm instance, so it is not safe to call
-   on algorithms directly retrieved from QgsProcessingRegistry and :py:class:`QgsProcessingProvider`. Instead, a copy
+   on algorithms directly retrieved from :py:class:`QgsProcessingRegistry` and :py:class:`QgsProcessingProvider`. Instead, a copy
    of the algorithm should be created with :py:func:`~QgsProcessingAlgorithm.clone` and :py:func:`~QgsProcessingAlgorithm.prepare`/:py:func:`~QgsProcessingAlgorithm.runPrepared` called on the copy.
 %End
 
@@ -393,7 +393,7 @@ to allow the algorithm to perform any required cleanup tasks and return its fina
 .. note::
 
    This method modifies the algorithm instance, so it is not safe to call
-   on algorithms directly retrieved from QgsProcessingRegistry and :py:class:`QgsProcessingProvider`. Instead, a copy
+   on algorithms directly retrieved from :py:class:`QgsProcessingRegistry` and :py:class:`QgsProcessingProvider`. Instead, a copy
    of the algorithm should be created with :py:func:`~QgsProcessingAlgorithm.clone` and :py:func:`~QgsProcessingAlgorithm.prepare`/:py:func:`~QgsProcessingAlgorithm.runPrepared` called on the copy.
 %End
 
@@ -406,7 +406,7 @@ includes the results evaluated by the algorithm.
 .. note::
 
    This method modifies the algorithm instance, so it is not safe to call
-   on algorithms directly retrieved from QgsProcessingRegistry and :py:class:`QgsProcessingProvider`. Instead, a copy
+   on algorithms directly retrieved from :py:class:`QgsProcessingRegistry` and :py:class:`QgsProcessingProvider`. Instead, a copy
    of the algorithm should be created with :py:func:`~QgsProcessingAlgorithm.clone` and :py:func:`~QgsProcessingAlgorithm.prepare`/:py:func:`~QgsProcessingAlgorithm.runPrepared` called on the copy.
 %End
 
@@ -424,7 +424,7 @@ parameters widget should be used.
 Creates an expression context relating to the algorithm. This can be called by algorithms
 to create a new expression context ready for evaluating expressions within the algorithm.
 Optionally, a ``source`` can be specified which will be used to populate the context if it
-implements the QgsExpressionContextGenerator interface.
+implements the :py:class:`QgsExpressionContextGenerator` interface.
 %End
 
     virtual bool validateInputCrs( const QVariantMap &parameters,
@@ -443,6 +443,30 @@ using the specified ``parameters``.
 
 Algorithms which cannot be run from a Python command should return an empty
 string.
+%End
+
+    virtual QString asQgisProcessCommand( const QVariantMap &parameters, QgsProcessingContext &context, bool &ok /Out/ ) const;
+%Docstring
+Returns a command string which will execute the algorithm using the specified ``parameters``
+via the command line qgis_process tool.
+
+Note that some combinations of parameter types and values cannot be represented as a qgis_process string.
+
+:param parameters: algorithm parameters
+:param context: processing context
+
+:return: - equivalent qgis_process command
+         - ok: will be set to ``True`` if the command was successfully generated
+
+
+.. versionadded:: 3.24
+%End
+
+    virtual QVariantMap asMap( const QVariantMap &parameters, QgsProcessingContext &context ) const;
+%Docstring
+Returns a JSON serializable variant map containing the specified ``parameters`` and ``context`` settings.
+
+.. versionadded:: 3.24
 %End
 
     void setProvider( QgsProcessingProvider *provider );
@@ -490,7 +514,7 @@ This should usually be called from a subclass' :py:func:`~QgsProcessingAlgorithm
 
 If the ``createOutput`` argument is ``True``, then a corresponding output definition will also be created
 (and added to the algorithm) where appropriate. E.g. when adding a :py:class:`QgsProcessingParameterVectorDestination`
-and ``createOutput`` is ``True``, then a QgsProcessingOutputVectorLayer output will be created and
+and ``createOutput`` is ``True``, then a :py:class:`QgsProcessingOutputVectorLayer` output will be created and
 added to the algorithm. There is no need to call :py:func:`~QgsProcessingAlgorithm.addOutput` to manually add a corresponding output
 for this vector. If ``createOutput`` is ``False`` then this automatic output creation will not
 occur.
@@ -575,7 +599,7 @@ algorithm should be canceled and exited early.
 
 This method will not be called if the :py:func:`~QgsProcessingAlgorithm.prepareAlgorithm` step failed (returned ``False``).
 
-Implementations of processAlgorithm can throw the QgsProcessingException exception
+Implementations of processAlgorithm can throw the :py:class:`QgsProcessingException` exception
 to indicate that a fatal error occurred within the execution.
 
 :return: A map of algorithm outputs. These may be output layer references, or calculated
@@ -655,6 +679,20 @@ Evaluates the parameter with matching ``name`` to a enum value.
 Evaluates the parameter with matching ``name`` to list of enum values.
 %End
 
+    QString parameterAsEnumString( const QVariantMap &parameters, const QString &name, const QgsProcessingContext &context ) const;
+%Docstring
+Evaluates the parameter with matching ``name`` to a static enum string.
+
+.. versionadded:: 3.18
+%End
+
+    QStringList parameterAsEnumStrings( const QVariantMap &parameters, const QString &name, const QgsProcessingContext &context ) const;
+%Docstring
+Evaluates the parameter with matching ``name`` to list of static enum strings.
+
+.. versionadded:: 3.18
+%End
+
     bool parameterAsBool( const QVariantMap &parameters, const QString &name, const QgsProcessingContext &context ) const;
 %Docstring
 Evaluates the parameter with matching ``name`` to a static boolean value.
@@ -687,7 +725,7 @@ The ``datasourceOptions`` and ``layerOptions`` arguments is used to pass on GDAL
 
 This function creates a new object and the caller takes responsibility for deleting the returned object.
 
-:raises :: py:class:`QgsProcessingException`
+:raises QgsProcessingException: 
 %End
 
     QgsProcessingFeatureSource *parameterAsSource( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const /Factory/;
@@ -701,7 +739,7 @@ This function creates a new object and the caller takes responsibility for delet
 %End
 
     QString parameterAsCompatibleSourceLayerPath( const QVariantMap &parameters, const QString &name,
-        QgsProcessingContext &context, const QStringList &compatibleFormats, const QString &preferredFormat = QString( "shp" ), QgsProcessingFeedback *feedback = 0 );
+        QgsProcessingContext &context, const QStringList &compatibleFormats, const QString &preferredFormat = QString( "shp" ), QgsProcessingFeedback *feedback = 0 ) const;
 %Docstring
 Evaluates the parameter with matching ``name`` to a source vector layer file path of compatible format.
 
@@ -719,7 +757,7 @@ to use :py:func:`~QgsProcessingAlgorithm.parameterAsCompatibleSourceLayerPathAnd
 %End
 
     QString parameterAsCompatibleSourceLayerPathAndLayerName( const QVariantMap &parameters, const QString &name,
-        QgsProcessingContext &context, const QStringList &compatibleFormats, const QString &preferredFormat = QString( "shp" ), QgsProcessingFeedback *feedback = 0, QString *layerName /Out/ = 0 );
+        QgsProcessingContext &context, const QStringList &compatibleFormats, const QString &preferredFormat = QString( "shp" ), QgsProcessingFeedback *feedback = 0, QString *layerName /Out/ = 0 ) const;
 %Docstring
 Evaluates the parameter with matching ``name`` to a source vector layer file path and layer name of compatible format.
 
@@ -781,7 +819,6 @@ need to handle deletion of the returned layer.
 .. versionadded:: 3.6
 %End
 
-
     QString parameterAsOutputLayer( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 %Docstring
 Evaluates the parameter with matching ``name`` to a output layer destination.
@@ -818,7 +855,7 @@ reprojected so that it is in the specified ``crs``. In this case the extent of t
 %End
 
     QgsGeometry parameterAsExtentGeometry( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context,
-                                           const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem() );
+                                           const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem() ) const;
 %Docstring
 Evaluates the parameter with matching ``name`` to a rectangular extent, and returns a geometry covering this extent.
 
@@ -830,7 +867,7 @@ just the extent of the reprojected rectangle).
 .. seealso:: :py:func:`parameterAsExtent`
 %End
 
-    QgsCoordinateReferenceSystem parameterAsExtentCrs( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context );
+    QgsCoordinateReferenceSystem parameterAsExtentCrs( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 %Docstring
 Returns the coordinate reference system associated with an extent parameter value.
 
@@ -848,7 +885,7 @@ reprojected so that it is in the specified ``crs``.
 .. seealso:: :py:func:`parameterAsPointCrs`
 %End
 
-    QgsCoordinateReferenceSystem parameterAsPointCrs( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context );
+    QgsCoordinateReferenceSystem parameterAsPointCrs( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 %Docstring
 Returns the coordinate reference system associated with an point parameter value.
 
@@ -866,14 +903,12 @@ reprojected so that it is in the specified ``crs``.
 .. seealso:: :py:func:`parameterAsGeometryCrs`
 %End
 
-    QgsCoordinateReferenceSystem parameterAsGeometryCrs( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context );
+    QgsCoordinateReferenceSystem parameterAsGeometryCrs( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 %Docstring
 Returns the coordinate reference system associated with a geometry parameter value.
 
 .. seealso:: :py:func:`parameterAsGeometry`
 %End
-
-
 
     QString parameterAsFile( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 %Docstring
@@ -893,7 +928,7 @@ Evaluates the parameter with matching ``name`` to a list of map layers.
 
     QStringList parameterAsFileList( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 %Docstring
-Evaluates the parameter with matching ``name`` to a list of files (for QgsProcessingParameterMultipleLayers in QgsProcessing:TypeFile mode).
+Evaluates the parameter with matching ``name`` to a list of files (for :py:class:`QgsProcessingParameterMultipleLayers` in :py:class:`QgsProcessing`:TypeFile mode).
 
 .. versionadded:: 3.10
 %End
@@ -932,41 +967,68 @@ Evaluates the parameter with matching ``name`` to a print layout item, taken fro
 .. versionadded:: 3.8
 %End
 
-    QColor parameterAsColor( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context );
+    QColor parameterAsColor( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 %Docstring
 Evaluates the parameter with matching ``name`` to a color, or returns an invalid color if the parameter was not set.
 
 .. versionadded:: 3.10
 %End
 
-    QString parameterAsConnectionName( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context );
+    QString parameterAsConnectionName( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 %Docstring
 Evaluates the parameter with matching ``name`` to a connection name string.
 
 .. versionadded:: 3.14
 %End
 
-    QString parameterAsSchema( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context );
+    QString parameterAsSchema( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 %Docstring
 Evaluates the parameter with matching ``name`` to a database schema name string.
 
 .. versionadded:: 3.14
 %End
 
-    QString parameterAsDatabaseTableName( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context );
+    QString parameterAsDatabaseTableName( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 %Docstring
 Evaluates the parameter with matching ``name`` to a database table name string.
 
 .. versionadded:: 3.14
 %End
 
-    QDateTime parameterAsDateTime( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context );
+    QDateTime parameterAsDateTime( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 %Docstring
 Evaluates the parameter with matching ``name`` to a DateTime, or returns an invalid date time if the parameter was not set.
 
 .. versionadded:: 3.14
 %End
 
+    QgsPointCloudLayer *parameterAsPointCloudLayer( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
+%Docstring
+Evaluates the parameter with matching ``name`` to a point cloud layer.
+
+Layers will either be taken from ``context``'s active project, or loaded from external
+sources and stored temporarily in the ``context``. In either case, callers do not
+need to handle deletion of the returned layer.
+
+.. versionadded:: 3.22
+%End
+
+    QgsAnnotationLayer *parameterAsAnnotationLayer( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
+%Docstring
+Evaluates the parameter with matching ``name`` to an annotation layer.
+
+Annotation layers will be taken from ``context``'s active project. Callers do not
+need to handle deletion of the returned layer.
+
+.. warning::
+
+   Working with annotation layers is generally not thread safe (unless the layers are from
+   a :py:class:`QgsProject` loaded directly in a background thread). Ensure your algorithm returns the
+   QgsProcessingAlgorithm.FlagNoThreading flag or only accesses annotation layers from a :py:func:`~QgsProcessingAlgorithm.prepareAlgorithm`
+   or :py:func:`~QgsProcessingAlgorithm.postProcessAlgorithm` step.
+
+.. versionadded:: 3.22
+%End
 
     static QString invalidSourceError( const QVariantMap &parameters, const QString &name );
 %Docstring
@@ -1013,6 +1075,19 @@ should correspond to the invalid source parameter name.
 .. versionadded:: 3.2
 %End
 
+    static QString writeFeatureError( QgsFeatureSink *sink, const QVariantMap &parameters, const QString &name );
+%Docstring
+Returns a user-friendly string to use as an error when a feature cannot be
+written into a sink.
+
+The ``sink`` argument is the sink into which the feature cannot be written.
+
+The ``parameters`` argument should give the algorithms parameter map, and the ``name``
+should correspond to the sink parameter name.
+
+.. versionadded:: 3.22
+%End
+
     virtual bool supportInPlaceEdit( const QgsMapLayer *layer ) const;
 %Docstring
 Checks whether this algorithm supports in-place editing on the given ``layer``
@@ -1034,7 +1109,7 @@ QFlags<QgsProcessingAlgorithm::Flag> operator|(QgsProcessingAlgorithm::Flag f1, 
 
 class QgsProcessingFeatureBasedAlgorithm : QgsProcessingAlgorithm
 {
-%Docstring
+%Docstring(signature="appended")
 An abstract QgsProcessingAlgorithm base class for processing algorithms which operate "feature-by-feature".
 
 Feature based algorithms are algorithms which operate on individual features in isolation. These
@@ -1046,7 +1121,7 @@ or buffer of a feature is calculated for each feature in isolation. An algorithm
 is NOT suitable for a feature based algorithm as the dissolved output depends on multiple input features
 and these features cannot be processed in isolation.
 
-Using QgsProcessingFeatureBasedAlgorithm as the base class for feature based algorithms allows
+Using :py:class:`QgsProcessingFeatureBasedAlgorithm` as the base class for feature based algorithms allows
 shortcutting much of the common algorithm code for handling iterating over sources and pushing
 features to output sinks. It also allows the algorithm execution to be optimised in future
 (for instance allowing automatic multi-thread processing of the algorithm, or use of the
@@ -1087,7 +1162,7 @@ The provided ``feedback`` object can be used to push messages to the log and for
 to users. Note that handling of progress reports and algorithm cancellation is handled by
 the base class and subclasses do not need to reimplement this logic.
 
-Algorithms can throw a QgsProcessingException if a fatal error occurred which should
+Algorithms can throw a :py:class:`QgsProcessingException` if a fatal error occurred which should
 prevent the algorithm execution from continuing. This can be annoying for users though as it
 can break valid model execution - so use with extreme caution, and consider using
 ``feedback`` to instead report non-fatal processing failures for features instead.
@@ -1227,8 +1302,6 @@ Read the source from ``parameters`` and ``context`` and set it
         const QMap< QString, QgsProcessingAlgorithm::VectorProperties > &sourceProperties ) const;
 
 };
-
-
 
 
 /************************************************************************

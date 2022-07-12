@@ -24,7 +24,7 @@ __copyright__ = '(C) 201, Victor Olaya'
 import os
 import shutil
 from qgis.PyQt.QtWidgets import QFileDialog, QMessageBox
-from qgis.PyQt.QtCore import QFileInfo, QCoreApplication
+from qgis.PyQt.QtCore import QFileInfo, QCoreApplication, QDir
 
 from qgis.core import QgsApplication, QgsSettings, QgsProcessingModelAlgorithm
 
@@ -45,7 +45,7 @@ class AddModelFromFileAction(ToolboxAction):
 
     def execute(self):
         settings = QgsSettings()
-        lastDir = settings.value('Processing/lastModelsDir', '')
+        lastDir = settings.value('Processing/lastModelsDir', QDir.homePath())
         filename, selected_filter = QFileDialog.getOpenFileName(self.toolbox,
                                                                 self.tr('Open Model', 'AddModelFromFileAction'), lastDir,
                                                                 self.tr('Processing models (*.model3 *.MODEL3)', 'AddModelFromFileAction'))
@@ -60,6 +60,25 @@ class AddModelFromFileAction(ToolboxAction):
                     self.tr('Open Model', 'AddModelFromFileAction'),
                     self.tr('The selected file does not contain a valid model', 'AddModelFromFileAction'))
                 return
+
+            if QgsApplication.instance().processingRegistry().algorithmById('model:{}'.format(alg.id())):
+                QMessageBox.warning(
+                    self.toolbox,
+                    self.tr('Open Model', 'AddModelFromFileAction'),
+                    self.tr('Model with the same name already exists', 'AddModelFromFileAction'))
+                return
+
             destFilename = os.path.join(ModelerUtils.modelsFolders()[0], os.path.basename(filename))
+            if os.path.exists(destFilename):
+                reply = QMessageBox.question(
+                    self.toolbox,
+                    self.tr('Open Model', 'AddModelFromFileAction'),
+                    self.tr('There is already a model file with the same name. Overwrite?', 'AddModelFromFileAction'),
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No)
+
+                if reply == QMessageBox.No:
+                    return
+
             shutil.copyfile(filename, destFilename)
             QgsApplication.processingRegistry().providerById('model').refreshAlgorithms()

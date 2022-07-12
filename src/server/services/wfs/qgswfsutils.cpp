@@ -26,7 +26,6 @@
 #include "qgswfsparameters.h"
 #include "qgsvectorlayer.h"
 #include "qgsproject.h"
-#include "qgsmessagelog.h"
 
 namespace QgsWfs
 {
@@ -35,13 +34,10 @@ namespace QgsWfs
     return QStringLiteral( "1.1.0" );
   }
 
-  QString serviceUrl( const QgsServerRequest &request, const QgsProject *project )
+  QString serviceUrl( const QgsServerRequest &request, const QgsProject *project, const QgsServerSettings &settings )
   {
     QUrl href;
-    if ( project )
-    {
-      href.setUrl( QgsServerProjectUtils::wfsServiceUrl( *project ) );
-    }
+    href.setUrl( QgsServerProjectUtils::wfsServiceUrl( project ? *project : *QgsProject::instance(), request, settings ) );
 
     // Build default url
     if ( href.isEmpty() )
@@ -82,7 +78,7 @@ namespace QgsWfs
   QgsVectorLayer *layerByTypeName( const QgsProject *project, const QString &typeName )
   {
     QStringList layerIds = QgsServerProjectUtils::wfsLayerIds( *project );
-    for ( const QString &layerId : qgis::as_const( layerIds ) )
+    for ( const QString &layerId : std::as_const( layerIds ) )
     {
       QgsMapLayer *layer = project->mapLayer( layerId );
       if ( !layer )
@@ -111,7 +107,7 @@ namespace QgsWfs
 
   QgsFeatureRequest parseFilterElement( const QString &typeName, QDomElement &filterElem, QStringList &serverFids, const QgsProject *project, const QgsMapLayer *layer )
   {
-	QgsFeatureRequest request;
+    QgsFeatureRequest request;
 
     QDomNodeList fidNodes = filterElem.elementsByTagName( QStringLiteral( "FeatureId" ) );
     QDomNodeList goidNodes = filterElem.elementsByTagName( QStringLiteral( "GmlObjectId" ) );
@@ -144,7 +140,6 @@ namespace QgsWfs
       }
       // update server feature ids
       serverFids.append( collectedServerFids );
-	  
       request.setFlags( QgsFeatureRequest::NoFlags );
       return request;
     }
@@ -282,7 +277,6 @@ namespace QgsWfs
       {
         layer = layerByTypeName( project, typeName );
       }
-
       std::shared_ptr<QgsExpression> filter( QgsOgcUtils::expressionFromOgcFilter( filterElem, layer ) );
       if ( filter )
       {

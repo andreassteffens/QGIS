@@ -22,6 +22,7 @@
 #include "qgsrasterdataprovidertemporalcapabilities.h"
 #include "qgsrasterlayer.h"
 #include "qgsrasterlayertemporalproperties.h"
+#include "qgsmaplayerconfigwidget.h"
 
 QgsRasterLayerTemporalPropertiesWidget::QgsRasterLayerTemporalPropertiesWidget( QWidget *parent, QgsRasterLayer *layer )
   : QWidget( parent )
@@ -30,10 +31,18 @@ QgsRasterLayerTemporalPropertiesWidget::QgsRasterLayerTemporalPropertiesWidget( 
   Q_ASSERT( mLayer );
   setupUi( this );
 
+  mExtraWidgetLayout = new QVBoxLayout();
+  mExtraWidgetLayout->setContentsMargins( 0, 0, 0, 0 );
+  mExtraWidgetLayout->addStretch();
+  mExtraWidgetContainer->setLayout( mExtraWidgetLayout );
+
   connect( mModeFixedRangeRadio, &QRadioButton::toggled, mFixedTimeRangeFrame, &QWidget::setEnabled );
 
-  mStartTemporalDateTimeEdit->setDisplayFormat( "yyyy-MM-dd HH:mm:ss" );
-  mEndTemporalDateTimeEdit->setDisplayFormat( "yyyy-MM-dd HH:mm:ss" );
+  connect( mTemporalGroupBox, &QGroupBox::toggled, this, &QgsRasterLayerTemporalPropertiesWidget::temporalGroupBoxChecked );
+  connect( mModeRedrawLayer, &QRadioButton::toggled, mLabelRedrawLayer, &QWidget::setEnabled );
+
+  mStartTemporalDateTimeEdit->setDisplayFormat( QStringLiteral( "yyyy-MM-dd HH:mm:ss" ) );
+  mEndTemporalDateTimeEdit->setDisplayFormat( QStringLiteral( "yyyy-MM-dd HH:mm:ss" ) );
 
   if ( !mLayer->dataProvider() || !mLayer->dataProvider()->temporalCapabilities()->hasTemporalCapabilities() )
   {
@@ -55,10 +64,17 @@ void QgsRasterLayerTemporalPropertiesWidget::saveTemporalProperties()
                                  mEndTemporalDateTimeEdit->dateTime() );
 
   if ( mModeAutomaticRadio->isChecked() )
-    temporalProperties->setMode( QgsRasterLayerTemporalProperties::ModeTemporalRangeFromDataProvider );
+    temporalProperties->setMode( Qgis::RasterTemporalMode::TemporalRangeFromDataProvider );
   else if ( mModeFixedRangeRadio->isChecked() )
-    temporalProperties->setMode( QgsRasterLayerTemporalProperties::ModeFixedTemporalRange );
+    temporalProperties->setMode( Qgis::RasterTemporalMode::FixedTemporalRange );
+  else if ( mModeRedrawLayer->isChecked() )
+    temporalProperties->setMode( Qgis::RasterTemporalMode::RedrawLayerOnly );
   temporalProperties->setFixedTemporalRange( normalRange );
+
+  for ( QgsMapLayerConfigWidget *widget : std::as_const( mExtraWidgets ) )
+  {
+    widget->apply();
+  }
 }
 
 void QgsRasterLayerTemporalPropertiesWidget::syncToLayer()
@@ -66,11 +82,14 @@ void QgsRasterLayerTemporalPropertiesWidget::syncToLayer()
   const QgsRasterLayerTemporalProperties *temporalProperties = qobject_cast< const QgsRasterLayerTemporalProperties * >( mLayer->temporalProperties() );
   switch ( temporalProperties->mode() )
   {
-    case QgsRasterLayerTemporalProperties::ModeTemporalRangeFromDataProvider:
+    case Qgis::RasterTemporalMode::TemporalRangeFromDataProvider:
       mModeAutomaticRadio->setChecked( true );
       break;
-    case QgsRasterLayerTemporalProperties::ModeFixedTemporalRange:
+    case Qgis::RasterTemporalMode::FixedTemporalRange:
       mModeFixedRangeRadio->setChecked( true );
+      break;
+    case Qgis::RasterTemporalMode::RedrawLayerOnly:
+      mModeRedrawLayer->setChecked( true );
       break;
   }
 
@@ -78,4 +97,25 @@ void QgsRasterLayerTemporalPropertiesWidget::syncToLayer()
   mEndTemporalDateTimeEdit->setDateTime( temporalProperties->fixedTemporalRange().end() );
 
   mTemporalGroupBox->setChecked( temporalProperties->isActive() );
+
+  mLabelRedrawLayer->setEnabled( mModeRedrawLayer->isChecked() );
+
+  for ( QgsMapLayerConfigWidget *widget : std::as_const( mExtraWidgets ) )
+  {
+    widget->syncToLayer( mLayer );
+  }
+}
+
+void QgsRasterLayerTemporalPropertiesWidget::addWidget( QgsMapLayerConfigWidget *widget )
+{
+  mExtraWidgets << widget;
+  mExtraWidgetLayout->insertWidget( mExtraWidgetLayout->count() - 1, widget );
+}
+
+void QgsRasterLayerTemporalPropertiesWidget::temporalGroupBoxChecked( bool checked )
+{
+  for ( QgsMapLayerConfigWidget *widget : std::as_const( mExtraWidgets ) )
+  {
+    widget->emit dynamicTemporalControlToggled( checked );
+  }
 }

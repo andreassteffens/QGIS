@@ -19,13 +19,17 @@
 QgsPixmapLabel::QgsPixmapLabel( QWidget *parent )
   : QLabel( parent )
 {
-  this->setMinimumSize( 1, 1 );
 }
 
 void QgsPixmapLabel::setPixmap( const QPixmap &p )
 {
-  bool sizeChanged = ( p.size() != mPixmap.size() );
+  const bool sizeChanged = ( p.size() != mPixmap.size() );
   mPixmap = p;
+
+  if ( mPixmap.isNull() )
+    this->setMinimumHeight( 0 );
+  else
+    this->setMinimumHeight( PIXMAP_MINIMUM_HEIGHT );
 
   if ( sizeChanged )
   {
@@ -48,7 +52,7 @@ QSize QgsPixmapLabel::sizeHint() const
   if ( mPixmap.isNull() )
     return QSize( 0, 0 );
 
-  int w = this->width();
+  const int w = this->width();
   return QSize( w, heightForWidth( w ) );
 }
 
@@ -66,4 +70,5 @@ void QgsPixmapLabel::clear()
 {
   mPixmap = QPixmap();
   QLabel::clear();
+  this->setMinimumHeight( 0 );
 }

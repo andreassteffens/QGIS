@@ -68,7 +68,8 @@ QgsServerOgcApiHandler::~QgsServerOgcApiHandler()
 
 QgsServerOgcApi::ContentType QgsServerOgcApiHandler::defaultContentType() const
 {
-  return contentTypes().size() > 0 ? contentTypes().first() : QgsServerOgcApi::ContentType::JSON;
+  const auto constContentTypes( contentTypes() );
+  return constContentTypes.size() > 0 ? constContentTypes.first() : QgsServerOgcApi::ContentType::JSON;
 }
 
 QList<QgsServerOgcApi::ContentType> QgsServerOgcApiHandler::contentTypes() const
@@ -84,8 +85,9 @@ void QgsServerOgcApiHandler::handleRequest( const QgsServerApiContext &context )
 
 QString QgsServerOgcApiHandler::contentTypeForAccept( const QString &accept ) const
 {
-  for ( auto it = QgsServerOgcApi::contentTypeMimes().constBegin();
-        it != QgsServerOgcApi::contentTypeMimes().constEnd(); ++it )
+  const auto constContentTypes( QgsServerOgcApi::contentTypeMimes() );
+  for ( auto it = constContentTypes.constBegin();
+        it != constContentTypes.constEnd(); ++it )
   {
     const auto constValues = it.value();
     for ( const auto &value : constValues )
@@ -99,7 +101,7 @@ QString QgsServerOgcApiHandler::contentTypeForAccept( const QString &accept ) co
   // Log level info because this is not completely unexpected
   QgsMessageLog::logMessage( QStringLiteral( "Content type for accept %1 not found!" ).arg( accept ),
                              QStringLiteral( "Server" ),
-                             Qgis::Info );
+                             Qgis::MessageLevel::Info );
 
   return QString();
 }
@@ -273,14 +275,14 @@ void QgsServerOgcApiHandler::htmlDump( const json &data, const QgsServerApiConte
   auto path { templatePath( context ) };
   if ( ! QFile::exists( path ) )
   {
-    QgsMessageLog::logMessage( QStringLiteral( "Template not found error: %1" ).arg( path ), QStringLiteral( "Server" ), Qgis::Critical );
+    QgsMessageLog::logMessage( QStringLiteral( "Template not found error: %1" ).arg( path ), QStringLiteral( "Server" ), Qgis::MessageLevel::Critical );
     throw QgsServerApiBadRequestException( QStringLiteral( "Template not found: %1" ).arg( QFileInfo( path ).fileName() ) );
   }
 
   QFile f( path );
   if ( ! f.open( QFile::ReadOnly | QFile::Text ) )
   {
-    QgsMessageLog::logMessage( QStringLiteral( "Could not open template file: %1" ).arg( path ), QStringLiteral( "Server" ), Qgis::Critical );
+    QgsMessageLog::logMessage( QStringLiteral( "Could not open template file: %1" ).arg( path ), QStringLiteral( "Server" ), Qgis::MessageLevel::Critical );
     throw QgsServerApiInternalServerError( QStringLiteral( "Could not open template file: %1" ).arg( QFileInfo( path ).fileName() ) );
   }
 
@@ -419,7 +421,7 @@ void QgsServerOgcApiHandler::htmlDump( const json &data, const QgsServerApiConte
   }
   catch ( std::exception &e )
   {
-    QgsMessageLog::logMessage( QStringLiteral( "Error parsing template file: %1 - %2" ).arg( path, e.what() ), QStringLiteral( "Server" ), Qgis::Critical );
+    QgsMessageLog::logMessage( QStringLiteral( "Error parsing template file: %1 - %2" ).arg( path, e.what() ), QStringLiteral( "Server" ), Qgis::MessageLevel::Critical );
     throw QgsServerApiInternalServerError( QStringLiteral( "Error parsing template file: %1" ).arg( e.what() ) );
   }
 }
@@ -443,7 +445,7 @@ QgsServerOgcApi::ContentType QgsServerOgcApiHandler::contentTypeFromRequest( con
     }
     else
     {
-      QgsMessageLog::logMessage( QStringLiteral( "The client requested an unsupported extension: %1" ).arg( extension ), QStringLiteral( "Server" ), Qgis::Warning );
+      QgsMessageLog::logMessage( QStringLiteral( "The client requested an unsupported extension: %1" ).arg( extension ), QStringLiteral( "Server" ), Qgis::MessageLevel::Warning );
     }
   }
   // ... then "Accept"
@@ -453,8 +455,9 @@ QgsServerOgcApi::ContentType QgsServerOgcApiHandler::contentTypeFromRequest( con
     const QString ctFromAccept { contentTypeForAccept( accept ) };
     if ( ! ctFromAccept.isEmpty() )
     {
-      auto it = QgsServerOgcApi::contentTypeMimes().constBegin();
-      while ( ! found && it != QgsServerOgcApi::contentTypeMimes().constEnd() )
+      const auto constContentTypes( QgsServerOgcApi::contentTypeMimes() );
+      auto it = constContentTypes.constBegin();
+      while ( ! found && it != constContentTypes.constEnd() )
       {
         int idx = it.value().indexOf( ctFromAccept );
         if ( idx >= 0 )
@@ -467,7 +470,7 @@ QgsServerOgcApi::ContentType QgsServerOgcApiHandler::contentTypeFromRequest( con
     }
     else
     {
-      QgsMessageLog::logMessage( QStringLiteral( "The client requested an unsupported content type in Accept header: %1" ).arg( accept ), QStringLiteral( "Server" ), Qgis::Warning );
+      QgsMessageLog::logMessage( QStringLiteral( "The client requested an unsupported content type in Accept header: %1" ).arg( accept ), QStringLiteral( "Server" ), Qgis::MessageLevel::Warning );
     }
   }
   // Validation: check if the requested content type (or an alias) is supported by the handler
@@ -475,7 +478,7 @@ QgsServerOgcApi::ContentType QgsServerOgcApiHandler::contentTypeFromRequest( con
   {
     // Check aliases
     bool found { false };
-    if ( QgsServerOgcApi::contentTypeAliases().keys().contains( result ) )
+    if ( QgsServerOgcApi::contentTypeAliases().contains( result ) )
     {
       const QList<QgsServerOgcApi::ContentType> constCt { contentTypes() };
       for ( const auto &ct : constCt )
@@ -491,7 +494,7 @@ QgsServerOgcApi::ContentType QgsServerOgcApiHandler::contentTypeFromRequest( con
 
     if ( ! found )
     {
-      QgsMessageLog::logMessage( QStringLiteral( "Unsupported Content-Type: %1" ).arg( QgsServerOgcApi::contentTypeToString( result ) ), QStringLiteral( "Server" ), Qgis::Info );
+      QgsMessageLog::logMessage( QStringLiteral( "Unsupported Content-Type: %1" ).arg( QgsServerOgcApi::contentTypeToString( result ) ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
       throw QgsServerApiBadRequestException( QStringLiteral( "Unsupported Content-Type: %1" ).arg( QgsServerOgcApi::contentTypeToString( result ) ) );
     }
   }
@@ -588,7 +591,7 @@ json QgsServerOgcApiHandler::jsonTags() const
 void QgsServerOgcApiHandler::setContentTypesInt( const QList<int> &contentTypes )
 {
   mContentTypes.clear();
-  for ( const int &i : qgis::as_const( contentTypes ) )
+  for ( const int &i : std::as_const( contentTypes ) )
   {
     mContentTypes.push_back( static_cast<QgsServerOgcApi::ContentType>( i ) );
   }

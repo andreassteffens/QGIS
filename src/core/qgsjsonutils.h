@@ -22,11 +22,6 @@
 #include "qgscoordinatetransform.h"
 #include "qgsfields.h"
 
-#ifndef SIP_RUN
-#include <json_fwd.hpp>
-using namespace nlohmann;
-#endif
-
 #include <QPointer>
 #include <QJsonObject>
 
@@ -296,6 +291,8 @@ class CORE_EXPORT QgsJsonExporter
 
 class CORE_EXPORT QgsJsonUtils
 {
+    Q_GADGET
+
   public:
 
     /**
@@ -323,7 +320,7 @@ class CORE_EXPORT QgsJsonUtils
      * \param value value to encode
      * \returns encoded value
      */
-    static QString encodeValue( const QVariant &value );
+    Q_INVOKABLE static QString encodeValue( const QVariant &value );
 
     /**
      * Exports all attributes from a QgsFeature as a JSON map type.
@@ -357,7 +354,7 @@ class CORE_EXPORT QgsJsonUtils
      *        the conversion is not possible.
      * \since QGIS 3.0
      */
-    static QVariantList parseArray( const QString &json, QVariant::Type type = QVariant::Invalid );
+    Q_INVOKABLE static QVariantList parseArray( const QString &json, QVariant::Type type = QVariant::Invalid );
 
 
     /**
@@ -368,11 +365,22 @@ class CORE_EXPORT QgsJsonUtils
     static ordered_json jsonFromVariant( const QVariant &v ) SIP_SKIP;
 
     /**
-     * Converts JSON \a jsonString to a QVariant, in case of parsing error an invalid QVariant is returned.
+     * Converts JSON \a jsonString to a QVariant, in case of parsing error an invalid QVariant is returned and an
+     * error is logged to the message log.
+     *
      * \note Not available in Python bindings
      * \since QGIS 3.8
      */
     static QVariant parseJson( const std::string &jsonString ) SIP_SKIP;
+
+    /**
+     * Converts JSON \a jsonString to a QVariant, in case of parsing error an invalid QVariant is returned
+     * and the \a error argument is populated accordingly.
+     *
+     * \note Not available in Python bindings
+     * \since QGIS 3.24
+     */
+    static QVariant parseJson( const std::string &jsonString, QString &error ) SIP_SKIP;
 
     /**
      * Converts JSON \a jsonString to a QVariant, in case of parsing error an invalid QVariant is returned.

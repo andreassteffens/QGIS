@@ -11,94 +11,88 @@ if (WITH_GUI)
     qgswmsprovidergui.cpp
     qgswmssourceselect.cpp
     qgswmsdataitemguiproviders.cpp
+    qgswmstsettingswidget.cpp
     qgstilescalewidget.cpp
     qgswmtsdimensions.cpp
     qgsxyzconnectiondialog.cpp
     qgsxyzsourceselect.cpp
+    qgsxyzsourcewidget.cpp
   )
+
+  set(WMS_UIS ${CMAKE_SOURCE_DIR}/src/ui/qgswmstsettingswidgetbase.ui)
 endif()
-
-include_directories(
-  ${CMAKE_SOURCE_DIR}/src/core
-  ${CMAKE_SOURCE_DIR}/src/core/auth
-  ${CMAKE_SOURCE_DIR}/src/core/expression
-  ${CMAKE_SOURCE_DIR}/src/core/geometry
-  ${CMAKE_SOURCE_DIR}/src/core/geocms/geonode
-  ${CMAKE_SOURCE_DIR}/src/core/labeling
-  ${CMAKE_SOURCE_DIR}/src/core/raster
-  ${CMAKE_SOURCE_DIR}/src/core/metadata
-  ${CMAKE_SOURCE_DIR}/src/core/symbology
-  ${CMAKE_SOURCE_DIR}/src/gui
-  ${CMAKE_SOURCE_DIR}/src/gui/auth
-  ${CMAKE_SOURCE_DIR}/src/gui/editorwidgets
-  ${CMAKE_SOURCE_DIR}/external
-  ${CMAKE_SOURCE_DIR}/external/nlohmann
-
-  ${CMAKE_BINARY_DIR}/src/ui
-  ${CMAKE_BINARY_DIR}/src/core
-  ${CMAKE_BINARY_DIR}/src/gui
-)
-include_directories(SYSTEM
-  ${GDAL_INCLUDE_DIR}
-  ${EXPAT_INCLUDE_DIR}
-  ${QCA_INCLUDE_DIR}
-  ${QTKEYCHAIN_INCLUDE_DIR}
-)
 
 # static library
-add_library(wmsprovider_a STATIC ${WMS_SRCS})
-target_link_libraries(wmsprovider_a
-  ${Qt5Xml_LIBRARIES}
-  ${Qt5Core_LIBRARIES}
-  ${Qt5Svg_LIBRARIES}
-  ${Qt5Network_LIBRARIES}
-  ${Qt5Sql_LIBRARIES}
-  ${Qt5Concurrent_LIBRARIES}
+add_library(provider_wms_a STATIC ${WMS_SRCS})
+
+target_include_directories(provider_wms_a PUBLIC
+  ${CMAKE_SOURCE_DIR}/src/providers/wms
 )
-target_compile_definitions(wmsprovider_a PRIVATE "-DQT_NO_FOREACH")
+
+# require c++17
+target_compile_features(provider_wms_a PRIVATE cxx_std_17)
 
 if (WITH_GUI)
-  add_library(wmsprovider_gui_a STATIC ${WMS_GUI_SRCS})
-  target_link_libraries(wmsprovider_gui_a
-    ${Qt5Xml_LIBRARIES}
-    ${Qt5Core_LIBRARIES}
-    ${Qt5Svg_LIBRARIES}
-    ${Qt5Network_LIBRARIES}
-    ${Qt5Sql_LIBRARIES}
-    ${Qt5Concurrent_LIBRARIES}
-    ${Qt5Gui_LIBRARIES}
-    ${Qt5Widgets_LIBRARIES}
+  if (WITH_QT6)
+    QT6_WRAP_UI(WMS_UIS_H ${WMS_UIS})
+  else()
+    QT5_WRAP_UI(WMS_UIS_H ${WMS_UIS})
+  endif()
+
+  add_library(provider_wms_gui_a STATIC ${WMS_GUI_SRCS} ${WMS_UIS_H})
+
+  target_include_directories (provider_wms_gui_a PUBLIC
+    ${CMAKE_BINARY_DIR}/src/providers/wms
   )
-  target_compile_definitions(wmsprovider_gui_a PRIVATE "-DQT_NO_FOREACH")
-  add_dependencies(wmsprovider_gui_a ui)
-  add_dependencies(wmsprovider_a ui)
+
+  # require c++17
+  target_compile_features(provider_wms_gui_a PRIVATE cxx_std_17)
+
+  add_dependencies(provider_wms_a ui)
+  add_dependencies(provider_wms_gui_a ui)
 endif()
 
-if (FORCE_STATIC_PROVIDERS)
+target_link_libraries(provider_wms_a
+  qgis_core
+)
+target_compile_definitions(provider_wms_a PRIVATE "-DQT_NO_FOREACH")
+
+if (WITH_GUI)
+  target_link_libraries(provider_wms_gui_a
+    qgis_gui
+    provider_wms_a
+  )
+  target_compile_definitions(provider_wms_gui_a PRIVATE "-DQT_NO_FOREACH")
+endif()
+
+if (FORCE_STATIC_LIBS)
   # for (external) mobile apps to be able to pick up provider for linking
-  install (TARGETS wmsprovider_a ARCHIVE DESTINATION ${QGIS_PLUGIN_DIR})
+  install (TARGETS provider_wms_a ARCHIVE DESTINATION ${QGIS_PLUGIN_DIR})
   if (WITH_GUI)
-    install (TARGETS wmsprovider_gui_a ARCHIVE DESTINATION ${QGIS_PLUGIN_DIR})
+    install (TARGETS provider_wms_gui_a ARCHIVE DESTINATION ${QGIS_PLUGIN_DIR})
   endif()
 else()
   # dynamically loaded module
-  add_library(wmsprovider MODULE ${WMS_SRCS} ${WMS_GUI_SRCS})
+  add_library(provider_wms MODULE ${WMS_SRCS} ${WMS_GUI_SRCS})
 
-  target_link_libraries(wmsprovider
+  # require c++17
+  target_compile_features(provider_wms PRIVATE cxx_std_17)
+
+  target_link_libraries(provider_wms
     qgis_core
     ${GDAL_LIBRARY}  # for OGR_G_CreateGeometryFromJson()
   )
 
   if (WITH_GUI)
-    target_link_libraries (wmsprovider
+    target_link_libraries (provider_wms
       qgis_gui
     )
-    add_dependencies(wmsprovider ui)
+    add_dependencies(provider_wms ui)
   endif()
 
-  target_compile_definitions(wmsprovider PRIVATE "-DQT_NO_FOREACH")
+  target_compile_definitions(provider_wms PRIVATE "-DQT_NO_FOREACH")
 
-  install (TARGETS wmsprovider
+  install (TARGETS provider_wms
     RUNTIME DESTINATION ${QGIS_PLUGIN_DIR}
     LIBRARY DESTINATION ${QGIS_PLUGIN_DIR})
 

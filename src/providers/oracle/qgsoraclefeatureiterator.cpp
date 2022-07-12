@@ -24,8 +24,11 @@
 #include "qgsgeometry.h"
 #include "qgssettings.h"
 #include "qgsexception.h"
+#include "qgsgeometryengine.h"
 
 #include <QObject>
+
+#include <algorithm>
 
 QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource *source, bool ownSource, const QgsFeatureRequest &request )
   : QgsAbstractFeatureIteratorFromSource<QgsOracleFeatureSource>( source, ownSource, request )
@@ -60,6 +63,23 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource *sour
     return;
   }
 
+  // prepare spatial filter geometries for optimal speed
+  switch ( mRequest.spatialFilterType() )
+  {
+    case Qgis::SpatialFilterType::NoFilter:
+    case Qgis::SpatialFilterType::BoundingBox:
+      break;
+
+    case Qgis::SpatialFilterType::DistanceWithin:
+      if ( !mRequest.referenceGeometry().isEmpty() )
+      {
+        mDistanceWithinGeom = mRequest.referenceGeometry();
+        mDistanceWithinEngine.reset( QgsGeometry::createGeometryEngine( mDistanceWithinGeom.constGet() ) );
+        mDistanceWithinEngine->prepareGeometry();
+      }
+      break;
+  }
+
   QVariantList args;
   mQry = QSqlQuery( *mConnection );
 
@@ -90,13 +110,17 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource *sour
   else
     mAttributeList = mSource->mFields.allAttributesList();
 
-  bool limitAtProvider = ( mRequest.limit() >= 0 );
+  // Sort for query planners peace of mind: https://github.com/qgis/QGIS/issues/35309
+  std::sort( mAttributeList.begin(), mAttributeList.end() );
+
+  bool limitAtProvider = ( mRequest.limit() >= 0 ) && mRequest.spatialFilterType() != Qgis::SpatialFilterType::DistanceWithin;
   QString whereClause;
 
   if ( !mSource->mGeometryColumn.isNull() )
   {
     // fetch geometry if requested
-    mFetchGeometry = ( mRequest.flags() & QgsFeatureRequest::NoGeometry ) == 0;
+    mFetchGeometry = ( mRequest.flags() & QgsFeatureRequest::NoGeometry ) == 0
+                     || mRequest.spatialFilterType() == Qgis::SpatialFilterType::DistanceWithin;
     if ( mRequest.filterType() == QgsFeatureRequest::FilterExpression && mRequest.filterExpression()->needsGeometry() )
     {
       mFetchGeometry = true;
@@ -117,7 +141,8 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource *sour
 
         args << ( mSource->mSrid < 1 ? QVariant( QVariant::Int ) : mSource->mSrid ) << mFilterRect.xMinimum() << mFilterRect.yMinimum() << mFilterRect.xMaximum() << mFilterRect.yMaximum();
 
-        if ( ( mRequest.flags() & QgsFeatureRequest::ExactIntersect ) != 0 )
+        if ( ( mRequest.flags() & QgsFeatureRequest::ExactIntersect ) != 0
+             && mRequest.spatialFilterType() == Qgis::SpatialFilterType::BoundingBox )
         {
           // sdo_relate requires Spatial
           if ( mConnection->hasSpatial() )
@@ -199,25 +224,18 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource *sour
   bool useFallback = false;
   if ( request.filterType() == QgsFeatureRequest::FilterExpression )
   {
-    if ( QgsSettings().value( QStringLiteral( "qgis/compileExpressions" ), true ).toBool() )
+    QgsOracleExpressionCompiler compiler( mSource, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
+    QgsSqlExpressionCompiler::Result result = compiler.compile( mRequest.filterExpression() );
+    if ( result == QgsSqlExpressionCompiler::Complete || result == QgsSqlExpressionCompiler::Partial )
     {
-      QgsOracleExpressionCompiler compiler( mSource );
-      QgsSqlExpressionCompiler::Result result = compiler.compile( mRequest.filterExpression() );
-      if ( result == QgsSqlExpressionCompiler::Complete || result == QgsSqlExpressionCompiler::Partial )
-      {
-        fallbackStatement = whereClause;
-        useFallback = true;
-        whereClause = QgsOracleUtils::andWhereClauses( whereClause, compiler.result() );
+      fallbackStatement = whereClause;
+      useFallback = true;
+      whereClause = QgsOracleUtils::andWhereClauses( whereClause, compiler.result() );
 
-        //if only partial success when compiling expression, we need to double-check results using QGIS' expressions
-        mExpressionCompiled = ( result == QgsSqlExpressionCompiler::Complete );
-        mCompileStatus = ( mExpressionCompiled ? Compiled : PartiallyCompiled );
-        limitAtProvider = mExpressionCompiled;
-      }
-      else
-      {
-        limitAtProvider = false;
-      }
+      //if only partial success when compiling expression, we need to double-check results using QGIS' expressions
+      mExpressionCompiled = ( result == QgsSqlExpressionCompiler::Complete );
+      mCompileStatus = ( mExpressionCompiled ? Compiled : PartiallyCompiled );
+      limitAtProvider = mExpressionCompiled;
     }
     else
     {
@@ -283,9 +301,10 @@ bool QgsOracleFeatureIterator::fetchFeature( QgsFeature &feature )
       mRewind = false;
       if ( !execQuery( mSql, mArgs, 1 ) )
       {
-        QgsMessageLog::logMessage( QObject::tr( "Fetching features failed.\nSQL: %1\nError: %2" )
-                                   .arg( mQry.lastQuery(),
-                                         mQry.lastError().text() ),
+        const QString error { QObject::tr( "Fetching features failed.\nSQL: %1\nError: %2" )
+                              .arg( mQry.lastQuery(),
+                                    mQry.lastError().text() ) };
+        QgsMessageLog::logMessage( error,
                                    QObject::tr( "Oracle" ) );
         return false;
       }
@@ -363,7 +382,7 @@ bool QgsOracleFeatureIterator::fetchFeature( QgsFeature &feature )
         QVariantList primaryKeyVals;
         if ( mSource->mPrimaryKeyType == PktFidMap )
         {
-          Q_FOREACH ( int idx, mSource->mPrimaryKeyAttrs )
+          for ( int idx : std::as_const( mSource->mPrimaryKeyAttrs ) )
           {
             QgsField fld = mSource->mFields.at( idx );
 
@@ -426,10 +445,14 @@ bool QgsOracleFeatureIterator::fetchFeature( QgsFeature &feature )
       col++;
     }
 
+    geometryToDestinationCrs( feature, mTransform );
+    if ( mDistanceWithinEngine && mDistanceWithinEngine->distance( feature.geometry().constGet() ) > mRequest.distanceWithin() )
+    {
+      continue;
+    }
+
     feature.setValid( true );
     feature.setFields( mSource->mFields ); // allow name-based attribute lookups
-
-    geometryToDestinationCrs( feature, mTransform );
 
     return true;
   }
@@ -485,7 +508,7 @@ bool QgsOracleFeatureIterator::openQuery( const QString &whereClause, const QVar
         break;
 
       case PktFidMap:
-        Q_FOREACH ( int idx, mSource->mPrimaryKeyAttrs )
+        for ( int idx : std::as_const( mSource->mPrimaryKeyAttrs ) )
         {
           query += delim + mConnection->fieldExpression( mSource->mFields.at( idx ) );
           delim = ',';
@@ -514,13 +537,16 @@ bool QgsOracleFeatureIterator::openQuery( const QString &whereClause, const QVar
     QgsDebugMsgLevel( QStringLiteral( "Fetch features: %1" ).arg( query ), 2 );
     mSql = query;
     mArgs = args;
+
     if ( !execQuery( query, args, 1 ) )
     {
+
+      const QString error { QObject::tr( "Fetching features failed.\nSQL: %1\nError: %2" )
+                            .arg( mQry.lastQuery(),
+                                  mQry.lastError().text() ) };
       if ( showLog )
       {
-        QgsMessageLog::logMessage( QObject::tr( "Fetching features failed.\nSQL: %1\nError: %2" )
-                                   .arg( mQry.lastQuery(),
-                                         mQry.lastError().text() ),
+        QgsMessageLog::logMessage( error,
                                    QObject::tr( "Oracle" ) );
       }
       return false;
@@ -537,7 +563,7 @@ bool QgsOracleFeatureIterator::openQuery( const QString &whereClause, const QVar
 bool QgsOracleFeatureIterator::execQuery( const QString &query, const QVariantList &args, int retryCount )
 {
   lock();
-  if ( !QgsOracleProvider::exec( mQry, query, args ) )
+  if ( !QgsOracleProvider::execLoggedStatic( mQry, query, args, mSource->mUri.uri(), QStringLiteral( "QgsOracleFeatureIterator" ), QGS_QUERY_LOG_ORIGIN ) )
   {
     unlock();
     if ( retryCount != 0 )

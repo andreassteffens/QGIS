@@ -22,8 +22,10 @@
 #include "qgis_core.h"
 #include "qgis_sip.h"
 #include "qgswkbtypes.h"
+#include "qgshttpheaders.h"
 
 #include <QMap>
+#include <QSet>
 
 /**
  * \ingroup core
@@ -158,6 +160,9 @@ class CORE_EXPORT QgsDataSourceUri
 
     /**
      * Sets all data source related members at once.
+     *
+     * The \a aSql argument represents a subset filter string to be applied to the source, and should take the
+     * form of a SQL "where" clause (e.g. "VALUE > 5", "CAT IN (1,2,3)").
      */
     void setDataSource( const QString &aSchema,
                         const QString &aTable,
@@ -199,7 +204,14 @@ class CORE_EXPORT QgsDataSourceUri
     //! Returns the table name stored in the URI.
     QString table() const;
 
-    //! Returns the SQL query stored in the URI, if set.
+    /**
+     * Returns the SQL filter stored in the URI, if set.
+     *
+     * This represents a subset filter string to be applied to the source, and takes the
+     * form of a SQL "where" clause (e.g. "VALUE > 5", "CAT IN (1,2,3)").
+     *
+     * \see setSql()
+     */
     QString sql() const;
 
     //! Returns the name of the geometry column stored in the URI, if set.
@@ -226,7 +238,14 @@ class CORE_EXPORT QgsDataSourceUri
      */
     void setSchema( const QString &schema );
 
-    //! Sets the SQL query for the URI.
+    /**
+     * Sets the \a sql filter for the URI.
+     *
+     * The \a sql represents a subset filter string to be applied to the source, and should take the
+     * form of a SQL "where" clause (e.g. "VALUE > 5", "CAT IN (1,2,3)").
+     *
+     * \see sql()
+     */
     void setSql( const QString &sql );
 
     //! Returns the host name stored in the URI.
@@ -301,6 +320,35 @@ class CORE_EXPORT QgsDataSourceUri
      */
     void setGeometryColumn( const QString &geometryColumn );
 
+    /**
+     * Returns parameter keys used in the uri: specialized ones ("table", "schema", etc.) or generic parameters.
+     * \since QGIS 3.26
+     */
+    QSet<QString> parameterKeys() const;
+
+#ifndef SIP_RUN
+    //! Returns http headers
+    QgsHttpHeaders httpHeaders() const { return mHttpHeaders; }
+#endif
+
+    /**
+     * Returns http headers
+     * \since QGIS 3.26
+     */
+    QgsHttpHeaders &httpHeaders() { return mHttpHeaders; }
+
+    /**
+     * Returns the http header value according to \a key
+     * \since QGIS 3.26
+     */
+    QString httpHeader( const QString &key ) { return mHttpHeaders[key].toString(); }
+
+    /**
+     * Sets headers to \a headers
+     * \since QGIS 3.26
+     */
+    void setHttpHeaders( const QgsHttpHeaders &headers ) { mHttpHeaders = headers; }
+
 #ifdef SIP_RUN
     SIP_PYOBJECT __repr__();
     % MethodCode
@@ -348,13 +396,16 @@ class CORE_EXPORT QgsDataSourceUri
     bool mUseEstimatedMetadata = false;
     //! Disable SelectAtId capability (e.g., to trigger the attribute table memory model for expensive views)
     bool mSelectAtIdDisabled = false;
+    //! Whether mSelectAtIdDisabled has been explicitly set to true or false
+    bool mSelectAtIdDisabledSet = false;
     //! geometry type (or QgsWkbTypes::Unknown if not specified)
     QgsWkbTypes::Type mWkbType = QgsWkbTypes::Unknown;
     //! SRID or a null string if not specified
     QString mSrid;
     //! Generic params store
     QMultiMap<QString, QString> mParams;
+    //! http header store
+    QgsHttpHeaders mHttpHeaders;
 };
 
 #endif //QGSDATASOURCEURI_H
-

@@ -20,9 +20,12 @@
 #include "qgspointxy.h"
 #include "qgsmapcanvas.h"
 #include "qgspointlocator.h"
-
+#include "qgsprojectionselectionwidget.h"
+#include "qgscoordinatereferencesystem.h"
 
 #include "ui_qgsmapcoordsdialogbase.h"
+
+class QgsGCPCanvasItem;
 
 class QPushButton;
 
@@ -57,7 +60,15 @@ class QgsMapCoordsDialog : public QDialog, private Ui::QgsMapCoordsDialogBase
     Q_OBJECT
 
   public:
-    QgsMapCoordsDialog( QgsMapCanvas *qgisCanvas, const QgsPointXY &pixelCoords, QWidget *parent = nullptr );
+
+    /**
+     * Constructor for QgsMapCoordsDialog.
+     * \param qgisCanvas
+     * \param sourceCoordinates must be in source layer coordinates, NOT pixels (unless source image is completely non-referenced)!
+     * \param rasterCrs
+     * \param parent
+     */
+    QgsMapCoordsDialog( QgsMapCanvas *qgisCanvas, const QgsPointXY &sourceCoordinates, QgsCoordinateReferenceSystem &rasterCrs, QWidget *parent = nullptr );
     ~QgsMapCoordsDialog() override;
 
   private slots:
@@ -70,18 +81,32 @@ class QgsMapCoordsDialog : public QDialog, private Ui::QgsMapCoordsDialogBase
     void setPrevTool();
 
   signals:
-    void pointAdded( const QgsPointXY &, const QgsPointXY & );
+
+    /**
+     * Emitted when a point should be added through the dialog.
+     * \param sourceCoordinate source point, which MUST be in source layer coordinates not pixels
+     * \param destinationCoordinate
+     * \param destinationCrs
+     */
+    void pointAdded( const QgsPointXY &sourceCoordinate, const QgsPointXY &destinationCoordinate, const QgsCoordinateReferenceSystem &destinationCrs );
 
   private:
     double dmsToDD( const QString &dms );
 
     QPushButton *mPointFromCanvasPushButton = nullptr;
 
+    //QgsProjectionSelectionWidget *mProjSelect = nullptr;
+
     QgsGeorefMapToolEmitPoint *mToolEmitPoint = nullptr;
     QgsMapTool *mPrevMapTool = nullptr;
     QgsMapCanvas *mQgisCanvas = nullptr;
 
-    QgsPointXY mPixelCoords;
+    QgsGCPCanvasItem *mNewlyAddedPointItem = nullptr;
+
+    QgsCoordinateReferenceSystem mRasterCrs;
+
+    //! Source layer coordinates -- must be in source layer coordinates, not pixels (unless source image is completely non-referenced)
+    QgsPointXY mSourceLayerCoordinates;
 };
 
 #endif

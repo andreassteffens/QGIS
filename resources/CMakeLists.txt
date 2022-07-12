@@ -34,6 +34,27 @@ if (WITH_SERVER)
   set(RESOURCES_FILES ${RESOURCES_FILES} ${SERVER_RESOURCE_FILES})
 endif()
 
+# Server landingpage webapp
+if (WITH_SERVER_LANDINGPAGE_WEBAPP)
+  find_program(YARN yarn REQUIRED)
+
+  file(GLOB_RECURSE LANDINGPAGE_SOURCE_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} server/src/landingpage/*)
+  set(LANDINGPAGE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/output/data/resources/server/src/landingpage)
+
+  add_custom_target (server_landingpage ALL DEPENDS ${LANDINGPAGE_OUTPUT_PATH}/landingpage.stamp)
+
+  add_custom_command(
+    POST_BUILD
+    OUTPUT ${LANDINGPAGE_OUTPUT_PATH}/landingpage.stamp
+    DEPENDS ${LANDINGPAGE_SOURCE_FILES}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_CURRENT_SOURCE_DIR}/server/src/landingpage/
+    ${LANDINGPAGE_OUTPUT_PATH}/
+    COMMAND ${CMAKE_COMMAND} -E touch ${LANDINGPAGE_OUTPUT_PATH}/landingpage.stamp
+    COMMAND cd ${LANDINGPAGE_OUTPUT_PATH} && ${YARN} install --frozen-lockfile && ${YARN} build
+  )
+endif()
+
 # Apple specific handling
 if (APPLE)
   # ASN.1 definition files of PKIX elements
@@ -42,14 +63,8 @@ endif()
 
 ADD_QGIS_RESOURCES("${CMAKE_CURRENT_SOURCE_DIR}" resources DEST_RESOURCE_FILES "${RESOURCES_FILES}")
 
-# srs.db -- special handling because there is a switch and rename depending on proj version
-if (PROJ_VERSION_MAJOR GREATER 5)
-  message(STATUS "Using PROJ >= 6 srs database.")
-  set(SRSDB srs6.db)
-else()
-  message(STATUS "Using PROJ <6 srs database.")
-  set(SRSDB srs.db)
-endif()
+message(STATUS "Using PROJ >= 6 srs database.")
+set(SRSDB srs6.db)
 
 add_custom_command(
   OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/srs.db"

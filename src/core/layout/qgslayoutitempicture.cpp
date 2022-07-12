@@ -48,6 +48,7 @@
 #include <QNetworkReply>
 #include <QEventLoop>
 #include <QCoreApplication>
+#include <QUrl>
 
 QgsLayoutItemPicture::QgsLayoutItemPicture( QgsLayout *layout )
   : QgsLayoutItem( layout )
@@ -87,9 +88,13 @@ QgsLayoutItemPicture *QgsLayoutItemPicture::create( QgsLayout *layout )
 void QgsLayoutItemPicture::draw( QgsLayoutItemRenderContext &context )
 {
   QPainter *painter = context.renderContext().painter();
-  QgsScopedQPainterState painterState( painter );
+  const QgsScopedQPainterState painterState( painter );
   // painter is scaled to dots, so scale back to layout units
   painter->scale( context.renderContext().scaleFactor(), context.renderContext().scaleFactor() );
+
+  const bool prevSmoothTransform = painter->testRenderHint( QPainter::RenderHint::SmoothPixmapTransform );
+  if ( mLayout->renderContext().testFlag( QgsLayoutRenderContext::FlagAntialiasing ) )
+    painter->setRenderHint( QPainter::RenderHint::SmoothPixmapTransform, true );
 
   //picture resizing
   if ( mMode != FormatUnknown )
@@ -113,8 +118,8 @@ void QgsLayoutItemPicture::draw( QgsLayoutItemRenderContext &context )
     {
       boundRectWidthMM = rect().width();
       boundRectHeightMM = rect().height();
-      int imageRectWidthPixels = mImage.width();
-      int imageRectHeightPixels = mImage.height();
+      const int imageRectWidthPixels = mImage.width();
+      const int imageRectHeightPixels = mImage.height();
       imageRect = clippedImageRect( boundRectWidthMM, boundRectHeightMM,
                                     QSize( imageRectWidthPixels, imageRectHeightPixels ) );
     }
@@ -140,8 +145,8 @@ void QgsLayoutItemPicture::draw( QgsLayoutItemRenderContext &context )
       else
       {
         //shift painter to edge/middle of frame depending on placement
-        double diffX = rect().width() - boundRectWidthMM;
-        double diffY = rect().height() - boundRectHeightMM;
+        const double diffX = rect().width() - boundRectWidthMM;
+        const double diffY = rect().height() - boundRectHeightMM;
 
         double dX = 0;
         double dY = 0;
@@ -202,13 +207,13 @@ void QgsLayoutItemPicture::draw( QgsLayoutItemRenderContext &context )
     {
       painter->drawImage( QRectF( 0, 0, boundRectWidthMM, boundRectHeightMM ), mImage, imageRect );
     }
-
   }
+  painter->setRenderHint( QPainter::RenderHint::SmoothPixmapTransform, prevSmoothTransform );
 }
 
 QSizeF QgsLayoutItemPicture::applyItemSizeConstraint( const QSizeF targetSize )
 {
-  QSizeF currentPictureSize = pictureSize();
+  const QSizeF currentPictureSize = pictureSize();
   QSizeF newSize = targetSize;
   if ( mResizeMode == QgsLayoutItemPicture::Clip )
   {
@@ -229,7 +234,7 @@ QSizeF QgsLayoutItemPicture::applyItemSizeConstraint( const QSizeF targetSize )
         //calculate aspect ratio of bounds of rotated image
         QTransform tr;
         tr.rotate( mPictureRotation );
-        QRectF rotatedBounds = tr.mapRect( QRectF( 0, 0, currentPictureSize.width(), currentPictureSize.height() ) );
+        const QRectF rotatedBounds = tr.mapRect( QRectF( 0, 0, currentPictureSize.width(), currentPictureSize.height() ) );
         targetImageSize = QSizeF( rotatedBounds.width(), rotatedBounds.height() );
       }
 
@@ -249,7 +254,7 @@ QSizeF QgsLayoutItemPicture::applyItemSizeConstraint( const QSizeF targetSize )
     {
       if ( !( currentPictureSize.isEmpty() ) )
       {
-        QgsLayoutSize sizeMM = mLayout->convertFromLayoutUnits( currentPictureSize, QgsUnitTypes::LayoutMillimeters );
+        const QgsLayoutSize sizeMM = mLayout->convertFromLayoutUnits( currentPictureSize, QgsUnitTypes::LayoutMillimeters );
         newSize.setWidth( sizeMM.width() * 25.4 / mLayout->renderContext().dpi() );
         newSize.setHeight( sizeMM.height() * 25.4 / mLayout->renderContext().dpi() );
       }
@@ -258,8 +263,8 @@ QSizeF QgsLayoutItemPicture::applyItemSizeConstraint( const QSizeF targetSize )
     //find largest scaling of picture with this rotation which fits in item
     if ( mResizeMode == Zoom || mResizeMode == ZoomResizeFrame )
     {
-      QRectF rotatedImageRect = QgsLayoutUtils::largestRotatedRectWithinBounds( QRectF( 0, 0, currentPictureSize.width(), currentPictureSize.height() ),
-                                QRectF( 0, 0, newSize.width(), newSize.height() ), mPictureRotation );
+      const QRectF rotatedImageRect = QgsLayoutUtils::largestRotatedRectWithinBounds( QRectF( 0, 0, currentPictureSize.width(), currentPictureSize.height() ),
+                                      QRectF( 0, 0, newSize.width(), newSize.height() ), mPictureRotation );
       mPictureWidth = rotatedImageRect.width();
       mPictureHeight = rotatedImageRect.height();
     }
@@ -280,8 +285,8 @@ QSizeF QgsLayoutItemPicture::applyItemSizeConstraint( const QSizeF targetSize )
 
 QRect QgsLayoutItemPicture::clippedImageRect( double &boundRectWidthMM, double &boundRectHeightMM, QSize imageRectPixels )
 {
-  int boundRectWidthPixels = boundRectWidthMM * mLayout->renderContext().dpi() / 25.4;
-  int boundRectHeightPixels = boundRectHeightMM * mLayout->renderContext().dpi() / 25.4;
+  const int boundRectWidthPixels = boundRectWidthMM * mLayout->renderContext().dpi() / 25.4;
+  const int boundRectHeightPixels = boundRectHeightMM * mLayout->renderContext().dpi() / 25.4;
 
   //update boundRectWidth/Height so that they exactly match pixel bounds
   boundRectWidthMM = boundRectWidthPixels * 25.4 / mLayout->renderContext().dpi();
@@ -336,7 +341,7 @@ QRect QgsLayoutItemPicture::clippedImageRect( double &boundRectWidthMM, double &
 
 void QgsLayoutItemPicture::refreshPicture( const QgsExpressionContext *context )
 {
-  QgsExpressionContext scopedContext = createExpressionContext();
+  const QgsExpressionContext scopedContext = createExpressionContext();
   const QgsExpressionContext *evalContext = context ? context : &scopedContext;
 
   mDataDefinedProperties.prepare( *evalContext );
@@ -383,6 +388,22 @@ void QgsLayoutItemPicture::loadRemotePicture( const QString &url )
   if ( reply )
   {
     QImageReader imageReader( reply );
+    imageReader.setAutoTransform( true );
+
+    if ( imageReader.format() == "pdf" )
+    {
+      // special handling for this format -- we need to pass the desired target size onto the image reader
+      // so that it can correctly render the (vector) pdf content at the desired dpi. Otherwise it returns
+      // a very low resolution image (the driver assumes points == pixels!)
+      // For other image formats, we read the original image size only and defer resampling to later in this
+      // function. That gives us more control over the resampling method used.
+
+      // driver assumes points == pixels, so driver image size is reported assuming 72 dpi.
+      const QSize sizeAt72Dpi = imageReader.size();
+      const QSize sizeAtTargetDpi = sizeAt72Dpi * mLayout->renderContext().dpi() / 72;
+      imageReader.setScaledSize( sizeAtTargetDpi );
+    }
+
     mImage = imageReader.read();
     mMode = FormatRaster;
   }
@@ -403,22 +424,24 @@ void QgsLayoutItemPicture::loadLocalPicture( const QString &path )
   }
   else
   {
-    QFileInfo sourceFileInfo( pic );
-    QString sourceFileSuffix = sourceFileInfo.suffix();
+    const QFileInfo sourceFileInfo( pic );
+    const QString sourceFileSuffix = sourceFileInfo.suffix();
     if ( sourceFileSuffix.compare( QLatin1String( "svg" ), Qt::CaseInsensitive ) == 0 )
     {
       //try to open svg
-      QgsExpressionContext context = createExpressionContext();
-      QColor fillColor = mDataDefinedProperties.valueAsColor( QgsLayoutObject::PictureSvgBackgroundColor, context, mSvgFillColor );
-      QColor strokeColor = mDataDefinedProperties.valueAsColor( QgsLayoutObject::PictureSvgStrokeColor, context, mSvgStrokeColor );
-      double strokeWidth = mDataDefinedProperties.valueAsDouble( QgsLayoutObject::PictureSvgStrokeWidth, context, mSvgStrokeWidth );
+      const QgsExpressionContext context = createExpressionContext();
+      const QColor fillColor = mDataDefinedProperties.valueAsColor( QgsLayoutObject::PictureSvgBackgroundColor, context, mSvgFillColor );
+      const QColor strokeColor = mDataDefinedProperties.valueAsColor( QgsLayoutObject::PictureSvgStrokeColor, context, mSvgStrokeColor );
+      const double strokeWidth = mDataDefinedProperties.valueAsDouble( QgsLayoutObject::PictureSvgStrokeWidth, context, mSvgStrokeWidth );
+      const QgsStringMap evaluatedParameters = QgsSymbolLayerUtils::evaluatePropertiesMap( svgDynamicParameters(), context );
+
       const QByteArray &svgContent = QgsApplication::svgCache()->svgContent( path, rect().width(), fillColor, strokeColor, strokeWidth,
-                                     1.0 );
+                                     1.0, 0, false, evaluatedParameters );
       mSVG.load( svgContent );
       if ( mSVG.isValid() )
       {
         mMode = FormatSVG;
-        QRect viewBox = mSVG.viewBox(); //take width/height ratio from view box instead of default size
+        const QRect viewBox = mSVG.viewBox(); //take width/height ratio from view box instead of default size
         mDefaultSvgSize.setWidth( viewBox.width() );
         mDefaultSvgSize.setHeight( viewBox.height() );
       }
@@ -431,6 +454,22 @@ void QgsLayoutItemPicture::loadLocalPicture( const QString &path )
     {
       //try to open raster with QImageReader
       QImageReader imageReader( pic.fileName() );
+      imageReader.setAutoTransform( true );
+
+      if ( imageReader.format() == "pdf" )
+      {
+        // special handling for this format -- we need to pass the desired target size onto the image reader
+        // so that it can correctly render the (vector) pdf content at the desired dpi. Otherwise it returns
+        // a very low resolution image (the driver assumes points == pixels!)
+        // For other image formats, we read the original image size only and defer resampling to later in this
+        // function. That gives us more control over the resampling method used.
+
+        // driver assumes points == pixels, so driver image size is reported assuming 72 dpi.
+        const QSize sizeAt72Dpi = imageReader.size();
+        const QSize sizeAtTargetDpi = sizeAt72Dpi * mLayout->renderContext().dpi() / 72;
+        imageReader.setScaledSize( sizeAtTargetDpi );
+      }
+
       if ( imageReader.read( &mImage ) )
       {
         mMode = FormatRaster;
@@ -460,7 +499,7 @@ void QgsLayoutItemPicture::loadPictureUsingCache( const QString &path )
     {
       bool fitsInCache = false;
       bool isMissing = false;
-      mImage = QgsApplication::imageCache()->pathAsImage( path, QSize(), true, 1, fitsInCache, true, &isMissing );
+      mImage = QgsApplication::imageCache()->pathAsImage( path, QSize(), true, 1, fitsInCache, true, mLayout->renderContext().dpi(), -1, &isMissing );
       if ( mImage.isNull() || isMissing )
         mMode = FormatUnknown;
       break;
@@ -468,18 +507,21 @@ void QgsLayoutItemPicture::loadPictureUsingCache( const QString &path )
 
     case FormatSVG:
     {
-      QgsExpressionContext context = createExpressionContext();
-      QColor fillColor = mDataDefinedProperties.valueAsColor( QgsLayoutObject::PictureSvgBackgroundColor, context, mSvgFillColor );
-      QColor strokeColor = mDataDefinedProperties.valueAsColor( QgsLayoutObject::PictureSvgStrokeColor, context, mSvgStrokeColor );
-      double strokeWidth = mDataDefinedProperties.valueAsDouble( QgsLayoutObject::PictureSvgStrokeWidth, context, mSvgStrokeWidth );
+      const QgsExpressionContext context = createExpressionContext();
+      const QColor fillColor = mDataDefinedProperties.valueAsColor( QgsLayoutObject::PictureSvgBackgroundColor, context, mSvgFillColor );
+      const QColor strokeColor = mDataDefinedProperties.valueAsColor( QgsLayoutObject::PictureSvgStrokeColor, context, mSvgStrokeColor );
+      const double strokeWidth = mDataDefinedProperties.valueAsDouble( QgsLayoutObject::PictureSvgStrokeWidth, context, mSvgStrokeWidth );
+
+      const QgsStringMap evaluatedParameters = QgsSymbolLayerUtils::evaluatePropertiesMap( svgDynamicParameters(), context );
+
       bool isMissingImage = false;
       const QByteArray &svgContent = QgsApplication::svgCache()->svgContent( path, rect().width(), fillColor, strokeColor, strokeWidth,
-                                     1.0, 0, false, &isMissingImage );
+                                     1.0, 0, false, evaluatedParameters, &isMissingImage );
       mSVG.load( svgContent );
       if ( mSVG.isValid() && !isMissingImage )
       {
         mMode = FormatSVG;
-        QRect viewBox = mSVG.viewBox(); //take width/height ratio from view box instead of default size
+        const QRect viewBox = mSVG.viewBox(); //take width/height ratio from view box instead of default size
         mDefaultSvgSize.setWidth( viewBox.width() );
         mDefaultSvgSize.setHeight( viewBox.height() );
       }
@@ -500,13 +542,14 @@ void QgsLayoutItemPicture::updateNorthArrowRotation( double rotation )
 
 void QgsLayoutItemPicture::loadPicture( const QVariant &data )
 {
+  const Format origFormat = mMode;
   mIsMissingImage = false;
   QVariant imageData( data );
   mEvaluatedPath = data.toString();
 
   if ( mEvaluatedPath.startsWith( QLatin1String( "base64:" ), Qt::CaseInsensitive ) && mMode == FormatUnknown )
   {
-    QByteArray base64 = mEvaluatedPath.mid( 7 ).toLocal8Bit(); // strip 'base64:' prefix
+    const QByteArray base64 = mEvaluatedPath.mid( 7 ).toLocal8Bit(); // strip 'base64:' prefix
     imageData = QByteArray::fromBase64( base64, QByteArray::OmitTrailingEquals );
   }
 
@@ -539,18 +582,27 @@ void QgsLayoutItemPicture::loadPicture( const QVariant &data )
   else if ( mHasExpressionError || !mEvaluatedPath.isEmpty() )
   {
     //trying to load an invalid file or bad expression, show cross picture
-    mMode = FormatSVG;
     mIsMissingImage = true;
-    QString badFile( QStringLiteral( ":/images/composer/missing_image.svg" ) );
-    mSVG.load( badFile );
-    if ( mSVG.isValid() )
+    if ( origFormat == FormatRaster )
     {
-      mMode = FormatSVG;
-      QRect viewBox = mSVG.viewBox(); //take width/height ratio from view box instead of default size
-      mDefaultSvgSize.setWidth( viewBox.width() );
-      mDefaultSvgSize.setHeight( viewBox.height() );
-      recalculateSize();
+      const QString badFile( QStringLiteral( ":/images/composer/missing_image.png" ) );
+      QImageReader imageReader( badFile );
+      if ( imageReader.read( &mImage ) )
+        mMode = FormatRaster;
     }
+    else
+    {
+      const QString badFile( QStringLiteral( ":/images/composer/missing_image.svg" ) );
+      mSVG.load( badFile );
+      if ( mSVG.isValid() )
+      {
+        mMode = FormatSVG;
+        const QRect viewBox = mSVG.viewBox(); //take width/height ratio from view box instead of default size
+        mDefaultSvgSize.setWidth( viewBox.width() );
+        mDefaultSvgSize.setHeight( viewBox.height() );
+      }
+    }
+    recalculateSize();
   }
 
   update();
@@ -563,13 +615,13 @@ QRectF QgsLayoutItemPicture::boundedImageRect( double deviceWidth, double device
   if ( mImage.width() / deviceWidth > mImage.height() / deviceHeight )
   {
     imageToDeviceRatio = deviceWidth / mImage.width();
-    double height = imageToDeviceRatio * mImage.height();
+    const double height = imageToDeviceRatio * mImage.height();
     return QRectF( 0, 0, deviceWidth, height );
   }
   else
   {
     imageToDeviceRatio = deviceHeight / mImage.height();
-    double width = imageToDeviceRatio * mImage.width();
+    const double width = imageToDeviceRatio * mImage.width();
     return QRectF( 0, 0, width, deviceHeight );
   }
 }
@@ -580,13 +632,13 @@ QRectF QgsLayoutItemPicture::boundedSVGRect( double deviceWidth, double deviceHe
   if ( deviceWidth / mDefaultSvgSize.width() > deviceHeight / mDefaultSvgSize.height() )
   {
     imageToSvgRatio = deviceHeight / mDefaultSvgSize.height();
-    double width = mDefaultSvgSize.width() * imageToSvgRatio;
+    const double width = mDefaultSvgSize.width() * imageToSvgRatio;
     return QRectF( 0, 0, width, deviceHeight );
   }
   else
   {
     imageToSvgRatio = deviceWidth / mDefaultSvgSize.width();
-    double height = mDefaultSvgSize.height() * imageToSvgRatio;
+    const double height = mDefaultSvgSize.height() * imageToSvgRatio;
     return QRectF( 0, 0, deviceWidth, height );
   }
 }
@@ -617,6 +669,19 @@ QString QgsLayoutItemPicture::evaluatedPath() const
   return mEvaluatedPath;
 }
 
+QMap<QString, QgsProperty> QgsLayoutItemPicture::svgDynamicParameters() const
+{
+  const QVariantMap parameters = mCustomProperties.value( QStringLiteral( "svg-dynamic-parameters" ), QVariantMap() ).toMap();
+  return QgsProperty::variantMapToPropertyMap( parameters );
+}
+
+void QgsLayoutItemPicture::setSvgDynamicParameters( const QMap<QString, QgsProperty> &parameters )
+{
+  const QVariantMap variantMap = QgsProperty::propertyMapToVariantMap( parameters );
+  mCustomProperties.setValue( QStringLiteral( "svg-dynamic-parameters" ), variantMap );
+  refreshPicture();
+}
+
 void QgsLayoutItemPicture::shapeChanged()
 {
   if ( mMode == FormatSVG && !mLoadingSvg )
@@ -629,25 +694,25 @@ void QgsLayoutItemPicture::shapeChanged()
 
 void QgsLayoutItemPicture::setPictureRotation( double rotation )
 {
-  double oldRotation = mPictureRotation;
+  const double oldRotation = mPictureRotation;
   mPictureRotation = rotation;
 
   if ( mResizeMode == Zoom )
   {
     //find largest scaling of picture with this rotation which fits in item
-    QSizeF currentPictureSize = pictureSize();
-    QRectF rotatedImageRect = QgsLayoutUtils::largestRotatedRectWithinBounds( QRectF( 0, 0, currentPictureSize.width(), currentPictureSize.height() ), rect(), mPictureRotation );
+    const QSizeF currentPictureSize = pictureSize();
+    const QRectF rotatedImageRect = QgsLayoutUtils::largestRotatedRectWithinBounds( QRectF( 0, 0, currentPictureSize.width(), currentPictureSize.height() ), rect(), mPictureRotation );
     mPictureWidth = rotatedImageRect.width();
     mPictureHeight = rotatedImageRect.height();
     update();
   }
   else if ( mResizeMode == ZoomResizeFrame )
   {
-    QSizeF currentPictureSize = pictureSize();
-    QRectF oldRect = QRectF( pos().x(), pos().y(), rect().width(), rect().height() );
+    const QSizeF currentPictureSize = pictureSize();
+    const QRectF oldRect = QRectF( pos().x(), pos().y(), rect().width(), rect().height() );
 
     //calculate actual size of image inside frame
-    QRectF rotatedImageRect = QgsLayoutUtils::largestRotatedRectWithinBounds( QRectF( 0, 0, currentPictureSize.width(), currentPictureSize.height() ), rect(), oldRotation );
+    const QRectF rotatedImageRect = QgsLayoutUtils::largestRotatedRectWithinBounds( QRectF( 0, 0, currentPictureSize.width(), currentPictureSize.height() ), rect(), oldRotation );
 
     //rotate image rect by new rotation and get bounding box
     QTransform tr;
@@ -693,7 +758,7 @@ void QgsLayoutItemPicture::refreshDataDefinedProperty( const QgsLayoutObject::Da
        || property == QgsLayoutObject::PictureSvgStrokeColor || property == QgsLayoutObject::PictureSvgStrokeWidth
        || property == QgsLayoutObject::AllProperties )
   {
-    QgsExpressionContext context = createExpressionContext();
+    const QgsExpressionContext context = createExpressionContext();
     refreshPicture( &context );
   }
 
@@ -717,7 +782,7 @@ bool QgsLayoutItemPicture::writePropertiesToElement( QDomElement &elem, QDomDocu
   QString imagePath = mSourcePath;
 
   // convert from absolute path to relative. For SVG we also need to consider system SVG paths
-  QgsPathResolver pathResolver = context.pathResolver();
+  const QgsPathResolver pathResolver = context.pathResolver();
   if ( imagePath.endsWith( QLatin1String( ".svg" ), Qt::CaseInsensitive ) )
     imagePath = QgsSymbolLayerUtils::svgSymbolPathToName( imagePath, pathResolver );
   else
@@ -761,10 +826,10 @@ bool QgsLayoutItemPicture::readPropertiesFromElement( const QDomElement &itemEle
   mSvgStrokeWidth = itemElem.attribute( QStringLiteral( "svgBorderWidth" ), QStringLiteral( "0.2" ) ).toDouble();
   mMode = static_cast< Format >( itemElem.attribute( QStringLiteral( "mode" ), QString::number( FormatUnknown ) ).toInt() );
 
-  QDomNodeList composerItemList = itemElem.elementsByTagName( QStringLiteral( "ComposerItem" ) );
+  const QDomNodeList composerItemList = itemElem.elementsByTagName( QStringLiteral( "ComposerItem" ) );
   if ( !composerItemList.isEmpty() )
   {
-    QDomElement composerItemElem = composerItemList.at( 0 ).toElement();
+    const QDomElement composerItemElem = composerItemList.at( 0 ).toElement();
 
     if ( !qgsDoubleNear( composerItemElem.attribute( QStringLiteral( "rotation" ), QStringLiteral( "0" ) ).toDouble(), 0.0 ) )
     {
@@ -778,8 +843,8 @@ bool QgsLayoutItemPicture::readPropertiesFromElement( const QDomElement &itemEle
   if ( itemElem.hasAttribute( QStringLiteral( "sourceExpression" ) ) )
   {
     //update pre 2.5 picture expression to use data defined expression
-    QString sourceExpression = itemElem.attribute( QStringLiteral( "sourceExpression" ), QString() );
-    QString useExpression = itemElem.attribute( QStringLiteral( "useExpression" ) );
+    const QString sourceExpression = itemElem.attribute( QStringLiteral( "sourceExpression" ), QString() );
+    const QString useExpression = itemElem.attribute( QStringLiteral( "useExpression" ) );
     bool expressionActive;
     expressionActive = ( useExpression.compare( QLatin1String( "true" ), Qt::CaseInsensitive ) == 0 );
 
@@ -789,7 +854,7 @@ bool QgsLayoutItemPicture::readPropertiesFromElement( const QDomElement &itemEle
   QString imagePath = itemElem.attribute( QStringLiteral( "file" ) );
 
   // convert from relative path to absolute. For SVG we also need to consider system SVG paths
-  QgsPathResolver pathResolver = context.pathResolver();
+  const QgsPathResolver pathResolver = context.pathResolver();
   if ( imagePath.endsWith( QLatin1String( ".svg" ), Qt::CaseInsensitive ) )
     imagePath = QgsSymbolLayerUtils::svgSymbolNameToPath( imagePath, pathResolver );
   else

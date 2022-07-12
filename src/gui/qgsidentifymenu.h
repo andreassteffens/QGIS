@@ -20,6 +20,7 @@
 
 #include "qgsmaplayeractionregistry.h"
 #include "qgsmaptoolidentify.h"
+#include "qgsexpressioncontext.h"
 #include "qgis_gui.h"
 #include "qgis_sip.h"
 
@@ -94,6 +95,19 @@ class GUI_EXPORT QgsIdentifyMenu : public QMenu
     explicit QgsIdentifyMenu( QgsMapCanvas *canvas );
 
     ~QgsIdentifyMenu() override;
+
+
+    /**
+     * Searches for features on the map \a canvas, which are located at the specified \a event point.
+     *
+     * The \a geometryTypes argument lists acceptable geometry types.
+     *
+     * This method searches through all layers on the canvas, attempting to find matching features at the event
+     * point.
+     *
+     * \since QGIS 3.26
+    */
+    static QList<QgsMapToolIdentify::IdentifyResult> findFeaturesOnCanvas( QgsMapMouseEvent *event, QgsMapCanvas *canvas, const QList<QgsWkbTypes::GeometryType> &geometryTypes );
 
     //! define if the menu executed can return multiple results (e.g. all results or all identified features of a vector layer)
     void setAllowMultipleReturn( bool multipleReturn ) { mAllowMultipleReturn = multipleReturn;}

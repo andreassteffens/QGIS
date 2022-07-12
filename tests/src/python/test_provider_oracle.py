@@ -15,6 +15,7 @@ import qgis  # NOQA
 import os
 
 from qgis.core import (
+    Qgis,
     QgsSettings,
     QgsVectorLayer,
     QgsFeatureRequest,
@@ -28,7 +29,9 @@ from qgis.core import (
     QgsVectorLayerExporter,
     QgsField,
     QgsFields,
-    QgsCoordinateReferenceSystem
+    QgsCoordinateReferenceSystem,
+    QgsProjUtils,
+    QgsProviderRegistry
 )
 
 from qgis.PyQt.QtCore import QDate, QTime, QDateTime, QVariant
@@ -47,7 +50,7 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        cls.dbconn = "host=localhost/XEPDB1 port=1521 user='QGIS' password='qgis'"
+        cls.dbconn = "host=localhost dbname=XEPDB1 port=1521 user='QGIS' password='qgis'"
         if 'QGIS_ORACLETEST_DB' in os.environ:
             cls.dbconn = os.environ['QGIS_ORACLETEST_DB']
         # Create test layers
@@ -188,6 +191,15 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
         """
         pass
 
+    def testCrs(self):
+        """
+        We override this test for Oracle provider, because without PROJ >= 7
+        Oracle is not able to understand correctly some EPSG code (4326 for instance)
+        """
+        # TODO remove this when PROJ will be >= 7
+        if QgsProjUtils.projVersionMajor() >= 7:
+            super().testCrs()
+
     # HERE GO THE PROVIDER SPECIFIC TESTS
     def testDateTimeTypes(self):
         vl = QgsVectorLayer('%s table="QGIS"."DATE_TIMES" sql=' %
@@ -255,6 +267,74 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
         self.assertEqual(features[5].geometry().asWkt(), 'Point (1 2)')
         self.assertEqual(features[6].geometry().asWkt(), 'Point (3 4)')
         self.assertEqual(features[7].geometry().asWkt(), 'Point (5 6)')
+
+    def testEditPoints(self):
+
+        self.createTable('EDIT_POINTS_DATA', 2, 3857)
+        # We choose SRID=5698 to get Oracle valid geometries because it support 3D
+        self.createTable('EDIT_POINTSZ_DATA', 3, 5698)
+
+        points = QgsVectorLayer(
+            self.dbconn + ' sslmode=disable key=\'pk\' srid=3857 type=Point table="QGIS"."EDIT_POINTS_DATA" (GEOM) sql=',
+            'test_lines', 'oracle')
+        self.assertTrue(points.isValid())
+
+        fid = 1
+        self.check_geom(points, fid, 'Point (1 2)')
+
+        points_z = QgsVectorLayer(
+            self.dbconn + ' sslmode=disable key=\'pk\' srid=3857 type=PointZ table="QGIS"."EDIT_POINTSZ_DATA" (GEOM) sql=',
+            'test_lines', 'oracle')
+        self.assertTrue(points_z.isValid())
+
+        fid += 1
+        self.check_geom(points_z, fid, 'PointZ (1 2 3)')
+
+        multipoints = QgsVectorLayer(
+            self.dbconn + ' sslmode=disable key=\'pk\' srid=3857 type=MultiPoint table="QGIS"."EDIT_POINTS_DATA" (GEOM) sql=',
+            'test_lines', 'oracle')
+        self.assertTrue(multipoints.isValid())
+
+        fid += 1
+        self.check_geom(multipoints, fid, 'MultiPoint ((1 2),(3 4))')
+
+        fid += 1
+        self.check_geom(multipoints, fid, 'MultiPoint ((1 2))')
+
+        multipoints_z = QgsVectorLayer(
+            self.dbconn + ' sslmode=disable key=\'pk\' srid=3857 type=MultiPointZ table="QGIS"."EDIT_POINTSZ_DATA" (GEOM) sql=',
+            'test_lines', 'oracle')
+        self.assertTrue(multipoints_z.isValid())
+
+        fid += 1
+        self.check_geom(multipoints_z, fid, 'MultiPointZ ((1 2 7),(3 4 8))')
+
+    def testLayerStyles(self):
+        # Table without geometry column
+        vl_no_geom = QgsVectorLayer(
+            self.dbconn + ' sslmode=disable key=\'id\' table="QGIS"."DATE_TIMES" sql=', 'test', 'oracle')
+
+        # Save layer styles
+        self.assertEqual(self.vl.saveStyleToDatabase("mystyle", "the best", True, "something.ui"), "")
+        self.assertEqual(vl_no_geom.saveStyleToDatabase("my_other_style", "the very best", True, "else.ui"), "")
+
+        # Verify presence of styles in database
+        res, err = QgsProviderRegistry.instance().styleExists('oracle', self.vl.source(), 'mystyle')
+        self.assertTrue(res)
+        self.assertFalse(err)
+        res, err = QgsProviderRegistry.instance().styleExists('oracle', vl_no_geom.source(), 'my_other_style')
+        self.assertTrue(res)
+        self.assertFalse(err)
+
+        # Verify listing and loading of styles
+        self.assertEqual(self.vl.listStylesInDatabase(), (1, ['0', '1'], ['mystyle', 'my_other_style'], ['the best', 'the very best'], ''))
+        _, res = self.vl.loadNamedStyle(self.vl.source())
+        self.assertTrue(res)
+        self.assertEqual(vl_no_geom.listStylesInDatabase(), (1, ['1', '0'], ['my_other_style', 'mystyle'], ['the very best', 'the best'], ''))
+        _, res = vl_no_geom.loadNamedStyle(vl_no_geom.source())
+        self.assertTrue(res)
+
+        self.execSQLCommand('DROP TABLE "QGIS"."LAYER_STYLES"')
 
     def testCurves(self):
         vl = QgsVectorLayer('%s table="QGIS"."LINE_DATA" (GEOM) srid=4326 type=LINESTRING sql=' %
@@ -327,9 +407,14 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
             'test_lines', 'oracle')
         self.assertTrue(lines.isValid())
 
-        self.check_geom(lines, 1, 'LineString (1 2, 3 4, 5 6)')
-        self.check_geom(lines, 2, 'CircularString (1 2, 5 4, 7 2.2, 10 0.1, 13 4)')
-        self.check_geom(lines, 3, 'CompoundCurve ((-1 -5, 1 2),CircularString (1 2, 5 4, 7 2.20, 10 0.1, 13 4),(13 4, 17 -6))')
+        fid = 1
+        self.check_geom(lines, fid, 'LineString (1 2, 3 4, 5 6)')
+
+        fid += 1
+        self.check_geom(lines, fid, 'CircularString (1 2, 5 4, 7 2.2, 10 0.1, 13 4)')
+
+        fid += 1
+        self.check_geom(lines, fid, 'CompoundCurve ((-1 -5, 1 2),CircularString (1 2, 5 4, 7 2.20, 10 0.1, 13 4),(13 4, 17 -6))')
 
         # We choose SRID=5698 (see https://docs.oracle.com/database/121/SPATL/three-dimensional-coordinate-reference-system-support.htm#SPATL626)
         # to get Oracle valid geometries because it support 3D and arcs (arcs are not supported in geodetic projection)
@@ -338,28 +423,45 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
             'test_lines', 'oracle')
         self.assertTrue(lines_z.isValid())
 
-        self.check_geom(lines_z, 4, 'LineStringZ (1 2 3, 4 5 6, 7 8 9)')
+        fid += 1
+        self.check_geom(lines_z, fid, 'LineStringZ (1 2 3, 4 5 6, 7 8 9)')
         # 3D arcs and compound curve are invalid
         # https://support.oracle.com/knowledge/Oracle%20Database%20Products/1446335_1.html
         # https://support.oracle.com/knowledge/Oracle%20Database%20Products/1641672_1.html
-        self.check_geom(lines_z, 5, 'CircularStringZ (1 2 1, 5 4 2, 7 2.2 3, 10 0.1 4, 13 4 5)', check_valid=False)
-        self.check_geom(lines_z, 6, 'CompoundCurveZ ((-1 -5 1, 1 2 2),CircularStringZ (1 2 2, 5 4 3, 7 2.20 4, 10 0.1 5, 13 4 6),(13 4 6, 17 -6 7))', check_valid=False)
+
+        fid += 1
+        self.check_geom(lines_z, fid, 'CircularStringZ (1 2 1, 5 4 2, 7 2.2 3, 10 0.1 4, 13 4 5)', check_valid=False)
+
+        fid += 1
+        self.check_geom(lines_z, fid, 'CompoundCurveZ ((-1 -5 1, 1 2 2),CircularStringZ (1 2 2, 5 4 3, 7 2.20 4, 10 0.1 5, 13 4 6),(13 4 6, 17 -6 7))', check_valid=False)
 
         multi_lines = QgsVectorLayer(
             self.dbconn + ' sslmode=disable key=\'pk\' srid=3857 type=MultiLineString table="QGIS"."EDIT_CURVE_DATA" (GEOM) sql=',
             'test_multilines', 'oracle')
         self.assertTrue(multi_lines.isValid())
 
-        self.check_geom(multi_lines, 7, 'MultiLineString ((1 2, 3 4),(5 6, 7 8, 9 10), (11 12, 13 14))')
-        self.check_geom(multi_lines, 8, 'MultiLineString ((1 2, 3 4),(5 6, 7 8, 9 10))')
+        fid += 1
+        self.check_geom(multi_lines, fid, 'MultiLineString ((1 2, 3 4),(5 6, 7 8, 9 10), (11 12, 13 14))')
+
+        fid += 1
+        self.check_geom(multi_lines, fid, 'MultiLineString ((1 2, 3 4),(5 6, 7 8, 9 10))')
+
+        fid += 1
+        self.check_geom(multi_lines, fid, 'MultiLineString ((1 2, 3 4))')
 
         multi_lines_z = QgsVectorLayer(
             self.dbconn + ' sslmode=disable key=\'pk\' srid=5698 type=MultiLineStringZ table="QGIS"."EDIT_CURVEZ_DATA" (GEOM) sql=',
             'test_multilines', 'oracle')
         self.assertTrue(multi_lines_z.isValid())
 
-        self.check_geom(multi_lines_z, 9, 'MultiLineStringZ ((1 2 11, 3 4 -11),(5 6 9, 7 8 1, 9 10 -3))')
-        self.check_geom(multi_lines_z, 10, 'MultiLineStringZ ((1 2 1, 3 4 2),(5 6 3, 7 8 4, 9 10 5), (11 12 6, 13 14 7))')
+        fid += 1
+        self.check_geom(multi_lines_z, fid, 'MultiLineStringZ ((1 2 11, 3 4 -11),(5 6 9, 7 8 1, 9 10 -3))')
+
+        fid += 1
+        self.check_geom(multi_lines_z, fid, 'MultiLineStringZ ((1 2 1, 3 4 2),(5 6 3, 7 8 4, 9 10 5), (11 12 6, 13 14 7))')
+
+        fid += 1
+        self.check_geom(multi_lines_z, fid, 'MultiLineStringZ ((1 2 1, 3 4 2))')
 
         multi_curves = QgsVectorLayer(
             self.dbconn + ' sslmode=disable key=\'pk\' srid=3857 type=MultiCurve table="QGIS"."EDIT_CURVE_DATA" (GEOM) sql=',
@@ -370,7 +472,7 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
         # if SDO_ETYPE = 4, n must be greater than 1 : https://docs.oracle.com/database/121/SPATL/sdo_geometry-object-type.htm#GUID-270AE39D-7B83-46D0-9DD6-E5D99C045021__BGHDGCCE
         # So, this two different WKTs inputs generate the same data in Oracle database, and so the same WKT
         # output representation (with CompoundCurve() around each MultiCurve parts)
-        fid = 11
+        fid += 1
         self.check_geom(multi_curves, fid,
                         'MultiCurve (CompoundCurve ((-1 -5, 1 2),CircularString (1 2, 5 4, 7 2.2, 10 0.1, 13 4),(13 4, 17 -6)),CircularString (1 3, 5 5, 7 3.2, 10 1.1, 13 5),LineString (-11 -3, 5 7, 10 -1))')
         fid += 1
@@ -380,7 +482,10 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
         fid += 1
         self.check_geom(multi_curves, fid,
                         'MultiCurve (CompoundCurve ((-1 -5, 1 2),(1 2, 17 -6)),CircularString (1 2, 5 4, 7 2.2, 10 0.1, 13 4))')
+
         fid += 1
+        self.check_geom(multi_curves, fid,
+                        'MultiCurve (CompoundCurve ((-1 -5, 1 2),(1 2, 17 -6)))')
 
         multi_curves_z = QgsVectorLayer(
             self.dbconn + ' sslmode=disable key=\'pk\' srid=5698 type=MultiCurveZ table="QGIS"."EDIT_CURVEZ_DATA" (GEOM) sql=',
@@ -388,6 +493,7 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
         self.assertTrue(multi_curves_z.isValid())
 
         # ora-54530 : 3D compound lines are invalid since 11.2.0.3 : https://support.oracle.com/knowledge/Oracle%20Database%20Products/1446335_1.html
+        fid += 1
         self.check_geom(multi_curves_z, fid,
                         'MultiCurveZ (CompoundCurveZ ((-1 -5 3, 1 2 4),CircularStringZ (1 2 4, 5 4 5, 7 2.2 6, 10 0.1 7, 13 4 8),(13 4 8, 17 -6 9)), CircularStringZ (1 3 2, 5 5 3, 7 3.2 4, 10 1.1 5, 13 5 6),LineStringZ (-11 -3 1, 5 7 2, 10 -1 3))',
                         check_valid=False)
@@ -396,7 +502,11 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
                         'MultiCurveZ (CompoundCurveZ ((-1 -5 3, 1 2 4),CircularStringZ (1 2 4, 5 4 5, 7 2.2 6, 10 0.1 7, 13 4 8),(13 4 8, 17 -6 9)),CompoundCurveZ (CircularStringZ (1 3 2, 5 5 3, 7 3.2 4, 10 1.1 5, 13 5 6)),(-11 -3 1, 5 7 2, 10 -1 3))',
                         'MultiCurveZ (CompoundCurveZ ((-1 -5 3, 1 2 4),CircularStringZ (1 2 4, 5 4 5, 7 2.2 6, 10 0.1 7, 13 4 8),(13 4 8, 17 -6 9)), CircularStringZ (1 3 2, 5 5 3, 7 3.2 4, 10 1.1 5, 13 5 6),LineStringZ (-11 -3 1, 5 7 2, 10 -1 3))',
                         check_valid=False)
+
         fid += 1
+        self.check_geom(multi_curves_z, fid,
+                        'MultiCurveZ (CompoundCurveZ ((-1 -5 3, 1 2 4),(1 2 4, 17 -6 8)))',
+                        check_valid=False)
 
     def testSurfaces(self):
         vl = QgsVectorLayer('%s table="QGIS"."POLY_DATA" (GEOM) srid=4326 type=POLYGON sql=' %
@@ -582,6 +692,38 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
         self.check_geom(multi_surface_z, fid, 'MultiSurfaceZ (CurvePolygonZ(CompoundCurveZ (CircularStringZ (-1 -5 1, 5 -7 2, 17 -6 3), (17 -6 3, -1 -5 1))), CurvePolygonZ (CircularStringZ (1 3 1, 7 3 2, 4 7 3, 3 5 4, 1 3 1)))', check_valid=False)
         fid += 1
 
+    def testFeatureCount(self):
+        self.execSQLCommand('CREATE OR REPLACE VIEW QGIS.VIEW_POLY_DATA AS SELECT * FROM QGIS.POLY_DATA')
+        self.execSQLCommand("BEGIN DBMS_STATS.GATHER_TABLE_STATS('QGIS', 'SOME_DATA'); END;")
+
+        view_layer = QgsVectorLayer(self.dbconn + ' sslmode=disable table="QGIS"."VIEW_POLY_DATA" key=\'pk\'',
+                                    'test', 'oracle')
+        self.assertTrue(view_layer.isValid())
+        self.assertGreater(view_layer.featureCount(), 0)
+        self.assertTrue(view_layer.setSubsetString('"pk" = 5'))
+        self.assertGreaterEqual(view_layer.featureCount(), 0)
+
+        view_layer_estimated = QgsVectorLayer(self.dbconn + ' sslmode=disable estimatedmetadata=true table="QGIS"."VIEW_POLY_DATA" key=\'pk\'',
+                                              'test', 'oracle')
+        self.assertTrue(view_layer_estimated.isValid())
+        self.assertGreater(view_layer_estimated.featureCount(), 0)
+        self.assertTrue(view_layer_estimated.setSubsetString('"pk" = 5'))
+        self.assertGreaterEqual(view_layer_estimated.featureCount(), 0)
+
+        self.assertGreater(self.vl.featureCount(), 0)
+        self.assertTrue(self.vl.setSubsetString('"pk" = 3'))
+        self.assertGreaterEqual(self.vl.featureCount(), 1)
+        self.assertTrue(self.vl.setSubsetString(''))
+
+        vl_estimated = QgsVectorLayer(self.dbconn + ' sslmode=disable estimatedmetadata=true table="QGIS"."SOME_DATA"',
+                                      'test', 'oracle')
+        self.assertTrue(vl_estimated.isValid())
+        self.assertGreater(vl_estimated.featureCount(), 0)
+        self.assertTrue(vl_estimated.setSubsetString('"pk" = 3'))
+        self.assertGreaterEqual(vl_estimated.featureCount(), 1)
+
+        self.execSQLCommand('DROP VIEW QGIS.VIEW_POLY_DATA')
+
     def testNestedInsert(self):
         tg = QgsTransactionGroup()
         tg.addLayer(self.vl)
@@ -612,7 +754,7 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
 
         # prepare a project with transactions enabled
         p = QgsProject()
-        p.setAutoTransaction(True)
+        p.setTransactionMode(Qgis.TransactionMode.AutomaticGroups)
         p.addMapLayers([vl])
         vl.startEditing()
 
@@ -636,7 +778,7 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
 
         # prepare a project with transactions enabled
         p = QgsProject()
-        p.setAutoTransaction(True)
+        p.setTransactionMode(Qgis.TransactionMode.AutomaticGroups)
         p.addMapLayers([vl])
         vl.startEditing()
 
@@ -687,7 +829,7 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
 
         # prepare a project with transactions enabled
         p = QgsProject()
-        p.setAutoTransaction(True)
+        p.setTransactionMode(Qgis.TransactionMode.AutomaticGroups)
         p.addMapLayers([vl])
         vl.startEditing()
 
@@ -830,7 +972,7 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
         self.execSQLCommand("DELETE FROM user_sdo_geom_metadata  where TABLE_NAME='EMPTY_LAYER'", ignore_errors=True)
 
         uri = self.dbconn + "srid=4326 type=POINT table=\"EMPTY_LAYER\" (GEOM)"
-        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=QgsFields(), geometryType=QgsWkbTypes.Point, crs=QgsCoordinateReferenceSystem(4326), overwrite=True)
+        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=QgsFields(), geometryType=QgsWkbTypes.Point, crs=QgsCoordinateReferenceSystem('EPSG:4326'), overwrite=True)
         self.assertEqual(exporter.errorCount(), 0)
         self.assertEqual(exporter.errorCode(), 0)
 
@@ -842,7 +984,10 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
         self.assertTrue(query.exec_("SELECT column_name, srid FROM user_sdo_geom_metadata WHERE table_name = 'EMPTY_LAYER'"))
         self.assertTrue(query.next())
         self.assertEqual(query.value(0), "GEOM")
-        self.assertEqual(query.value(1), 4326)
+        # Cannot work with proj version < 7 because it cannot identify properly EPSG:4326
+        # TODO remove this when PROJ will be >= 7
+        if QgsProjUtils.projVersionMajor() >= 7:
+            self.assertEqual(query.value(1), 4326)
         query.finish()
 
         # no feature, so we cannot guess the geometry type, so the layer is not valid
@@ -864,13 +1009,19 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
         query = QSqlQuery(self.conn)
         self.assertTrue(query.exec_('SELECT "l"."GEOM"."SDO_SRID" from "QGIS"."EMPTY_LAYER" "l"'))
         self.assertTrue(query.next())
-        self.assertEqual(query.value(0), 4326)
+        # Cannot work with proj version < 7 because it cannot identify properly EPSG:4326
+        # TODO remove this when PROJ will be >= 7
+        if QgsProjUtils.projVersionMajor() >= 7:
+            self.assertEqual(query.value(0), 4326)
         query.finish()
 
         # now we can autodetect geom type and srid
         vl = QgsVectorLayer(self.dbconn + ' sslmode=disable table="QGIS"."EMPTY_LAYER" (GEOM) sql=', 'test', 'oracle')
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.sourceCrs().authid(), "EPSG:4326")
+        # Cannot work with proj version < 7 because it cannot identify properly EPSG:4326
+        # TODO remove this when PROJ will be >= 7
+        if QgsProjUtils.projVersionMajor() >= 7:
+            self.assertEqual(vl.sourceCrs().authid(), "EPSG:4326")
 
     def testCreateAspatialLayer(self):
         """

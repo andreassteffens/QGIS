@@ -19,6 +19,7 @@
 #include <QFile>
 #include <QDir>
 #include <QNetworkCacheMetaData>
+#include <QRegularExpression>
 
 #include "qgssettings.h"
 #include "qgscoordinatetransform.h"
@@ -29,6 +30,7 @@
 #include "qgsunittypes.h"
 #include "qgsexception.h"
 #include "qgsapplication.h"
+#include "qgstemporalutils.h"
 
 // %%% copied from qgswmsprovider.cpp
 static QString DEFAULT_LATLON_CRS = QStringLiteral( "CRS:84" );
@@ -50,8 +52,13 @@ bool QgsWmsSettings::parseUri( const QString &uriString )
     mAuth.mAuthCfg = uri.authConfigId();
   }
 
-  mAuth.mReferer = uri.param( QStringLiteral( "referer" ) );
+  mAuth.mHttpHeaders = uri.httpHeaders();
   mXyz = false;  // assume WMS / WMTS
+
+  if ( uri.hasParam( QStringLiteral( "interpretation" ) ) )
+  {
+    mInterpretation = uri.param( QStringLiteral( "interpretation" ) );
+  }
 
   if ( uri.param( QStringLiteral( "type" ) ) == QLatin1String( "xyz" ) ||
        uri.param( QStringLiteral( "type" ) ) == QLatin1String( "mbtiles" ) )
@@ -67,7 +74,7 @@ bool QgsWmsSettings::parseUri( const QString &uriString )
     mBaseUrl = mHttpUri;
     mIgnoreGetMapUrl = false;
     mIgnoreGetFeatureInfoUrl = false;
-    mSmoothPixmapTransform = true;
+    mSmoothPixmapTransform = mInterpretation.isEmpty();
     mDpiMode = DpiNone; // does not matter what we set here
     mActiveSubLayers = QStringList( QStringLiteral( "xyz" ) );  // just a placeholder to have one sub-layer
     mActiveSubStyles = QStringList( QStringLiteral( "xyz" ) );  // just a placeholder to have one sub-style
@@ -99,7 +106,42 @@ bool QgsWmsSettings::parseUri( const QString &uriString )
     else
       mFixedRange = QgsDateTimeRange();
 
-    if ( uri.param( QStringLiteral( "referenceTimeDimensionExtent" ) ) != QString() )
+    mAllRanges.clear();
+    mAllRanges.reserve( mTimeDimensionExtent.datesResolutionList.size() );
+    for ( const QgsWmstExtentPair &extent : std::as_const( mTimeDimensionExtent.datesResolutionList ) )
+    {
+      if ( extent.dates.dateTimes.empty() )
+        continue;
+
+      const QDateTime begin = extent.dates.dateTimes.first();
+      const QDateTime end = extent.dates.dateTimes.last();
+
+      if ( !extent.resolution.isNull() )
+      {
+        bool maxValuesExceeded = false;
+        const QList< QDateTime > dates = QgsTemporalUtils::calculateDateTimesUsingDuration( begin, end, extent.resolution, maxValuesExceeded, 1000 );
+        // if we have a manageable number of distinct dates, then we'll use those. If not we just use the overall range.
+        // (some servers eg may have data for every minute for decades!)
+        if ( !maxValuesExceeded )
+        {
+          for ( const QDateTime &dt : dates )
+            mAllRanges.append( QgsDateTimeRange( dt, dt ) );
+        }
+        else
+        {
+          mAllRanges.append( QgsDateTimeRange( begin, end ) );
+        }
+
+        mDefaultInterval = extent.resolution.toInterval();
+      }
+      else
+      {
+        mAllRanges.append( QgsDateTimeRange( begin, end ) );
+        mDefaultInterval = QgsInterval( 1, QgsUnitTypes::TemporalIrregularStep );
+      }
+    }
+
+    if ( !uri.param( QStringLiteral( "referenceTimeDimensionExtent" ) ).isEmpty() )
     {
       QString referenceExtent = uri.param( QStringLiteral( "referenceTimeDimensionExtent" ) );
 
@@ -143,15 +185,14 @@ bool QgsWmsSettings::parseUri( const QString &uriString )
   if ( uri.hasParam( QStringLiteral( "opacities" ) ) )
   {
     mOpacities.clear();
-    QStringList opacities = uri.params( QStringLiteral( "opacities" ) );
-    QStringList::const_iterator oIt = opacities.constBegin();
-    for ( ; oIt != opacities.constEnd(); ++oIt )
+    const QStringList opacities = uri.params( QStringLiteral( "opacities" ) );
+    for ( const QString &opacity : opacities )
     {
       bool ok = false;
-      oIt->toInt( &ok );
+      ( void )opacity.toInt( &ok );
       if ( ok )
       {
-        mOpacities.append( *oIt );
+        mOpacities.append( opacity );
       }
       else
       {
@@ -236,7 +277,7 @@ QgsWmstDimensionExtent QgsWmsSettings::parseTemporalExtent( const QString &exten
     {
       const QStringList itemParts = item.split( '/' );
 
-      QgsWmstResolution itemResolution;
+      QgsTimeDuration itemResolution;
       QgsWmstDates itemDatesList;
 
       for ( const QString &itemPart : itemParts )
@@ -257,7 +298,7 @@ QgsWmstDimensionExtent QgsWmsSettings::parseTemporalExtent( const QString &exten
     }
     else
     {
-      QgsWmstResolution resolution;
+      QgsTimeDuration resolution;
       QgsWmstDates datesList;
       if ( item.startsWith( 'P' ) )
       {
@@ -283,26 +324,6 @@ void QgsWmsSettings::setTimeDimensionExtent( const QgsWmstDimensionExtent &timeD
 QgsWmstDimensionExtent QgsWmsSettings::timeDimensionExtent() const
 {
   return mTimeDimensionExtent;
-}
-
-QDateTime QgsWmsSettings::addTime( const QDateTime &dateTime, const QgsWmstResolution &resolution )
-{
-  QDateTime resultDateTime = QDateTime( dateTime );
-
-  if ( resolution.year != -1 )
-    resultDateTime = resultDateTime.addYears( resolution.year );
-  if ( resolution.month != -1 )
-    resultDateTime = resultDateTime.addMonths( resolution.month );
-  if ( resolution.day != -1 )
-    resultDateTime = resultDateTime.addDays( resolution.day );
-  if ( resolution.hour != -1 )
-    resultDateTime = resultDateTime.addSecs( resolution.hour * 60 * 60 );
-  if ( resolution.minutes != -1 )
-    resultDateTime = resultDateTime.addSecs( resolution.minutes * 60 );
-  if ( resolution.seconds != -1 )
-    resultDateTime = resultDateTime.addSecs( resolution.seconds );
-
-  return resultDateTime;
 }
 
 QDateTime QgsWmsSettings::findLeastClosestDateTime( const QDateTime &dateTime, bool dateOnly ) const
@@ -343,7 +364,7 @@ QDateTime QgsWmsSettings::findLeastClosestDateTime( const QDateTime &dateTime, b
       if ( seconds == endSeconds )
         break;
 
-      long long resolutionSeconds = pair.resolution.interval();
+      long long resolutionSeconds = pair.resolution.toSeconds();
 
       if ( resolutionSeconds <= 0 )
         continue;
@@ -357,84 +378,10 @@ QDateTime QgsWmsSettings::findLeastClosestDateTime( const QDateTime &dateTime, b
   return closest;
 }
 
-QgsWmstResolution QgsWmsSettings::parseWmstResolution( const QString &itemText )
+QgsTimeDuration QgsWmsSettings::parseWmstResolution( const QString &itemText )
 {
-  QString item = itemText;
-  QgsWmstResolution resolution;
-  bool found = false;
-
-  for ( char datesSymbol : { 'Y', 'M', 'D' } )
-  {
-    QString number = item.left( item.indexOf( datesSymbol ) );
-    int resolutionValue = number.remove( 'P' ).toInt();
-
-    if ( datesSymbol  == 'Y' && item.contains( 'Y' ) )
-    {
-      resolution.year = resolutionValue;
-      found = true;
-    }
-    if ( datesSymbol  == 'M' && item.contains( 'M' ) )
-    {
-      // Symbol M is used to both represent either month or minutes
-      // The check below is for determining whether it means month or minutes
-      if ( item.contains( 'T' ) &&
-           item.indexOf( 'T' ) < item.indexOf( 'M' ) )
-        continue;
-      resolution.month = resolutionValue;
-      found = true;
-    }
-    if ( datesSymbol  == 'D' && item.contains( 'D' ) )
-    {
-      resolution.day = resolutionValue;
-      found = true;
-    }
-
-    if ( found )
-    {
-      int symbolIndex = item.indexOf( datesSymbol );
-      item.remove( symbolIndex, 1 );
-      item.remove( symbolIndex - number.length(),
-                   number.length() );
-      found = false;
-    }
-  }
-  if ( !item.contains( 'T' ) )
-    return resolution;
-  else
-    item.remove( 'T' );
-
-  bool foundTime = false;
-
-  for ( char timeSymbol : { 'H', 'M', 'S' } )
-  {
-    QString number = item.left( item.indexOf( timeSymbol ) );
-    int resolutionValue = number.remove( 'P' ).toInt();
-
-    if ( timeSymbol == 'H' && item.contains( 'H' ) )
-    {
-      resolution.hour = resolutionValue;
-      foundTime = true;
-    }
-    if ( timeSymbol == 'M' && item.contains( 'M' ) )
-    {
-      resolution.minutes = resolutionValue;
-      foundTime = true;
-    }
-    if ( timeSymbol == 'S' && item.contains( 'S' ) )
-    {
-      resolution.seconds = resolutionValue;
-      foundTime = true;
-    }
-
-    if ( foundTime )
-    {
-      int symbolIndex = item.indexOf( timeSymbol );
-      item.remove( symbolIndex, 1 );
-      item.remove( symbolIndex - number.length(),
-                   number.length() );
-      foundTime = false;
-    }
-  }
+  bool ok = false;
+  QgsTimeDuration resolution = QgsTimeDuration::fromString( itemText, ok );
   return resolution;
 }
 
@@ -507,7 +454,7 @@ bool QgsWmsCapabilities::parseResponse( const QByteArray &response, QgsWmsParser
   }
 
   // get identify formats
-  for ( const QString &f : qgis::as_const( mCapabilities.capability.request.getFeatureInfo.format ) )
+  for ( const QString &f : std::as_const( mCapabilities.capability.request.getFeatureInfo.format ) )
   {
     // Don't use mSupportedGetFeatureFormats, there are too many possibilities
     QgsDebugMsgLevel( "supported format = " + f, 2 );
@@ -527,6 +474,8 @@ bool QgsWmsCapabilities::parseResponse( const QByteArray &response, QgsWmsParser
     else if ( f == QLatin1String( "application/vnd.ogc.gml" ) )
       format = QgsRaster::IdentifyFormatFeature;
     else if ( f == QLatin1String( "application/json" ) )
+      format = QgsRaster::IdentifyFormatFeature;
+    else if ( f == QLatin1String( "application/geojson" ) )
       format = QgsRaster::IdentifyFormatFeature;
     else if ( f.contains( QLatin1String( "gml" ), Qt::CaseInsensitive ) )
       format = QgsRaster::IdentifyFormatFeature;
@@ -624,16 +573,17 @@ bool QgsWmsCapabilities::parseCapabilitiesDom( const QByteArray &xml, QgsWmsCapa
         QgsDebugMsgLevel( QStringLiteral( "  Contents." ), 2 );
         parseWMTSContents( element );
       }
-	  else if ( element.tagName() == QLatin1String( "ServiceMetadataURL" ))
-	  {
-		  capabilitiesProperty.wmtsServiceMetadataUrl = QUrl::fromEncoded(element.attribute(QStringLiteral("xlink:href")).toUtf8()).toString();
-	  }
+      else if ( element.tagName() == QLatin1String( "ServiceMetadataURL" ))
+      {
+        capabilitiesProperty.wmtsServiceMetadataUrl = QUrl::fromEncoded(element.attribute(QStringLiteral("xlink:href")).toUtf8()).toString();
+      }
     }
     node = node.nextSibling();
   }
 
   return true;
 }
+
 
 void QgsWmsCapabilities::parseService( const QDomElement &element, QgsWmsServiceProperty &serviceProperty )
 {
@@ -964,7 +914,7 @@ void QgsWmsCapabilities::parseCapability( const QDomElement &element, QgsWmsCapa
     QHash<QString, QString> abstracts;
 
     // Build layer identifier - title|abstract mapping
-    for ( const QgsWmsLayerProperty &layer : qgis::as_const( mLayersSupported ) )
+    for ( const QgsWmsLayerProperty &layer : std::as_const( mLayersSupported ) )
     {
       if ( !layer.name.isEmpty() )
       {
@@ -1225,7 +1175,7 @@ void QgsWmsCapabilities::parseLayer( const QDomElement &element, QgsWmsLayerProp
       {
         // CRS can contain several definitions separated by whitespace
         // though this was deprecated in WMS 1.1.1
-        const QStringList crsList = nodeElement.text().split( QRegExp( "\\s+" ) );
+        const QStringList crsList = nodeElement.text().split( QRegularExpression( "\\s+" ) );
         for ( const QString &srs : crsList )
         {
           if ( !layerProperty.crs.contains( srs ) )
@@ -1250,6 +1200,7 @@ void QgsWmsCapabilities::parseLayer( const QDomElement &element, QgsWmsLayerProp
             QgsCoordinateReferenceSystem src = QgsCoordinateReferenceSystem::fromOgcWmsCrs( nodeElement.attribute( QStringLiteral( "SRS" ) ) );
             QgsCoordinateReferenceSystem dst = QgsCoordinateReferenceSystem::fromOgcWmsCrs( DEFAULT_LATLON_CRS );
             QgsCoordinateTransform ct( src, dst, mCoordinateTransformContext );
+            ct.setBallparkTransformsAreAppropriate( true );
             layerProperty.ex_GeographicBoundingBox = ct.transformBoundingBox( layerProperty.ex_GeographicBoundingBox );
           }
           catch ( QgsCsException &cse )
@@ -1604,6 +1555,10 @@ void QgsWmsCapabilities::parseTileSetProfile( const QDomElement &element )
   QgsWmtsTileMatrix tileMatrix;
   QgsWmtsTileLayer tileLayer;
 
+  // don't allow duplicate format/style/ strings
+  QSet< QString > uniqueFormats;
+  QSet< QString > uniqueStyles;
+
   tileLayer.tileMode = WMSC;
 
   QDomNode node = element.firstChild();
@@ -1623,7 +1578,12 @@ void QgsWmsCapabilities::parseTileSetProfile( const QDomElement &element )
       }
       else if ( tagName == QLatin1String( "Styles" ) )
       {
-        styles << nodeElement.text();
+        const QString style = nodeElement.text();
+        if ( !uniqueStyles.contains( style ) )
+        {
+          styles << style;
+          uniqueStyles.insert( style );
+        }
       }
       else if ( tagName == QLatin1String( "Width" ) )
       {
@@ -1639,7 +1599,12 @@ void QgsWmsCapabilities::parseTileSetProfile( const QDomElement &element )
       }
       else if ( tagName == QLatin1String( "Format" ) )
       {
-        tileLayer.formats << nodeElement.text();
+        const QString format = nodeElement.text();
+        if ( !uniqueFormats.contains( format ) )
+        {
+          tileLayer.formats << format;
+          uniqueFormats.insert( format );
+        }
       }
       else if ( tagName == QLatin1String( "BoundingBox" ) )
       {
@@ -1704,8 +1669,7 @@ void QgsWmsCapabilities::parseTileSetProfile( const QDomElement &element )
   mTileLayersSupported.append( tileLayer );
 
   int i = 0;
-  const auto constResolutions = resolutions;
-  for ( const QString &rS : constResolutions )
+  for ( const QString &rS : std::as_const( resolutions ) )
   {
     double r = rS.toDouble();
     tileMatrix.identifier = QString::number( i );
@@ -1955,9 +1919,17 @@ void QgsWmsCapabilities::parseWMTSContents( const QDomElement &element )
       tileLayer.styles.insert( style.identifier, style );
     }
 
-    for ( QDomElement secondChildElement = childElement.firstChildElement( QStringLiteral( "Format" ) ); !secondChildElement.isNull(); secondChildElement = secondChildElement.nextSiblingElement( QStringLiteral( "Format" ) ) )
     {
-      tileLayer.formats << secondChildElement.text();
+      QSet< QString > uniqueFormats;
+      for ( QDomElement secondChildElement = childElement.firstChildElement( QStringLiteral( "Format" ) ); !secondChildElement.isNull(); secondChildElement = secondChildElement.nextSiblingElement( QStringLiteral( "Format" ) ) )
+      {
+        const QString format = secondChildElement.text();
+        if ( !uniqueFormats.contains( format ) )
+        {
+          tileLayer.formats << format;
+          uniqueFormats.insert( format );
+        }
+      }
     }
 
     for ( QDomElement secondChildElement = childElement.firstChildElement( QStringLiteral( "InfoFormat" ) ); !secondChildElement.isNull(); secondChildElement = secondChildElement.nextSiblingElement( QStringLiteral( "InfoFormat" ) ) )
@@ -1983,6 +1955,8 @@ void QgsWmsCapabilities::parseWMTSContents( const QDomElement &element )
       else  if ( format.contains( QLatin1String( "gml" ), Qt::CaseInsensitive ) )
         fmt = QgsRaster::IdentifyFormatFeature;
       else if ( format == QLatin1String( "application/json" ) )
+        fmt = QgsRaster::IdentifyFormatFeature;
+      else if ( format == QLatin1String( "application/geojson" ) )
         fmt = QgsRaster::IdentifyFormatFeature;
       else
       {
@@ -2135,6 +2109,8 @@ void QgsWmsCapabilities::parseWMTSContents( const QDomElement &element )
           fmt = QgsRaster::IdentifyFormatFeature;
         else if ( format == QLatin1String( "application/json" ) )
           fmt = QgsRaster::IdentifyFormatFeature;
+        else if ( format == QLatin1String( "application/geojson" ) )
+          fmt = QgsRaster::IdentifyFormatFeature;
         else
         {
           QgsDebugMsg( QStringLiteral( "Unsupported featureInfoUrl format: %1" ).arg( format ) );
@@ -2263,7 +2239,7 @@ bool QgsWmsCapabilities::detectTileLayerBoundingBox( QgsWmtsTileLayer &tileLayer
     return false;
 
   // take most coarse tile matrix ...
-  QMap<double, QgsWmtsTileMatrix>::const_iterator tmIt = tmsIt->tileMatrices.constEnd() - 1;
+  QMap<double, QgsWmtsTileMatrix>::const_iterator tmIt = --tmsIt->tileMatrices.constEnd();
   if ( tmIt == tmsIt->tileMatrices.constEnd() )
     return false;
 
@@ -2357,6 +2333,16 @@ QgsWmsCapabilitiesDownload::~QgsWmsCapabilitiesDownload()
   abort();
 }
 
+bool QgsWmsCapabilitiesDownload::forceRefresh()
+{
+  return mForceRefresh;
+}
+
+void QgsWmsCapabilitiesDownload::setForceRefresh( bool forceRefresh )
+{
+  mForceRefresh = forceRefresh;
+}
+
 bool QgsWmsCapabilitiesDownload::downloadCapabilities( const QString &baseUrl, const QgsWmsAuthorization &auth )
 {
   mBaseUrl = baseUrl;
@@ -2383,7 +2369,7 @@ bool QgsWmsCapabilitiesDownload::downloadCapabilities()
   QgsSetRequestInitiatorClass( request, QStringLiteral( "QgsWmsCapabilitiesDownload" ) );
   if ( !mAuth.setAuthorization( request ) )
   {
-    mError = tr( "Download of capabilities failed: network request update failed for authentication config" );
+    mError = tr( "Download of capabilities failed:\nnetwork request update failed for authentication config" );
     QgsMessageLog::logMessage( mError, tr( "WMS" ) );
     return false;
   }
@@ -2395,7 +2381,7 @@ bool QgsWmsCapabilitiesDownload::downloadCapabilities()
   {
     mCapabilitiesReply->deleteLater();
     mCapabilitiesReply = nullptr;
-    mError = tr( "Download of capabilities failed: network reply update failed for authentication config" );
+    mError = tr( "Download of capabilities failed:\nnetwork reply update failed for authentication config" );
     QgsMessageLog::logMessage( mError, tr( "WMS" ) );
     return false;
   }
@@ -2442,7 +2428,7 @@ void QgsWmsCapabilitiesDownload::capabilitiesReplyFinished()
         mCapabilitiesReply->request();
         if ( toUrl == mCapabilitiesReply->url() )
         {
-          mError = tr( "Redirect loop detected: %1" ).arg( toUrl.toString() );
+          mError = tr( "Redirect loop detected:\n%1" ).arg( toUrl.toString() );
           QgsMessageLog::logMessage( mError, tr( "WMS" ) );
           mHttpCapabilitiesResponse.clear();
         }
@@ -2453,7 +2439,7 @@ void QgsWmsCapabilitiesDownload::capabilitiesReplyFinished()
           if ( !mAuth.setAuthorization( request ) )
           {
             mHttpCapabilitiesResponse.clear();
-            mError = tr( "Download of capabilities failed: network request update failed for authentication config" );
+            mError = tr( "Download of capabilities failed:\nnetwork request update failed for authentication config" );
             QgsMessageLog::logMessage( mError, tr( "WMS" ) );
             emit downloadFinished();
             return;
@@ -2464,7 +2450,7 @@ void QgsWmsCapabilitiesDownload::capabilitiesReplyFinished()
           mCapabilitiesReply->deleteLater();
           mCapabilitiesReply = nullptr;
 
-          QgsDebugMsgLevel( QStringLiteral( "redirected getcapabilities: %1 forceRefresh=%2" ).arg( redirect.toString() ).arg( mForceRefresh ), 2 );
+          QgsDebugMsgLevel( QStringLiteral( "redirected getcapabilities:\n%1 forceRefresh=%2" ).arg( redirect.toString() ).arg( mForceRefresh ), 2 );
           mCapabilitiesReply = QgsNetworkAccessManager::instance()->get( request );
 
           if ( !mAuth.setAuthorizationReply( mCapabilitiesReply ) )
@@ -2472,7 +2458,7 @@ void QgsWmsCapabilitiesDownload::capabilitiesReplyFinished()
             mHttpCapabilitiesResponse.clear();
             mCapabilitiesReply->deleteLater();
             mCapabilitiesReply = nullptr;
-            mError = tr( "Download of capabilities failed: network reply update failed for authentication config" );
+            mError = tr( "Download of capabilities failed:\nnetwork reply update failed for authentication config" );
             QgsMessageLog::logMessage( mError, tr( "WMS" ) );
             emit downloadFinished();
             return;
@@ -2516,20 +2502,31 @@ void QgsWmsCapabilitiesDownload::capabilitiesReplyFinished()
 
 #ifdef QGISDEBUG
         bool fromCache = mCapabilitiesReply->attribute( QNetworkRequest::SourceIsFromCacheAttribute ).toBool();
-        QgsDebugMsgLevel( QStringLiteral( "Capabilities reply was cached: %1" ).arg( fromCache ), 2 );
+        QgsDebugMsgLevel( QStringLiteral( "Capabilities reply was cached:\n%1" ).arg( fromCache ), 2 );
 #endif
 
         mHttpCapabilitiesResponse = mCapabilitiesReply->readAll();
 
         if ( mHttpCapabilitiesResponse.isEmpty() )
         {
-          mError = tr( "empty of capabilities: %1" ).arg( mCapabilitiesReply->errorString() );
+          mError = tr( "Capabilities are empty:\n%1" ).arg( mCapabilitiesReply->errorString() );
         }
       }
     }
     else
     {
-      mError = tr( "Download of capabilities failed: %1" ).arg( mCapabilitiesReply->errorString() );
+      const QString contentType = mCapabilitiesReply->header( QNetworkRequest::ContentTypeHeader ).toString();
+
+      QString errorMessage;
+      if ( contentType.startsWith( QLatin1String( "text/plain" ) ) )
+        errorMessage = mCapabilitiesReply->readAll();
+      else
+        errorMessage = mCapabilitiesReply->attribute( QNetworkRequest::HttpReasonPhraseAttribute ).toString();
+
+      if ( errorMessage.isEmpty() )
+        errorMessage = mCapabilitiesReply->errorString();
+
+      mError = tr( "Download of capabilities failed:\n%1" ).arg( errorMessage );
       QgsMessageLog::logMessage( mError, tr( "WMS" ) );
       mHttpCapabilitiesResponse.clear();
     }
@@ -2580,10 +2577,10 @@ void QgsWmtsTileMatrix::viewExtentIntersection( const QgsRectangle &viewExtent, 
     maxTileRow = tml->maxTileRow;
   }
 
-  col0 = qBound( minTileCol, ( int ) std::floor( ( viewExtent.xMinimum() - topLeft.x() ) / twMap ), maxTileCol );
-  row0 = qBound( minTileRow, ( int ) std::floor( ( topLeft.y() - viewExtent.yMaximum() ) / thMap ), maxTileRow );
-  col1 = qBound( minTileCol, ( int ) std::floor( ( viewExtent.xMaximum() - topLeft.x() ) / twMap ), maxTileCol );
-  row1 = qBound( minTileRow, ( int ) std::floor( ( topLeft.y() - viewExtent.yMinimum() ) / thMap ), maxTileRow );
+  col0 = std::clamp( ( int ) std::floor( ( viewExtent.xMinimum() - topLeft.x() ) / twMap ),  minTileCol, maxTileCol );
+  row0 = std::clamp( ( int ) std::floor( ( topLeft.y() - viewExtent.yMaximum() ) / thMap ),  minTileRow, maxTileRow );
+  col1 = std::clamp( ( int ) std::floor( ( viewExtent.xMaximum() - topLeft.x() ) / twMap ),  minTileCol, maxTileCol );
+  row1 = std::clamp( ( int ) std::floor( ( topLeft.y() - viewExtent.yMinimum() ) / thMap ),  minTileRow, maxTileRow );
 }
 
 const QgsWmtsTileMatrix *QgsWmtsTileMatrixSet::findNearestResolution( double vres ) const

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>525</width>
+    <width>545</width>
     <height>426</height>
    </rect>
   </property>
@@ -28,7 +28,7 @@
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>20</height>
+          <height>0</height>
          </size>
         </property>
         <layout class="QGridLayout" name="gridLayout">
@@ -247,6 +247,9 @@
   <tabstop>minValueSpinBox</tabstop>
   <tabstop>maxValueSpinBox</tabstop>
   <tabstop>computeValuesButton</tabstop>
+  <tabstop>mTransformCurveCheckBox</tabstop>
+  <tabstop>mCurveEditor</tabstop>
+  <tabstop>mLegendPreview</tabstop>
  </tabstops>
  <resources/>
  <connections/>

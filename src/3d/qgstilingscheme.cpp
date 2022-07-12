@@ -15,6 +15,7 @@
 
 #include "qgstilingscheme.h"
 
+#include "qgschunknode_p.h"
 #include "qgsrectangle.h"
 
 QgsTilingScheme::QgsTilingScheme( const QgsRectangle &fullExtent, const QgsCoordinateReferenceSystem &crs )
@@ -26,24 +27,29 @@ QgsTilingScheme::QgsTilingScheme( const QgsRectangle &fullExtent, const QgsCoord
 
 QgsPointXY QgsTilingScheme::tileToMap( int x, int y, int z ) const
 {
-  double tileSide = mBaseTileSide / pow( 2, z );
-  double mx = mMapOrigin.x() + x * tileSide;
-  double my = mMapOrigin.y() + y * tileSide;
+  const double tileSide = mBaseTileSide / pow( 2, z );
+  const double mx = mMapOrigin.x() + x * tileSide;
+  const double my = mMapOrigin.y() + y * tileSide;
   return QgsPointXY( mx, my );
 }
 
 void QgsTilingScheme::mapToTile( const QgsPointXY &pt, int z, float &x, float &y ) const
 {
-  double tileSide = mBaseTileSide / pow( 2, z );
+  const double tileSide = mBaseTileSide / pow( 2, z );
   x = ( pt.x() - mMapOrigin.x() ) / tileSide;
   y = ( pt.y() - mMapOrigin.y() ) / tileSide;
 }
 
 QgsRectangle QgsTilingScheme::tileToExtent( int x, int y, int z ) const
 {
-  QgsPointXY pt0 = tileToMap( x, y, z );
-  QgsPointXY pt1 = tileToMap( x + 1, y + 1, z );
+  const QgsPointXY pt0 = tileToMap( x, y, z );
+  const QgsPointXY pt1 = tileToMap( x + 1, y + 1, z );
   return QgsRectangle( pt0, pt1 );
+}
+
+QgsRectangle QgsTilingScheme::tileToExtent( const QgsChunkNodeId &nodeId ) const
+{
+  return tileToExtent( nodeId.x, nodeId.y, nodeId.d );
 }
 
 void QgsTilingScheme::extentToTile( const QgsRectangle &extent, int &x, int &y, int &z ) const

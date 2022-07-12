@@ -25,6 +25,7 @@
 #include "qgswmsrendercontext.h"
 #include "qgsfeaturefilter.h"
 #include "qgslayertreemodellegendnode.h"
+#include "qgseditformconfig.h"
 #include <QDomDocument>
 #include <QMap>
 #include <QString>
@@ -45,6 +46,8 @@ class QgsDxfExport;
 class QgsLayerTreeModel;
 class QgsLayerTree;
 class QgsServerInterface;
+class QgsAttributeEditorElement;
+class QgsEditFormConfig;
 
 class QImage;
 class QPaintDevice;
@@ -144,7 +147,7 @@ namespace QgsWms
       void configureLayers( QList<QgsMapLayer *> &layers, QgsMapSettings *settings = nullptr );
 
     private:
-      QgsLegendSettings legendSettings() const;
+      QgsLegendSettings legendSettings();
 
       // Build and returns highlight layers
       QList<QgsMapLayer *> highlightLayers( QList<QgsWmsParametersHighlightLayer> params );
@@ -153,23 +156,22 @@ namespace QgsWms
       QPainter *layersRendering( const QgsMapSettings &mapSettings, QImage &image ) const;
 
       // Rendering step for annotations
-      void annotationsRendering( QPainter *painter ) const;
+      void annotationsRendering( QPainter *painter, const QgsMapSettings &mapSettings ) const;
 
       // Set layer opacity
       void setLayerOpacity( QgsMapLayer *layer, int opacity ) const;
 
       // Set layer display rules
-	  void sbSetLayerRules(QgsMapLayer *layer, const QList<QPair<QString, bool>> &rules);
+      void sbSetLayerRules(QgsMapLayer *layer, const QList<QPair<QString, bool>> &rules);
 
-	  // Set layer label visibility
-	  void sbSetLayerLabels(QgsMapLayer *layer, bool bState);
+      // Set layer label visibility
+      void sbSetLayerLabels(QgsMapLayer *layer, bool bState);
 
-      // Set layer filter
       // Set layer filter and dimension
       void setLayerFilter( QgsMapLayer *layer, const QList<QgsWmsParametersFilter> &filters );
 
-	  // Set layer query substitutions
-	  void sbSetLayerQuerySubstitutions(QgsMapLayer *layer, const QStringList &substitution);
+     // Set layer query substitutions
+     void sbSetLayerQuerySubstitutions(QgsMapLayer *layer, const QStringList &substitution);
 
       QStringList dimensionFilter( QgsVectorLayer *layer ) const;
 
@@ -177,7 +179,7 @@ namespace QgsWms
       void setLayerAccessControlFilter( QgsMapLayer *layer ) const;
 
       // Set layer selection
-      void setLayerSelection( QgsMapLayer *layer, const QStringList &fids, bool bRenderOnlySelection ) const;
+      void setLayerSelection( QgsMapLayer *layer, const QStringList &fids, bool bRenderSelectionOnly ) const;
 
       // Combine map extent with layer extent
       void updateExtent( const QgsMapLayer *layer, QgsMapSettings &mapSettings ) const;
@@ -200,7 +202,7 @@ namespace QgsWms
        * \param mandatoryCrsParam does the CRS parameter has to be considered mandatory
        * may throw an exception
        */
-      void configureMapSettings( const QPaintDevice *paintDevice, QgsMapSettings &mapSettings, bool mandatoryCrsParam = true ) const;
+      void configureMapSettings( const QPaintDevice *paintDevice, QgsMapSettings &mapSettings, bool mandatoryCrsParam = true );
 
       QDomDocument featureInfoDocument( QList<QgsMapLayer *> &layers, const QgsMapSettings &mapSettings,
                                         const QImage *outputImage, const QString &version ) const;
@@ -230,6 +232,45 @@ namespace QgsWms
                                        const QString &version,
                                        QgsRectangle *featureBBox = nullptr,
                                        QgsGeometry *filterGeom = nullptr ) const;
+
+      /**
+       * Recursively called to write tab layout groups to XML
+       * \param group the tab layout group
+       * \param layer The vector layer
+       * \param fields attribute fields
+       * \param featureAttributes the feature attributes
+       * \param doc Feature info XML document
+       * \param featureElem the feature XML element
+       * \param renderContext Context to use for feature rendering
+       * \param attributes attributes for access control
+       */
+      void writeAttributesTabGroup( const QgsAttributeEditorElement *group, QgsVectorLayer *layer, const QgsFields &fields, QgsAttributes &featureAttributes, QDomDocument &doc, QDomElement &featureElem, QgsRenderContext &renderContext, QStringList *attributes = nullptr ) const;
+
+      /**
+       * Writes attributes to XML document using the group/attribute layout defined in the tab layout
+       * \param config editor config object
+       * \param layer The vector layer
+       * \param fields attribute fields
+       * \param featureAttributes the feature attributes
+       * \param doc Feature info XML document
+       * \param featureElem the feature XML element
+       * \param renderContext Context to use for feature rendering
+       * \param attributes attributes for access control
+       */
+      void writeAttributesTabLayout( QgsEditFormConfig &config, QgsVectorLayer *layer, const QgsFields &fields, QgsAttributes &featureAttributes, QDomDocument &doc, QDomElement &featureElem, QgsRenderContext &renderContext, QStringList *attributes = nullptr ) const;
+
+      /**
+       * Writes a vectorlayer attribute into the XML document
+       * \param attributeIndex of attribute to be written
+       * \param layer The vector layer
+       * \param fields attribute fields
+       * \param featureAttributes the feature attributes
+       * \param doc Feature info XML document
+       * \param featureElem the feature XML element
+       * \param renderContext Context to use for feature rendering
+       * \param attributes attributes for access control
+       */
+      void writeVectorLayerAttribute( int attributeIndex, QgsVectorLayer *layer, const QgsFields &fields, QgsAttributes &featureAttributes, QDomDocument &doc, QDomElement &featureElem, QgsRenderContext &renderContext, QStringList *attributes = nullptr ) const;
 
       //! Appends feature info xml for the layer to the layer element of the dom document
       bool featureInfoFromRasterLayer( QgsRasterLayer *layer,
@@ -304,6 +345,9 @@ namespace QgsWms
       const QgsProject *mProject = nullptr;
       QList<QgsMapLayer *> mTemporaryLayers;
       QgsWmsRenderContext &mContext;
+
+      //! True when temporal capabilities are activated and TIME was parsed successfully
+      bool mIsTemporal = false;
   };
 
 } // namespace QgsWms

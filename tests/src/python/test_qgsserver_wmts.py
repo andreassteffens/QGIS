@@ -49,7 +49,6 @@ class TestQgsServerWMTS(QgsServerTestBase):
         # project = self.testdata_path + "test_project_wfs.qgs"
         if not project:
             project = self.projectGroupsPath
-
         assert os.path.exists(project), "Project file not found: " + project
 
         query_string = '?MAP=%s&SERVICE=WMTS&REQUEST=%s' % (urllib.parse.quote(project), request)

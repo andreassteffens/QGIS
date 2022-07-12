@@ -40,7 +40,7 @@ QgsOgrSourceSelect::QgsOgrSourceSelect( QWidget *parent, Qt::WindowFlags fl, Qgs
   : QgsAbstractDataSourceWidget( parent, fl, widgetMode )
 {
   setupUi( this );
-  QgsGui::instance()->enableAutoGeometryRestore( this );
+  QgsGui::enableAutoGeometryRestore( this );
 
   connect( radioSrcFile, &QRadioButton::toggled, this, &QgsOgrSourceSelect::radioSrcFile_toggled );
   connect( radioSrcDirectory, &QRadioButton::toggled, this, &QgsOgrSourceSelect::radioSrcDirectory_toggled );
@@ -94,9 +94,7 @@ QgsOgrSourceSelect::QgsOgrSourceSelect( QWidget *parent, Qt::WindowFlags fl, Qgs
 
   //add protocol drivers
   QStringList protocolTypes = QStringLiteral( "HTTP/HTTPS/FTP,vsicurl;AWS S3,vsis3;Google Cloud Storage,vsigs;" ).split( ';' );
-#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(2,3,0)
   protocolTypes += QStringLiteral( "Microsoft Azure Blob,vsiaz;Alibaba Cloud OSS,vsioss;OpenStack Swift Object Storage,vsiswift;WFS3 (experimental),WFS3" ).split( ';' );
-#endif
   protocolTypes += QgsProviderRegistry::instance()->protocolDrivers().split( ';' );
   for ( int i = 0; i < protocolTypes.count(); i++ )
   {
@@ -653,7 +651,7 @@ void QgsOgrSourceSelect::fillOpenOptions()
   if ( STARTS_WITH_CI( mDataSources[0].toUtf8().toStdString().c_str(), "PG:" ) )
     hDriver = GDALGetDriverByName( "PostgreSQL" ); // otherwise the PostgisRaster driver gets identified
   else
-    hDriver = GDALIdentifyDriver( mDataSources[0].toUtf8().toStdString().c_str(), nullptr );
+    hDriver = GDALIdentifyDriverEx( mDataSources[0].toUtf8().toStdString().c_str(), GDAL_OF_VECTOR, nullptr, nullptr );
   if ( hDriver == nullptr )
     return;
 
@@ -693,6 +691,11 @@ void QgsOgrSourceSelect::fillOpenOptions()
          !EQUAL( pszOptionName, "PRELUDE_STATEMENTS" ) )
       continue;
 
+    // The NOLOCK option is automatically set by the OGR provider. Do not
+    // expose it
+    if ( bIsGPKG && EQUAL( pszOptionName, "NOLOCK" ) )
+      continue;
+
     // Do not list database options already asked in the database dialog
     if ( radioSrcDatabase->isChecked() &&
          ( EQUAL( pszOptionName, "USER" ) ||
@@ -705,6 +708,12 @@ void QgsOgrSourceSelect::fillOpenOptions()
     {
       continue;
     }
+
+    // QGIS data model doesn't support the OGRFeature native data concept
+    // (typically used for GeoJSON "foreign" members). Hide it to avoid setting
+    // wrong expectations to users (https://github.com/qgis/QGIS/issues/48004)
+    if ( EQUAL( pszOptionName, "NATIVE_DATA" ) )
+      continue;
 
     const char *pszType = CPLGetXMLValue( psItem, "type", nullptr );
     QStringList options;
@@ -737,7 +746,7 @@ void QgsOgrSourceSelect::fillOpenOptions()
     else if ( !options.isEmpty() )
     {
       QComboBox *cb = new QComboBox();
-      for ( const QString &val : qgis::as_const( options ) )
+      for ( const QString &val : std::as_const( options ) )
       {
         cb->addItem( val, val );
       }

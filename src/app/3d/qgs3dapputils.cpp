@@ -25,18 +25,20 @@
 #include "qgsphongtexturedmaterialwidget.h"
 #include "qgsgoochmaterialwidget.h"
 #include "qgssimplelinematerialwidget.h"
+#include "qgsnullmaterialwidget.h"
 #include "qgs3dicongenerator.h"
 
 void Qgs3DAppUtils::initialize()
 {
-  dynamic_cast< Qgs3DSymbolMetadata * >( QgsApplication::symbol3DRegistry()->symbolMetadata( QStringLiteral( "point" ) ) )->setWidgetFunction( QgsPoint3DSymbolWidget::create );
-  dynamic_cast< Qgs3DSymbolMetadata * >( QgsApplication::symbol3DRegistry()->symbolMetadata( QStringLiteral( "line" ) ) )->setWidgetFunction( QgsLine3DSymbolWidget::create );
-  dynamic_cast< Qgs3DSymbolMetadata * >( QgsApplication::symbol3DRegistry()->symbolMetadata( QStringLiteral( "polygon" ) ) )->setWidgetFunction( QgsPolygon3DSymbolWidget::create );
+  qgis::down_cast< Qgs3DSymbolMetadata * >( QgsApplication::symbol3DRegistry()->symbolMetadata( QStringLiteral( "point" ) ) )->setWidgetFunction( QgsPoint3DSymbolWidget::create );
+  qgis::down_cast< Qgs3DSymbolMetadata * >( QgsApplication::symbol3DRegistry()->symbolMetadata( QStringLiteral( "line" ) ) )->setWidgetFunction( QgsLine3DSymbolWidget::create );
+  qgis::down_cast< Qgs3DSymbolMetadata * >( QgsApplication::symbol3DRegistry()->symbolMetadata( QStringLiteral( "polygon" ) ) )->setWidgetFunction( QgsPolygon3DSymbolWidget::create );
 
-  dynamic_cast< QgsMaterialSettingsMetadata * >( Qgs3D::materialRegistry()->materialSettingsMetadata( QStringLiteral( "phong" ) ) )->setWidgetFunction( QgsPhongMaterialWidget::create );
-  dynamic_cast< QgsMaterialSettingsMetadata * >( Qgs3D::materialRegistry()->materialSettingsMetadata( QStringLiteral( "phongtextured" ) ) )->setWidgetFunction( QgsPhongTexturedMaterialWidget::create );
-  dynamic_cast< QgsMaterialSettingsMetadata * >( Qgs3D::materialRegistry()->materialSettingsMetadata( QStringLiteral( "gooch" ) ) )->setWidgetFunction( QgsGoochMaterialWidget::create );
-  dynamic_cast< QgsMaterialSettingsMetadata * >( Qgs3D::materialRegistry()->materialSettingsMetadata( QStringLiteral( "simpleline" ) ) )->setWidgetFunction( QgsSimpleLineMaterialWidget::create );
+  qgis::down_cast< QgsMaterialSettingsMetadata * >( Qgs3D::materialRegistry()->materialSettingsMetadata( QStringLiteral( "null" ) ) )->setWidgetFunction( QgsNullMaterialWidget::create );
+  qgis::down_cast< QgsMaterialSettingsMetadata * >( Qgs3D::materialRegistry()->materialSettingsMetadata( QStringLiteral( "phong" ) ) )->setWidgetFunction( QgsPhongMaterialWidget::create );
+  qgis::down_cast< QgsMaterialSettingsMetadata * >( Qgs3D::materialRegistry()->materialSettingsMetadata( QStringLiteral( "phongtextured" ) ) )->setWidgetFunction( QgsPhongTexturedMaterialWidget::create );
+  qgis::down_cast< QgsMaterialSettingsMetadata * >( Qgs3D::materialRegistry()->materialSettingsMetadata( QStringLiteral( "gooch" ) ) )->setWidgetFunction( QgsGoochMaterialWidget::create );
+  qgis::down_cast< QgsMaterialSettingsMetadata * >( Qgs3D::materialRegistry()->materialSettingsMetadata( QStringLiteral( "simpleline" ) ) )->setWidgetFunction( QgsSimpleLineMaterialWidget::create );
 
   QgsStyleModel::setIconGenerator( new Qgs3DIconGenerator( QgsApplication::defaultStyleModel() ) );
 }

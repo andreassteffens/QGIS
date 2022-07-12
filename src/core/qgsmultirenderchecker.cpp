@@ -17,6 +17,12 @@
 #include "qgslayout.h"
 #include <QDebug>
 
+QgsMultiRenderChecker::QgsMultiRenderChecker()
+{
+  if ( qgetenv( "QGIS_CONTINUOUS_INTEGRATION_RUN" ) == QStringLiteral( "true" ) )
+    mIsCiRun = true;
+}
+
 void QgsMultiRenderChecker::setControlName( const QString &name )
 {
   mControlName = name;
@@ -47,7 +53,7 @@ bool QgsMultiRenderChecker::runTest( const QString &testName, unsigned int misma
 
   QVector<QgsDartMeasurement> dartMeasurements;
 
-  for ( const QString &suffix : qgis::as_const( subDirs ) )
+  for ( const QString &suffix : std::as_const( subDirs ) )
   {
     if ( subDirs.count() > 1 )
     {
@@ -81,7 +87,7 @@ bool QgsMultiRenderChecker::runTest( const QString &testName, unsigned int misma
     mReport += checker.report();
   }
 
-  if ( !successful )
+  if ( !successful && mIsCiRun )
   {
     const auto constDartMeasurements = dartMeasurements;
     for ( const QgsDartMeasurement &measurement : constDartMeasurements )

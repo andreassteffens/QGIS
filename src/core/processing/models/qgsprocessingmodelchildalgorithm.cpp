@@ -67,17 +67,22 @@ void QgsProcessingModelChildAlgorithm::copyNonDefinitionPropertiesFromModel( Qgs
   int i = 0;
   for ( auto it = mModelOutputs.begin(); it != mModelOutputs.end(); ++it )
   {
-    if ( !existingChild.modelOutputs().value( it.key() ).position().isNull() )
+    const QMap<QString, QgsProcessingModelOutput> existingChildModelOutputs = existingChild.modelOutputs();
+    auto existingOutputIt = existingChildModelOutputs.find( it.key() );
+    if ( existingOutputIt == existingChildModelOutputs.end() )
+      continue;
+
+    if ( !existingOutputIt->position().isNull() )
     {
-      it.value().setPosition( existingChild.modelOutputs().value( it.key() ).position() );
-      it.value().setSize( existingChild.modelOutputs().value( it.key() ).size() );
+      it.value().setPosition( existingOutputIt->position() );
+      it.value().setSize( existingOutputIt->size() );
     }
     else
       it.value().setPosition( position() + QPointF( size().width(), ( i + 1.5 ) * size().height() ) );
 
     if ( QgsProcessingModelComment *comment = it.value().comment() )
     {
-      if ( const QgsProcessingModelComment *existingComment = existingChild.modelOutputs().value( it.key() ).comment() )
+      if ( const QgsProcessingModelComment *existingComment = existingOutputIt->comment() )
       {
         comment->setDescription( existingComment->description() );
         comment->setSize( existingComment->size() );
@@ -241,28 +246,48 @@ QStringList QgsProcessingModelChildAlgorithm::asPythonCode( const QgsProcessing:
     lines << baseIndent + QStringLiteral( "# %1" ).arg( mComment.description() );
 
   QStringList paramParts;
+  QStringList paramComments;
   for ( auto paramIt = mParams.constBegin(); paramIt != mParams.constEnd(); ++paramIt )
   {
     QStringList sourceParts;
+    QStringList sourceComments;
     const QgsProcessingParameterDefinition *def = algorithm() ? algorithm()->parameterDefinition( paramIt.key() ) : nullptr;
     const auto parts = paramIt.value();
+    sourceParts.reserve( parts.size() );
+    sourceComments.reserve( parts.size() );
     for ( const QgsProcessingModelChildParameterSource &source : parts )
     {
       QString part = source.asPythonCode( outputType, def, friendlyChildNames );
       if ( !part.isEmpty() )
+      {
         sourceParts << part;
+        sourceComments << source.asPythonComment( def );
+      }
     }
     if ( sourceParts.count() == 1 )
+    {
       paramParts << QStringLiteral( "'%1': %2" ).arg( paramIt.key(), sourceParts.at( 0 ) );
+      paramComments << sourceComments.at( 0 );
+    }
     else
+    {
       paramParts << QStringLiteral( "'%1': [%2]" ).arg( paramIt.key(), sourceParts.join( ',' ) );
+      paramComments << QString();
+    }
   }
 
   lines << baseIndent + QStringLiteral( "alg_params = {" );
   lines.reserve( lines.size() + paramParts.size() );
-  for ( const QString &p : qgis::as_const( paramParts ) )
+  int i = 0;
+  for ( const QString &p : std::as_const( paramParts ) )
   {
-    lines << baseIndent + lineIndent + p + ',';
+    QString line = baseIndent + lineIndent + p + ',';
+    if ( !paramComments.value( i ).isEmpty() )
+    {
+      line += QStringLiteral( "  # %1" ).arg( paramComments.value( i ) );
+    }
+    lines << line;
+    i++;
   }
   for ( auto it = extraParameters.constBegin(); it != extraParameters.constEnd(); ++it )
   {

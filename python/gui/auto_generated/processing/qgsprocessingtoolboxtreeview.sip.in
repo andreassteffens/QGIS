@@ -12,7 +12,7 @@
 
 class QgsProcessingToolboxTreeView : QTreeView
 {
-%Docstring
+%Docstring(signature="appended")
 Processing toolbox tree view, showing algorithms and providers in a tree structure.
 
 .. warning::
@@ -96,6 +96,11 @@ Sets the vector ``layer`` for the in-place algorithms
 Sets a ``filter`` string, used to filter out the contents of the view
 to matching algorithms.
 %End
+
+  protected:
+
+    virtual void keyPressEvent( QKeyEvent *event );
+
 
 };
 

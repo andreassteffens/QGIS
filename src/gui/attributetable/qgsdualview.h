@@ -25,6 +25,9 @@
 #include "qgsattributeform.h"
 #include "qgis_gui.h"
 
+#include <QPointer>
+#include <QUuid>
+
 class QgsFeatureRequest;
 class QgsMapLayerAction;
 class QgsScrollArea;
@@ -93,12 +96,13 @@ class GUI_EXPORT QgsDualView : public QStackedWidget, private Ui::QgsDualViewBas
      * \param context    The context in which this view is shown
      * \param loadFeatures whether to initially load all features into the view. If set to
      *                   FALSE, limited features can later be loaded using setFilterMode()
+     * \param showFirstFeature whether to initially show the first feature form upon initializing the dual view
      */
     void init( QgsVectorLayer *layer,
                QgsMapCanvas *mapCanvas,
                const QgsFeatureRequest &request = QgsFeatureRequest(),
                const QgsAttributeEditorContext &context = QgsAttributeEditorContext(),
-               bool loadFeatures = true );
+               bool loadFeatures = true, bool showFirstFeature = true );
 
     /**
      * Change the current view mode.
@@ -344,13 +348,18 @@ class GUI_EXPORT QgsDualView : public QStackedWidget, private Ui::QgsDualViewBas
 
     void resizeColumn();
 
+    void resizeAllColumns();
+
     void autosizeColumn();
+
+    void autosizeAllColumns();
 
     void previewExpressionChanged( const QString &expression );
 
     void onSortColumnChanged();
 
     void updateSelectedFeatures();
+    void updateEditedAddedFeatures();
 
     void extentChanged();
 
@@ -393,6 +402,13 @@ class GUI_EXPORT QgsDualView : public QStackedWidget, private Ui::QgsDualViewBas
   private:
 
     /**
+     * Initialize the attribute form to a given \a feature.
+     *
+     * \since QGIS 3.20
+     */
+    void initAttributeForm( const QgsFeature &feature );
+
+    /**
      * Initializes widgets which depend on the attributes of this layer
      */
     void columnBoxInit();
@@ -428,9 +444,6 @@ class GUI_EXPORT QgsDualView : public QStackedWidget, private Ui::QgsDualViewBas
     QString mDisplayExpression;
     QgsAttributeTableConfig mConfig;
     QgsScrollArea *mAttributeEditorScrollArea = nullptr;
-    // If the current feature is set, while the form is still not initialized
-    // we will temporarily save it in here and set it on init
-    QgsFeature mTempAttributeFormFeature;
     QgsFeatureIds mLastFeatureSet;
     bool mBrowsingAutoPanScaleAllowed = true;
     ViewMode mPreviousView = AttributeTable;

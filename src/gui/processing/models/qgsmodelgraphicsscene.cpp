@@ -124,7 +124,7 @@ void QgsModelGraphicsScene::createItems( QgsProcessingModelAlgorithm *model, Qgs
     {
       if ( mParameterItems.contains( it.key() ) && mParameterItems.contains( otherName ) )
       {
-        std::unique_ptr< QgsModelArrowItem > arrow = qgis::make_unique< QgsModelArrowItem >( mParameterItems.value( otherName ), QgsModelArrowItem::Marker::Circle, mParameterItems.value( it.key() ), QgsModelArrowItem::Marker::ArrowHead );
+        std::unique_ptr< QgsModelArrowItem > arrow = std::make_unique< QgsModelArrowItem >( mParameterItems.value( otherName ), QgsModelArrowItem::Marker::Circle, mParameterItems.value( it.key() ), QgsModelArrowItem::Marker::ArrowHead );
         arrow->setPenStyle( Qt::DotLine );
         addItem( arrow.release() );
       }
@@ -224,6 +224,12 @@ void QgsModelGraphicsScene::createItems( QgsProcessingModelAlgorithm *model, Qgs
     const QMap<QString, QgsProcessingModelOutput> outputs = it.value().modelOutputs();
     QMap< QString, QgsModelComponentGraphicItem * > outputItems;
 
+    // offsets from algorithm item needed to correctly place output items
+    // which does not have valid position assigned (https://github.com/qgis/QGIS/issues/48132)
+    QgsProcessingModelComponent *algItem = mChildAlgorithmItems[it.value().childId()]->component();
+    const double outputOffsetX = algItem->size().width();
+    double outputOffsetY = 1.5 * algItem->size().height();
+
     for ( auto outputIt = outputs.constBegin(); outputIt != outputs.constEnd(); ++outputIt )
     {
       QgsModelComponentGraphicItem *item = createOutputGraphicItem( model, outputIt.value().clone() );
@@ -232,7 +238,15 @@ void QgsModelGraphicsScene::createItems( QgsProcessingModelAlgorithm *model, Qgs
       connect( item, &QgsModelComponentGraphicItem::changed, this, &QgsModelGraphicsScene::componentChanged );
       connect( item, &QgsModelComponentGraphicItem::aboutToChange, this, &QgsModelGraphicsScene::componentAboutToChange );
 
+      // if output added not at the same time as algorithm then it does not have
+      // valid position and will be placed at (0,0). We need to calculate better position.
+      // See https://github.com/qgis/QGIS/issues/48132.
       QPointF pos = outputIt.value().position();
+      if ( pos.isNull() )
+      {
+        pos = algItem->position() + QPointF( outputOffsetX, outputOffsetY );
+        outputOffsetY += 1.5 * outputIt.value().size().height();
+      }
       int idx = -1;
       int i = 0;
       // find the actual index of the linked output from the child algorithm it comes from
@@ -420,7 +434,7 @@ QList<QgsModelGraphicsScene::LinkSource> QgsModelGraphicsScene::linkSourcesForPa
             if ( messageBar() )
               showWarning( const_cast<QString &>( short_message ), const_cast<QString &>( title ), const_cast<QString &>( long_message ) );
             else
-              QgsMessageLog::logMessage( long_message, "QgsModelGraphicsScene", Qgis::Warning, true );
+              QgsMessageLog::logMessage( long_message, "QgsModelGraphicsScene", Qgis::MessageLevel::Warning, true );
             break;
           }
 
@@ -434,7 +448,7 @@ QList<QgsModelGraphicsScene::LinkSource> QgsModelGraphicsScene::linkSourcesForPa
       case QgsProcessingModelChildParameterSource::Expression:
       {
         const QMap<QString, QgsProcessingModelAlgorithm::VariableDefinition> variables = model->variablesForChildAlgorithm( childId, context );
-        QgsExpression exp( source.expression() );
+        const QgsExpression exp( source.expression() );
         const QSet<QString> vars = exp.referencedVariables();
         for ( const QString &v : vars )
         {
@@ -467,7 +481,7 @@ void QgsModelGraphicsScene::addCommentItemForComponent( QgsProcessingModelAlgori
   connect( commentItem, &QgsModelComponentGraphicItem::changed, this, &QgsModelGraphicsScene::componentChanged );
   connect( commentItem, &QgsModelComponentGraphicItem::aboutToChange, this, &QgsModelGraphicsScene::componentAboutToChange );
 
-  std::unique_ptr< QgsModelArrowItem > arrow = qgis::make_unique< QgsModelArrowItem >( parentItem, QgsModelArrowItem::Circle, commentItem, QgsModelArrowItem::Circle );
+  std::unique_ptr< QgsModelArrowItem > arrow = std::make_unique< QgsModelArrowItem >( parentItem, QgsModelArrowItem::Circle, commentItem, QgsModelArrowItem::Circle );
   arrow->setPenStyle( Qt::DotLine );
   addItem( arrow.release() );
 }
@@ -484,7 +498,7 @@ void QgsModelGraphicsScene::setMessageBar( QgsMessageBar *messageBar )
 
 void QgsModelGraphicsScene::showWarning( const QString &shortMessage, const QString &title, const QString &longMessage, Qgis::MessageLevel level ) const
 {
-  QgsMessageBarItem *messageWidget = mMessageBar->createMessage( QString(), shortMessage );
+  QgsMessageBarItem *messageWidget = QgsMessageBar::createMessage( QString(), shortMessage );
   QPushButton *detailsButton = new QPushButton( tr( "Details" ) );
   connect( detailsButton, &QPushButton::clicked, detailsButton, [ = ]
   {

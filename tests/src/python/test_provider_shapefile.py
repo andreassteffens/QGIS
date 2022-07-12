@@ -29,10 +29,12 @@ from qgis.core import (
     QgsGeometry,
     QgsVectorLayer,
     QgsFeatureRequest,
+    QgsProviderRegistry,
     QgsRectangle,
     QgsVectorDataProvider,
     QgsWkbTypes,
     QgsVectorLayerExporter,
+    Qgis
 )
 from qgis.PyQt.QtCore import QVariant
 from qgis.testing import start_app, unittest
@@ -216,14 +218,15 @@ class TestPyQgsShapefileProvider(unittest.TestCase, ProviderTestCase):
                        '"dt" <= format_date(make_datetime(2020, 5, 4, 12, 13, 14), \'yyyy-MM-dd hh:mm:ss\')',
                        '"dt" < format_date(make_date(2020, 5, 4), \'yyyy-MM-dd hh:mm:ss\')',
                        '"dt" = format_date(to_datetime(\'000www14ww13ww12www4ww5ww2020\',\'zzzwwwsswwmmwwhhwwwdwwMwwyyyy\'),\'yyyy-MM-dd hh:mm:ss\')',
+                       """dt BETWEEN format_date(make_datetime(2020, 5, 3, 12, 13, 14),  'yyyy-MM-dd hh:mm:ss') AND format_date(make_datetime(2020, 5, 4, 12, 14, 14), 'yyyy-MM-dd hh:mm:ss')""",
+                       """dt NOT BETWEEN format_date(make_datetime(2020, 5, 3, 12, 13, 14), 'yyyy-MM-dd hh:mm:ss') AND format_date(make_datetime(2020, 5, 4, 12, 14, 14), 'yyyy-MM-dd hh:mm:ss')""",
                        '"date" = to_date(\'www4ww5ww2020\',\'wwwdwwMwwyyyy\')',
                        'to_time("time") >= make_time(12, 14, 14)',
                        'to_time("time") = to_time(\'000www14ww13ww12www\',\'zzzwwwsswwmmwwhhwww\')',
                        'to_datetime("dt", \'yyyy-MM-dd hh:mm:ss\') + make_interval(days:=1) <= make_datetime(2020, 5, 4, 12, 13, 14)',
-                       'to_datetime("dt", \'yyyy-MM-dd hh:mm:ss\') + make_interval(days:=0.01) <= make_datetime(2020, 5, 4, 12, 13, 14)'
+                       'to_datetime("dt", \'yyyy-MM-dd hh:mm:ss\') + make_interval(days:=0.01) <= make_datetime(2020, 5, 4, 12, 13, 14)',
+                       'cnt BETWEEN -200 AND 200'  # NoUnaryMinus
                        ])
-        if int(osgeo.gdal.VersionInfo()[:1]) < 2:
-            filters.insert('not null')
         return filters
 
     def partiallyCompiledFilters(self):
@@ -543,12 +546,6 @@ class TestPyQgsShapefileProvider(unittest.TestCase, ProviderTestCase):
 
     def testRepackUnderFileLocks(self):
         ''' Test fix for #15570 and #15393 '''
-
-        # This requires a GDAL fix done per https://trac.osgeo.org/gdal/ticket/6672
-        # but on non-Windows version the test would succeed
-        if int(osgeo.gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(2, 1, 2):
-            return
-
         tmpdir = tempfile.mkdtemp()
         self.dirs_to_cleanup.append(tmpdir)
         srcpath = os.path.join(TEST_DATA_DIR, 'provider')
@@ -587,12 +584,6 @@ class TestPyQgsShapefileProvider(unittest.TestCase, ProviderTestCase):
 
     def testRepackAtFirstSave(self):
         ''' Test fix for #15407 '''
-
-        # This requires a GDAL fix done per https://trac.osgeo.org/gdal/ticket/6672
-        # but on non-Windows version the test would succeed
-        if int(osgeo.gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(2, 1, 2):
-            return
-
         tmpdir = tempfile.mkdtemp()
         self.dirs_to_cleanup.append(tmpdir)
         srcpath = os.path.join(TEST_DATA_DIR, 'provider')
@@ -632,6 +623,7 @@ class TestPyQgsShapefileProvider(unittest.TestCase, ProviderTestCase):
     def testOpenWithFilter(self):
         file_path = os.path.join(TEST_DATA_DIR, 'provider', 'shapefile.shp')
         uri = '{}|layerid=0|subset="name" = \'Apple\''.format(file_path)
+        options = QgsDataProvider.ProviderOptions()
         # ensure that no longer required ogr SQL layers are correctly cleaned up
         # we need to run this twice for the incorrect cleanup asserts to trip,
         # since they are triggered only when fetching an existing layer from the ogr
@@ -643,7 +635,7 @@ class TestPyQgsShapefileProvider(unittest.TestCase, ProviderTestCase):
             f = next(vl.getFeatures())
             self.assertEqual(f['name'], 'Apple')
             # force close of data provider
-            vl.setDataSource('', 'test', 'ogr')
+            vl.setDataSource('', 'test', 'ogr', options)
 
     def testEncoding(self):
         file_path = os.path.join(TEST_DATA_DIR, 'shapefile', 'iso-8859-1.shp')
@@ -854,8 +846,8 @@ class TestPyQgsShapefileProvider(unittest.TestCase, ProviderTestCase):
 
         # Check DataItem
         registry = QgsApplication.dataItemProviderRegistry()
-        ogrprovider = next(provider for provider in registry.providers() if provider.name() == 'OGR')
-        item = ogrprovider.createDataItem(tmpfile, None)
+        files_provider = next(provider for provider in registry.providers() if provider.name() == 'files')
+        item = files_provider.createDataItem(tmpfile, None)
         self.assertTrue(item.uri().endswith('testShzSupport.shz'))
 
     def testShpZipSupport(self):
@@ -910,17 +902,13 @@ class TestPyQgsShapefileProvider(unittest.TestCase, ProviderTestCase):
 
         # Check DataItem
         registry = QgsApplication.dataItemProviderRegistry()
-        ogrprovider = next(provider for provider in registry.providers() if provider.name() == 'OGR')
-        item = ogrprovider.createDataItem(tmpfile, None)
+        files_provider = next(provider for provider in registry.providers() if provider.name() == 'files')
+        item = files_provider.createDataItem(tmpfile, None)
         children = item.createChildren()
         self.assertEqual(len(children), 2)
         uris = sorted([children[i].uri() for i in range(2)])
         self.assertIn('testShpZipSupport.shp.zip|layername=layer1', uris[0])
         self.assertIn('testShpZipSupport.shp.zip|layername=layer2', uris[1])
-
-        gdalprovider = next(provider for provider in registry.providers() if provider.name() == 'GDAL')
-        item = gdalprovider.createDataItem(tmpfile, None)
-        assert not item
 
     def testWriteShapefileWithSingleConversion(self):
         """Check writing geometries from a POLYGON ESRI shapefile does not
@@ -1080,6 +1068,24 @@ class TestPyQgsShapefileProvider(unittest.TestCase, ProviderTestCase):
         vl = QgsVectorLayer(datasource, 'test')
         self.assertTrue(vl.isValid())
         self.assertEqual([f.attributes() for f in vl.dataProvider().getFeatures()], [['abcŐ'], ['abcŐabcŐabcŐ']])
+
+    def testSkipFeatureCountOnFeatureCount(self):
+        """Test QgsDataProvider.SkipFeatureCount on featureCount()"""
+
+        testPath = TEST_DATA_DIR + '/' + 'lines.shp'
+        provider = QgsProviderRegistry.instance().createProvider('ogr', testPath, QgsDataProvider.ProviderOptions(), QgsDataProvider.SkipFeatureCount)
+        self.assertTrue(provider.isValid())
+        self.assertEqual(provider.featureCount(), QgsVectorDataProvider.UnknownCount)
+
+    def testSkipFeatureCountOnSubLayers(self):
+        """Test QgsDataProvider.SkipFeatureCount on subLayers()"""
+
+        datasource = os.path.join(TEST_DATA_DIR, 'shapefile')
+        provider = QgsProviderRegistry.instance().createProvider('ogr', datasource, QgsDataProvider.ProviderOptions(), QgsDataProvider.SkipFeatureCount)
+        self.assertTrue(provider.isValid())
+        sublayers = provider.subLayers()
+        self.assertTrue(len(sublayers) > 1)
+        self.assertEqual(int(sublayers[0].split(QgsDataProvider.sublayerSeparator())[2]), int(Qgis.FeatureCountState.Uncounted))
 
     def testLayersOnSameOGRLayerWithAndWithoutFilter(self):
         """Test fix for https://github.com/qgis/QGIS/issues/43361"""

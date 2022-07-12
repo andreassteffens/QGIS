@@ -25,6 +25,7 @@
 #include "qgsmulticurve.h"
 #include "qgsfeedback.h"
 #include "qgslogger.h"
+#include "qgsmesheditor.h"
 
 QgsMeshTriangulation::QgsMeshTriangulation(): QObject()
 {
@@ -94,6 +95,11 @@ bool QgsMeshTriangulation::addBreakLines( QgsFeatureIterator &lineFeatureIterato
   return true;
 }
 
+int QgsMeshTriangulation::addVertex( const QgsPoint &vertex )
+{
+  return mTriangulation->addPoint( vertex );
+}
+
 QgsMesh QgsMeshTriangulation::triangulatedMesh( QgsFeedback *feedback ) const
 {
   return mTriangulation->triangulationToMesh( feedback );
@@ -109,7 +115,7 @@ void QgsMeshTriangulation::addVerticesFromFeature( const QgsFeature &feature, in
   QgsGeometry geom = feature.geometry();
   try
   {
-    geom.transform( transform, QgsCoordinateTransform::ForwardTransform, true );
+    geom.transform( transform, Qgis::TransformDirection::Forward, true );
   }
   catch ( QgsCsException &cse )
   {
@@ -149,7 +155,7 @@ void QgsMeshTriangulation::addBreakLinesFromFeature( const QgsFeature &feature, 
   QgsGeometry geom = feature.geometry();
   try
   {
-    geom.transform( transform, QgsCoordinateTransform::ForwardTransform, true );
+    geom.transform( transform, Qgis::TransformDirection::Forward, true );
   }
   catch ( QgsCsException &cse )
   {
@@ -242,7 +248,7 @@ void QgsMeshTriangulation::addBreakLinesFromFeature( const QgsFeature &feature, 
 QgsMeshZValueDatasetGroup::QgsMeshZValueDatasetGroup( const QString &datasetGroupName, const QgsMesh &mesh ):
   QgsMeshDatasetGroup( datasetGroupName, QgsMeshDatasetGroupMetadata::DataOnVertices )
 {
-  mDataset = qgis::make_unique< QgsMeshZValueDataset >( mesh );
+  mDataset = std::make_unique< QgsMeshZValueDataset >( mesh );
 }
 
 void QgsMeshZValueDatasetGroup::initialize()
@@ -328,3 +334,115 @@ int QgsMeshZValueDataset::valuesCount() const
 {
   return mMesh.vertexCount();
 }
+
+QgsMeshEditingDelaunayTriangulation::QgsMeshEditingDelaunayTriangulation() = default;
+
+QString QgsMeshEditingDelaunayTriangulation::text() const
+{
+  return QObject::tr( "Delaunay triangulation" );
+}
+
+QgsTopologicalMesh::Changes QgsMeshEditingDelaunayTriangulation::apply( QgsMeshEditor *meshEditor )
+{
+  //use only vertices that are on boundary or free, if boundary
+  QList<int> vertexIndextoTriangulate;
+
+  QList<int> removedVerticesFromTriangulation;
+
+  for ( const int vertexIndex : std::as_const( mInputVertices ) )
+  {
+    if ( meshEditor->isVertexFree( vertexIndex ) || meshEditor->isVertexOnBoundary( vertexIndex ) )
+      vertexIndextoTriangulate.append( vertexIndex );
+    else
+      removedVerticesFromTriangulation.append( vertexIndex );
+  }
+
+  bool triangulationReady = false;
+  bool giveUp = false;
+  QgsTopologicalMesh::TopologicalFaces topologicFaces;
+
+  while ( !triangulationReady )
+  {
+    QgsMeshTriangulation triangulation;
+
+    QVector<int> triangulationVertexToMeshVertex( vertexIndextoTriangulate.count() );
+    const QgsMesh *destinationMesh = meshEditor->topologicalMesh().mesh();
+
+    for ( int i = 0; i < vertexIndextoTriangulate.count(); ++i )
+    {
+      triangulationVertexToMeshVertex[i] = vertexIndextoTriangulate.at( i );
+      triangulation.addVertex( destinationMesh->vertices.at( vertexIndextoTriangulate.at( i ) ) );
+    }
+
+    QgsMesh resultingTriangulation = triangulation.triangulatedMesh();
+
+    //Transform the new mesh triangulation to destination mesh faces
+    QVector<QgsMeshFace> rawDestinationFaces = resultingTriangulation.faces;
+
+    for ( QgsMeshFace &destinationFace : rawDestinationFaces )
+    {
+      for ( int &vertexIndex : destinationFace )
+        vertexIndex = triangulationVertexToMeshVertex[vertexIndex];
+    }
+
+    //The new triangulation may contains faces that intersect existing faces, we need to remove them
+    QVector<QgsMeshFace> destinationFaces;
+    for ( const QgsMeshFace &face : rawDestinationFaces )
+    {
+      if ( meshEditor->isFaceGeometricallyCompatible( face ) )
+        destinationFaces.append( face );
+    }
+
+    bool facesReady = false;
+    QgsMeshEditingError previousError;
+    while ( !facesReady && !giveUp )
+    {
+      QgsMeshEditingError error;
+      topologicFaces = QgsTopologicalMesh::createNewTopologicalFaces( destinationFaces, true, error );
+
+      if ( error == QgsMeshEditingError() )
+        error = meshEditor->topologicalMesh().facesCanBeAdded( topologicFaces );
+
+      switch ( error.errorType )
+      {
+        case Qgis::MeshEditingErrorType::NoError:
+          facesReady = true;
+          triangulationReady = true;
+          break;
+        case Qgis::MeshEditingErrorType::InvalidFace:
+        case Qgis::MeshEditingErrorType::FlatFace:
+        case Qgis::MeshEditingErrorType::TooManyVerticesInFace:
+        case Qgis::MeshEditingErrorType::ManifoldFace:
+          if ( error.elementIndex != -1 )
+            destinationFaces.remove( error.elementIndex );
+          else
+            giveUp = true; //we don't know what happens, better to give up
+          break;
+        case Qgis::MeshEditingErrorType::InvalidVertex:
+        case Qgis::MeshEditingErrorType::UniqueSharedVertex:
+          facesReady = true;
+          if ( error.elementIndex != -1 )
+          {
+            removedVerticesFromTriangulation.append( error.elementIndex );
+            vertexIndextoTriangulate.removeOne( error.elementIndex );
+          }
+          else
+            giveUp = true; //we don't know what happens, better to give up
+          break;
+      }
+    }
+  }
+
+  Q_ASSERT( meshEditor->topologicalMesh().checkConsistency() == QgsMeshEditingError() );
+
+  if ( !removedVerticesFromTriangulation.isEmpty() )
+    mMessage = QObject::tr( "%n vertices have not been included in the triangulation", nullptr, removedVerticesFromTriangulation.count() );
+
+  mIsFinished = true;
+
+  if ( triangulationReady && !giveUp )
+    return meshEditor->topologicalMesh().addFaces( topologicFaces );
+  else
+    return QgsTopologicalMesh::Changes();
+}
+

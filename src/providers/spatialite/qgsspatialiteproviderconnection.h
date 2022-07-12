@@ -17,9 +17,40 @@
 #define QGSSPATIALITEPROVIDERCONNECTION_H
 
 #include "qgsabstractdatabaseproviderconnection.h"
+#include "qgsogrutils.h"
 
 ///@cond PRIVATE
 #define SIP_NO_FILE
+
+
+struct QgsSpatialiteProviderResultIterator: public QgsAbstractDatabaseProviderConnection::QueryResult::QueryResultIterator
+{
+    QgsSpatialiteProviderResultIterator( gdal::ogr_datasource_unique_ptr hDS, OGRLayerH ogrLayer );
+
+    ~QgsSpatialiteProviderResultIterator();
+
+    void setFields( const QgsFields &fields );
+
+    void setGeometryColumnName( const QString &geometryColumnName );
+
+  private:
+
+    gdal::ogr_datasource_unique_ptr mHDS;
+    OGRLayerH mOgrLayer;
+    QgsFields mFields;
+    QVariantList mNextRow;
+    QString mGeometryColumnName;
+
+    QVariantList nextRowPrivate() override;
+    bool hasNextRowPrivate() const override;
+    QVariantList nextRowInternal();
+
+    // QueryResultIterator interface
+  private:
+    long long rowCountPrivate() const override;
+    long long mRowCount = -1;
+};
+
 
 class QgsSpatiaLiteProviderConnection : public QgsAbstractDatabaseProviderConnection
 {
@@ -36,9 +67,10 @@ class QgsSpatiaLiteProviderConnection : public QgsAbstractDatabaseProviderConnec
     void remove( const QString &name ) const override;
     QString tableUri( const QString &schema, const QString &name ) const override;
     void createVectorTable( const QString &schema, const QString &name, const QgsFields &fields, QgsWkbTypes::Type wkbType, const QgsCoordinateReferenceSystem &srs, bool overwrite, const QMap<QString, QVariant> *options ) const override;
+    QgsVectorLayer *createSqlVectorLayer( const SqlVectorLayerOptions &options ) const override;
     void dropVectorTable( const QString &schema, const QString &name ) const override;
     void renameVectorTable( const QString &schema, const QString &name, const QString &newName ) const override;
-    QList<QList<QVariant>> executeSql( const QString &sql, QgsFeedback *feedback = nullptr ) const override;
+    QgsAbstractDatabaseProviderConnection::QueryResult execSql( const QString &sql, QgsFeedback *feedback = nullptr ) const override;
     void vacuum( const QString &schema, const QString &name ) const override;
     void createSpatialIndex( const QString &schema, const QString &name, const QgsAbstractDatabaseProviderConnection::SpatialIndexOptions &options = QgsAbstractDatabaseProviderConnection::SpatialIndexOptions() ) const override;
     bool spatialIndexExists( const QString &schema, const QString &name, const QString &geometryColumn ) const override;
@@ -47,12 +79,14 @@ class QgsSpatiaLiteProviderConnection : public QgsAbstractDatabaseProviderConnec
     QIcon icon() const override;
     void deleteField( const QString &fieldName, const QString &schema, const QString &tableName, bool force ) const override;
     QList<QgsVectorDataProvider::NativeType> nativeTypes() const override;
+    QMultiMap<Qgis::SqlKeywordCategory, QStringList> sqlDictionary() override;
+    SqlVectorLayerOptions sqlOptions( const QString &layerSource ) override;
 
   private:
 
     void setDefaultCapabilities();
     //! Use GDAL to execute SQL
-    QList<QVariantList> executeSqlPrivate( const QString &sql, QgsFeedback *feedback = nullptr ) const;
+    QgsAbstractDatabaseProviderConnection::QueryResult executeSqlPrivate( const QString &sql, QgsFeedback *feedback = nullptr ) const;
 
     //! Executes SQL directly using sqlite3 -- avoids the extra consistency checks which GDAL requires when opening a spatialite database
     bool executeSqlDirect( const QString &sql ) const;
@@ -61,9 +95,6 @@ class QgsSpatiaLiteProviderConnection : public QgsAbstractDatabaseProviderConnec
     QString pathFromUri() const;
 
 };
-
-
-
 
 
 ///@endcond

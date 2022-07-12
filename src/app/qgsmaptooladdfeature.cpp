@@ -37,8 +37,8 @@
 
 #include <QSettings>
 
-QgsMapToolAddFeature::QgsMapToolAddFeature( QgsMapCanvas *canvas, CaptureMode mode )
-  : QgsMapToolDigitizeFeature( canvas, QgisApp::instance()->cadDockWidget(), mode )
+QgsMapToolAddFeature::QgsMapToolAddFeature( QgsMapCanvas *canvas, QgsAdvancedDigitizingDockWidget *cadDockWidget, CaptureMode mode )
+  : QgsMapToolDigitizeFeature( canvas, cadDockWidget, mode )
   , mCheckGeometryType( true )
 {
   setLayer( canvas->currentLayer() );
@@ -48,6 +48,11 @@ QgsMapToolAddFeature::QgsMapToolAddFeature( QgsMapCanvas *canvas, CaptureMode mo
   connect( QgisApp::instance(), &QgisApp::projectRead, this, &QgsMapToolAddFeature::stopCapturing );
 }
 
+QgsMapToolAddFeature::QgsMapToolAddFeature( QgsMapCanvas *canvas, CaptureMode mode )
+  : QgsMapToolAddFeature( canvas, QgisApp::instance()->cadDockWidget(), mode )
+{
+}
+
 bool QgsMapToolAddFeature::addFeature( QgsVectorLayer *vlayer, const QgsFeature &f, bool showModal )
 {
   QgsFeature feat( f );
@@ -55,23 +60,23 @@ bool QgsMapToolAddFeature::addFeature( QgsVectorLayer *vlayer, const QgsFeature 
   QgsFeatureAction *action = new QgsFeatureAction( tr( "add feature" ), feat, vlayer, QString(), -1, this );
   if ( QgsRubberBand *rb = takeRubberBand() )
     connect( action, &QgsFeatureAction::addFeatureFinished, rb, &QgsRubberBand::deleteLater );
-  bool res = action->addFeature( QgsAttributeMap(), showModal, scope );
+  const bool res = action->addFeature( QgsAttributeMap(), showModal, scope );
   if ( showModal )
     delete action;
   return res;
 }
 
-void QgsMapToolAddFeature::digitized( const QgsFeature &f )
+void QgsMapToolAddFeature::featureDigitized( const QgsFeature &feature )
 {
   QgsVectorLayer *vlayer = currentVectorLayer();
-  bool res = addFeature( vlayer, f, false );
+  const bool res = addFeature( vlayer, feature, false );
 
   if ( res )
   {
     //add points to other features to keep topology up-to-date
-    bool topologicalEditing = QgsProject::instance()->topologicalEditing();
-    QgsProject::AvoidIntersectionsMode avoidIntersectionsMode = QgsProject::instance()->avoidIntersectionsMode();
-    if ( topologicalEditing && avoidIntersectionsMode == QgsProject::AvoidIntersectionsMode::AvoidIntersectionsLayers &&
+    const bool topologicalEditing = QgsProject::instance()->topologicalEditing();
+    const Qgis::AvoidIntersectionsMode avoidIntersectionsMode = QgsProject::instance()->avoidIntersectionsMode();
+    if ( topologicalEditing && avoidIntersectionsMode == Qgis::AvoidIntersectionsMode::AvoidIntersectionsLayers &&
          ( mode() == CaptureLine || mode() == CapturePolygon ) )
     {
 
@@ -86,22 +91,22 @@ void QgsMapToolAddFeature::digitized( const QgsFeature &f )
           //can only add topological points if background layer is editable...
           if ( vl->geometryType() == QgsWkbTypes::PolygonGeometry && vl->isEditable() )
           {
-            vl->addTopologicalPoints( f.geometry() );
+            vl->addTopologicalPoints( feature.geometry() );
           }
         }
       }
     }
     if ( topologicalEditing )
     {
-      QList<QgsPointLocator::Match> sm = snappingMatches();
+      const QList<QgsPointLocator::Match> sm = snappingMatches();
       for ( int i = 0; i < sm.size() ; ++i )
       {
         if ( sm.at( i ).layer() )
         {
-          sm.at( i ).layer()->addTopologicalPoints( f.geometry().vertexAt( i ) );
+          sm.at( i ).layer()->addTopologicalPoints( feature.geometry().vertexAt( i ) );
         }
       }
-      vlayer->addTopologicalPoints( f.geometry() );
+      vlayer->addTopologicalPoints( feature.geometry() );
     }
   }
 }

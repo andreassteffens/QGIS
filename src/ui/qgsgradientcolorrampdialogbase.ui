@@ -96,7 +96,7 @@
         <string notr="true"/>
        </property>
        <property name="sizeAdjustPolicy">
-        <enum>QComboBox::AdjustToMinimumContentsLength</enum>
+        <enum>QComboBox::AdjustToContents</enum>
        </property>
       </widget>
      </item>
@@ -180,6 +180,20 @@
             </property>
            </widget>
           </item>
+          <item row="0" column="5">
+           <widget class="QPushButton" name="mDeleteStopButton">
+            <property name="text">
+             <string>&amp;Delete Stop</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0" colspan="5">
+           <widget class="QgsCompoundColorWidget" name="mColorWidget" native="true">
+            <property name="focusPolicy">
+             <enum>Qt::StrongFocus</enum>
+            </property>
+           </widget>
+          </item>
           <item row="0" column="1">
            <widget class="QgsDoubleSpinBox" name="mPositionSpinBox">
             <property name="suffix">
@@ -190,14 +204,7 @@
             </property>
            </widget>
           </item>
-          <item row="0" column="2">
-           <widget class="QPushButton" name="mDeleteStopButton">
-            <property name="text">
-             <string>&amp;Delete Stop</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="3">
+          <item row="0" column="4">
            <spacer name="horizontalSpacer">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -210,12 +217,11 @@
             </property>
            </spacer>
           </item>
-          <item row="1" column="0" colspan="4">
-           <widget class="QgsCompoundColorWidget" name="mColorWidget" native="true">
-            <property name="focusPolicy">
-             <enum>Qt::StrongFocus</enum>
-            </property>
-           </widget>
+          <item row="0" column="2">
+           <widget class="QComboBox" name="mStopColorSpec"/>
+          </item>
+          <item row="0" column="3">
+           <widget class="QComboBox" name="mStopDirection"/>
           </item>
          </layout>
         </widget>
@@ -331,27 +337,27 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>QgsCollapsibleGroupBox</class>
-   <extends>QGroupBox</extends>
-   <header>qgscollapsiblegroupbox.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
    <class>QgsScrollArea</class>
    <extends>QScrollArea</extends>
    <header>qgsscrollarea.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>QgsColorButton</class>
-   <extends>QToolButton</extends>
-   <header>qgscolorbutton.h</header>
+   <class>QgsCollapsibleGroupBox</class>
+   <extends>QGroupBox</extends>
+   <header>qgscollapsiblegroupbox.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>QgsDoubleSpinBox</class>
    <extends>QDoubleSpinBox</extends>
    <header>qgsdoublespinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsColorButton</class>
+   <extends>QToolButton</extends>
+   <header>qgscolorbutton.h</header>
+   <container>1</container>
   </customwidget>
   <customwidget>
    <class>QwtPlot</class>
@@ -377,17 +383,17 @@
   <tabstop>btnColor2</tabstop>
   <tabstop>cboType</tabstop>
   <tabstop>mStopEditor</tabstop>
-  <tabstop>groupBox_2</tabstop>
+  <tabstop>scrollArea</tabstop>
   <tabstop>mPositionSpinBox</tabstop>
+  <tabstop>mStopColorSpec</tabstop>
+  <tabstop>mStopDirection</tabstop>
   <tabstop>mDeleteStopButton</tabstop>
   <tabstop>mColorWidget</tabstop>
-  <tabstop>mPlotGroupBox</tabstop>
   <tabstop>mPlotHueCheckbox</tabstop>
   <tabstop>mPlotSaturationCheckbox</tabstop>
   <tabstop>mPlotLightnessCheckbox</tabstop>
   <tabstop>mPlotAlphaCheckbox</tabstop>
   <tabstop>btnInformation</tabstop>
-  <tabstop>scrollArea</tabstop>
  </tabstops>
  <resources/>
  <connections>

@@ -11,20 +11,13 @@ set (BENCH_SRCS
 
 add_executable (qgis_bench MACOSX_BUNDLE WIN32 ${BENCH_SRCS} )
 
-include_directories(
-  ${CMAKE_SOURCE_DIR}/external
-  ${CMAKE_SOURCE_DIR}/external/nlohmann
+# require c++17
+target_compile_features(qgis_bench PRIVATE cxx_std_17)
 
-  ${CMAKE_SOURCE_DIR}/src/core
-  ${CMAKE_SOURCE_DIR}/src/core/expression
-  ${CMAKE_SOURCE_DIR}/src/core/geometry
-  ${CMAKE_SOURCE_DIR}/src/core/labeling
-  ${CMAKE_SOURCE_DIR}/src/core/metadata
-  ${CMAKE_SOURCE_DIR}/src/core/raster
-  ${CMAKE_SOURCE_DIR}/src/core/symbology
+include_directories(
+
 
   ${CMAKE_BINARY_DIR}
-  ${CMAKE_BINARY_DIR}/src/core
 )
 include_directories(SYSTEM
   ${SQLITE3_INCLUDE_DIR}
@@ -33,12 +26,12 @@ include_directories(SYSTEM
 target_link_libraries(qgis_bench
   qgis_core
   ${SQLITE3_LIBRARY}
-  ${Qt5Core_LIBRARIES}
-  ${Qt5Network_LIBRARIES}
-  ${Qt5Svg_LIBRARIES}
-  ${Qt5Xml_LIBRARIES}
+  ${QT_VERSION_BASE}::Core
+  ${QT_VERSION_BASE}::Network
+  ${QT_VERSION_BASE}::Svg
+  ${QT_VERSION_BASE}::Xml
   ${OPTIONAL_QTWEBKIT}
-  ${Qt5Test_LIBRARIES}
+  ${QT_VERSION_BASE}::Test
 )
 
 if(APPLE)

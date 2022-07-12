@@ -28,6 +28,7 @@
 #include "qgslayermetadata.h"
 
 #include "qgsprovidermetadata.h"
+#include "qgshttpheaders.h"
 
 /**
  * \brief A provider reading features from a ArcGIS Feature Service
@@ -48,7 +49,7 @@ class QgsAfsProvider : public QgsVectorDataProvider
     QString storageType() const override { return QStringLiteral( "ArcGIS Feature Service" ); }
     QgsFeatureIterator getFeatures( const QgsFeatureRequest &request = QgsFeatureRequest() ) const override;
     QgsWkbTypes::Type wkbType() const override;
-    long featureCount() const override;
+    long long featureCount() const override;
     QgsFields fields() const override;
     QgsLayerMetadata layerMetadata() const override;
     /* Read only for the moment
@@ -78,6 +79,10 @@ class QgsAfsProvider : public QgsVectorDataProvider
     QgsAbstractVectorLayerLabeling *createLabeling( const QVariantMap &configuration = QVariantMap() ) const override;
     bool renderInPreview( const QgsDataProvider::PreviewContext &context ) override;
 
+    static QString providerKey();
+
+    void handlePostCloneOperations( QgsVectorDataProvider *source ) override;
+
   private:
     bool mValid = false;
     std::shared_ptr<QgsAfsSharedData> mSharedData;
@@ -87,7 +92,7 @@ class QgsAfsProvider : public QgsVectorDataProvider
     QgsLayerMetadata mLayerMetadata;
     QVariantMap mRendererDataMap;
     QVariantList mLabelingDataList;
-    QgsStringMap mRequestHeaders;
+    QgsHttpHeaders mRequestHeaders;
 
     /**
      * Clears cache
@@ -99,11 +104,12 @@ class QgsAfsProviderMetadata: public QgsProviderMetadata
 {
   public:
     QgsAfsProviderMetadata();
+    QIcon icon() const override;
     QList<QgsDataItemProvider *> dataItemProviders() const override;
-    QVariantMap decodeUri( const QString &uri ) override;
-    QString encodeUri( const QVariantMap &parts ) override;
+    QVariantMap decodeUri( const QString &uri ) const override;
+    QString encodeUri( const QVariantMap &parts ) const override;
     QgsAfsProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
-
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
 };
 
 #endif // QGSAFSPROVIDER_H

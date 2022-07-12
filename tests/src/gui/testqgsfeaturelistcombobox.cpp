@@ -80,6 +80,7 @@ void TestQgsFeatureListComboBox::init()
 {
   // create layer
   mLayer.reset( new QgsVectorLayer( QStringLiteral( "LineString?field=pk:int&field=material:string&field=diameter:int&field=raccord:string" ), QStringLiteral( "vl2" ), QStringLiteral( "memory" ) ) );
+  mLayer->setDisplayExpression( QStringLiteral( "pk" ) );
 
   // add features
   mLayer->startEditing();
@@ -292,7 +293,7 @@ void TestQgsFeatureListComboBox::testNotExistingYetFeature()
 
 void TestQgsFeatureListComboBox::testFeatureFurtherThanFetchLimit()
 {
-  int fetchLimit = 20;
+  const int fetchLimit = 20;
   QVERIFY( fetchLimit < mLayer->featureCount() );
   std::unique_ptr<QgsFeatureListComboBox> cb( new QgsFeatureListComboBox() );
   QgsFeatureFilterModel *model = qobject_cast<QgsFeatureFilterModel *>( cb->model() );

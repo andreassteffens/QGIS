@@ -77,7 +77,7 @@ void QgsFeatureSelectionDlg::showEvent( QShowEvent *event )
 {
 
   QWindow *mainWindow = nullptr;
-  for ( const auto &w : QgsApplication::instance()->topLevelWindows() )
+  for ( const auto &w : QgsApplication::topLevelWindows() )
   {
     if ( w->objectName() == QLatin1String( "QgisAppWindow" ) )
     {
@@ -88,10 +88,10 @@ void QgsFeatureSelectionDlg::showEvent( QShowEvent *event )
 
   if ( mainWindow )
   {
-    QSize margins( size() - scrollAreaWidgetContents->size() );
-    QSize innerWinSize( mainWindow->width(), mainWindow->height() );
+    const QSize margins( size() - scrollAreaWidgetContents->size() );
+    const QSize innerWinSize( mainWindow->width(), mainWindow->height() );
     setMaximumSize( innerWinSize );
-    QSize minSize( scrollAreaWidgetContents->sizeHint() );
+    const QSize minSize( scrollAreaWidgetContents->sizeHint() );
     setMinimumSize( std::min( minSize.width() + margins.width( ), innerWinSize.width() ),
                     std::min( minSize.height() + margins.width( ), innerWinSize.height() ) );
   }

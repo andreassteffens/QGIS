@@ -51,7 +51,7 @@ class CORE_EXPORT QgsFeedback : public QObject
     {}
 
     //! Tells whether the operation has been canceled already
-    bool isCanceled() const { return mCanceled; }
+    bool isCanceled() const SIP_HOLDGIL { return mCanceled; }
 
     /**
      * Sets the current progress for the feedback object. The \a progress
@@ -77,7 +77,30 @@ class CORE_EXPORT QgsFeedback : public QObject
      * \see progressChanged()
      * \since QGIS 3.0
      */
-    double progress() const { return mProgress; }
+    double progress() const SIP_HOLDGIL { return mProgress; }
+
+    /**
+     * Returns the current processed objects count reported by the feedback object. Depending on how the
+     * feedback object is used processed count reporting may not be supported. The returned value
+     * is an unsigned long integer and starts from 0.
+     * \see setProcessedCount()
+     * \see processedCountChanged()
+     * \since QGIS 3.24
+     */
+    unsigned long long processedCount() const SIP_HOLDGIL { return mProcessedCount; }
+
+    /**
+     * Sets the current processed objects count for the feedback object. The \a processedCount
+     * argument is an unsigned long integer and starts from 0.
+     * \see processedCount()
+     * \see processedCountChanged()
+     * \since QGIS 3.24
+     */
+    void setProcessedCount( unsigned long long processedCount )
+    {
+      mProcessedCount = processedCount;
+      emit processedCountChanged( processedCount );
+    }
 
   public slots:
 
@@ -104,11 +127,23 @@ class CORE_EXPORT QgsFeedback : public QObject
      */
     void progressChanged( double progress );
 
+    /**
+     * Emitted when the feedback object reports a change in the number of processed objects.
+     * Depending on how the feedback object is used processed count reporting may not be supported. The \a processedCount
+     * argument is an unsigned long integer and starts from 0.
+     * \see setProgress()
+     * \see progress()
+     * \since QGIS 3.24
+     */
+    void processedCountChanged( unsigned long long processedCount );
+
   private:
     //! Whether the operation has been canceled already. False by default.
     bool mCanceled = false;
 
     double mProgress = 0.0;
+    unsigned long long mProcessedCount = 0;
 };
+
 
 #endif // QGSFEEDBACK_H

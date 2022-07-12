@@ -88,10 +88,10 @@ void TestQgsMapToolMoveFeature::initTestCase()
   QgsProject::instance()->addMapLayers( QList<QgsMapLayer *>() << mLayerBase );
 
   mLayerBase->startEditing();
-  QString wkt1 = "Polygon ((0 0, 0 1, 1 1, 1 0))";
+  const QString wkt1 = "Polygon ((0 0, 0 1, 1 1, 1 0, 0 0))";
   QgsFeature f1;
   f1.setGeometry( QgsGeometry::fromWkt( wkt1 ) );
-  QString wkt2 = "Polygon ((2 0, 2 5, 3 5, 3 0))";
+  const QString wkt2 = "Polygon ((2 0, 2 5, 3 5, 3 0, 2 0))";
   QgsFeature f2;
   f2.setGeometry( QgsGeometry::fromWkt( wkt2 ) );
 
@@ -103,9 +103,9 @@ void TestQgsMapToolMoveFeature::initTestCase()
   QCOMPARE( mLayerBase->getFeature( 2 ).geometry().asWkt(), wkt2 );
 
   QgsSnappingConfig cfg = mCanvas->snappingUtils()->config();
-  cfg.setMode( QgsSnappingConfig::AllLayers );
+  cfg.setMode( Qgis::SnappingMode::AllLayers );
   cfg.setTolerance( 1 );
-  cfg.setTypeFlag( static_cast<QgsSnappingConfig::SnappingTypeFlag>( QgsSnappingConfig::VertexFlag | QgsSnappingConfig::SegmentFlag ) );
+  cfg.setTypeFlag( static_cast<Qgis::SnappingTypes>( Qgis::SnappingType::Vertex | Qgis::SnappingType::Segment ) );
   cfg.setEnabled( true );
   mCanvas->snappingUtils()->setConfig( cfg );
 
@@ -135,9 +135,9 @@ void TestQgsMapToolMoveFeature::testMoveFeature()
   utils.mouseClick( 1, 1, Qt::LeftButton, Qt::KeyboardModifiers(), true );
   utils.mouseClick( 2, 1, Qt::LeftButton, Qt::KeyboardModifiers(), true );
 
-  QString wkt1 = "Polygon ((1 0, 1 1, 2 1, 2 0))";
+  const QString wkt1 = "Polygon ((1 0, 1 1, 2 1, 2 0, 1 0))";
   QCOMPARE( mLayerBase->getFeature( 1 ).geometry().asWkt(), wkt1 );
-  QString wkt2 = "Polygon ((2 0, 2 5, 3 5, 3 0))";
+  const QString wkt2 = "Polygon ((2 0, 2 5, 3 5, 3 0, 2 0))";
   QCOMPARE( mLayerBase->getFeature( 2 ).geometry().asWkt(), wkt2 );
 
   mLayerBase->undoStack()->undo();
@@ -145,7 +145,7 @@ void TestQgsMapToolMoveFeature::testMoveFeature()
 
 void TestQgsMapToolMoveFeature::testTopologicalMoveFeature()
 {
-  bool topologicalEditing = QgsProject::instance()->topologicalEditing();
+  const bool topologicalEditing = QgsProject::instance()->topologicalEditing();
   QgsProject::instance()->setTopologicalEditing( true );
 
   TestQgsMapToolAdvancedDigitizingUtils utils( mCaptureTool );
@@ -153,9 +153,9 @@ void TestQgsMapToolMoveFeature::testTopologicalMoveFeature()
   utils.mouseClick( 1, 1, Qt::LeftButton, Qt::KeyboardModifiers(), true );
   utils.mouseClick( 2, 1, Qt::LeftButton, Qt::KeyboardModifiers(), true );
 
-  QString wkt1 = "Polygon ((1 0, 1 1, 2 1, 2 0))";
+  const QString wkt1 = "Polygon ((1 0, 1 1, 2 1, 2 0, 1 0))";
   QCOMPARE( mLayerBase->getFeature( 1 ).geometry().asWkt(), wkt1 );
-  QString wkt2 = "Polygon ((2 0, 2 1, 2 5, 3 5, 3 0))";
+  const QString wkt2 = "Polygon ((2 0, 2 1, 2 5, 3 5, 3 0, 2 0))";
   QCOMPARE( mLayerBase->getFeature( 2 ).geometry().asWkt(), wkt2 );
 
   mLayerBase->undoStack()->undo();

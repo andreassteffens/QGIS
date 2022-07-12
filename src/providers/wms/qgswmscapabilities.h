@@ -29,7 +29,7 @@
 #include "qgsapplication.h"
 #include "qgsdataprovider.h"
 #include "qgsinterval.h"
-
+#include "qgstemporalutils.h"
 
 class QNetworkReply;
 
@@ -199,7 +199,7 @@ struct QgsWmsDimensionProperty
       QDateTime start = QDateTime::fromString( extentContent.at( 0 ), Qt::ISODateWithMs );
       QDateTime end = QDateTime::fromString( extentContent.at( extentSize - 2 ), Qt::ISODateWithMs );
 
-      if ( start.isValid() & end.isValid() )
+      if ( start.isValid() && end.isValid() )
         return QgsDateTimeRange( start, end );
     }
 
@@ -349,7 +349,7 @@ struct QgsWmsLayerProperty
   int                fixedHeight;
 
   // TODO need to expand this to cover more of layer properties
-  bool equal( const QgsWmsLayerProperty &layerProperty )
+  bool equal( const QgsWmsLayerProperty &layerProperty ) const
   {
     if ( !( name == layerProperty.name ) )
       return false;
@@ -371,7 +371,7 @@ struct QgsWmsLayerProperty
     if ( dimensions.isEmpty() )
       return false;
 
-    for ( const QgsWmsDimensionProperty &dimension : qgis::as_const( dimensions ) )
+    for ( const QgsWmsDimensionProperty &dimension : std::as_const( dimensions ) )
     {
       if ( dimension.name == dimensionName )
         return true;
@@ -414,108 +414,13 @@ struct QgsWmstDates
 
   }
 
-  bool operator== ( const QgsWmstDates &other )
+  bool operator== ( const QgsWmstDates &other ) const
   {
     return dateTimes == other.dateTimes;
   }
 
   QList< QDateTime > dateTimes;
 };
-
-/**
- * Stores resolution part of the WMS-T dimension extent.
- *
- * If resolution does not exist, active() will return false;
- */
-struct QgsWmstResolution
-{
-  int year = -1;
-  int month = -1;
-  int day = -1;
-
-  int hour = -1;
-  int minutes = -1;
-  int seconds = -1;
-
-  long long interval() const
-  {
-    long long secs = 0.0;
-
-    if ( year != -1 )
-      secs += year * QgsInterval::YEARS ;
-    if ( month != -1 )
-      secs += month * QgsInterval::MONTHS;
-    if ( day != -1 )
-      secs += day * QgsInterval::DAY;
-    if ( hour != -1 )
-      secs += hour * QgsInterval::HOUR;
-    if ( minutes != -1 )
-      secs += minutes * QgsInterval::MINUTE;
-    if ( seconds != -1 )
-      secs += seconds;
-
-    return secs;
-  }
-
-  bool active() const
-  {
-    return year != -1 || month != -1 || day != -1 ||
-           hour != -1 || minutes != -1 || seconds != -1;
-  }
-
-  QString text() const
-  {
-    QString text( "P" );
-
-    if ( year != -1 )
-    {
-      text.append( QString::number( year ) );
-      text.append( 'Y' );
-    }
-    if ( month != -1 )
-    {
-      text.append( QString::number( month ) );
-      text.append( 'M' );
-    }
-    if ( day != -1 )
-    {
-      text.append( QString::number( day ) );
-      text.append( 'D' );
-    }
-
-    if ( hour != -1 )
-    {
-      if ( !text.contains( 'T' ) )
-        text.append( 'T' );
-      text.append( QString::number( hour ) );
-      text.append( 'H' );
-    }
-    if ( minutes != -1 )
-    {
-      if ( !text.contains( 'T' ) )
-        text.append( 'T' );
-      text.append( QString::number( minutes ) );
-      text.append( 'M' );
-    }
-    if ( seconds != -1 )
-    {
-      if ( !text.contains( 'T' ) )
-        text.append( 'T' );
-      text.append( QString::number( seconds ) );
-      text.append( 'S' );
-    }
-    return text;
-  }
-
-  bool operator==( const QgsWmstResolution &other ) const
-  {
-    return year == other.year && month == other.month &&
-           day == other.day && hour == other.hour &&
-           minutes == other.minutes && seconds == other.seconds;
-  }
-
-};
-
 
 /**
  * Stores dates and resolution structure pair.
@@ -526,20 +431,21 @@ struct QgsWmstExtentPair
   {
   }
 
-  QgsWmstExtentPair( QgsWmstDates otherDates, QgsWmstResolution otherResolution )
+  QgsWmstExtentPair( QgsWmstDates dates, QgsTimeDuration resolution )
+    : dates( dates )
+    , resolution( resolution )
   {
-    dates = otherDates;
-    resolution = otherResolution;
   }
 
-  bool operator ==( const QgsWmstExtentPair &other )
+  bool operator ==( const QgsWmstExtentPair &other ) const
   {
     return dates == other.dates &&
            resolution == other.resolution;
   }
 
   QgsWmstDates dates;
-  QgsWmstResolution resolution;
+  QgsTimeDuration resolution;
+
 };
 
 
@@ -570,7 +476,7 @@ struct QgsWmtsTileMatrix
   QString identifier;
   QString title, abstract;
   QStringList keywords;
-  double scaleDenom;
+  double scaleDenom = 0;
   QgsPointXY topLeft;  //!< Top-left corner of the tile matrix in map units
   int tileWidth;     //!< Width of a tile in pixels
   int tileHeight;    //!< Height of a tile in pixels
@@ -644,7 +550,7 @@ struct QgsWmtsStyle
   QString identifier;
   QString title, abstract;
   QStringList keywords;
-  bool isDefault;
+  bool isDefault = false;
   QList<QgsWmtsLegendURL> legendURLs;
 };
 
@@ -710,7 +616,7 @@ struct QgsWmsCapabilitiesProperty
   QgsWmsServiceProperty         service;
   QgsWmsCapabilityProperty      capability;
   QString                       version;
-  QString						wmtsServiceMetadataUrl;
+  QString                       wmtsServiceMetadataUrl;
 };
 
 //! Formats supported by QImageReader
@@ -751,10 +657,10 @@ struct QgsWmsParserSettings
 
 struct QgsWmsAuthorization
 {
-  QgsWmsAuthorization( const QString &userName = QString(), const QString &password = QString(), const QString &referer = QString(), const QString &authcfg = QString() )
+  QgsWmsAuthorization( const QString &userName = QString(), const QString &password = QString(), const QgsHttpHeaders &httpHeaders = QgsHttpHeaders(), const QString &authcfg = QString() )
     : mUserName( userName )
     , mPassword( password )
-    , mReferer( referer )
+    , mHttpHeaders( httpHeaders )
     , mAuthCfg( authcfg )
   {}
 
@@ -769,10 +675,8 @@ struct QgsWmsAuthorization
       request.setRawHeader( "Authorization", "Basic " + QStringLiteral( "%1:%2" ).arg( mUserName, mPassword ).toUtf8().toBase64() );
     }
 
-    if ( !mReferer.isEmpty() )
-    {
-      request.setRawHeader( "Referer", mReferer.toLatin1() );
-    }
+    mHttpHeaders.updateNetworkRequest( request );
+
     return true;
   }
   //! Sets authorization reply
@@ -791,8 +695,8 @@ struct QgsWmsAuthorization
   //! Password for basic http authentication
   QString mPassword;
 
-  //! Referer for http requests
-  QString mReferer;
+  //! headers for http requests
+  QgsHttpHeaders mHttpHeaders;
 
   //! Authentication configuration ID
   QString mAuthCfg;
@@ -840,7 +744,7 @@ class QgsWmsSettings
      *
      * \since QGIS 3.14
      */
-    QgsWmstResolution parseWmstResolution( const QString &item );
+    QgsTimeDuration parseWmstResolution( const QString &item );
 
     /**
      * Parse the given string item into QDateTime instant.
@@ -848,13 +752,6 @@ class QgsWmsSettings
      * \since QGIS 3.14
      */
     QDateTime parseWmstDateTimes( const QString &item );
-
-    /**
-     * Returns the datetime with the sum of passed \a dateTime and the \a resolution time.
-     *
-     * \since QGIS 3.14
-     */
-    QDateTime addTime( const QDateTime &dateTime, const QgsWmstResolution &resolution );
 
     /**
      * Finds the least closest datetime from list of available dimension temporal ranges
@@ -885,6 +782,11 @@ class QgsWmsSettings
 
     //! Fixed temporal range for the data provider
     QgsDateTimeRange mFixedRange;
+
+    //! All available temporal ranges
+    QList< QgsDateTimeRange > mAllRanges;
+
+    QgsInterval mDefaultInterval;
 
     //! Fixed reference temporal range for the data provider
     QgsDateTimeRange mFixedReferenceRange;
@@ -935,6 +837,7 @@ class QgsWmsSettings
     QStringList mActiveSubLayers;
     QStringList mActiveSubStyles;
 
+    //! Opacities for wms layers. Same ordering as mActiveSubLayers/mActiveSubStyles
     QStringList mOpacities;
 
     /**
@@ -953,6 +856,8 @@ class QgsWmsSettings
     QString mCrsId;
 
     bool mEnableContextualLegend;
+
+    QString mInterpretation;
 
     friend class QgsWmsProvider;
 };
@@ -975,7 +880,7 @@ class QgsWmsCapabilities
     QString lastError() const { return mError; }
     QString lastErrorFormat() const { return mErrorFormat; }
 
-    QgsWmsCapabilitiesProperty capabilitiesProperty() { return mCapabilities; }
+    QgsWmsCapabilitiesProperty capabilitiesProperty() const { return mCapabilities; }
 
     /**
      * \brief   Returns a list of the supported layers of the WMS server
@@ -1130,6 +1035,22 @@ class QgsWmsCapabilitiesDownload : public QObject
     bool downloadCapabilities();
 
     bool downloadCapabilities( const QString &baseUrl, const QgsWmsAuthorization &auth );
+
+    /**
+     * Returns the download refresh state.
+     * \see setForceRefresh()
+     *
+     * \since QGIS 3.22
+     */
+    bool forceRefresh();
+
+    /**
+     * Sets the download refresh state.
+     * \see forceRefresh()
+     *
+     * \since QGIS 3.22
+     */
+    void setForceRefresh( bool forceRefresh );
 
     QString lastError() const { return mError; }
 

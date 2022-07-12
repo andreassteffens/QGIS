@@ -30,7 +30,7 @@ QgsVectorLayerLabelProvider *QgsRuleBasedLabelProvider::createProvider( QgsVecto
 
 bool QgsRuleBasedLabelProvider::prepare( QgsRenderContext &context, QSet<QString> &attributeNames )
 {
-  for ( QgsVectorLayerLabelProvider *provider : qgis::as_const( mSubProviders ) )
+  for ( QgsVectorLayerLabelProvider *provider : std::as_const( mSubProviders ) )
     provider->setEngine( mEngine );
 
   // populate sub-providers
@@ -38,16 +38,16 @@ bool QgsRuleBasedLabelProvider::prepare( QgsRenderContext &context, QSet<QString
   return true;
 }
 
-void QgsRuleBasedLabelProvider::registerFeature( const QgsFeature &feature, QgsRenderContext &context, const QgsGeometry &obstacleGeometry, const QgsSymbol *symbol )
+QList<QgsLabelFeature *> QgsRuleBasedLabelProvider::registerFeature( const QgsFeature &feature, QgsRenderContext &context, const QgsGeometry &obstacleGeometry, const QgsSymbol *symbol )
 {
   // will register the feature to relevant sub-providers
-  mRules->rootRule()->registerFeature( feature, context, mSubProviders, obstacleGeometry, symbol );
+  return std::get< 1 >( mRules->rootRule()->registerFeature( feature, context, mSubProviders, obstacleGeometry, symbol ) );
 }
 
 QList<QgsAbstractLabelProvider *> QgsRuleBasedLabelProvider::subProviders()
 {
   QList<QgsAbstractLabelProvider *> lst;
-  for ( QgsVectorLayerLabelProvider *subprovider : qgis::as_const( mSubProviders ) )
+  for ( QgsVectorLayerLabelProvider *subprovider : std::as_const( mSubProviders ) )
     lst << subprovider;
   return lst;
 }
@@ -109,14 +109,14 @@ void QgsRuleBasedLabeling::Rule::initFilter()
   else
   {
     mElseRule = false;
-    mFilter = qgis::make_unique< QgsExpression >( mFilterExp );
+    mFilter = std::make_unique< QgsExpression >( mFilterExp );
   }
 }
 
 void QgsRuleBasedLabeling::Rule::updateElseRules()
 {
   mElseRules.clear();
-  for ( Rule *rule : qgis::as_const( mChildren ) )
+  for ( Rule *rule : std::as_const( mChildren ) )
   {
     if ( rule->isElse() )
       mElseRules << rule;
@@ -128,7 +128,7 @@ bool QgsRuleBasedLabeling::Rule::requiresAdvancedEffects() const
   if ( mSettings && mSettings->format().containsAdvancedEffects() )
     return true;
 
-  for ( Rule *rule : qgis::as_const( mChildren ) )
+  for ( Rule *rule : std::as_const( mChildren ) )
   {
     if ( rule->requiresAdvancedEffects() )
       return true;
@@ -167,7 +167,7 @@ bool QgsRuleBasedLabeling::Rule::accept( QgsStyleEntityVisitorInterface *visitor
 
 void QgsRuleBasedLabeling::Rule::subProviderIds( QStringList &list ) const
 {
-  for ( const Rule *rule : qgis::as_const( mChildren ) )
+  for ( const Rule *rule : std::as_const( mChildren ) )
   {
     if ( rule->settings() )
       list << rule->ruleKey();
@@ -219,7 +219,7 @@ QgsRuleBasedLabeling::Rule *QgsRuleBasedLabeling::Rule::findRuleByKey( const QSt
   if ( key == mRuleKey )
     return this;
 
-  for ( Rule *rule : qgis::as_const( mChildren ) )
+  for ( Rule *rule : std::as_const( mChildren ) )
   {
     Rule *r = rule->findRuleByKey( key );
     if ( r )
@@ -318,7 +318,7 @@ void QgsRuleBasedLabeling::Rule::createSubProviders( QgsVectorLayer *layer, QgsR
   }
 
   // call recursively
-  for ( Rule *rule : qgis::as_const( mChildren ) )
+  for ( Rule *rule : std::as_const( mChildren ) )
   {
     rule->createSubProviders( layer, subProviders, provider );
   }
@@ -343,18 +343,19 @@ void QgsRuleBasedLabeling::Rule::prepare( QgsRenderContext &context, QSet<QStrin
   }
 
   // call recursively
-  for ( Rule *rule : qgis::as_const( mChildren ) )
+  for ( Rule *rule : std::as_const( mChildren ) )
   {
     rule->prepare( context, attributeNames, subProviders );
   }
 }
 
-QgsRuleBasedLabeling::Rule::RegisterResult QgsRuleBasedLabeling::Rule::registerFeature( const QgsFeature &feature, QgsRenderContext &context, QgsRuleBasedLabeling::RuleToProviderMap &subProviders, const QgsGeometry &obstacleGeometry, const QgsSymbol *symbol )
+std::tuple< QgsRuleBasedLabeling::Rule::RegisterResult, QList< QgsLabelFeature * > > QgsRuleBasedLabeling::Rule::registerFeature( const QgsFeature &feature, QgsRenderContext &context, QgsRuleBasedLabeling::RuleToProviderMap &subProviders, const QgsGeometry &obstacleGeometry, const QgsSymbol *symbol )
 {
+  QList< QgsLabelFeature * > labels;
   if ( !isFilterOK( feature, context )
        || !isScaleOK( context.rendererScale() ) )
   {
-    return Filtered;
+    return { Filtered, labels };
   }
 
   bool registered = false;
@@ -362,40 +363,48 @@ QgsRuleBasedLabeling::Rule::RegisterResult QgsRuleBasedLabeling::Rule::registerF
   // do we have active subprovider for the rule?
   if ( subProviders.contains( this ) && mIsActive )
   {
-    subProviders[this]->registerFeature( feature, context, obstacleGeometry, symbol );
+    labels.append( subProviders[this]->registerFeature( feature, context, obstacleGeometry, symbol ) );
     registered = true;
   }
 
-  bool willRegisterSomething = false;
+  bool matchedAChild = false;
 
   // call recursively
-  for ( Rule *rule : qgis::as_const( mChildren ) )
+  for ( Rule *rule : std::as_const( mChildren ) )
   {
     // Don't process else rules yet
     if ( !rule->isElse() )
     {
-      RegisterResult res = rule->registerFeature( feature, context, subProviders, obstacleGeometry );
-      // consider inactive items as "registered" so the else rule will ignore them
-      willRegisterSomething |= ( res == Registered || res == Inactive );
-      registered |= willRegisterSomething;
+      RegisterResult res;
+      QList< QgsLabelFeature * > added;
+      std::tie( res, added ) = rule->registerFeature( feature, context, subProviders, obstacleGeometry );
+      labels.append( added );
+      // consider inactive items as "matched" so the else rule will ignore them
+      matchedAChild |= ( res == Registered || res == Inactive );
+      registered |= matchedAChild;
     }
   }
 
   // If none of the rules passed then we jump into the else rules and process them.
-  if ( !willRegisterSomething )
+  if ( !matchedAChild )
   {
-    for ( Rule *rule : qgis::as_const( mElseRules ) )
+    for ( Rule *rule : std::as_const( mElseRules ) )
     {
-      registered |= rule->registerFeature( feature, context, subProviders, obstacleGeometry, symbol ) != Filtered;
+      RegisterResult res;
+      QList< QgsLabelFeature * > added;
+      std::tie( res, added ) = rule->registerFeature( feature, context, subProviders, obstacleGeometry, symbol ) ;
+      matchedAChild |= ( res == Registered || res == Inactive );
+      registered |= res != Filtered;
+      labels.append( added );
     }
   }
 
-  if ( !mIsActive )
-    return Inactive;
+  if ( !mIsActive || ( matchedAChild && !registered ) )
+    return { Inactive, labels };
   else if ( registered )
-    return Registered;
+    return { Registered, labels };
   else
-    return Filtered;
+    return { Filtered, labels };
 }
 
 bool QgsRuleBasedLabeling::Rule::isFilterOK( const QgsFeature &f, QgsRenderContext &context ) const
@@ -529,7 +538,7 @@ void QgsRuleBasedLabeling::setSettings( QgsPalLayerSettings *settings, const QSt
   }
 }
 
-void QgsRuleBasedLabeling::toSld( QDomNode &parent, const QgsStringMap &props ) const
+void QgsRuleBasedLabeling::toSld( QDomNode &parent, const QVariantMap &props ) const
 {
   if ( !mRootRule )
   {
@@ -555,7 +564,7 @@ void QgsRuleBasedLabeling::toSld( QDomNode &parent, const QgsStringMap &props ) 
 
       // scale dependencies, the actual behavior is that the PAL settings min/max and
       // the rule min/max get intersected
-      QgsStringMap localProps = QgsStringMap( props );
+      QVariantMap localProps = QVariantMap( props );
       QgsSymbolLayerUtils::mergeScaleDependencies( rule->maximumScale(), rule->minimumScale(), localProps );
       if ( settings->scaleVisibility )
       {

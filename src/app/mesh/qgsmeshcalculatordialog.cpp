@@ -28,6 +28,7 @@
 #include "qgswkbtypes.h"
 #include "qgsfeatureiterator.h"
 #include "qgsmeshdatasetgrouptreeview.h"
+#include "qgshelp.h"
 
 #include "cpl_string.h"
 #include "gdal.h"
@@ -54,8 +55,8 @@ QgsMeshCalculatorDialog::QgsMeshCalculatorDialog( QgsMeshLayer *meshLayer, QWidg
 
   getMeshDrivers();
   populateDriversComboBox( );
-  connect( mOutputFormatComboBox, qgis::overload<int>::of( &QComboBox::currentIndexChanged ), this, &QgsMeshCalculatorDialog::updateInfoMessage );
-  connect( mOutputFormatComboBox, qgis::overload<int>::of( &QComboBox::currentIndexChanged ), this, &QgsMeshCalculatorDialog::onOutputFormatChange );
+  connect( mOutputFormatComboBox, qOverload<int>( &QComboBox::currentIndexChanged ), this, &QgsMeshCalculatorDialog::updateInfoMessage );
+  connect( mOutputFormatComboBox, qOverload<int>( &QComboBox::currentIndexChanged ), this, &QgsMeshCalculatorDialog::onOutputFormatChange );
   connect( mOutputGroupNameLineEdit, &QLineEdit::textChanged, this, &QgsMeshCalculatorDialog::updateInfoMessage );
 
   connect( mDatasetsListWidget, &QListView::doubleClicked, this, &QgsMeshCalculatorDialog::datasetGroupEntry );
@@ -63,9 +64,9 @@ QgsMeshCalculatorDialog::QgsMeshCalculatorDialog( QgsMeshLayer *meshLayer, QWidg
   connect( mAllTimesButton, &QPushButton::clicked, this, &QgsMeshCalculatorDialog::mAllTimesButton_clicked );
   connect( mExpressionTextEdit, &QTextEdit::textChanged, this, &QgsMeshCalculatorDialog::updateInfoMessage );
 
-  connect( useMaskCb, &QCheckBox::stateChanged, this, &QgsMeshCalculatorDialog::toggleExtendMask );
-  connect( useExtentCb, &QCheckBox::stateChanged, this, &QgsMeshCalculatorDialog::toggleExtendMask );
+  connect( useMaskCb, &QRadioButton::toggled, this, &QgsMeshCalculatorDialog::toggleExtendMask );
   maskBox->setVisible( false );
+  useMaskCb->setEnabled( cboLayerMask->count() );
 
   mXMaxSpinBox->setShowClearButton( false );
   mXMinSpinBox->setShowClearButton( false );
@@ -103,16 +104,20 @@ QgsMeshCalculatorDialog::QgsMeshCalculatorDialog( QgsMeshLayer *meshLayer, QWidg
   useFullLayerExtent();
   repopulateTimeCombos();
   mButtonBox->button( QDialogButtonBox::Ok )->setEnabled( false );
+  connect( mButtonBox, &QDialogButtonBox::helpRequested, this, [ = ]
+  {
+    QgsHelp::openHelp( QStringLiteral( "working_with_mesh/mesh_properties.html#mesh-calculator" ) );
+  } );
 
-  QgsSettings settings;
+  const QgsSettings settings;
   mOutputDatasetFileWidget->setStorageMode( QgsFileWidget::SaveFile );
-  mOutputDatasetFileWidget->setDialogTitle( tr( "Enter mesh dataset file" ) );
+  mOutputDatasetFileWidget->setDialogTitle( tr( "Enter Mesh Dataset File" ) );
   mOutputDatasetFileWidget->setDefaultRoot( settings.value( QStringLiteral( "/MeshCalculator/lastOutputDir" ), QDir::homePath() ).toString() );
   onOutputFormatChange();
   connect( mOutputDatasetFileWidget, &QgsFileWidget::fileChanged, this, &QgsMeshCalculatorDialog::updateInfoMessage );
 
-  connect( mOutputOnFileRadioButton, &QRadioButton::toggled, this, &QgsMeshCalculatorDialog::onOutputRadioButtonChange );
-  onOutputRadioButtonChange();
+  connect( mUseVirtualProviderCheckBox, &QCheckBox::clicked, this, &QgsMeshCalculatorDialog::onVirtualCheckboxChange );
+  onVirtualCheckboxChange();
 }
 
 QgsMeshCalculatorDialog::~QgsMeshCalculatorDialog() = default;
@@ -130,7 +135,7 @@ QgsMeshLayer *QgsMeshCalculatorDialog::meshLayer() const
 
 QString QgsMeshCalculatorDialog::outputFile() const
 {
-  QString ret = mOutputDatasetFileWidget->filePath();
+  const QString ret = mOutputDatasetFileWidget->filePath();
   return controlSuffix( ret );
 }
 
@@ -174,7 +179,7 @@ QgsGeometry QgsMeshCalculatorDialog::maskGeometry( QgsVectorLayer *layer ) const
   {
     geometries.push_back( feat.geometry() );
   }
-  QgsGeometry ret = QgsGeometry::unaryUnion( geometries ) ;
+  const QgsGeometry ret = QgsGeometry::unaryUnion( geometries ) ;
   return ret;
 }
 
@@ -199,7 +204,7 @@ std::unique_ptr<QgsMeshCalculator> QgsMeshCalculatorDialog::calculator() const
   std::unique_ptr<QgsMeshCalculator> calc;
   QgsMeshDatasetGroup::Type destination = QgsMeshDatasetGroup::Persistent;
 
-  if ( mOutputVirtualRadioButton->isChecked() )
+  if ( mUseVirtualProviderCheckBox->isChecked() )
     destination = QgsMeshDatasetGroup::Virtual;
 
   switch ( destination )
@@ -279,19 +284,11 @@ void QgsMeshCalculatorDialog::datasetGroupEntry( const QModelIndex &index )
   mExpressionTextEdit->insertPlainText( QStringLiteral( " %1 " ).arg( group ) );
 }
 
-void QgsMeshCalculatorDialog::toggleExtendMask( int state )
+void QgsMeshCalculatorDialog::toggleExtendMask()
 {
-  Q_UNUSED( state )
-  if ( useMaskCb->checkState() == Qt::Checked )
-  {
-    extendBox->setVisible( false );
-    maskBox->setVisible( true );
-  }
-  else
-  {
-    extendBox->setVisible( true );
-    maskBox->setVisible( false );
-  }
+  bool visible = useMaskCb->isChecked();
+  extendBox->setVisible( !visible );
+  maskBox->setVisible( visible );
 }
 
 void QgsMeshCalculatorDialog::updateInfoMessage()
@@ -299,15 +296,15 @@ void QgsMeshCalculatorDialog::updateInfoMessage()
   QgsMeshDriverMetadata::MeshDriverCapability requiredCapability;
 
   // expression is valid
-  QgsMeshCalculator::Result result = QgsMeshCalculator::expressionIsValid(
-                                       formulaString(),
-                                       meshLayer(),
-                                       requiredCapability
-                                     );
-  bool expressionValid = result == QgsMeshCalculator::Success;
+  const QgsMeshCalculator::Result result = QgsMeshCalculator::expressionIsValid(
+        formulaString(),
+        meshLayer(),
+        requiredCapability
+      );
+  const bool expressionValid = result == QgsMeshCalculator::Success;
 
   // selected driver is appropriate
-  bool notInFile = !mOutputOnFileRadioButton->isChecked();
+  const bool notInFile = mUseVirtualProviderCheckBox->isChecked();
   bool driverValid = false;
   if ( expressionValid )
   {
@@ -334,7 +331,7 @@ void QgsMeshCalculatorDialog::updateInfoMessage()
   }
 
   // group name
-  bool groupNameValid = !groupName().isEmpty() && !mVariableNames.contains( groupName() );
+  const bool groupNameValid = !groupName().isEmpty() && !mVariableNames.contains( groupName() );
 
   if ( expressionValid &&
        ( notInFile || ( driverValid && filePathValid ) )  &&
@@ -357,21 +354,34 @@ void QgsMeshCalculatorDialog::updateInfoMessage()
   }
 }
 
-void QgsMeshCalculatorDialog::onOutputRadioButtonChange()
+void QgsMeshCalculatorDialog::onVirtualCheckboxChange()
 {
-  mOutputDatasetFileWidget->setEnabled( mOutputOnFileRadioButton->isChecked() );
-  mOutputFormatComboBox->setEnabled( mOutputOnFileRadioButton->isChecked() );
+  mOutputDatasetFileWidget->setVisible( !mUseVirtualProviderCheckBox->isChecked() );
+  mOutputDatasetFileLabel->setVisible( !mUseVirtualProviderCheckBox->isChecked() );
+  mOutputFormatComboBox->setVisible( !mUseVirtualProviderCheckBox->isChecked() );
+  mOutputFormatLabel->setVisible( !mUseVirtualProviderCheckBox->isChecked() );
   updateInfoMessage();
 }
 
 void QgsMeshCalculatorDialog::onOutputFormatChange()
 {
-  QString suffix = currentOutputSuffix();
+  const QString suffix = currentOutputSuffix();
   if ( !suffix.isEmpty() )
   {
     QString filter = mOutputFormatComboBox->currentText();
     filter.append( QStringLiteral( " (*.%1)" ).arg( suffix ) );
     mOutputDatasetFileWidget->setFilter( filter );
+
+    // if output filename is already defined we need to replace old suffix
+    QString fileName = mOutputDatasetFileWidget->filePath();
+    if ( !fileName.isEmpty() )
+    {
+      mOutputDatasetFileWidget->setFilePath( controlSuffix( fileName ) );
+    }
+  }
+  else
+  {
+    mOutputDatasetFileWidget->setFilter( tr( "All Files (*)" ) );
   }
 }
 
@@ -530,15 +540,15 @@ QString QgsMeshCalculatorDialog::controlSuffix( const QString &fileName ) const
   if ( fileName.isEmpty() )
     return fileName;
 
-  QFileInfo fileInfo( fileName );
+  const QFileInfo fileInfo( fileName );
 
-  QString appropriateSuffix = currentOutputSuffix();
+  const QString appropriateSuffix = currentOutputSuffix();
 
-  QString existingSuffix = fileInfo.suffix();
+  const QString existingSuffix = fileInfo.suffix();
   if ( !( existingSuffix.isEmpty() && appropriateSuffix.isEmpty() )
        && existingSuffix != appropriateSuffix )
   {
-    int pos = fileName.lastIndexOf( '.' );
+    const int pos = fileName.lastIndexOf( '.' );
     QString ret = fileName.left( pos + 1 );
     ret.append( appropriateSuffix );
 
@@ -550,7 +560,7 @@ QString QgsMeshCalculatorDialog::controlSuffix( const QString &fileName ) const
 
 QString QgsMeshCalculatorDialog::currentOutputSuffix() const
 {
-  QString currentDriver = mOutputFormatComboBox->currentData().toString();
+  const QString currentDriver = mOutputFormatComboBox->currentData().toString();
   QString suffix;
   if ( mMeshDrivers.contains( currentDriver ) )
     suffix = mMeshDrivers[currentDriver].writeDatasetOnFileSuffix();
@@ -608,7 +618,7 @@ void QgsMeshCalculatorDialog::useAllTimesFromLayer()
 
 QString QgsMeshCalculatorDialog::currentDatasetGroup() const
 {
-  QModelIndex index = mDatasetsListWidget->currentIndex();
+  const QModelIndex index = mDatasetsListWidget->currentIndex();
 
   if ( !index.isValid() )
     return QString();
@@ -638,18 +648,18 @@ void QgsMeshCalculatorDialog::setTimesByDatasetGroupName( const QString group )
   if ( groupIndex < 0 )
     return; //not found
 
-  int datasetCount = dp->datasetCount( groupIndex );
+  const int datasetCount = dp->datasetCount( groupIndex );
   if ( datasetCount < 1 )
     return; // group without datasets
 
 
   // find maximum and minimum time in this group
-  double minTime = dp->datasetMetadata( QgsMeshDatasetIndex( groupIndex, 0 ) ).time();
+  const double minTime = dp->datasetMetadata( QgsMeshDatasetIndex( groupIndex, 0 ) ).time();
   int idx = mStartTimeComboBox->findData( minTime );
   if ( idx >= 0 )
     mStartTimeComboBox->setCurrentIndex( idx );
 
-  double maxTime = dp->datasetMetadata( QgsMeshDatasetIndex( groupIndex, datasetCount - 1 ) ).time();
+  const double maxTime = dp->datasetMetadata( QgsMeshDatasetIndex( groupIndex, datasetCount - 1 ) ).time();
   idx = mEndTimeComboBox->findData( maxTime );
   if ( idx >= 0 )
     mEndTimeComboBox->setCurrentIndex( idx );
@@ -663,23 +673,21 @@ void QgsMeshCalculatorDialog::repopulateTimeCombos()
   const QgsMeshDataProvider *dp = layer->dataProvider();
 
   // extract all times from all datasets
-  QMap<QString, double> times;
+  QMap<qint64, double> times;
 
-  for ( int groupIndex = 0; groupIndex < dp->datasetGroupCount(); ++groupIndex )
+  const QList<int> groupIndexes = layer->datasetGroupsIndexes();
+  for ( int dsgi : groupIndexes )
   {
-    for ( int datasetIndex = 0; datasetIndex < dp->datasetCount( groupIndex ); ++datasetIndex )
+    int datasetCount = layer->datasetCount( QgsMeshDatasetIndex( dsgi, 0 ) );
+    for ( int datasetIndex = 0; datasetIndex < datasetCount; ++datasetIndex )
     {
-      const QgsMeshDatasetMetadata meta = dp->datasetMetadata( QgsMeshDatasetIndex( groupIndex, datasetIndex ) );
-      const double time = meta.time();
-      const QString timestr = layer->formatTime( time );
-
-      times[timestr] = time;
+      qint64 timeMs = layer->datasetRelativeTimeInMilliseconds( QgsMeshDatasetIndex( dsgi, datasetIndex ) );
+      if ( timeMs == INVALID_MESHLAYER_TIME )
+        continue;
+      const QgsMeshDatasetMetadata meta = dp->datasetMetadata( QgsMeshDatasetIndex( dsgi, datasetIndex ) );
+      times[timeMs] = meta.time();
     }
   }
-
-  // sort by text
-  auto keys = times.keys();
-  keys.sort();
 
   mStartTimeComboBox->blockSignals( true );
   mEndTimeComboBox->blockSignals( true );
@@ -687,10 +695,12 @@ void QgsMeshCalculatorDialog::repopulateTimeCombos()
   mEndTimeComboBox->clear();
 
   // populate combos
-  for ( const QString &key : keys )
+  for ( auto it = times.constBegin(); it != times.constEnd(); ++it )
   {
-    mStartTimeComboBox->addItem( key, times[key] );
-    mEndTimeComboBox->addItem( key, times[key] );
+    double time = it.value();
+    const QString strTime = layer->formatTime( time );
+    mStartTimeComboBox->addItem( strTime, time );
+    mEndTimeComboBox->addItem( strTime, time );
   }
 
   mStartTimeComboBox->blockSignals( false );

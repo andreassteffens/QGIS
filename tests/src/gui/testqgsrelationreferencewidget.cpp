@@ -15,6 +15,7 @@
 
 
 #include "qgstest.h"
+#include <QSignalSpy>
 
 #include <editorwidgets/core/qgseditorwidgetregistry.h>
 #include <qgsapplication.h>
@@ -100,6 +101,7 @@ void TestQgsRelationReferenceWidget::init()
   QgsProject::instance()->addMapLayer( mLayer1.get(), false, false );
 
   mLayer2.reset( new QgsVectorLayer( QStringLiteral( "LineString?field=pk:int&field=material:string&field=diameter:int&field=raccord:string" ), QStringLiteral( "vl2" ), QStringLiteral( "memory" ) ) );
+  mLayer2->setDisplayExpression( QStringLiteral( "pk" ) );
   QgsProject::instance()->addMapLayer( mLayer2.get(), false, false );
 
   // create relation
@@ -190,7 +192,7 @@ void TestQgsRelationReferenceWidget::testChainFilter()
   // check default status for comboboxes
   QList<QComboBox *> cbs = w.mFilterComboBoxes;
   QCOMPARE( cbs.count(), 3 );
-  Q_FOREACH ( const QComboBox *cb, cbs )
+  for ( const QComboBox *cb : std::as_const( cbs ) )
   {
     if ( cb->currentText() == QLatin1String( "raccord" ) )
       QCOMPARE( cb->count(), 5 );
@@ -213,7 +215,7 @@ void TestQgsRelationReferenceWidget::testChainFilter()
   loop.exec();
   QCOMPARE( w.mComboBox->currentText(), allowNull ? QString( "NULL" ) : QString( "10" ) );
 
-  Q_FOREACH ( const QComboBox *cb, cbs )
+  for ( const QComboBox *cb : std::as_const( cbs ) )
   {
     if ( cb->itemText( 0 ) == QLatin1String( "material" ) )
       QCOMPARE( cb->count(), 4 );
@@ -363,7 +365,7 @@ void TestQgsRelationReferenceWidget::testChainFilterFirstInit()
   // check default status for comboboxes
   QList<QComboBox *> cbs = w.mFilterComboBoxes;
   QCOMPARE( cbs.count(), 3 );
-  Q_FOREACH ( const QComboBox *cb, cbs )
+  for ( const QComboBox *cb : std::as_const( cbs ) )
   {
     if ( cb->currentText() == QLatin1String( "raccord" ) )
       QCOMPARE( cb->count(), 5 );
@@ -571,22 +573,7 @@ void TestQgsRelationReferenceWidget::testIdentifyOnMap()
   QCOMPARE( w.mComboBox->currentData( Qt::DisplayRole ).toInt(), 10 );
 
   w.setReadOnlySelector( true );
-
-  mLayer2->getFeatures( QStringLiteral( "pk = %1" ).arg( 11 ) ).nextFeature( feature );
-  QVERIFY( feature.isValid() );
-  QCOMPARE( feature.attribute( QStringLiteral( "pk" ) ).toInt(), 11 );
-  w.featureIdentified( feature );
-  QCOMPARE( w.mLineEdit->text(), QStringLiteral( "11" ) );
-  QCOMPARE( w.mForeignKeys.count(), 1 );
-  QCOMPARE( w.mForeignKeys.at( 0 ).toInt(), 11 );
-
-  mLayer2->getFeatures( QStringLiteral( "pk = %1" ).arg( 10 ) ).nextFeature( feature );
-  QVERIFY( feature.isValid() );
-  QCOMPARE( feature.attribute( QStringLiteral( "pk" ) ).toInt(), 10 );
-  w.featureIdentified( feature );
-  QCOMPARE( w.mLineEdit->text(), QStringLiteral( "10" ) );
-  QCOMPARE( w.mForeignKeys.count(), 1 );
-  QCOMPARE( w.mForeignKeys.at( 0 ).toInt(), 10 );
+  QVERIFY( !w.mComboBox->isEnabled() );
 
   mLayer1->rollBack();
 }
@@ -595,8 +582,11 @@ void TestQgsRelationReferenceWidget::testIdentifyOnMap()
 // referenced layer
 class DummyVectorLayerTools : public QgsVectorLayerTools // clazy:exclude=missing-qobject-macro
 {
-    bool addFeature( QgsVectorLayer *layer, const QgsAttributeMap &, const QgsGeometry &, QgsFeature *feat = nullptr ) const override
+    bool addFeature( QgsVectorLayer *layer, const QgsAttributeMap &, const QgsGeometry &, QgsFeature *feat = nullptr, QWidget *parentWidget = nullptr, bool showModal = true, bool hideParent = false ) const override
     {
+      Q_UNUSED( parentWidget );
+      Q_UNUSED( showModal );
+      Q_UNUSED( hideParent );
       feat->setAttribute( QStringLiteral( "pk" ), 13 );
       feat->setAttribute( QStringLiteral( "material" ), QStringLiteral( "steel" ) );
       feat->setAttribute( QStringLiteral( "diameter" ), 140 );
@@ -632,7 +622,7 @@ void TestQgsRelationReferenceWidget::testAddEntry()
 
   QVERIFY( w.mCurrentMapTool );
   QgsFeature feat( mLayer1->fields() );
-  w.mMapToolDigitize->digitized( feat );
+  emit w.mMapToolDigitize->digitizingCompleted( feat );
 
   QCOMPARE( w.mComboBox->identifierValues().at( 0 ).toInt(), 13 );
 }

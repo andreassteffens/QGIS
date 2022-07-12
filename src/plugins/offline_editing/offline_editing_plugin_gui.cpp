@@ -223,7 +223,9 @@ void QgsOfflineEditingPluginGui::buttonBox_accepted()
   }
 
   mSelectedLayerIds.clear();
-  Q_FOREACH ( QgsLayerTreeLayer *nodeLayer, mLayerTree->layerTreeModel()->rootGroup()->findLayers() )
+
+  const QList<QgsLayerTreeLayer *> layers = mLayerTree->layerTreeModel()->rootGroup()->findLayers();
+  for ( QgsLayerTreeLayer *nodeLayer : layers )
   {
     if ( nodeLayer->isVisible() )
     {
@@ -246,20 +248,22 @@ void QgsOfflineEditingPluginGui::showHelp()
 
 void QgsOfflineEditingPluginGui::restoreState()
 {
-  QgsSettings settings;
+  const QgsSettings settings;
   mOfflineDataPath = settings.value( QStringLiteral( "OfflineEditing/offline_data_path" ), QDir::homePath(), QgsSettings::Section::Plugins ).toString();
 }
 
 void QgsOfflineEditingPluginGui::selectAll()
 {
-  Q_FOREACH ( QgsLayerTreeLayer *nodeLayer, mLayerTree->layerTreeModel()->rootGroup()->findLayers() )
-    nodeLayer->setItemVisibilityChecked( true );
+  const QList<QgsLayerTreeLayer *> layers = mLayerTree->layerTreeModel()->rootGroup()->findLayers();
+  for ( QgsLayerTreeLayer *nodeLayer : layers )
+    nodeLayer->setItemVisibilityCheckedParentRecursive( true );
 }
 
 void QgsOfflineEditingPluginGui::deSelectAll()
 {
-  Q_FOREACH ( QgsLayerTreeLayer *nodeLayer, mLayerTree->layerTreeModel()->rootGroup()->findLayers() )
-    nodeLayer->setItemVisibilityChecked( false );
+  const QList<QgsLayerTreeLayer *> layers = mLayerTree->layerTreeModel()->rootGroup()->findLayers();
+  for ( QgsLayerTreeLayer *nodeLayer : layers )
+    nodeLayer->setItemVisibilityCheckedParentRecursive( false );
 }
 
 void QgsOfflineEditingPluginGui::datatypeChanged( int index )

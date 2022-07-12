@@ -26,12 +26,15 @@
 #include "qgsmaptoolcapture.h"
 #include "qgspanelwidget.h"
 #include "qgsmapcanvasinteractionblocker.h"
+#include "qgsdistancearea.h"
+
 #include <qwt_plot_curve.h>
 #ifdef WITH_QWTPOLAR
 #include <qwt_polar_plot.h>
 #include <qwt_polar_grid.h>
 #include <qwt_polar_marker.h>
 #endif
+#include <QTextStream>
 
 class QextSerialPort;
 class QgsGpsConnection;

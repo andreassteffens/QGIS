@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """QGIS Unit tests for QgsVectorLayer.
 
+From build dir, run:
+ctest -R PyQgsVectorLayer -V
+
 .. note:: This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
@@ -16,17 +19,28 @@ import os
 import tempfile
 import shutil
 
-from qgis.PyQt.QtCore import QDate, QDateTime, QVariant, Qt, QDateTime, QDate, QTime
+from qgis.PyQt.QtCore import (
+    QDate,
+    QDateTime,
+    QVariant,
+    Qt,
+    QDateTime,
+    QDate,
+    QTime,
+    QTimer
+)
 from qgis.PyQt.QtGui import QPainter, QColor
 from qgis.PyQt.QtXml import QDomDocument
 
-from qgis.core import (QgsWkbTypes,
+from qgis.core import (Qgis,
+                       QgsWkbTypes,
                        QgsAction,
                        QgsAuxiliaryStorage,
                        QgsCoordinateTransformContext,
                        QgsDataProvider,
                        QgsDefaultValue,
                        QgsEditorWidgetSetup,
+                       QgsMapLayer,
                        QgsVectorLayer,
                        QgsRectangle,
                        QgsFeature,
@@ -50,6 +64,7 @@ from qgis.core import (QgsWkbTypes,
                        QgsExpressionContextScope,
                        QgsExpressionContextUtils,
                        QgsLineSymbol,
+                       QgsMapLayerServerProperties,
                        QgsMapLayerStyle,
                        QgsMapLayerDependency,
                        QgsRenderContext,
@@ -60,6 +75,11 @@ from qgis.core import (QgsWkbTypes,
                        QgsTextFormat,
                        QgsVectorLayerSelectedFeatureSource,
                        QgsExpression,
+                       QgsLayerMetadata,
+                       QgsAnimatedMarkerSymbolLayer,
+                       QgsMarkerSymbol,
+                       QgsSingleSymbolRenderer,
+                       QgsEmbeddedSymbolRenderer,
                        NULL)
 from qgis.gui import (QgsAttributeTableModel,
                       QgsGui
@@ -376,6 +396,46 @@ class TestQgsVectorLayer(unittest.TestCase, FeatureSourceTestCase):
         # should STILL have kept renderer!
         self.assertEqual(layer.renderer(), r)
 
+    def testSetCustomProperty(self):
+        """
+        Test setting a custom property of the layer
+        """
+        layer = createLayerWithOnePoint()
+        layer.setCustomProperty('Key_0', 'Value_0')
+        layer.setCustomProperty('Key_1', 'Value_1')
+
+        spy = QSignalSpy(layer.customPropertyChanged)
+
+        # change nothing by setting the same value
+        layer.setCustomProperty('Key_0', 'Value_0')
+        layer.setCustomProperty('Key_1', 'Value_1')
+        self.assertEqual(len(spy), 0)
+
+        # change one
+        layer.setCustomProperty('Key_0', 'Value zero')
+        self.assertEqual(len(spy), 1)
+
+        # add one
+        layer.setCustomProperty('Key_2', 'Value two')
+        self.assertEqual(len(spy), 2)
+
+        # add a null one and an empty one
+        layer.setCustomProperty('Key_3', None)
+        layer.setCustomProperty('Key_4', '')
+        self.assertEqual(len(spy), 4)
+
+        # remove one
+        layer.removeCustomProperty('Key_0')
+        self.assertEqual(len(spy), 5)
+
+        self.assertEqual(layer.customProperty('Key_0', 'no value'), 'no value')
+        self.assertEqual(layer.customProperty('Key_1', 'no value'), 'Value_1')
+        self.assertEqual(layer.customProperty('Key_2', 'no value'), 'Value two')
+        self.assertEqual(layer.customProperty('Key_3', 'no value'), None)
+        self.assertEqual(layer.customProperty('Key_4', 'no value'), '')
+
+        self.assertEqual(len(spy), 5)
+
     def testStoreWkbTypeInvalidLayers(self):
         """
         Test that layer wkb types are restored for projects with invalid layer paths
@@ -447,9 +507,82 @@ class TestQgsVectorLayer(unittest.TestCase, FeatureSourceTestCase):
         self.assertFalse(vl.crs().isValid())
 
         # even if provider has a crs - we don't respect it for non-spatial layers!
-        vl = QgsVectorLayer('None?crs=epsg:3111field=pk:integer', 'test', 'memory')
+        vl = QgsVectorLayer('None?crs=epsg:3111&field=pk:integer', 'test', 'memory')
         self.assertFalse(vl.isSpatial())
         self.assertFalse(vl.crs().isValid())
+
+    def test_wgs84Extent(self):
+
+        # We use this particular shapefile because we need a layer with an
+        # epsg != 4326
+        p = os.path.join(unitTestDataPath(), 'bug5598.shp')
+        vl0 = QgsVectorLayer(p, 'test', 'ogr')
+
+        extent = vl0.extent()
+        wgs84_extent = vl0.wgs84Extent()
+
+        # write xml document where the wgs84 extent will be stored
+        doc = QDomDocument("testdoc")
+        elem = doc.createElement("maplayer")
+        self.assertTrue(vl0.writeLayerXml(elem, doc, QgsReadWriteContext()))
+
+        # create a 2nd layer and read the xml document WITHOUT trust
+        vl1 = QgsVectorLayer()
+        flags = QgsMapLayer.ReadFlags()
+        vl1.readLayerXml(elem, QgsReadWriteContext(), flags)
+
+        self.assertTrue(extent == vl1.extent())
+        self.assertTrue(wgs84_extent == vl1.wgs84Extent())
+
+        # we add a feature and check that the original extent has been
+        # updated (the extent is bigger with the new feature)
+        vl1.startEditing()
+
+        f = QgsFeature()
+        f.setAttributes([0, "", "", 0.0, 0.0, 0.0, 0.0])
+        f.setGeometry(QgsGeometry.fromPolygonXY([[QgsPointXY(2484588, 2425732), QgsPointXY(2482767, 2398853),
+                                                  QgsPointXY(2520109, 2397715), QgsPointXY(2520792, 2425494),
+                                                  QgsPointXY(2484588, 2425732)]]))
+        vl1.addFeature(f)
+        vl1.updateExtents()
+
+        self.assertTrue(extent != vl1.extent())
+
+        # trust is not activated so the wgs84 extent is updated
+        # accordingly
+        self.assertTrue(wgs84_extent != vl1.wgs84Extent())
+        vl1.rollBack()
+
+        # create a 3rd layer and read the xml document WITH trust
+        vl2 = QgsVectorLayer()
+        flags = QgsMapLayer.ReadFlags()
+        flags |= QgsMapLayer.FlagTrustLayerMetadata
+        vl2.readLayerXml(elem, QgsReadWriteContext(), flags)
+
+        self.assertTrue(extent == vl2.extent())
+        self.assertTrue(wgs84_extent == vl2.wgs84Extent())
+
+        # we add a feature and check that the original extent has been
+        # updated (the extent is bigger with the new feature)
+        vl2.startEditing()
+
+        f = QgsFeature()
+        f.setAttributes([0, "", "", 0.0, 0.0, 0.0, 0.0])
+        f.setGeometry(QgsGeometry.fromPolygonXY([[QgsPointXY(2484588, 2425732), QgsPointXY(2482767, 2398853),
+                                                  QgsPointXY(2520109, 2397715), QgsPointXY(2520792, 2425494),
+                                                  QgsPointXY(2484588, 2425732)]]))
+        vl2.addFeature(f)
+        vl2.updateExtents()
+
+        self.assertTrue(extent != vl2.extent())
+
+        # trust is activated so the wgs84 extent is not updated
+        self.assertTrue(wgs84_extent == vl2.wgs84Extent())
+
+        # but we can still retrieve the current wgs84 xtent with the force
+        # parameter
+        self.assertTrue(wgs84_extent != vl2.wgs84Extent(True))
+        vl2.rollBack()
 
     # ADD FEATURE
 
@@ -1639,14 +1772,17 @@ class TestQgsVectorLayer(unittest.TestCase, FeatureSourceTestCase):
         # strings
         self.assertEqual(layer.minimumValue(2), "foo")
         self.assertEqual(layer.maximumValue(2), "qar")
+        self.assertEqual(layer.minimumAndMaximumValue(2), ("foo", "qar"))
 
         # numbers
         self.assertEqual(layer.minimumValue(3), 111)
         self.assertEqual(layer.maximumValue(3), 321)
+        self.assertEqual(layer.minimumAndMaximumValue(3), (111, 321))
 
         # dates (maximumValue also tests we properly handle null values by skipping those)
         self.assertEqual(layer.minimumValue(4), QDateTime(QDate(2010, 1, 1)))
         self.assertEqual(layer.maximumValue(4), QDateTime(QDate(2010, 1, 1)))
+        self.assertEqual(layer.minimumAndMaximumValue(4), (QDateTime(QDate(2010, 1, 1)), QDateTime(QDate(2010, 1, 1))))
 
         self.assertEqual(set(layer.uniqueValues(3)), set([111, 321]))
 
@@ -1865,6 +2001,63 @@ class TestQgsVectorLayer(unittest.TestCase, FeatureSourceTestCase):
         self.assertTrue(layer.changeAttributeValue(f1_id, 1, 1001))
         self.assertEqual(layer.maximumValue(1), 1001)
 
+    def testMinAndMaxValue(self):
+        """ test retrieving minimum and maximum values at once"""
+        layer = createLayerWithFivePoints()
+
+        # test layer with just provider features
+        self.assertEqual(layer.minimumAndMaximumValue(1), (-1, 888))
+
+        # add feature with new value
+        layer.startEditing()
+        f1 = QgsFeature()
+        f1.setAttributes(["test2", 999])
+        self.assertTrue(layer.addFeature(f1))
+
+        # should be new maximum value
+        self.assertEqual(layer.minimumAndMaximumValue(1), (-1, 999))
+        # add it again, should be no change
+        f2 = QgsFeature()
+        f2.setAttributes(["test2", 999])
+        self.assertTrue(layer.addFeature(f1))
+        self.assertEqual(layer.minimumAndMaximumValue(1), (-1, 999))
+
+        # add another feature
+        f3 = QgsFeature()
+        f3.setAttributes(["test2", 1000])
+        self.assertTrue(layer.addFeature(f3))
+        self.assertEqual(layer.minimumAndMaximumValue(1), (-1, 1000))
+
+        # add feature with new minimum value
+        layer.startEditing()
+        f1 = QgsFeature()
+        f1.setAttributes(["test2", -999])
+        self.assertTrue(layer.addFeature(f1))
+
+        # should be new minimum value
+        self.assertEqual(layer.minimumAndMaximumValue(1), (-999, 1000))
+        # add it again, should be no change
+        f2 = QgsFeature()
+        f2.setAttributes(["test2", -999])
+        self.assertTrue(layer.addFeature(f1))
+        self.assertEqual(layer.minimumAndMaximumValue(1), (-999, 1000))
+
+        # add another feature
+        f3 = QgsFeature()
+        f3.setAttributes(["test2", -1000])
+        self.assertTrue(layer.addFeature(f3))
+        self.assertEqual(layer.minimumAndMaximumValue(1), (-1000, 1000))
+
+        # change an attribute value to a new maximum value
+        it = layer.getFeatures()
+        f1_id = next(it).id()
+        self.assertTrue(layer.changeAttributeValue(f1_id, 1, 1001))
+        self.assertEqual(layer.minimumAndMaximumValue(1), (-1000, 1001))
+
+        f1_id = next(it).id()
+        self.assertTrue(layer.changeAttributeValue(f1_id, 1, -1001))
+        self.assertEqual(layer.minimumAndMaximumValue(1), (-1001, 1001))
+
     def testMinMaxInVirtualField(self):
         """
         Test minimum and maximum values in a virtual field
@@ -1886,6 +2079,7 @@ class TestQgsVectorLayer(unittest.TestCase, FeatureSourceTestCase):
         self.assertEqual(len(layer.getFeature(1).attributes()), 2)
         self.assertEqual(layer.minimumValue(1), QDate(2010, 1, 1))
         self.assertEqual(layer.maximumValue(1), QDate(2020, 1, 1))
+        self.assertEqual(layer.minimumAndMaximumValue(1), (QDate(2010, 1, 1), QDate(2020, 1, 1)))
 
     def test_InvalidOperations(self):
         layer = createLayerWithOnePoint()
@@ -2024,13 +2218,13 @@ class TestQgsVectorLayer(unittest.TestCase, FeatureSourceTestCase):
 
         # check value
         f = next(temp_layer.getFeatures())
-        expected = 1005721496.7800847
+        expected = 1005755617.8191342
         self.assertAlmostEqual(f['area'], expected, delta=1.0)
 
         # change project area unit, check calculation respects unit
         QgsProject.instance().setAreaUnits(QgsUnitTypes.AreaSquareMiles)
         f = next(temp_layer.getFeatures())
-        expected = 388.31124079933016
+        expected = 388.3244150061589
         self.assertAlmostEqual(f['area'], expected, 3)
 
     def test_ExpressionFilter(self):
@@ -2106,6 +2300,20 @@ class TestQgsVectorLayer(unittest.TestCase, FeatureSourceTestCase):
         self.assertEqual(set(layer.selectedFeatureIds()), set([3]))
         layer.selectByExpression('"Heading"=95', QgsVectorLayer.RemoveFromSelection)
         self.assertEqual(set(layer.selectedFeatureIds()), set([]))
+
+        # test using specific expression context
+        layer.selectByExpression('"Class"=@class and "Heading" > @low_heading and "Heading" <@high_heading', QgsVectorLayer.SetSelection)
+        # default built context won't have variables used in the expression
+        self.assertFalse(layer.selectedFeatureIds())
+
+        context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(layer))
+        context.lastScope().setVariable('class', 'B52')
+        context.lastScope().setVariable('low_heading', 10)
+        context.lastScope().setVariable('high_heading', 70)
+        # using custom context should allow the expression to be evaluated correctly
+        layer.selectByExpression('"Class"=@class and "Heading" > @low_heading and "Heading" <@high_heading',
+                                 QgsVectorLayer.SetSelection, context)
+        self.assertCountEqual(layer.selectedFeatureIds(), [10, 11])
 
     def testSelectByRect(self):
         """ Test selecting by rectangle """
@@ -2736,6 +2944,11 @@ class TestQgsVectorLayer(unittest.TestCase, FeatureSourceTestCase):
         self.assertEqual(len(list(layer.getFeatures(req))), 2)
         layer.rollBack()
 
+    def test_server_properties(self):
+        """ Test server properties. """
+        layer = QgsVectorLayer('Point?field=fldtxt:string', 'layer_1', 'memory')
+        self.assertIsInstance(layer.serverProperties(), QgsMapLayerServerProperties)
+
     def testClone(self):
         # init crs
         srs = QgsCoordinateReferenceSystem.fromEpsgId(3111)
@@ -2856,8 +3069,14 @@ class TestQgsVectorLayer(unittest.TestCase, FeatureSourceTestCase):
         action = QgsAction(QgsAction.Unix, "MyActionDescription", "MyActionCmd")
         layer.actions().addAction(action)
 
+        metadata = QgsLayerMetadata()
+        metadata.setFees('a handful of roos')
+        layer.setMetadata(metadata)
+
         # clone layer
         clone = layer.clone()
+
+        self.assertEqual(layer.metadata().fees(), 'a handful of roos')
 
         # generate xml from layer
         layer_doc = QDomDocument("doc")
@@ -3021,9 +3240,6 @@ class TestQgsVectorLayer(unittest.TestCase, FeatureSourceTestCase):
         layer = QgsVectorLayer("Polygon?crs=epsg:2056&field=pk:int", "vl", "memory")
         self.assertEqual(layer.displayExpression(), '"pk"')
         self.assertEqual(layer.displayField(), 'pk')
-        layer = QgsVectorLayer("Polygon?crs=epsg:2056&field=pk:int&field=fid:int", "vl", "memory")
-        self.assertEqual(layer.displayExpression(), '"fid"')
-        self.assertEqual(layer.displayField(), 'fid')
         layer = QgsVectorLayer("Polygon?crs=epsg:2056&field=pk:int&field=DESCRIPTION:string&field=fid:int", "vl", "memory")
         self.assertEqual(layer.displayExpression(), '"DESCRIPTION"')
         self.assertEqual(layer.displayField(), 'DESCRIPTION')
@@ -3505,7 +3721,6 @@ class TestQgsVectorLayerTransformContext(unittest.TestCase):
         """Prepare tc"""
         super(TestQgsVectorLayerTransformContext, self).setUp()
         self.ctx = QgsCoordinateTransformContext()
-        self.ctx.addSourceDestinationDatumTransform(QgsCoordinateReferenceSystem.fromEpsgId(4326), QgsCoordinateReferenceSystem.fromEpsgId(3857), 1234, 1235)
         self.ctx.addCoordinateOperation(QgsCoordinateReferenceSystem.fromEpsgId(4326),
                                         QgsCoordinateReferenceSystem.fromEpsgId(3857), 'test')
 
@@ -3564,6 +3779,61 @@ class TestQgsVectorLayerTransformContext(unittest.TestCase):
         self.assertTrue(p.transformContext().hasTransform(QgsCoordinateReferenceSystem.fromEpsgId(4326), QgsCoordinateReferenceSystem.fromEpsgId(3857)))
         self.assertTrue(vl.transformContext().hasTransform(QgsCoordinateReferenceSystem.fromEpsgId(4326), QgsCoordinateReferenceSystem.fromEpsgId(3857)))
 
+    def testDeletedFeaturesAreNotSelected(self):
+        """Test that when features are deleted are also removed from selected before
+           featuresDeleted is emitted"""
+
+        layer = QgsVectorLayer("point?crs=epsg:4326&field=id:integer", "Scratch point layer", "memory")
+        layer.startEditing()
+        layer.addFeature(QgsFeature(layer.fields()))
+        layer.commitChanges()
+
+        self.assertEqual(layer.featureCount(), 1)
+
+        test_errors = []
+
+        def onFeaturesDeleted(deleted_fids):
+            selected = layer.selectedFeatureIds()
+            for fid in selected:
+                test_errors.append(f'Feature with id {fid} was deleted but is still selected')
+
+        layer.featuresDeleted.connect(onFeaturesDeleted)
+
+        layer.startEditing()
+        layer.selectAll()
+        layer.deleteSelectedFeatures()
+        layer.commitChanges()
+
+        self.assertEqual(test_errors, [], test_errors)
+        self.assertEqual(layer.featureCount(), 0)
+        self.assertEqual(layer.selectedFeatureIds(), [])
+
+    def testCommitChangesReportsDeletedFeatureIDs(self):
+        """
+        Tests if commitChanges emits "featuresDeleted" with all deleted feature IDs,
+        e.g. in case (negative) temporary FIDs are converted into (positive) persistent FIDs.
+        """
+        temp_fids = []
+
+        def onFeaturesDeleted(deleted_fids):
+            self.assertEqual(len(deleted_fids), len(temp_fids),
+                             msg=f'featuresDeleted returned {len(deleted_fids)} instead of 2 deleted feature IDs: '
+                             f'{deleted_fids}')
+            for d in deleted_fids:
+                self.assertTrue(d in temp_fids)
+
+        layer = QgsVectorLayer("point?crs=epsg:4326&field=name:string", "Scratch point layer", "memory")
+        layer.featuresDeleted.connect(onFeaturesDeleted)
+
+        layer.startEditing()
+        layer.beginEditCommand('add 2 features')
+        layer.addFeature(QgsFeature(layer.fields()))
+        layer.addFeature(QgsFeature(layer.fields()))
+        layer.endEditCommand()
+        temp_fids.extend(layer.allFeatureIds())
+
+        layer.commitChanges()
+
     def testSubsetStringInvalidLayer(self):
         """
         Test that subset strings can be set on invalid layers, and retrieved later...
@@ -3586,6 +3856,93 @@ class TestQgsVectorLayerTransformContext(unittest.TestCase):
             'test', 'no')
         vl2.readXml(elem, QgsReadWriteContext())
         self.assertEqual(vl2.subsetString(), 'xxxxxxxxx')
+
+    def testLayerTypeFlags(self):
+        """Basic API test, DB providers that support query layers should test the flag individually"""
+
+        layer = QgsVectorLayer("point?crs=epsg:4326&field=name:string", "Scratch point layer", "memory")
+        self.assertEqual(layer.vectorLayerTypeFlags(), Qgis.VectorLayerTypeFlags())
+
+    def test_renderer_with_animated_symbol(self):
+        """
+        Test that setting a renderer with an animated symbol leads to redraw signals on the correct interval
+        """
+        layer = QgsVectorLayer("point?crs=epsg:4326&field=name:string", "Scratch point layer", "memory")
+
+        # renderer with an animated symbol
+        marker_symbol = QgsMarkerSymbol()
+        animated_marker = QgsAnimatedMarkerSymbolLayer()
+        animated_marker.setFrameRate(30)
+        marker_symbol.appendSymbolLayer(animated_marker)
+        renderer = QgsSingleSymbolRenderer(marker_symbol)
+        layer.setRenderer(renderer)
+
+        spy = QSignalSpy(layer.repaintRequested)
+        timer = QTimer()
+        timer.setSingleShot(True)
+        timer.setInterval(500)
+        spy2 = QSignalSpy(timer.timeout)
+        spy2.wait()
+
+        # expect 15 repaint requests in a 0.5 seconds, but add a lot of tolerance for a stable test!
+        # (it may have been much longer than 0.5 seconds here!)
+        self.assertGreaterEqual(len(spy), 14)
+        self.assertLessEqual(len(spy), 300)
+
+        # not an animated symbol
+        marker_symbol = QgsMarkerSymbol()
+        renderer = QgsSingleSymbolRenderer(marker_symbol)
+        layer.setRenderer(renderer)
+
+        spy = QSignalSpy(layer.repaintRequested)
+        timer = QTimer()
+        timer.setSingleShot(True)
+        timer.setInterval(500)
+        spy2 = QSignalSpy(timer.timeout)
+        spy2.wait()
+
+        # should not be any repaint requests now
+        self.assertEqual(len(spy), 0)
+
+    def testQmlDefaultTakesPrecedenceOverProviderDefaultRenderer(self):
+        """
+        Test that a user created QML default style takes precedence over a default style
+        created by a provider
+        """
+
+        with tempfile.TemporaryDirectory() as temp:
+            shutil.copy(TEST_DATA_DIR + '/mapinfo/fill_styles.DAT', temp + '/fill_styles.DAT')
+            shutil.copy(TEST_DATA_DIR + '/mapinfo/fill_styles.ID', temp + '/fill_styles.ID')
+            shutil.copy(TEST_DATA_DIR + '/mapinfo/fill_styles.MAP', temp + '/fill_styles.MAP')
+            shutil.copy(TEST_DATA_DIR + '/mapinfo/fill_styles.TAB', temp + '/fill_styles.TAB')
+
+            layer = QgsVectorLayer(temp + '/fill_styles.TAB', 'test', 'ogr')
+            self.assertTrue(layer.isValid())
+            # should take a default embedded renderer from provider
+            self.assertIsInstance(layer.renderer(), QgsEmbeddedSymbolRenderer)
+
+            from qgis.core import QgsFillSymbol
+            symbol = QgsFillSymbol.createSimple({'color': '#ff00ff'})
+            layer.setRenderer(QgsSingleSymbolRenderer(symbol))
+
+            message, ok = layer.saveDefaultStyle()
+            self.assertTrue(ok)
+
+            del layer
+            layer = QgsVectorLayer(temp + '/fill_styles.TAB', 'test', 'ogr')
+            self.assertTrue(layer.isValid())
+            # now we should load the .qml default style instead of the provider default
+            self.assertIsInstance(layer.renderer(), QgsSingleSymbolRenderer)
+            self.assertEqual(layer.renderer().symbol().color().name(), '#ff00ff')
+
+            # remove qml default
+            os.remove(temp + '/fill_styles.qml')
+            del layer
+            layer = QgsVectorLayer(temp + '/fill_styles.TAB', 'test', 'ogr')
+            self.assertTrue(layer.isValid())
+
+            # should return to a default embedded renderer from provider
+            self.assertIsInstance(layer.renderer(), QgsEmbeddedSymbolRenderer)
 
     def testLayerWithoutProvider(self):
         """Test that we don't crash when invoking methods on a layer with a broken provider"""
@@ -3634,6 +3991,9 @@ class TestQgsVectorLayerTransformContext(unittest.TestCase):
         layer.setDiagramLayerSettings(QgsDiagramLayerSettings())
         layer.renderer()
         layer.setRenderer(None)
+        layer.addFeatureRendererGenerator(None)
+        layer.removeFeatureRendererGenerator(None)
+        layer.featureRendererGenerators()
         layer.geometryType()
         layer.wkbType()
         layer.sourceCrs()
@@ -3702,6 +4062,7 @@ class TestQgsVectorLayerTransformContext(unittest.TestCase):
         layer.primaryKeyAttributes()
         layer.featureCount()
         layer.setReadOnly(False)
+        layer.supportsEditing()
         layer.changeGeometry(0, QgsGeometry())
         layer.changeAttributeValue(0, 0, '')
         layer.changeAttributeValues(0, {})
@@ -3740,6 +4101,7 @@ class TestQgsVectorLayerTransformContext(unittest.TestCase):
         layer.uniqueStringsMatching(0, None)
         layer.minimumValue(0)
         layer.maximumValue(0)
+        layer.minimumAndMaximumValue(0)
         layer.aggregate(QgsAggregateCalculator.Count, 'foo')
         layer.setFeatureBlendMode(QPainter.CompositionMode_Screen)
         layer.featureBlendMode()

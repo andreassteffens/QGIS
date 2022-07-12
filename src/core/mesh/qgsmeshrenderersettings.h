@@ -178,9 +178,9 @@ class CORE_EXPORT QgsMeshRendererScalarSettings
     void setEdgeStrokeWidthUnit( const QgsUnitTypes::RenderUnit &edgeStrokeWidthUnit );
 
     //! Writes configuration to a new DOM element
-    QDomElement writeXml( QDomDocument &doc ) const;
+    QDomElement writeXml( QDomDocument &doc, const QgsReadWriteContext &context = QgsReadWriteContext() ) const;
     //! Reads configuration from the given DOM element
-    void readXml( const QDomElement &elem );
+    void readXml( const QDomElement &elem, const QgsReadWriteContext &context = QgsReadWriteContext() );
 
   private:
     QgsColorRampShader mColorRampShader;
@@ -555,9 +555,9 @@ class CORE_EXPORT QgsMeshRendererVectorSettings
     void setTracesSettings( const QgsMeshRendererVectorTracesSettings &tracesSettings );
 
     //! Writes configuration to a new DOM element
-    QDomElement writeXml( QDomDocument &doc ) const;
+    QDomElement writeXml( QDomDocument &doc, const QgsReadWriteContext &context = QgsReadWriteContext() ) const;
     //! Reads configuration from the given DOM element
-    void readXml( const QDomElement &elem );
+    void readXml( const QDomElement &elem, const QgsReadWriteContext &context = QgsReadWriteContext() );
 
   private:
 
@@ -645,9 +645,9 @@ class CORE_EXPORT QgsMeshRendererSettings
     void setAveragingMethod( QgsMesh3dAveragingMethod *method );
 
     //! Writes configuration to a new DOM element
-    QDomElement writeXml( QDomDocument &doc ) const;
+    QDomElement writeXml( QDomDocument &doc, const QgsReadWriteContext &context = QgsReadWriteContext() ) const;
     //! Reads configuration from the given DOM element
-    void readXml( const QDomElement &elem );
+    void readXml( const QDomElement &elem, const QgsReadWriteContext &context = QgsReadWriteContext() );
 
     /**
      * Returns the active scalar dataset group
@@ -672,6 +672,13 @@ class CORE_EXPORT QgsMeshRendererSettings
      * \since QGIS 3.14
      */
     void setActiveVectorDatasetGroup( int activeVectorDatasetGroup );
+
+    /**
+    * Returns whether the group with \a index has render settings (scalar or vector)
+    *
+    * \since QGIS 3.22
+    */
+    bool hasSettings( int datasetGroupIndex ) const;
 
   private:
     QgsMeshRendererMeshSettings mRendererNativeMeshSettings;

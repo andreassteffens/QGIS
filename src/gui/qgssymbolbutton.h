@@ -17,7 +17,8 @@
 
 #include "qgis_gui.h"
 #include "qgis_sip.h"
-#include "qgssymbol.h"
+#include "qgis.h"
+
 #include <QToolButton>
 #include <QPointer>
 #include <memory>
@@ -27,6 +28,8 @@ class QgsVectorLayer;
 class QgsExpressionContextGenerator;
 class QgsPanelWidget;
 class QgsMessageBar;
+class QMimeData;
+class QgsSymbol;
 
 /**
  * \ingroup gui
@@ -51,6 +54,7 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
      * Use \a dialogTitle string to define the title to show in the symbol settings dialog.
      */
     QgsSymbolButton( QWidget *parent SIP_TRANSFERTHIS = nullptr, const QString &dialogTitle = QString() );
+    ~QgsSymbolButton();
 
     QSize minimumSizeHint() const override;
     QSize sizeHint() const override;
@@ -61,13 +65,13 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
      * to a default symbol style of the new type.
      * \see symbolType()
      */
-    void setSymbolType( QgsSymbol::SymbolType type );
+    void setSymbolType( Qgis::SymbolType type );
 
     /**
      * Returns the symbol type which the button requires.
      * \see setSymbolType()
      */
-    QgsSymbol::SymbolType symbolType() const { return mType; }
+    Qgis::SymbolType symbolType() const { return mType; }
 
     /**
      * Sets the \a title for the symbol settings dialog window.
@@ -200,6 +204,39 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
      */
     void pasteColor();
 
+    /**
+     * Sets whether a set to null (clear) option is shown in the button's drop-down menu.
+     * \param showNull set to TRUE to show a null option
+     * \see showNull()
+     * \see isNull()
+     * \since QGIS 3.26
+     */
+    void setShowNull( bool showNull );
+
+    /**
+     * Returns whether the set to null (clear) option is shown in the button's drop-down menu.
+     * \see setShowNull()
+     * \see isNull()
+     * \since QGIS 3.26
+     */
+    bool showNull() const;
+
+    /**
+     * Returns TRUE if the current symbol is null.
+     * \see setShowNull()
+     * \see showNull()
+     * \since QGIS 3.26
+     */
+    bool isNull() const;
+
+    /**
+     * Sets symbol to to null.
+     * \see setShowNull()
+     * \see showNull()
+     * \since QGIS 3.26
+     */
+    void setToNull();
+
   signals:
 
     /**
@@ -230,6 +267,8 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
     // Reimplemented to accept dropped colors
     void dropEvent( QDropEvent *e ) override;
 
+    void wheelEvent( QWheelEvent *event ) override;
+
   private slots:
 
     void showSettingsDialog();
@@ -254,7 +293,7 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
 
     QString mDialogTitle;
 
-    QgsSymbol::SymbolType mType = QgsSymbol::Fill;
+    Qgis::SymbolType mType = Qgis::SymbolType::Fill;
 
     QgsMapCanvas *mMapCanvas = nullptr;
     QgsMessageBar *mMessageBar = nullptr;
@@ -272,6 +311,8 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
     QgsExpressionContextGenerator *mExpressionContextGenerator = nullptr;
 
     bool mPickingColor = false;
+
+    bool mShowNull = false;
 
     /**
      * Regenerates the text preview. If \a color is specified, a temporary color preview

@@ -35,9 +35,11 @@
 #include "qgsreferencedgeometry.h"
 #include "qgsprojectviewsettings.h"
 #include "qgsmaplayermodel.h"
+#include "qgsfillsymbol.h"
 
 #include <QMenu>
 #include <QMessageBox>
+#include <QStringListModel>
 
 QgsLayoutMapWidget::QgsLayoutMapWidget( QgsLayoutItemMap *item, QgsMapCanvas *mapCanvas )
   : QgsLayoutItemBaseWidget( nullptr, item )
@@ -135,8 +137,9 @@ QgsLayoutMapWidget::QgsLayoutMapWidget( QgsLayoutItemMap *item, QgsMapCanvas *ma
 
   mCrsSelector->setOptionVisible( QgsProjectionSelectionWidget::CrsNotSet, true );
   mCrsSelector->setNotSetText( tr( "Use Project CRS" ) );
+  mCrsSelector->setDialogTitle( tr( "Map Item CRS" ) );
 
-  mOverviewFrameStyleButton->setSymbolType( QgsSymbol::Fill );
+  mOverviewFrameStyleButton->setSymbolType( Qgis::SymbolType::Fill );
 
   // follow preset combo
   mFollowVisibilityPresetCombo->setModel( new QStringListModel( mFollowVisibilityPresetCombo ) );
@@ -343,8 +346,8 @@ void QgsLayoutMapWidget::keepLayersVisibilityPresetSelected()
   if ( !action )
     return;
 
-  QString presetName = action->text();
-  QList<QgsMapLayer *> lst = orderedPresetVisibleLayers( presetName );
+  const QString presetName = action->text();
+  const QList<QgsMapLayer *> lst = orderedPresetVisibleLayers( presetName );
   if ( mMapItem )
   {
     mKeepLayerListCheckBox->setChecked( true );
@@ -371,7 +374,7 @@ void QgsLayoutMapWidget::onMapThemesChanged()
     model->setStringList( lst );
 
     // select the previously selected item again
-    int presetModelIndex = mFollowVisibilityPresetCombo->findText( mMapItem->followVisibilityPresetName() );
+    const int presetModelIndex = mFollowVisibilityPresetCombo->findText( mMapItem->followVisibilityPresetName() );
     mFollowVisibilityPresetCombo->blockSignals( true );
     mFollowVisibilityPresetCombo->setCurrentIndex( presetModelIndex != -1 ? presetModelIndex : 0 ); // 0 == none
     mFollowVisibilityPresetCombo->blockSignals( false );
@@ -390,14 +393,15 @@ void QgsLayoutMapWidget::mapCrsChanged( const QgsCoordinateReferenceSystem &crs 
     return;
 
   // try to reproject to maintain extent
-  QgsCoordinateReferenceSystem oldCrs = mMapItem->crs();
+  const QgsCoordinateReferenceSystem oldCrs = mMapItem->crs();
 
   bool updateExtent = false;
   QgsRectangle newExtent;
   try
   {
     QgsCoordinateTransform xForm( oldCrs, crs.isValid() ? crs : QgsProject::instance()->crs(), QgsProject::instance() );
-    QgsRectangle prevExtent = mMapItem->extent();
+    xForm.setBallparkTransformsAreAppropriate( true );
+    const QgsRectangle prevExtent = mMapItem->extent();
     newExtent = xForm.transformBoundingBox( prevExtent );
     updateExtent = true;
   }
@@ -490,6 +494,7 @@ void QgsLayoutMapWidget::aboutToShowBookmarkMenu()
         try
         {
           QgsCoordinateTransform xForm( extent.crs(), mMapItem->crs(), QgsProject::instance() );
+          xForm.setBallparkTransformsAreAppropriate( true );
           newExtent = xForm.transformBoundingBox( newExtent );
         }
         catch ( QgsCsException & )
@@ -524,9 +529,6 @@ void QgsLayoutMapWidget::mTemporalCheckBox_toggled( bool checked )
     return;
   }
 
-  mStartDateTime->setEnabled( checked );
-  mEndDateTime->setEnabled( checked );
-
   mMapItem->layout()->undoStack()->beginCommand( mMapItem, tr( "Toggle Temporal Range" ) );
   mMapItem->setIsTemporal( checked );
   mMapItem->layout()->undoStack()->endCommand();
@@ -547,7 +549,9 @@ void QgsLayoutMapWidget::updateTemporalExtent()
     return;
   }
 
-  QgsDateTimeRange range = QgsDateTimeRange( mStartDateTime->dateTime(), mEndDateTime->dateTime() );
+  const QDateTime begin = mStartDateTime->dateTime();
+  const QDateTime end = mEndDateTime->dateTime();
+  const QgsDateTimeRange range = QgsDateTimeRange( begin, end, true, begin == end );
 
   mMapItem->layout()->undoStack()->beginCommand( mMapItem, tr( "Set Temporal Range" ) );
   mMapItem->setTemporalRange( range );
@@ -689,7 +693,7 @@ void QgsLayoutMapWidget::mScaleLineEdit_editingFinished()
   }
 
   bool conversionSuccess = false;
-  double scaleDenominator = QLocale().toDouble( mScaleLineEdit->text(), &conversionSuccess );
+  const double scaleDenominator = QLocale().toDouble( mScaleLineEdit->text(), &conversionSuccess );
   if ( !conversionSuccess )
   {
     return;
@@ -733,6 +737,7 @@ void QgsLayoutMapWidget::setToMapCanvasExtent()
     {
       QgsCoordinateTransform xForm( mMapCanvas->mapSettings().destinationCrs(),
                                     mMapItem->crs(), QgsProject::instance() );
+      xForm.setBallparkTransformsAreAppropriate( true );
       newExtent = xForm.transformBoundingBox( newExtent );
     }
     catch ( QgsCsException & )
@@ -768,7 +773,7 @@ void QgsLayoutMapWidget::viewExtentInCanvas()
     return;
   }
 
-  QgsRectangle currentMapExtent = mMapItem->extent();
+  const QgsRectangle currentMapExtent = mMapItem->extent();
 
   if ( !currentMapExtent.isEmpty() )
   {
@@ -829,7 +834,7 @@ void QgsLayoutMapWidget::updateGuiElements()
   whileBlocking( mCrsSelector )->setCrs( mMapItem->presetCrs() );
 
   //width, height, scale
-  double scale = mMapItem->scale();
+  const double scale = mMapItem->scale();
 
   //round scale to an appropriate number of decimal places
   if ( scale >= 10000 )
@@ -853,7 +858,7 @@ void QgsLayoutMapWidget::updateGuiElements()
   }
 
   //composer map extent
-  QgsRectangle composerMapExtent = mMapItem->extent();
+  const QgsRectangle composerMapExtent = mMapItem->extent();
   mXMinLineEdit->setText( QLocale().toString( composerMapExtent.xMinimum(), 'f', 3 ) );
   mXMaxLineEdit->setText( QLocale().toString( composerMapExtent.xMaximum(), 'f', 3 ) );
   mYMinLineEdit->setText( QLocale().toString( composerMapExtent.yMinimum(), 'f', 3 ) );
@@ -864,7 +869,7 @@ void QgsLayoutMapWidget::updateGuiElements()
   // follow preset checkbox
   mFollowVisibilityPresetCheckBox->setCheckState(
     mMapItem->followVisibilityPreset() ? Qt::Checked : Qt::Unchecked );
-  int presetModelIndex = mFollowVisibilityPresetCombo->findText( mMapItem->followVisibilityPresetName() );
+  const int presetModelIndex = mFollowVisibilityPresetCombo->findText( mMapItem->followVisibilityPresetName() );
   mFollowVisibilityPresetCombo->setCurrentIndex( presetModelIndex != -1 ? presetModelIndex : 0 ); // 0 == none
 
   //keep layer list checkbox
@@ -980,7 +985,7 @@ void QgsLayoutMapWidget::updateComposerExtentFromGui()
   if ( !conversionSuccess )
     return;
 
-  QgsRectangle newExtent( xmin, ymin, xmax, ymax );
+  const QgsRectangle newExtent( xmin, ymin, xmax, ymax );
 
   mMapItem->layout()->undoStack()->beginCommand( mMapItem, tr( "Change Map Extent" ) );
   mMapItem->setExtent( newExtent );
@@ -1140,12 +1145,12 @@ bool QgsLayoutMapWidget::hasPredefinedScales() const
 {
   // first look at project's scales
   const QVector< double > scales( QgsProject::instance()->viewSettings()->mapScales() );
-  bool hasProjectScales( QgsProject::instance()->viewSettings()->useProjectScales() );
+  const bool hasProjectScales( QgsProject::instance()->viewSettings()->useProjectScales() );
   if ( !hasProjectScales || scales.isEmpty() )
   {
     // default to global map tool scales
-    QgsSettings settings;
-    QString scalesStr( settings.value( QStringLiteral( "Map/scales" ), Qgis::defaultProjectScales() ).toString() );
+    const QgsSettings settings;
+    const QString scalesStr( settings.value( QStringLiteral( "Map/scales" ), Qgis::defaultProjectScales() ).toString() );
     QStringList myScalesList = scalesStr.split( ',' );
     return !myScalesList.isEmpty() && !myScalesList[0].isEmpty();
   }
@@ -1159,7 +1164,7 @@ void QgsLayoutMapWidget::mAddGridPushButton_clicked()
     return;
   }
 
-  QString itemName = tr( "Grid %1" ).arg( mMapItem->grids()->size() + 1 );
+  const QString itemName = tr( "Grid %1" ).arg( mMapItem->grids()->size() + 1 );
   QgsLayoutItemMapGrid *grid = new QgsLayoutItemMapGrid( itemName, mMapItem );
   mMapItem->layout()->undoStack()->beginCommand( mMapItem, tr( "Add Map Grid" ) );
   mMapItem->grids()->addGrid( grid );
@@ -1197,7 +1202,7 @@ void QgsLayoutMapWidget::mGridUpButton_clicked()
     return;
   }
 
-  int row = mGridListWidget->row( item );
+  const int row = mGridListWidget->row( item );
   if ( row < 1 )
   {
     return;
@@ -1219,7 +1224,7 @@ void QgsLayoutMapWidget::mGridDownButton_clicked()
     return;
   }
 
-  int row = mGridListWidget->row( item );
+  const int row = mGridListWidget->row( item );
   if ( mGridListWidget->count() <= row )
   {
     return;
@@ -1301,7 +1306,7 @@ void QgsLayoutMapWidget::loadGridEntries()
 {
   //save selection
   QSet<QString> selectedIds;
-  QList<QListWidgetItem *> itemSelection = mGridListWidget->selectedItems();
+  const QList<QListWidgetItem *> itemSelection = mGridListWidget->selectedItems();
   QList<QListWidgetItem *>::const_iterator sIt = itemSelection.constBegin();
   for ( ; sIt != itemSelection.constEnd(); ++sIt )
   {
@@ -1314,7 +1319,7 @@ void QgsLayoutMapWidget::loadGridEntries()
     return;
   }
   //load all composer grids into list widget
-  QList< QgsLayoutItemMapGrid * > grids = mMapItem->grids()->asList();
+  const QList< QgsLayoutItemMapGrid * > grids = mMapItem->grids()->asList();
   QList< QgsLayoutItemMapGrid * >::const_iterator gridIt = grids.constBegin();
   for ( ; gridIt != grids.constEnd(); ++gridIt )
   {
@@ -1343,7 +1348,7 @@ void QgsLayoutMapWidget::mAddOverviewPushButton_clicked()
     return;
   }
 
-  QString itemName = tr( "Overview %1" ).arg( mMapItem->overviews()->size() + 1 );
+  const QString itemName = tr( "Overview %1" ).arg( mMapItem->overviews()->size() + 1 );
   QgsLayoutItemMapOverview *overview = new QgsLayoutItemMapOverview( itemName, mMapItem );
   mMapItem->layout()->undoStack()->beginCommand( mMapItem, tr( "Add Map Overview" ) );
   mMapItem->overviews()->addOverview( overview );
@@ -1378,7 +1383,7 @@ void QgsLayoutMapWidget::mOverviewUpButton_clicked()
     return;
   }
 
-  int row = mOverviewListWidget->row( item );
+  const int row = mOverviewListWidget->row( item );
   if ( row < 1 )
   {
     return;
@@ -1400,7 +1405,7 @@ void QgsLayoutMapWidget::mOverviewDownButton_clicked()
     return;
   }
 
-  int row = mOverviewListWidget->row( item );
+  const int row = mOverviewListWidget->row( item );
   if ( mOverviewListWidget->count() <= row )
   {
     return;
@@ -1478,7 +1483,7 @@ void QgsLayoutMapWidget::setOverviewItemsEnabled( bool enabled )
   mOverviewCenterCheckbox->setEnabled( enabled );
   mOverviewPositionComboBox->setEnabled( enabled );
 
-  QgsLayoutItemMapItem::StackingPosition currentStackingPos = static_cast< QgsLayoutItemMapItem::StackingPosition >( mOverviewPositionComboBox->currentData().toInt() );
+  const QgsLayoutItemMapItem::StackingPosition currentStackingPos = static_cast< QgsLayoutItemMapItem::StackingPosition >( mOverviewPositionComboBox->currentData().toInt() );
   mOverviewStackingLayerComboBox->setEnabled( enabled && ( currentStackingPos == QgsLayoutItemMapItem::StackAboveMapLayer || currentStackingPos == QgsLayoutItemMapItem::StackBelowMapLayer ) );
 }
 
@@ -1530,7 +1535,7 @@ void QgsLayoutMapWidget::storeCurrentLayerSet()
   if ( !mMapItem )
     return;
 
-  QList<QgsMapLayer *> layers = mMapCanvas->mapSettings().layers();
+  const QList<QgsMapLayer *> layers = mMapCanvas->mapSettings().layers();
   mMapItem->setLayers( layers );
 
   if ( mMapItem->keepLayerStyles() )
@@ -1542,7 +1547,7 @@ void QgsLayoutMapWidget::storeCurrentLayerSet()
 
 QList<QgsMapLayer *> QgsLayoutMapWidget::orderedPresetVisibleLayers( const QString &name ) const
 {
-  QStringList visibleIds = QgsProject::instance()->mapThemeCollection()->mapThemeVisibleLayerIds( name );
+  const QStringList visibleIds = QgsProject::instance()->mapThemeCollection()->mapThemeVisibleLayerIds( name );
 
   // also make sure to order the layers according to map canvas order
   QList<QgsMapLayer *> lst;
@@ -1570,7 +1575,7 @@ void QgsLayoutMapWidget::loadOverviewEntries()
 {
   //save selection
   QSet<QString> selectedIds;
-  QList<QListWidgetItem *> itemSelection = mOverviewListWidget->selectedItems();
+  const QList<QListWidgetItem *> itemSelection = mOverviewListWidget->selectedItems();
   QList<QListWidgetItem *>::const_iterator sIt = itemSelection.constBegin();
   for ( ; sIt != itemSelection.constEnd(); ++sIt )
   {
@@ -1586,7 +1591,7 @@ void QgsLayoutMapWidget::loadOverviewEntries()
   mOverviewFrameMapComboBox->setExceptedItemList( QList< QgsLayoutItem * >() << mMapItem );
 
   //load all composer overviews into list widget
-  QList< QgsLayoutItemMapOverview * > overviews = mMapItem->overviews()->asList();
+  const QList< QgsLayoutItemMapOverview * > overviews = mMapItem->overviews()->asList();
   QList< QgsLayoutItemMapOverview * >::const_iterator overviewIt = overviews.constBegin();
   for ( ; overviewIt != overviews.constEnd(); ++overviewIt )
   {
@@ -1869,7 +1874,7 @@ QVariant QgsLayoutMapItemBlocksLabelsModel::data( const QModelIndex &i, int role
   if ( i.column() != 0 )
     return QVariant();
 
-  QModelIndex sourceIndex = mapToSource( index( i.row(), QgsLayoutModel::ItemId, i.parent() ) );
+  const QModelIndex sourceIndex = mapToSource( index( i.row(), QgsLayoutModel::ItemId, i.parent() ) );
 
   QgsLayoutItem *item = mLayoutModel->itemFromIndex( mapToSource( i ) );
   if ( !item )
@@ -2004,7 +2009,7 @@ QgsLayoutMapClippingWidget::QgsLayoutMapClippingWidget( QgsLayoutItemMap *map )
       mMapItem->endCommand();
     }
   } );
-  connect( mAtlasClippingTypeComboBox, qgis::overload<int>::of( &QComboBox::currentIndexChanged ), this, [ = ]
+  connect( mAtlasClippingTypeComboBox, qOverload<int>( &QComboBox::currentIndexChanged ), this, [ = ]
   {
     if ( !mBlockUpdates )
     {
@@ -2062,7 +2067,7 @@ QgsLayoutMapClippingWidget::QgsLayoutMapClippingWidget( QgsLayoutItemMap *map )
       mMapItem->endCommand();
     }
   } );
-  connect( mItemClippingTypeComboBox, qgis::overload<int>::of( &QComboBox::currentIndexChanged ), this, [ = ]
+  connect( mItemClippingTypeComboBox, qOverload<int>( &QComboBox::currentIndexChanged ), this, [ = ]
   {
     if ( !mBlockUpdates )
     {

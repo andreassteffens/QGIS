@@ -26,6 +26,9 @@
 #include "qgsprojectstorageregistry.h"
 #include "qgsvectorlayer.h"
 #include "qgssettings.h"
+#include "qgsvectorlayerexporter.h"
+#include "qgsprojectitem.h"
+#include "qgsfieldsitem.h"
 #include <QMessageBox>
 #include <climits>
 
@@ -55,12 +58,12 @@ bool QgsPostgresUtils::deleteLayer( const QString &uri, QString &errCause )
   // handle deletion of views
   QString sqlViewCheck = QStringLiteral( "SELECT relkind FROM pg_class WHERE oid=regclass(%1)::oid" )
                          .arg( QgsPostgresConn::quotedValue( schemaTableName ) );
-  QgsPostgresResult resViewCheck( conn->PQexec( sqlViewCheck ) );
+  QgsPostgresResult resViewCheck( conn->LoggedPQexec( "QgsPostgresUtils", sqlViewCheck ) );
   QString type = resViewCheck.PQgetvalue( 0, 0 );
   if ( type == QLatin1String( "v" ) || type == QLatin1String( "m" ) )
   {
     QString sql = QStringLiteral( "DROP %1VIEW %2" ).arg( type == QLatin1String( "m" ) ? QStringLiteral( "MATERIALIZED " ) : QString(), schemaTableName );
-    QgsPostgresResult result( conn->PQexec( sql ) );
+    QgsPostgresResult result( conn->LoggedPQexec( "QgsPostgresUtils", sql ) );
     if ( result.PQresultStatus() != PGRES_COMMAND_OK )
     {
       errCause = QObject::tr( "Unable to delete view %1: \n%2" )
@@ -82,7 +85,7 @@ bool QgsPostgresUtils::deleteLayer( const QString &uri, QString &errCause )
                          "AND f_table_schema=%1 AND f_table_name=%2" )
                 .arg( QgsPostgresConn::quotedValue( schemaName ),
                       QgsPostgresConn::quotedValue( tableName ) );
-  QgsPostgresResult result( conn->PQexec( sql ) );
+  QgsPostgresResult result( conn->LoggedPQexec( "QgsPostgresUtils", sql ) );
   if ( result.PQresultStatus() != PGRES_TUPLES_OK )
   {
     errCause = QObject::tr( "Unable to delete layer %1: \n%2" )
@@ -110,7 +113,7 @@ bool QgsPostgresUtils::deleteLayer( const QString &uri, QString &errCause )
                 QgsPostgresConn::quotedValue( tableName ) );
   }
 
-  result = conn->PQexec( sql );
+  result = conn->LoggedPQexec( "QgsPostgresUtils", sql );
   if ( result.PQresultStatus() != PGRES_TUPLES_OK )
   {
     errCause = QObject::tr( "Unable to delete layer %1: \n%2" )
@@ -144,7 +147,7 @@ bool QgsPostgresUtils::deleteSchema( const QString &schema, const QgsDataSourceU
   QString sql = QStringLiteral( "DROP SCHEMA %1 %2" )
                 .arg( schemaName, cascade ? QStringLiteral( "CASCADE" ) : QString() );
 
-  QgsPostgresResult result( conn->PQexec( sql ) );
+  QgsPostgresResult result( conn->LoggedPQexec( "QgsPostgresUtils", sql ) );
   if ( result.PQresultStatus() != PGRES_COMMAND_OK )
   {
     errCause = QObject::tr( "Unable to delete schema %1: \n%2" )
@@ -164,7 +167,7 @@ QgsPGConnectionItem::QgsPGConnectionItem( QgsDataItem *parent, const QString &na
   : QgsDataCollectionItem( parent, name, path, QStringLiteral( "PostGIS" ) )
 {
   mIconName = QStringLiteral( "mIconConnect.svg" );
-  mCapabilities |= Collapse;
+  mCapabilities |= Qgis::BrowserItemCapability::Collapse;
 }
 
 QVector<QgsDataItem *> QgsPGConnectionItem::createChildren()
@@ -258,7 +261,17 @@ bool QgsPGConnectionItem::handleDrop( const QMimeData *data, const QString &toSc
 
     if ( srcLayer->isValid() )
     {
-      uri.setDataSource( QString(), u.name,  srcLayer->geometryType() != QgsWkbTypes::NullGeometry ? QStringLiteral( "geom" ) : QString() );
+
+      // Try to get source col from uri
+      QString geomColumn { QStringLiteral( "geom" ) };
+
+      if ( ! srcLayer->dataProvider()->uri().geometryColumn().isEmpty() )
+      {
+        geomColumn = srcLayer->dataProvider()->uri().geometryColumn();
+      }
+
+      uri.setDataSource( QString(), u.name,  srcLayer->geometryType() != QgsWkbTypes::NullGeometry ? geomColumn : QString() );
+
       QgsDebugMsg( "URI " + uri.uri( false ) );
 
       if ( !toSchema.isNull() )
@@ -277,9 +290,9 @@ bool QgsPGConnectionItem::handleDrop( const QMimeData *data, const QString &toSc
       } );
 
       // when an error occurs:
-      connect( exportTask.get(), &QgsVectorLayerExporterTask::errorOccurred, this, [ = ]( int error, const QString & errorMessage )
+      connect( exportTask.get(), &QgsVectorLayerExporterTask::errorOccurred, this, [ = ]( Qgis::VectorExportResult error, const QString & errorMessage )
       {
-        if ( error != QgsVectorLayerExporter::ErrUserCanceled )
+        if ( error != Qgis::VectorExportResult::UserCanceled )
         {
           QgsMessageOutput *output = QgsMessageOutput::createMessageOutput();
           output->setTitle( tr( "Import to PostGIS database" ) );
@@ -310,14 +323,14 @@ bool QgsPGConnectionItem::handleDrop( const QMimeData *data, const QString &toSc
 }
 
 // ---------------------------------------------------------------------------
-QgsPGLayerItem::QgsPGLayerItem( QgsDataItem *parent, const QString &name, const QString &path, QgsLayerItem::LayerType layerType, const QgsPostgresLayerProperty &layerProperty )
+QgsPGLayerItem::QgsPGLayerItem( QgsDataItem *parent, const QString &name, const QString &path, Qgis::BrowserLayerType layerType, const QgsPostgresLayerProperty &layerProperty )
   : QgsLayerItem( parent, name, path, QString(), layerType, layerProperty.isRaster ? QStringLiteral( "postgresraster" ) : QStringLiteral( "postgres" ) )
   , mLayerProperty( layerProperty )
 {
-  mCapabilities |= Delete | Fertile;
+  mCapabilities |= Qgis::BrowserItemCapability::Delete | Qgis::BrowserItemCapability::Fertile;
   mUri = createUri();
   // No rasters for now
-  setState( layerProperty.isRaster ? Populated : NotPopulated );
+  setState( layerProperty.isRaster ? Qgis::BrowserItemState::Populated : Qgis::BrowserItemState::NotPopulated );
   Q_ASSERT( mLayerProperty.size() == 1 );
 }
 
@@ -501,27 +514,27 @@ QgsPGLayerItem *QgsPGSchemaItem::createLayer( QgsPostgresLayerProperty layerProp
   }
 
 
-  QgsLayerItem::LayerType layerType = QgsLayerItem::Raster;
+  Qgis::BrowserLayerType layerType = Qgis::BrowserLayerType::Raster;
   if ( ! layerProperty.isRaster )
   {
     QgsWkbTypes::GeometryType geomType = QgsWkbTypes::geometryType( ( QgsWkbTypes::Type )wkbType );
     switch ( geomType )
     {
       case QgsWkbTypes::PointGeometry:
-        layerType = QgsLayerItem::Point;
+        layerType = Qgis::BrowserLayerType::Point;
         break;
       case QgsWkbTypes::LineGeometry:
-        layerType = QgsLayerItem::Line;
+        layerType = Qgis::BrowserLayerType::Line;
         break;
       case QgsWkbTypes::PolygonGeometry:
-        layerType = QgsLayerItem::Polygon;
+        layerType = Qgis::BrowserLayerType::Polygon;
         break;
       default:
         if ( !layerProperty.geometryColName.isEmpty() )
         {
           QgsDebugMsgLevel( QStringLiteral( "Adding layer item %1.%2 without type constraint as geometryless table" ).arg( layerProperty.schemaName ).arg( layerProperty.tableName ), 2 );
         }
-        layerType = QgsLayerItem::TableLayer;
+        layerType = Qgis::BrowserLayerType::TableLayer;
         tip = tr( "as geometryless table" );
     }
   }
@@ -542,7 +555,7 @@ QVector<QgsDataItem *> QgsPGLayerItem::createChildren()
 QgsPGRootItem::QgsPGRootItem( QgsDataItem *parent, const QString &name, const QString &path )
   : QgsConnectionsRootItem( parent, name, path, QStringLiteral( "PostGIS" ) )
 {
-  mCapabilities |= Fast;
+  mCapabilities |= Qgis::BrowserItemCapability::Fast;
   mIconName = QStringLiteral( "mIconPostgis.svg" );
   populate();
 }
@@ -550,7 +563,8 @@ QgsPGRootItem::QgsPGRootItem( QgsDataItem *parent, const QString &name, const QS
 QVector<QgsDataItem *> QgsPGRootItem::createChildren()
 {
   QVector<QgsDataItem *> connections;
-  Q_FOREACH ( const QString &connName, QgsPostgresConn::connectionList() )
+  const QStringList list = QgsPostgresConn::connectionList();
+  for ( const QString &connName : list )
   {
     connections << new QgsPGConnectionItem( this, connName, mPath + '/' + connName );
   }
@@ -561,8 +575,6 @@ void QgsPGRootItem::onConnectionsChanged()
 {
   refresh();
 }
-
-QMainWindow *QgsPGRootItem::sMainWindow = nullptr;
 
 QString QgsPostgresDataItemProvider::name()
 {
@@ -582,7 +594,7 @@ int QgsPostgresDataItemProvider::capabilities() const
 QgsDataItem *QgsPostgresDataItemProvider::createDataItem( const QString &pathIn, QgsDataItem *parentItem )
 {
   Q_UNUSED( pathIn )
-  return new QgsPGRootItem( parentItem, QStringLiteral( "PostGIS" ), QStringLiteral( "pg:" ) );
+  return new QgsPGRootItem( parentItem, QObject::tr( "PostgreSQL" ), QStringLiteral( "pg:" ) );
 }
 
 

@@ -27,6 +27,7 @@
 #include "qgsattributes.h"
 #include "qgsjsonutils.h"
 #include "qgspostgresstringutils.h"
+#include "qgsapplication.h"
 
 #include <QHeaderView>
 #include <QComboBox>
@@ -34,6 +35,7 @@
 #include <QTableWidget>
 #include <QStringListModel>
 #include <QCompleter>
+#include <QTimer>
 
 #include <nlohmann/json.hpp>
 using namespace nlohmann;
@@ -55,13 +57,13 @@ QVariant QgsValueRelationWidgetWrapper::value() const
     if ( cbxIdx > -1 )
     {
       v = mComboBox->currentData();
+      if ( v.isNull() )
+        v = QVariant( field().type() );
     }
   }
-
-  const int nofColumns = columnCount();
-
-  if ( mTableWidget )
+  else if ( mTableWidget )
   {
+    const int nofColumns = columnCount();
     QStringList selection;
     for ( int j = 0; j < mTableWidget->rowCount(); j++ )
     {
@@ -76,9 +78,15 @@ QVariant QgsValueRelationWidgetWrapper::value() const
       }
     }
 
+    // If there is no selection and allow NULL is not checked return NULL.
+    if ( selection.isEmpty() && ! config( QStringLiteral( "AllowNull" ) ).toBool( ) )
+    {
+      return QVariant( QVariant::Type::List );
+    }
+
     QVariantList vl;
     //store as QVariantList because the field type supports data structure
-    for ( const QString &s : qgis::as_const( selection ) )
+    for ( const QString &s : std::as_const( selection ) )
     {
       // Convert to proper type
       const QVariant::Type type { fkType() };
@@ -107,10 +115,9 @@ QVariant QgsValueRelationWidgetWrapper::value() const
       v = QgsPostgresStringUtils::buildArray( vl );
     }
   }
-
-  if ( mLineEdit )
+  else if ( mLineEdit )
   {
-    for ( const QgsValueRelationFieldFormatter::ValueRelationItem &item : qgis::as_const( mCache ) )
+    for ( const QgsValueRelationFieldFormatter::ValueRelationItem &item : std::as_const( mCache ) )
     {
       if ( item.value == mLineEdit->text() )
       {
@@ -157,6 +164,7 @@ void QgsValueRelationWidgetWrapper::initWidget( QWidget *editor )
 
   if ( mComboBox )
   {
+    mComboBox->view()->setVerticalScrollBarPolicy( Qt::ScrollBarAsNeeded );
     connect( mComboBox, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ),
              this, static_cast<void ( QgsEditorWidgetWrapper::* )()>( &QgsEditorWidgetWrapper::emitValueChanged ), Qt::UniqueConnection );
   }
@@ -240,13 +248,30 @@ void QgsValueRelationWidgetWrapper::updateValues( const QVariant &value, const Q
         break;
       }
     }
-    mComboBox->setCurrentIndex( idx );
+
+    if ( idx == -1 )
+    {
+      // if value doesn't exist, we show it in '(...)' (just like value map widget)
+      if ( value.isNull( ) )
+      {
+        mComboBox->setCurrentIndex( -1 );
+      }
+      else
+      {
+        mComboBox->addItem( value.toString().prepend( '(' ).append( ')' ), value );
+        mComboBox->setCurrentIndex( mComboBox->findData( value ) );
+      }
+    }
+    else
+    {
+      mComboBox->setCurrentIndex( idx );
+    }
   }
   else if ( mLineEdit )
   {
     mLineEdit->clear();
     bool wasFound { false };
-    for ( const QgsValueRelationFieldFormatter::ValueRelationItem &i : qgis::as_const( mCache ) )
+    for ( const QgsValueRelationFieldFormatter::ValueRelationItem &i : std::as_const( mCache ) )
     {
       if ( i.key == value )
       {
@@ -281,9 +306,18 @@ void QgsValueRelationWidgetWrapper::widgetValueChanged( const QString &attribute
       // If the value has changed as a result of another widget's value change,
       // we need to emit the signal to make sure other dependent widgets are
       // updated.
-      if ( oldValue != value() && fieldIdx() < formFeature().fields().count() )
+      QgsFields formFields( formFeature().fields() );
+
+      // Also check for fields in the layer in case this is a multi-edit form
+      // and there is not form feature set
+      if ( formFields.count() == 0 && layer() )
       {
-        QString attributeName( formFeature().fields().names().at( fieldIdx() ) );
+        formFields = layer()->fields();
+      }
+
+      if ( oldValue != value() && fieldIdx() < formFields.count() )
+      {
+        QString attributeName( formFields.names().at( fieldIdx() ) );
         setFormFeatureAttribute( attributeName, value( ) );
         emitValueChanged();
       }
@@ -305,7 +339,7 @@ void QgsValueRelationWidgetWrapper::setFeature( const QgsFeature &feature )
   // A bit of logic to set the default value if AllowNull is false and this is a new feature
   // Note that this needs to be here after the cache has been created/updated by populate()
   // and signals unblocked (we want this to propagate to the feature itself)
-  if ( formFeature().isValid()
+  if ( context().attributeFormMode() != QgsAttributeEditorContext::Mode::MultiEditMode
        && ! formFeature().attribute( fieldIdx() ).isValid()
        && ! mCache.isEmpty()
        && ! config( QStringLiteral( "AllowNull" ) ).toBool( ) )
@@ -316,7 +350,7 @@ void QgsValueRelationWidgetWrapper::setFeature( const QgsFeature &feature )
     {
       if ( ! mCache.isEmpty() )
       {
-        updateValues( mCache.at( 0 ).key );
+        updateValues( formFeature().attribute( fieldIdx() ).isValid() ? formFeature().attribute( fieldIdx() ) : mCache.at( 0 ).key );
       }
     } );
   }
@@ -371,7 +405,7 @@ void QgsValueRelationWidgetWrapper::populate( )
       whileBlocking( mComboBox )->addItem( tr( "(no selection)" ), QVariant( field().type( ) ) );
     }
 
-    for ( const QgsValueRelationFieldFormatter::ValueRelationItem &element : qgis::as_const( mCache ) )
+    for ( const QgsValueRelationFieldFormatter::ValueRelationItem &element : std::as_const( mCache ) )
     {
       whileBlocking( mComboBox )->addItem( element.value, element.key );
       if ( !element.description.isEmpty() )
@@ -394,7 +428,7 @@ void QgsValueRelationWidgetWrapper::populate( )
     whileBlocking( mTableWidget )->clear();
     int row = 0;
     int column = 0;
-    for ( const QgsValueRelationFieldFormatter::ValueRelationItem &element : qgis::as_const( mCache ) )
+    for ( const QgsValueRelationFieldFormatter::ValueRelationItem &element : std::as_const( mCache ) )
     {
       if ( column == nofColumns )
       {
@@ -413,7 +447,7 @@ void QgsValueRelationWidgetWrapper::populate( )
   {
     QStringList values;
     values.reserve( mCache.size() );
-    for ( const QgsValueRelationFieldFormatter::ValueRelationItem &i : qgis::as_const( mCache ) )
+    for ( const QgsValueRelationFieldFormatter::ValueRelationItem &i : std::as_const( mCache ) )
     {
       values << i.value;
     }

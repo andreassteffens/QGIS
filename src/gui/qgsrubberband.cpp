@@ -20,6 +20,12 @@
 #include "qgsvectorlayer.h"
 #include "qgsproject.h"
 #include "qgsrectangle.h"
+#include "qgssymbol.h"
+#include "qgsrendercontext.h"
+#include "qgslinesymbol.h"
+#include "qgsfillsymbol.h"
+#include "qgsguiutils.h"
+
 #include <QPainter>
 
 QgsRubberBand::QgsRubberBand( QgsMapCanvas *mapCanvas, QgsWkbTypes::GeometryType geometryType )
@@ -42,6 +48,8 @@ QgsRubberBand::QgsRubberBand()
   , QgsMapCanvasItem( nullptr )
 {
 }
+
+QgsRubberBand::~QgsRubberBand() = default;
 
 void QgsRubberBand::setColor( const QColor &color )
 {
@@ -80,7 +88,7 @@ void QgsRubberBand::setIcon( IconType icon )
 void QgsRubberBand::setSvgIcon( const QString &path, QPoint drawOffset )
 {
   setIcon( ICON_SVG );
-  mSvgRenderer = qgis::make_unique<QSvgRenderer>( path );
+  mSvgRenderer = std::make_unique<QSvgRenderer>( path );
   mSvgOffset = drawOffset;
 }
 
@@ -142,7 +150,8 @@ void QgsRubberBand::addPoint( const QgsPointXY &p, bool doUpdate /* = true */, i
   if ( ringIndex == mPoints.at( geometryIndex ).size() )
   {
     mPoints[geometryIndex].append( QgsPolylineXY() );
-    mPoints[geometryIndex][ringIndex].append( p );
+    if ( mGeometryType != QgsWkbTypes::PointGeometry )
+      mPoints[geometryIndex][ringIndex].append( p );
   }
 
   if ( mPoints.at( geometryIndex ).at( ringIndex ).size() == 2 &&
@@ -276,7 +285,7 @@ void QgsRubberBand::setToGeometry( const QgsGeometry &geom, const QgsCoordinateR
   addGeometry( geom, crs );
 }
 
-void QgsRubberBand::addGeometry( const QgsGeometry &geometry, QgsVectorLayer *layer )
+void QgsRubberBand::addGeometry( const QgsGeometry &geometry, QgsMapLayer *layer, bool doUpdate )
 {
   QgsGeometry geom = geometry;
   if ( layer )
@@ -292,10 +301,10 @@ void QgsRubberBand::addGeometry( const QgsGeometry &geometry, QgsVectorLayer *la
     }
   }
 
-  addGeometry( geom );
+  addGeometry( geom, QgsCoordinateReferenceSystem(), doUpdate );
 }
 
-void QgsRubberBand::addGeometry( const QgsGeometry &geometry, const QgsCoordinateReferenceSystem &crs )
+void QgsRubberBand::addGeometry( const QgsGeometry &geometry, const QgsCoordinateReferenceSystem &crs, bool doUpdate )
 {
   if ( geometry.isEmpty() )
   {
@@ -327,7 +336,6 @@ void QgsRubberBand::addGeometry( const QgsGeometry &geometry, const QgsCoordinat
   {
     QgsPointXY pt = geom.asPoint();
     addPoint( pt, false, idx );
-    removeLastPoint( idx, false );
   }
   else if ( QgsWkbTypes::geometryType( geomType ) == QgsWkbTypes::PointGeometry && QgsWkbTypes::isMultiType( geomType ) )
   {
@@ -335,7 +343,6 @@ void QgsRubberBand::addGeometry( const QgsGeometry &geometry, const QgsCoordinat
     for ( const QgsPointXY &pt : mpt )
     {
       addPoint( pt, false, idx );
-      removeLastPoint( idx, false );
       idx++;
     }
   }
@@ -402,8 +409,11 @@ void QgsRubberBand::addGeometry( const QgsGeometry &geometry, const QgsCoordinat
   }
 
   setVisible( true );
-  updateRect();
-  update();
+  if ( doUpdate )
+  {
+    updateRect();
+    update();
+  }
 }
 
 void QgsRubberBand::setToCanvasRectangle( QRect rect )
@@ -426,6 +436,14 @@ void QgsRubberBand::setToCanvasRectangle( QRect rect )
   addPoint( ul, true );
 }
 
+void QgsRubberBand::copyPointsFrom( const QgsRubberBand *other )
+{
+  reset( other->mGeometryType );
+  mPoints = other->mPoints;
+  updateRect();
+  update();
+}
+
 void QgsRubberBand::paint( QPainter *p )
 {
   if ( mPoints.isEmpty() )
@@ -433,7 +451,7 @@ void QgsRubberBand::paint( QPainter *p )
 
   QVector< QVector<QPolygonF> > shapes;
   shapes.reserve( mPoints.size() );
-  for ( const QgsPolygonXY &poly : qgis::as_const( mPoints ) )
+  for ( const QgsPolygonXY &poly : std::as_const( mPoints ) )
   {
     QVector<QPolygonF> rings;
     rings.reserve( poly.size() );
@@ -452,26 +470,59 @@ void QgsRubberBand::paint( QPainter *p )
     shapes.append( rings );
   }
 
-  int iterations = mSecondaryPen.color().isValid() ? 2 : 1;
-  for ( int i = 0; i < iterations; ++i )
+  if ( QgsLineSymbol *lineSymbol = dynamic_cast< QgsLineSymbol * >( mSymbol.get() ) )
   {
-    if ( i == 0 && iterations > 1 )
-    {
-      // first iteration with multi-pen painting, so use secondary pen
-      mSecondaryPen.setWidth( mPen.width() + 2 );
-      p->setBrush( Qt::NoBrush );
-      p->setPen( mSecondaryPen );
-    }
-    else
-    {
-      // "top" layer, use primary pen/brush
-      p->setBrush( mBrush );
-      p->setPen( mPen );
-    }
+    QgsRenderContext context( QgsRenderContext::fromQPainter( p ) );
+    context.setFlag( Qgis::RenderContextFlag::Antialiasing, true );
 
-    for ( const QVector<QPolygonF> &shape : qgis::as_const( shapes ) )
+    lineSymbol->startRender( context );
+    for ( const QVector<QPolygonF> &shape : std::as_const( shapes ) )
     {
-      drawShape( p, shape );
+      for ( const QPolygonF &ring : shape )
+      {
+        lineSymbol->renderPolyline( ring, nullptr, context );
+      }
+    }
+    lineSymbol->stopRender( context );
+  }
+  else if ( QgsFillSymbol *fillSymbol = dynamic_cast< QgsFillSymbol * >( mSymbol.get() ) )
+  {
+    QgsRenderContext context( QgsRenderContext::fromQPainter( p ) );
+    context.setFlag( Qgis::RenderContextFlag::Antialiasing, true );
+
+    fillSymbol->startRender( context );
+    for ( const QVector<QPolygonF> &shape : std::as_const( shapes ) )
+    {
+      for ( const QPolygonF &ring : shape )
+      {
+        fillSymbol->renderPolygon( ring, nullptr, nullptr, context );
+      }
+    }
+    fillSymbol->stopRender( context );
+  }
+  else
+  {
+    int iterations = mSecondaryPen.color().isValid() ? 2 : 1;
+    for ( int i = 0; i < iterations; ++i )
+    {
+      if ( i == 0 && iterations > 1 )
+      {
+        // first iteration with multi-pen painting, so use secondary pen
+        mSecondaryPen.setWidth( mPen.width() + QgsGuiUtils::scaleIconSize( 2 ) );
+        p->setBrush( Qt::NoBrush );
+        p->setPen( mSecondaryPen );
+      }
+      else
+      {
+        // "top" layer, use primary pen/brush
+        p->setBrush( mBrush );
+        p->setPen( mPen );
+      }
+
+      for ( const QVector<QPolygonF> &shape : std::as_const( shapes ) )
+      {
+        drawShape( p, shape );
+      }
     }
   }
 }
@@ -606,23 +657,15 @@ void QgsRubberBand::updateRect()
   qreal w = ( ( mIconSize - 1 ) / 2 + mPen.width() ); // in canvas units
 
   QgsRectangle r;  // in canvas units
-  for ( const QgsPolygonXY &poly : qgis::as_const( mPoints ) )
+  for ( const QgsPolygonXY &poly : std::as_const( mPoints ) )
   {
     for ( const QgsPointXY &point : poly.at( 0 ) )
     {
       QgsPointXY p( point.x() + mTranslationOffsetX, point.y() + mTranslationOffsetY );
       p = m2p.transform( p );
-      QgsRectangle rect( p.x() - w, p.y() - w, p.x() + w, p.y() + w );
-
-      if ( r.isEmpty() )
-      {
-        // Get rectangle of the first point
-        r = rect;
-      }
-      else
-      {
-        r.combineExtentWith( rect );
-      }
+      // no need to normalize the rectangle -- we know it is already normal
+      QgsRectangle rect( p.x() - w, p.y() - w, p.x() + w, p.y() + w, false );
+      r.combineExtentWith( rect );
     }
   }
 
@@ -633,6 +676,16 @@ void QgsRubberBand::updateRect()
   QgsRectangle rect( topLeft.x(), topLeft.y(), topLeft.x() + r.width()*res, topLeft.y() - r.height()*res );
 
   setRect( rect );
+}
+
+QgsSymbol *QgsRubberBand::symbol() const
+{
+  return mSymbol.get();
+}
+
+void QgsRubberBand::setSymbol( QgsSymbol *symbol )
+{
+  mSymbol.reset( symbol );
 }
 
 void QgsRubberBand::updatePosition()
@@ -669,7 +722,7 @@ int QgsRubberBand::partSize( int geometryIndex ) const
 int QgsRubberBand::numberOfVertices() const
 {
   int count = 0;
-  for ( const QgsPolygonXY &poly : qgis::as_const( mPoints ) )
+  for ( const QgsPolygonXY &poly : std::as_const( mPoints ) )
   {
     for ( const QgsPolylineXY &ring : poly )
     {
@@ -706,7 +759,7 @@ QgsGeometry QgsRubberBand::asGeometry() const
     {
       QgsMultiPointXY multiPoint;
 
-      for ( const QgsPolygonXY &poly : qgis::as_const( mPoints ) )
+      for ( const QgsPolygonXY &poly : std::as_const( mPoints ) )
       {
         if ( poly.isEmpty() )
           continue;
@@ -724,7 +777,7 @@ QgsGeometry QgsRubberBand::asGeometry() const
         if ( mPoints.size() > 1 )
         {
           QgsMultiPolylineXY multiPolyline;
-          for ( const QgsPolygonXY &poly : qgis::as_const( mPoints ) )
+          for ( const QgsPolygonXY &poly : std::as_const( mPoints ) )
           {
             if ( poly.isEmpty() )
               continue;

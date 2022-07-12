@@ -23,7 +23,7 @@
 #include <algorithm>
 
 QgsWFSNewConnection::QgsWFSNewConnection( QWidget *parent, const QString &connName ):
-  QgsNewHttpConnection( parent, QgsNewHttpConnection::ConnectionWfs, QgsWFSConstants::CONNECTIONS_WFS, connName )
+  QgsNewHttpConnection( parent, QgsNewHttpConnection::ConnectionWfs, QStringLiteral( "WFS" ), connName )
 {
   connect( wfsVersionDetectButton(), &QPushButton::clicked, this, &QgsWFSNewConnection::versionDetectButton );
 }
@@ -76,7 +76,7 @@ void QgsWFSNewConnection::capabilitiesReplyFinished()
 
   QApplication::restoreOverrideCursor();
 
-  auto err = mCapabilities->errorCode();
+  const auto err = mCapabilities->errorCode();
   if ( err != QgsBaseNetworkRequest::NoError )
   {
     startOapifLandingPageRequest();

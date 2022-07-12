@@ -16,26 +16,49 @@
 #include "qgsogrdbtablemodel.h"
 ///@cond PRIVATE
 
-#include "qgsdataitem.h"
 #include "qgsapplication.h"
 
 #include <QIcon>
 
-QgsOgrDbTableModel::QgsOgrDbTableModel()
+QgsOgrDbTableModel::QgsOgrDbTableModel( QObject *parent )
+  : QgsAbstractDbTableModel( parent )
 {
-  QStringList headerLabels;
-  headerLabels << tr( "Table" );
-  headerLabels << tr( "Type" );
-  headerLabels << tr( "Geometry column" );
-  headerLabels << tr( "Sql" );
-  setHorizontalHeaderLabels( headerLabels );
+  mColumns << tr( "Table" )
+           << tr( "Type" )
+           << tr( "Geometry column" )
+           << tr( "SQL" );
+  setHorizontalHeaderLabels( mColumns );
 }
 
-void QgsOgrDbTableModel::addTableEntry( const QgsLayerItem::LayerType &layerType, const QString &tableName, const QString &uri, const QString &geometryColName, const QString &geometryType, const QString &sql )
+QStringList QgsOgrDbTableModel::columns() const
+{
+  return mColumns;
+}
+
+int QgsOgrDbTableModel::defaultSearchColumn() const
+{
+  return 0;
+}
+
+bool QgsOgrDbTableModel::searchableColumn( int column ) const
+{
+  Columns col = static_cast<Columns>( column );
+  switch ( col )
+  {
+    case QgsOgrDbTableModel::DbtmTable:
+    case QgsOgrDbTableModel::DbtmType:
+    case QgsOgrDbTableModel::DbtmGeomCol:
+    case QgsOgrDbTableModel::DbtmSql:
+      return true;
+  }
+  BUILTIN_UNREACHABLE
+}
+
+void QgsOgrDbTableModel::addTableEntry( Qgis::BrowserLayerType layerType, const QString &tableName, const QString &uri, const QString &geometryColName, const QString &geometryType, const QString &sql )
 {
   //is there already a root item ?
   QStandardItem *dbItem = nullptr;
-  QList < QStandardItem * >dbItems = findItems( mPath, Qt::MatchExactly, 0 );
+  const QList < QStandardItem * >dbItems = findItems( mPath, Qt::MatchExactly, 0 );
 
   //there is already an item
   if ( !dbItems.isEmpty() )
@@ -80,15 +103,15 @@ void QgsOgrDbTableModel::setSql( const QModelIndex &index, const QString &sql )
   }
 
   //find out table name
-  QModelIndex tableSibling = index.sibling( index.row(), 0 );
-  QModelIndex geomSibling = index.sibling( index.row(), 2 );
+  const QModelIndex tableSibling = index.sibling( index.row(), 0 );
+  const QModelIndex geomSibling = index.sibling( index.row(), 2 );
 
   if ( !tableSibling.isValid() || !geomSibling.isValid() )
   {
     return;
   }
 
-  QModelIndex sqlIndex = index.sibling( index.row(), 3 );
+  const QModelIndex sqlIndex = index.sibling( index.row(), 3 );
   if ( sqlIndex.isValid() )
   {
     itemFromIndex( sqlIndex )->setText( sql );

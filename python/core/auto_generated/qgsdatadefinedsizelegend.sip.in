@@ -13,7 +13,7 @@
 
 class QgsDataDefinedSizeLegend
 {
-%Docstring
+%Docstring(signature="appended")
 Object that keeps configuration of appearance of marker symbol's data-defined size in legend.
 
 For example: the list of classes (size values), whether the classes should appear in separate
@@ -55,8 +55,9 @@ Copy constructor
     {
       SizeClass( double size, const QString &label );
 
-      double size;    //!< Marker size in units used by the symbol (usually millimeters). May be further scaled before rendering if size scale transformer is enabled.
-      QString label;  //!< Label to be shown with the particular symbol size
+      double size;
+
+      QString label;
     };
 
     void setLegendType( LegendType type );

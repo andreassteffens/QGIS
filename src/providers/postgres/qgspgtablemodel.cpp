@@ -16,31 +16,65 @@
  ***************************************************************************/
 
 #include "qgspgtablemodel.h"
-#include "qgsdataitem.h"
 #include "qgslogger.h"
 #include "qgsapplication.h"
 #include "qgssettings.h"
 #include "qgsproject.h"
-
+#include "qgsiconutils.h"
+#include <QRegularExpression>
 #include <climits>
 
-QgsPgTableModel::QgsPgTableModel()
+QgsPgTableModel::QgsPgTableModel( QObject *parent )
+  : QgsAbstractDbTableModel( parent )
 {
-  QStringList headerLabels;
-  headerLabels << tr( "Schema" );
-  headerLabels << tr( "Table" );
-  headerLabels << tr( "Comment" );
-  headerLabels << tr( "Column" );
-  headerLabels << tr( "Data Type" );
-  headerLabels << tr( "Spatial Type" );
-  headerLabels << tr( "SRID" );
-  headerLabels << tr( "Feature id" );
-  headerLabels << tr( "Select at id" );
-  headerLabels << tr( "Check PK unicity" );
-  headerLabels << tr( "Sql" );
-  setHorizontalHeaderLabels( headerLabels );
+  mColumns << tr( "Schema" )
+           << tr( "Table" )
+           << tr( "Comment" )
+           << tr( "Column" )
+           << tr( "Data Type" )
+           << tr( "Spatial Type" )
+           << tr( "SRID" )
+           << tr( "Feature id" )
+           << tr( "Select at id" )
+           << tr( "Check PK unicity" )
+           << tr( "SQL" );
+  setHorizontalHeaderLabels( mColumns );
   setHeaderData( Columns::DbtmSelectAtId, Qt::Orientation::Horizontal, tr( "Disable 'Fast Access to Features at ID' capability to force keeping the attribute table in memory (e.g. in case of expensive views)." ), Qt::ToolTipRole );
   setHeaderData( Columns::DbtmCheckPkUnicity, Qt::Orientation::Horizontal, tr( "Enable check for primary key unicity when loading views and materialized views. This option can make loading of large datasets significantly slower." ), Qt::ToolTipRole );
+}
+
+QStringList QgsPgTableModel::columns() const
+{
+  return mColumns;
+}
+
+int QgsPgTableModel::defaultSearchColumn() const
+{
+  return static_cast<int>( DbtmTable );
+}
+
+bool QgsPgTableModel::searchableColumn( int column ) const
+{
+  Columns col = static_cast<Columns>( column );
+  switch ( col )
+  {
+    case DbtmSchema:
+    case DbtmTable:
+    case DbtmComment:
+    case DbtmGeomCol:
+    case DbtmType:
+    case DbtmSrid:
+    case DbtmSql:
+      return true;
+
+    case DbtmGeomType:
+    case DbtmPkCol:
+    case DbtmSelectAtId:
+    case DbtmCheckPkUnicity:
+      return false;
+  }
+
+  BUILTIN_UNREACHABLE
 }
 
 void QgsPgTableModel::addTableEntry( const QgsPostgresLayerProperty &layerProperty )
@@ -53,7 +87,7 @@ void QgsPgTableModel::addTableEntry( const QgsPostgresLayerProperty &layerProper
   for ( int i = 0; i < layerProperty.size(); i++ )
   {
     QgsWkbTypes::Type wkbType = layerProperty.types[ i ];
-    int srid = layerProperty.srids[ i ];
+    const int srid = layerProperty.srids[ i ];
 
     if ( wkbType == QgsWkbTypes::Unknown && layerProperty.geometryColName.isEmpty() )
     {
@@ -83,11 +117,11 @@ void QgsPgTableModel::addTableEntry( const QgsPostgresLayerProperty &layerProper
     QStandardItem *typeItem = nullptr;
     if ( layerProperty.isRaster )
     {
-      typeItem = new QStandardItem( QgsApplication::getThemeIcon( "/mIconRasterLayer.svg" ), tr( "Raster" ) );
+      typeItem = new QStandardItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconRasterLayer.svg" ) ), tr( "Raster" ) );
     }
     else
     {
-      typeItem = new QStandardItem( iconForWkbType( wkbType ), wkbType == QgsWkbTypes::Unknown ? tr( "Select…" ) : QgsPostgresConn::displayStringForWkbType( wkbType ) );
+      typeItem = new QStandardItem( QgsIconUtils::iconForWkbType( wkbType ), wkbType == QgsWkbTypes::Unknown ? tr( "Select…" ) : QgsPostgresConn::displayStringForWkbType( wkbType ) );
     }
     typeItem->setData( wkbType == QgsWkbTypes::Unknown, Qt::UserRole + 1 );
     typeItem->setData( wkbType, Qt::UserRole + 2 );
@@ -155,7 +189,7 @@ void QgsPgTableModel::addTableEntry( const QgsPostgresLayerProperty &layerProper
     // checkPkUnicity has only effect on views and materialized views, so we can safely disable it
     if ( layerProperty.isView || layerProperty.isMaterializedView )
     {
-      checkPkUnicityItem->setCheckState( QgsProject::instance( )->trustLayerMetadata() ? Qt::CheckState::Unchecked : Qt::CheckState::Checked );
+      checkPkUnicityItem->setCheckState( ( QgsProject::instance( )->flags() & Qgis::ProjectFlag::TrustStoredLayerStatistics ) ? Qt::CheckState::Unchecked : Qt::CheckState::Checked );
       checkPkUnicityItem->setToolTip( headerData( Columns::DbtmCheckPkUnicity, Qt::Orientation::Horizontal, Qt::ToolTipRole ).toString() );
     }
     else
@@ -216,7 +250,7 @@ void QgsPgTableModel::addTableEntry( const QgsPostgresLayerProperty &layerProper
 
     if ( !schemaItem )
     {
-      QList<QStandardItem *> schemaItems = findItems( layerProperty.schemaName, Qt::MatchExactly, DbtmSchema );
+      const QList<QStandardItem *> schemaItems = findItems( layerProperty.schemaName, Qt::MatchExactly, DbtmSchema );
 
       // there is already an item for this schema
       if ( !schemaItems.isEmpty() )
@@ -246,22 +280,22 @@ void QgsPgTableModel::setSql( const QModelIndex &index, const QString &sql )
   }
 
   //find out schema name and table name
-  QModelIndex schemaSibling = index.sibling( index.row(), DbtmSchema );
-  QModelIndex tableSibling = index.sibling( index.row(), DbtmTable );
-  QModelIndex geomSibling = index.sibling( index.row(), DbtmGeomCol );
-  QModelIndex geomTypeSibling = index.sibling( index.row(), DbtmType );
+  const QModelIndex schemaSibling = index.sibling( index.row(), DbtmSchema );
+  const QModelIndex tableSibling = index.sibling( index.row(), DbtmTable );
+  const QModelIndex geomSibling = index.sibling( index.row(), DbtmGeomCol );
+  const QModelIndex geomTypeSibling = index.sibling( index.row(), DbtmType );
 
   if ( !schemaSibling.isValid() || !tableSibling.isValid() || !geomSibling.isValid() )
   {
     return;
   }
 
-  QString schemaName = itemFromIndex( schemaSibling )->text();
-  QString tableName = itemFromIndex( tableSibling )->text();
-  QString geomName = itemFromIndex( geomSibling )->text();
-  QString geomType = itemFromIndex( geomTypeSibling )->text();
+  const QString schemaName = itemFromIndex( schemaSibling )->text();
+  const QString tableName = itemFromIndex( tableSibling )->text();
+  const QString geomName = itemFromIndex( geomSibling )->text();
+  const QString geomType = itemFromIndex( geomTypeSibling )->text();
 
-  QList<QStandardItem *> schemaItems = findItems( schemaName, Qt::MatchExactly, DbtmSchema );
+  const QList<QStandardItem *> schemaItems = findItems( schemaName, Qt::MatchExactly, DbtmSchema );
   if ( schemaItems.empty() )
   {
     return;
@@ -269,28 +303,28 @@ void QgsPgTableModel::setSql( const QModelIndex &index, const QString &sql )
 
   QStandardItem *schemaItem = schemaItems.at( DbtmSchema );
 
-  int n = schemaItem->rowCount();
+  const int n = schemaItem->rowCount();
   for ( int i = 0; i < n; i++ )
   {
-    QModelIndex currentChildIndex = indexFromItem( schemaItem->child( i, DbtmSchema ) );
+    const QModelIndex currentChildIndex = indexFromItem( schemaItem->child( i, DbtmSchema ) );
     if ( !currentChildIndex.isValid() )
     {
       continue;
     }
 
-    QModelIndex currentTableIndex = currentChildIndex.sibling( i, DbtmTable );
+    const QModelIndex currentTableIndex = currentChildIndex.sibling( i, DbtmTable );
     if ( !currentTableIndex.isValid() )
     {
       continue;
     }
 
-    QModelIndex currentGeomIndex = currentChildIndex.sibling( i, DbtmGeomCol );
+    const QModelIndex currentGeomIndex = currentChildIndex.sibling( i, DbtmGeomCol );
     if ( !currentGeomIndex.isValid() )
     {
       continue;
     }
 
-    QModelIndex currentGeomType = currentChildIndex.sibling( i, DbtmType );
+    const QModelIndex currentGeomType = currentChildIndex.sibling( i, DbtmType );
     if ( !currentGeomType.isValid() )
     {
       continue;
@@ -300,7 +334,7 @@ void QgsPgTableModel::setSql( const QModelIndex &index, const QString &sql )
          && itemFromIndex( currentGeomIndex )->text() == geomName
          && itemFromIndex( currentGeomType )->text() == geomType )
     {
-      QModelIndex sqlIndex = currentChildIndex.sibling( i, DbtmSql );
+      const QModelIndex sqlIndex = currentChildIndex.sibling( i, DbtmSql );
       if ( sqlIndex.isValid() )
       {
         itemFromIndex( sqlIndex )->setText( sql );
@@ -310,23 +344,6 @@ void QgsPgTableModel::setSql( const QModelIndex &index, const QString &sql )
   }
 }
 
-QIcon QgsPgTableModel::iconForWkbType( QgsWkbTypes::Type type )
-{
-  QgsWkbTypes::GeometryType geomType = QgsWkbTypes::geometryType( QgsWkbTypes::Type( type ) );
-  switch ( geomType )
-  {
-    case QgsWkbTypes::PointGeometry:
-      return QgsApplication::getThemeIcon( "/mIconPointLayer.svg" );
-    case QgsWkbTypes::LineGeometry:
-      return QgsApplication::getThemeIcon( "/mIconLineLayer.svg" );
-    case QgsWkbTypes::PolygonGeometry:
-      return QgsApplication::getThemeIcon( "/mIconPolygonLayer.svg" );
-    default:
-      break;
-  }
-  return QgsApplication::getThemeIcon( "/mIconLayer.png" );
-}
-
 bool QgsPgTableModel::setData( const QModelIndex &idx, const QVariant &value, int role )
 {
   if ( !QStandardItemModel::setData( idx, value, role ) )
@@ -334,7 +351,7 @@ bool QgsPgTableModel::setData( const QModelIndex &idx, const QVariant &value, in
 
   if ( idx.column() == DbtmType || idx.column() == DbtmSrid || idx.column() == DbtmPkCol )
   {
-    QgsWkbTypes::Type wkbType = ( QgsWkbTypes::Type ) idx.sibling( idx.row(), DbtmType ).data( Qt::UserRole + 2 ).toInt();
+    const QgsWkbTypes::Type wkbType = static_cast< QgsWkbTypes::Type >( idx.sibling( idx.row(), DbtmType ).data( Qt::UserRole + 2 ).toInt() );
 
     QString tip;
     if ( wkbType == QgsWkbTypes::Unknown )
@@ -344,22 +361,22 @@ bool QgsPgTableModel::setData( const QModelIndex &idx, const QVariant &value, in
     else if ( wkbType != QgsWkbTypes::NoGeometry )
     {
       bool ok;
-      int srid = idx.sibling( idx.row(), DbtmSrid ).data().toInt( &ok );
+      const int srid = idx.sibling( idx.row(), DbtmSrid ).data().toInt( &ok );
 
       if ( !ok || srid == std::numeric_limits<int>::min() )
         tip = tr( "Enter a SRID into the '%1' column" ).arg( tr( "SRID" ) );
     }
 
-    QStringList pkCols = idx.sibling( idx.row(), DbtmPkCol ).data( Qt::UserRole + 1 ).toStringList();
+    const QStringList pkCols = idx.sibling( idx.row(), DbtmPkCol ).data( Qt::UserRole + 1 ).toStringList();
     if ( tip.isEmpty() && !pkCols.isEmpty() )
     {
-      QSet<QString> s0( qgis::listToSet( idx.sibling( idx.row(), DbtmPkCol ).data( Qt::UserRole + 2 ).toStringList() ) );
-      QSet<QString> s1( qgis::listToSet( pkCols ) );
+      const QSet<QString> s0( qgis::listToSet( idx.sibling( idx.row(), DbtmPkCol ).data( Qt::UserRole + 2 ).toStringList() ) );
+      const QSet<QString> s1( qgis::listToSet( pkCols ) );
       if ( !s0.intersects( s1 ) )
         tip = tr( "Select columns in the '%1' column that uniquely identify features of this layer" ).arg( tr( "Feature id" ) );
     }
 
-    for ( int i = 0; i < DbtmColumns; i++ )
+    for ( int i = 0; i < columnCount(); i++ )
     {
       QStandardItem *item = itemFromIndex( idx.sibling( idx.row(), i ) );
       if ( tip.isEmpty() )
@@ -399,8 +416,8 @@ QString QgsPgTableModel::layerURI( const QModelIndex &index, const QString &conn
     return QString();
   }
 
-  bool isRaster = itemFromIndex( index.sibling( index.row(), DbtmType ) )->data( Qt::UserRole + 3 ).toBool();
-  QgsWkbTypes::Type wkbType = static_cast<QgsWkbTypes::Type>( itemFromIndex( index.sibling( index.row(), DbtmType ) )->data( Qt::UserRole + 2 ).toInt() );
+  const bool isRaster = itemFromIndex( index.sibling( index.row(), DbtmType ) )->data( Qt::UserRole + 3 ).toBool();
+  const QgsWkbTypes::Type wkbType = static_cast<QgsWkbTypes::Type>( itemFromIndex( index.sibling( index.row(), DbtmType ) )->data( Qt::UserRole + 2 ).toInt() );
   if ( wkbType == QgsWkbTypes::Unknown )
   {
     if ( isRaster )
@@ -430,8 +447,8 @@ QString QgsPgTableModel::layerURI( const QModelIndex &index, const QString &conn
   }
 
   QStandardItem *pkItem = itemFromIndex( index.sibling( index.row(), DbtmPkCol ) );
-  QSet<QString> s0( qgis::listToSet( pkItem->data( Qt::UserRole + 1 ).toStringList() ) );
-  QSet<QString> s1( qgis::listToSet( pkItem->data( Qt::UserRole + 2 ).toStringList() ) );
+  const QSet<QString> s0( qgis::listToSet( pkItem->data( Qt::UserRole + 1 ).toStringList() ) );
+  const QSet<QString> s1( qgis::listToSet( pkItem->data( Qt::UserRole + 2 ).toStringList() ) );
   if ( !s0.isEmpty() && !s0.intersects( s1 ) )
   {
     // no valid primary candidate selected
@@ -439,8 +456,8 @@ QString QgsPgTableModel::layerURI( const QModelIndex &index, const QString &conn
     return QString();
   }
 
-  QString schemaName = index.sibling( index.row(), DbtmSchema ).data( Qt::DisplayRole ).toString();
-  QString tableName = index.sibling( index.row(), DbtmTable ).data( Qt::DisplayRole ).toString();
+  const QString schemaName = index.sibling( index.row(), DbtmSchema ).data( Qt::DisplayRole ).toString();
+  const QString tableName = index.sibling( index.row(), DbtmTable ).data( Qt::DisplayRole ).toString();
 
   QString geomColumnName;
   QString srid;
@@ -458,15 +475,15 @@ QString QgsPgTableModel::layerURI( const QModelIndex &index, const QString &conn
     }
   }
 
-  bool selectAtId = itemFromIndex( index.sibling( index.row(), DbtmSelectAtId ) )->checkState() == Qt::Checked;
-  QString sql = index.sibling( index.row(), DbtmSql ).data( Qt::DisplayRole ).toString();
-  bool checkPrimaryKeyUnicity = itemFromIndex( index.sibling( index.row(), DbtmCheckPkUnicity ) )->checkState() == Qt::Checked;
+  const bool selectAtId = itemFromIndex( index.sibling( index.row(), DbtmSelectAtId ) )->checkState() == Qt::Checked;
+  const QString sql = index.sibling( index.row(), DbtmSql ).data( Qt::DisplayRole ).toString();
+  const bool checkPrimaryKeyUnicity = itemFromIndex( index.sibling( index.row(), DbtmCheckPkUnicity ) )->checkState() == Qt::Checked;
 
   QgsDataSourceUri uri( connInfo );
 
   QStringList cols;
-  const auto constS1 = s1;
-  for ( const QString &col : constS1 )
+  cols.reserve( s1.size() );
+  for ( const QString &col : s1 )
   {
     cols << QgsPostgresConn::quotedIdentifier( col );
   }
@@ -478,8 +495,9 @@ QString QgsPgTableModel::layerURI( const QModelIndex &index, const QString &conn
   uri.setWkbType( wkbType );
   uri.setSrid( srid );
   uri.disableSelectAtId( !selectAtId );
-  uri.setParam( QStringLiteral( "checkPrimaryKeyUnicity" ), checkPrimaryKeyUnicity ? QLatin1String( "1" ) : QLatin1String( "0" ) );
+  uri.setParam( QStringLiteral( "checkPrimaryKeyUnicity" ), checkPrimaryKeyUnicity ? QStringLiteral( "1" ) : QStringLiteral( "0" ) );
 
   QgsDebugMsg( QStringLiteral( "returning uri %1" ).arg( uri.uri( false ) ) );
   return uri.uri( false );
 }
+

@@ -1,5 +1,9 @@
 // Include auto-generated SIP files
 %Include auto_generated/qgsanalysis.sip
+%Include auto_generated/georeferencing/qgsgcpgeometrytransformer.sip
+%Include auto_generated/georeferencing/qgsgcppoint.sip
+%Include auto_generated/georeferencing/qgsgcptransformer.sip
+%Include auto_generated/georeferencing/qgsvectorwarper.sip
 %Include auto_generated/interpolation/qgsgridfilewriter.sip
 %Include auto_generated/interpolation/qgsidwinterpolator.sip
 %Include auto_generated/interpolation/qgsinterpolator.sip
@@ -15,11 +19,11 @@
 %Include auto_generated/network/qgsnetworkspeedstrategy.sip
 %Include auto_generated/network/qgsnetworkstrategy.sip
 %Include auto_generated/network/qgsvectorlayerdirector.sip
+%Include auto_generated/processing/qgsalgorithmbatchgeocode.sip
 %Include auto_generated/processing/qgsnativealgorithms.sip
 %Include auto_generated/raster/qgsalignraster.sip
 %Include auto_generated/raster/qgsaspectfilter.sip
 %Include auto_generated/raster/qgsderivativefilter.sip
-%Include auto_generated/raster/qgsexiftools.sip
 %Include auto_generated/raster/qgshillshadefilter.sip
 %Include auto_generated/raster/qgskde.sip
 %Include auto_generated/raster/qgsninecellfilter.sip

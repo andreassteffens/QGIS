@@ -102,6 +102,15 @@ class CORE_EXPORT QgsGdalUtils
     static gdal::dataset_unique_ptr imageToMemoryDataset( const QImage &image );
 
     /**
+     * Converts an raster \a block to a  single band GDAL memory dataset.
+     *
+     * \warning The \a block must stay allocated for the lifetime of the returned gdal dataset.
+     *
+     * \since QGIS 3.26
+     */
+    static gdal::dataset_unique_ptr blockToSingleBandMemoryDataset( int pixelWidth, int pixelHeight, const QgsRectangle &extent, void *block,  GDALDataType dataType );
+
+    /**
      * This is a copy of GDALAutoCreateWarpedVRT optimized for imagery using RPC georeferencing
      * that also sets RPC_HEIGHT in GDALCreateGenImgProjTransformer2 based on HEIGHT_OFF.
      * By default GDAL would assume that the imagery has zero elevation - if that is not the case,
@@ -131,6 +140,38 @@ class CORE_EXPORT QgsGdalUtils
     //! Sets the gdal proxy variables
     static void setupProxy();
 #endif
+
+    /**
+     * Returns TRUE if the dataset at the specified \a path is considered "cheap" to open.
+     *
+     * Datasets which are considered cheap to open may correspond to very small file sizes, or data types
+     * which only require some inexpensive header parsing to open.
+     *
+     * One use case for this method is to test whether a remote dataset can be safely opened
+     * to resolve the geometry types and other metadata without causing undue network traffic.
+     *
+     * The \a smallFileSizeLimit argument specifies the maximum file size (in bytes) which will
+     * be considered as small.
+     *
+     * \since QGIS 3.22
+     */
+    static bool pathIsCheapToOpen( const QString &path, int smallFileSizeLimit = 50000 );
+
+    /**
+     * Returns a list of file extensions which potentially contain multiple layers representing
+     * GDAL raster or vector layers.
+     *
+     * \since QGIS 3.22
+     */
+    static QStringList multiLayerFileExtensions();
+
+    /**
+     * Returns TRUE if the VRT file at the specified path is a VRT matching
+     * the given layer \a type.
+     *
+     * \since QGIS 3.22
+     */
+    static bool vrtMatchesLayerType( const QString &vrtPath, QgsMapLayerType type );
 
     friend class TestQgsGdalUtils;
 };

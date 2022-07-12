@@ -18,8 +18,10 @@
 #include "qgslogger.h"
 #include "qgsgui.h"
 #include "qgsapplication.h"
+#include "qgsiconutils.h"
 #include <QSpinBox>
 #include <QMessageBox>
+#include <QTimer>
 
 QgsNewVectorTableDialog::QgsNewVectorTableDialog( QgsAbstractDatabaseProviderConnection *conn, QWidget *parent )
   : QDialog( parent )
@@ -37,7 +39,7 @@ QgsNewVectorTableDialog::QgsNewVectorTableDialog( QgsAbstractDatabaseProviderCon
   {
     QMessageBox::critical( nullptr, tr( "Cannot Create New Tables" ), tr( "Error retrieving native types from the data provider: creation of new tables is not possible.\n"
                            "Error message: %1" ).arg( ex.what() ) );
-    QTimer::singleShot( 0, [ = ] { reject(); } );
+    QTimer::singleShot( 0, this, [ = ] { reject(); } );
     return;
   }
 
@@ -87,7 +89,7 @@ QgsNewVectorTableDialog::QgsNewVectorTableDialog( QgsAbstractDatabaseProviderCon
   if ( mConnection->capabilities().testFlag( QgsAbstractDatabaseProviderConnection::Capability::Schemas ) )
   {
     mSchemaCbo->addItems( mConnection->schemas() );
-    connect( mSchemaCbo, qgis::overload<const QString &>::of( &QComboBox::currentIndexChanged ), this, [ = ]( const QString & schema )
+    connect( mSchemaCbo, &QComboBox::currentTextChanged, this, [ = ]( const QString & schema )
     {
       updateTableNames( schema );
     } );
@@ -120,7 +122,7 @@ QgsNewVectorTableDialog::QgsNewVectorTableDialog( QgsAbstractDatabaseProviderCon
   } );
 
   // Enable/disable geometry options and call validate
-  connect( mGeomTypeCbo, qgis::overload<int>::of( &QComboBox::currentIndexChanged ), this, [ = ]( int index )
+  connect( mGeomTypeCbo, qOverload<int>( &QComboBox::currentIndexChanged ), this, [ = ]( int index )
   {
     const bool hasGeom { index != 0 };
     mGeomColumn->setEnabled( hasGeom );
@@ -135,25 +137,33 @@ QgsNewVectorTableDialog::QgsNewVectorTableDialog( QgsAbstractDatabaseProviderCon
     validate();
   } );
 
+  mCrs->setShowAccuracyWarnings( true );
+
   // geometry types
   const bool hasSinglePart { conn->geometryColumnCapabilities().testFlag( QgsAbstractDatabaseProviderConnection::GeometryColumnCapability::SinglePart ) };
+
+  const auto addGeomItem = [this]( QgsWkbTypes::Type type )
+  {
+    mGeomTypeCbo->addItem( QgsIconUtils::iconForWkbType( type ), QgsWkbTypes::translatedDisplayString( type ), type );
+  };
+
   mGeomTypeCbo->addItem( QgsApplication::getThemeIcon( QStringLiteral( "mIconTableLayer.svg" ) ), tr( "No Geometry" ), QgsWkbTypes::Type::NoGeometry );
   if ( hasSinglePart )
-    mGeomTypeCbo->addItem( QgsApplication::getThemeIcon( QStringLiteral( "mIconPointLayer.svg" ) ), tr( "Point" ), QgsWkbTypes::Type::Point );
-  mGeomTypeCbo->addItem( QgsApplication::getThemeIcon( QStringLiteral( "mIconPointLayer.svg" ) ), tr( "MultiPoint" ), QgsWkbTypes::Type::MultiPoint );
+    addGeomItem( QgsWkbTypes::Type::Point );
+  addGeomItem( QgsWkbTypes::Type::MultiPoint );
   if ( hasSinglePart )
-    mGeomTypeCbo->addItem( QgsApplication::getThemeIcon( QStringLiteral( "mIconLineLayer.svg" ) ), tr( "Line" ), QgsWkbTypes::Type::LineString );
-  mGeomTypeCbo->addItem( QgsApplication::getThemeIcon( QStringLiteral( "mIconLineLayer.svg" ) ), tr( "MultiLine" ), QgsWkbTypes::Type::MultiLineString );
+    addGeomItem( QgsWkbTypes::Type::LineString );
+  addGeomItem( QgsWkbTypes::Type::MultiLineString );
   if ( hasSinglePart )
-    mGeomTypeCbo->addItem( QgsApplication::getThemeIcon( QStringLiteral( "mIconPolygonLayer.svg" ) ), tr( "Polygon" ), QgsWkbTypes::Type::Polygon );
-  mGeomTypeCbo->addItem( QgsApplication::getThemeIcon( QStringLiteral( "mIconPolygonLayer.svg" ) ), tr( "MultiPolygon" ), QgsWkbTypes::Type::MultiPolygon );
+    addGeomItem( QgsWkbTypes::Type::Polygon );
+  addGeomItem( QgsWkbTypes::Type::MultiPolygon );
 
   if ( conn->geometryColumnCapabilities().testFlag( QgsAbstractDatabaseProviderConnection::GeometryColumnCapability::Curves ) )
   {
-    mGeomTypeCbo->addItem( QgsApplication::getThemeIcon( QStringLiteral( "mIconLineLayer.svg" ) ), tr( "CompoundCurve" ), QgsWkbTypes::Type::CompoundCurve );
-    mGeomTypeCbo->addItem( QgsApplication::getThemeIcon( QStringLiteral( "mIconPolygonLayer.svg" ) ), tr( "CurvePolygon" ), QgsWkbTypes::Type::CurvePolygon );
-    mGeomTypeCbo->addItem( QgsApplication::getThemeIcon( QStringLiteral( "mIconLineLayer.svg" ) ), tr( "MultiCurve" ), QgsWkbTypes::Type::MultiCurve );
-    mGeomTypeCbo->addItem( QgsApplication::getThemeIcon( QStringLiteral( "mIconPolygonLayer.svg" ) ), tr( "MultiSurface" ), QgsWkbTypes::Type::MultiSurface );
+    addGeomItem( QgsWkbTypes::Type::CompoundCurve );
+    addGeomItem( QgsWkbTypes::Type::CurvePolygon );
+    addGeomItem( QgsWkbTypes::Type::MultiCurve );
+    addGeomItem( QgsWkbTypes::Type::MultiSurface );
   }
 
   mGeomTypeCbo->setCurrentIndex( 0 );
@@ -419,8 +429,8 @@ QWidget *QgsNewVectorTableDialogFieldsDelegate::createEditor( QWidget *parent, c
       QComboBox *cbo = new QComboBox { parent };
       cbo->setEditable( false );
       cbo->setFrame( false );
-      connect( cbo, qgis::overload<int>::of( &QComboBox::currentIndexChanged ), this, &QgsNewVectorTableDialogFieldsDelegate::onFieldTypeChanged );
-      for ( const auto &f : qgis::as_const( mTypeList ) )
+      connect( cbo, qOverload<int>( &QComboBox::currentIndexChanged ), this, &QgsNewVectorTableDialogFieldsDelegate::onFieldTypeChanged );
+      for ( const auto &f : std::as_const( mTypeList ) )
       {
         cbo->addItem( f.mTypeDesc, f.mTypeName );
       }
@@ -577,7 +587,7 @@ QVariant QgsNewVectorTableFieldModel::data( const QModelIndex &index, int role )
           case ColumnHeaders::Precision:
           case ColumnHeaders::Length:
           {
-            return Qt::AlignmentFlag::AlignVCenter + Qt::AlignmentFlag::AlignHCenter;
+            return static_cast<Qt::Alignment::Int>( Qt::AlignmentFlag::AlignVCenter | Qt::AlignmentFlag::AlignHCenter );
           }
           default:
             break;
@@ -644,11 +654,11 @@ QVariant QgsNewVectorTableFieldModel::headerData( int section, Qt::Orientation o
           case ColumnHeaders::Type:
           case ColumnHeaders::ProviderType:
           {
-            return Qt::AlignmentFlag::AlignVCenter + Qt::AlignmentFlag::AlignLeft;
+            return static_cast<Qt::Alignment::Int>( Qt::AlignmentFlag::AlignVCenter | Qt::AlignmentFlag::AlignLeft );
           }
           default:
           {
-            return Qt::AlignmentFlag::AlignVCenter + Qt::AlignmentFlag::AlignHCenter;
+            return static_cast<Qt::Alignment::Int>( Qt::AlignmentFlag::AlignVCenter | Qt::AlignmentFlag::AlignHCenter );
           }
         }
         break;
@@ -711,7 +721,7 @@ QList<QgsVectorDataProvider::NativeType> QgsNewVectorTableFieldModel::nativeType
 
 QString QgsNewVectorTableFieldModel::typeDesc( const QString &typeName ) const
 {
-  for ( const auto &t : qgis::as_const( mNativeTypes ) )
+  for ( const auto &t : std::as_const( mNativeTypes ) )
   {
     if ( t.mTypeName.compare( typeName, Qt::CaseSensitivity::CaseInsensitive ) == 0 )
     {
@@ -728,7 +738,7 @@ QVariant::Type QgsNewVectorTableFieldModel::type( const QString &typeName ) cons
 
 QgsVectorDataProvider::NativeType QgsNewVectorTableFieldModel::nativeType( const QString &typeName ) const
 {
-  for ( const auto &t : qgis::as_const( mNativeTypes ) )
+  for ( const auto &t : std::as_const( mNativeTypes ) )
   {
     if ( t.mTypeName.compare( typeName, Qt::CaseSensitivity::CaseInsensitive ) == 0 )
     {

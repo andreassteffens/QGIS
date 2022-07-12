@@ -212,7 +212,7 @@ class TilesXYZAlgorithmBase(QgisAlgorithm):
 
         image = QImage(size, QImage.Format_ARGB32_Premultiplied)
         image.fill(self.color)
-        dpm = threadSpecificSettings.outputDpi() / 25.4 * 1000
+        dpm = round(threadSpecificSettings.outputDpi() / 25.4 * 1000)
         image.setDotsPerMeterX(dpm)
         image.setDotsPerMeterY(dpm)
         painter = QPainter(image)
@@ -313,7 +313,9 @@ class TilesXYZAlgorithmBase(QgisAlgorithm):
             for zoom in range(self.min_zoom, self.max_zoom + 1):
                 feedback.pushConsoleInfo(self.tr('Generating tiles for zoom level: {zoom}').format(zoom=zoom))
                 with ThreadPoolExecutor(max_workers=self.maxThreads) as threadPool:
-                    threadPool.map(self.renderSingleMetatile, metatiles_by_zoom[zoom])
+                    for result in threadPool.map(self.renderSingleMetatile, metatiles_by_zoom[zoom]):
+                        # re-raise exceptions from threads
+                        _ = result
         else:
             feedback.pushConsoleInfo(self.tr('Using 1 CPU Thread:'))
             for zoom in range(self.min_zoom, self.max_zoom + 1):
@@ -357,6 +359,9 @@ class MBTilesWriter:
         ds = driver.Create(self.filename, 1, 1, 1, options=['TILE_FORMAT=%s' % tile_format] + options)
         ds = None
 
+        # faster sqlite processing for parallel access https://stackoverflow.com/questions/15143871/simplest-way-to-retry-sqlite-query-if-db-is-locked
+        self._execute_sqlite("PRAGMA journal_mode=WAL")
+
         self._execute_sqlite(
             "INSERT INTO metadata(name, value) VALUES ('{}', '{}');".format('minzoom', self.min_zoom),
             "INSERT INTO metadata(name, value) VALUES ('{}', '{}');".format('maxzoom', self.max_zoom),
@@ -366,7 +371,9 @@ class MBTilesWriter:
         self._zoom = None
 
     def _execute_sqlite(self, *commands):
-        conn = sqlite3.connect(self.filename)
+        # wait_timeout = default timeout is 5 seconds increase it for slower disk access and more Threads to 120 seconds
+        # isolation_level = None Uses sqlite AutoCommit and disable phyton transaction management feature. https://docs.python.org/3/library/sqlite3.html#sqlite3-controlling-transactions
+        conn = sqlite3.connect(self.filename, timeout=120, isolation_level=None)
         for cmd in commands:
             conn.execute(cmd)
         conn.commit()
@@ -417,6 +424,8 @@ class MBTilesWriter:
         self._zoom_ds = None
         bounds = ','.join(map(str, self.extent))
         self._execute_sqlite("UPDATE metadata SET value='{}' WHERE name='bounds'".format(bounds))
+        # Set Journal Mode back to default
+        self._execute_sqlite("PRAGMA journal_mode=DELETE")
 
 
 class TilesXYZAlgorithmMBTiles(TilesXYZAlgorithmBase):

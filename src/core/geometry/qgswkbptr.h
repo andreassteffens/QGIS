@@ -78,6 +78,10 @@ class CORE_EXPORT QgsWkbPtr
     inline const QgsWkbPtr &operator>>( double &v ) const { read( v ); return *this; } SIP_SKIP
     inline const QgsWkbPtr &operator>>( float &r ) const { double v; read( v ); r = v; return *this; } SIP_SKIP
     inline const QgsWkbPtr &operator>>( int &v ) const { read( v ); return *this; } SIP_SKIP
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    //! Reads an integer value into a qsizetype
+    inline const QgsWkbPtr &operator>>( qsizetype &r ) const { int v; read( v ); r = v; return *this; } SIP_SKIP
+#endif
     inline const QgsWkbPtr &operator>>( unsigned int &v ) const { read( v ); return *this; } SIP_SKIP
     inline const QgsWkbPtr &operator>>( char &v ) const { read( v ); return *this; } SIP_SKIP
     inline const QgsWkbPtr &operator>>( QgsWkbTypes::Type &v ) const { read( v ); return *this; } SIP_SKIP
@@ -88,6 +92,10 @@ class CORE_EXPORT QgsWkbPtr
     inline QgsWkbPtr &operator<<( float r ) { double v = r; write( v ); return *this; } SIP_SKIP
     //! Writes an int to the pointer
     inline QgsWkbPtr &operator<<( int v ) { write( v ); return *this; } SIP_SKIP
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    //! Writes a size as int to the pointer
+    inline QgsWkbPtr &operator<<( qsizetype r ) { int v = r; write( v ); return *this; } SIP_SKIP
+#endif
     //! Writes an unsigned int to the pointer
     inline QgsWkbPtr &operator<<( unsigned int v ) { write( v ); return *this; } SIP_SKIP
     //! Writes a char to the pointer
@@ -97,7 +105,7 @@ class CORE_EXPORT QgsWkbPtr
     //! Append data from a byte array
     inline QgsWkbPtr &operator<<( const QByteArray &data ) { write( data ); return *this; } SIP_SKIP
 
-    inline void operator+=( int n ) { verifyBound( n ); mP += n; } SIP_SKIP
+    inline void operator+=( int n ) const { verifyBound( n ); mP += n; } SIP_SKIP
 
     inline operator unsigned char *() const { return mP; } SIP_SKIP
 
@@ -175,8 +183,8 @@ class CORE_EXPORT QgsConstWkbPtr
     //! Read a point array
     const QgsConstWkbPtr &operator>>( QPolygonF &points ) const; SIP_SKIP
 
-    inline void operator+=( int n ) { verifyBound( n ); mP += n; } SIP_SKIP
-    inline void operator-=( int n ) { mP -= n; } SIP_SKIP
+    inline void operator+=( int n ) const { verifyBound( n ); mP += n; } SIP_SKIP
+    inline void operator-=( int n ) const { mP -= n; } SIP_SKIP
 
     inline operator const unsigned char *() const { return mP; } SIP_SKIP
 
@@ -190,7 +198,7 @@ class CORE_EXPORT QgsConstWkbPtr
     template<typename T> void endian_swap( T &value ) const SIP_SKIP
     {
       char *data = reinterpret_cast<char *>( &value );
-      std::size_t n = sizeof( value );
+      const std::size_t n = sizeof( value );
       for ( std::size_t i = 0, m = n / 2; i < m; ++i )
       {
         std::swap( data[i], data[n - 1 - i] );

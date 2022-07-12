@@ -18,10 +18,13 @@
 #include "qgsmssqlfeatureiterator.h"
 #include "qgsmssqlexpressioncompiler.h"
 #include "qgsmssqlprovider.h"
+#include "qgsmssqltransaction.h"
 #include "qgslogger.h"
+#include "qgsdbquerylog.h"
 #include "qgssettings.h"
 #include "qgsexception.h"
-#include "qgsmssqlconnection.h"
+#include "qgsmssqldatabase.h"
+#include "qgsgeometryengine.h"
 
 #include <QObject>
 #include <QTextStream>
@@ -49,6 +52,22 @@ QgsMssqlFeatureIterator::QgsMssqlFeatureIterator( QgsMssqlFeatureSource *source,
     // can't reproject mFilterRect
     close();
     return;
+  }
+  // prepare spatial filter geometries for optimal speed
+  switch ( mRequest.spatialFilterType() )
+  {
+    case Qgis::SpatialFilterType::NoFilter:
+    case Qgis::SpatialFilterType::BoundingBox:
+      break;
+
+    case Qgis::SpatialFilterType::DistanceWithin:
+      if ( !mRequest.referenceGeometry().isEmpty() )
+      {
+        mDistanceWithinGeom = mRequest.referenceGeometry();
+        mDistanceWithinEngine.reset( QgsGeometry::createGeometryEngine( mDistanceWithinGeom.constGet() ) );
+        mDistanceWithinEngine->prepareGeometry();
+      }
+      break;
   }
 
   BuildStatement( request );
@@ -136,7 +155,7 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest &request )
   mFallbackStatement.clear();
   mStatement.clear();
 
-  bool limitAtProvider = mRequest.limit() >= 0;
+  bool limitAtProvider = mRequest.limit() >= 0 && mRequest.spatialFilterType() != Qgis::SpatialFilterType::DistanceWithin;
 
   // build sql statement
 
@@ -173,7 +192,7 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest &request )
     }
   }
 
-  for ( int i : qgis::as_const( attrs ) )
+  for ( int i : std::as_const( attrs ) )
   {
     if ( mSource->mPrimaryKeyAttrs.contains( i ) )
       continue;
@@ -185,6 +204,7 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest &request )
 
   // get geometry col
   if ( ( !( request.flags() & QgsFeatureRequest::NoGeometry )
+         || ( request.spatialFilterType() == Qgis::SpatialFilterType::DistanceWithin )
          || ( request.filterType() == QgsFeatureRequest::FilterExpression && request.filterExpression()->needsGeometry() )
        )
        && mSource->isSpatial() )
@@ -330,27 +350,20 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest &request )
   mCompileStatus = NoCompilation;
   if ( request.filterType() == QgsFeatureRequest::FilterExpression )
   {
-    if ( QgsSettings().value( QStringLiteral( "qgis/compileExpressions" ), true ).toBool() )
+    QgsMssqlExpressionCompiler compiler = QgsMssqlExpressionCompiler( mSource, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
+    QgsSqlExpressionCompiler::Result result = compiler.compile( request.filterExpression() );
+    if ( result == QgsSqlExpressionCompiler::Complete || result == QgsSqlExpressionCompiler::Partial )
     {
-      QgsMssqlExpressionCompiler compiler = QgsMssqlExpressionCompiler( mSource );
-      QgsSqlExpressionCompiler::Result result = compiler.compile( request.filterExpression() );
-      if ( result == QgsSqlExpressionCompiler::Complete || result == QgsSqlExpressionCompiler::Partial )
-      {
-        mFallbackStatement = mStatement;
-        if ( !filterAdded )
-          mStatement += " WHERE (" + compiler.result() + ')';
-        else
-          mStatement += " AND (" + compiler.result() + ')';
-
-        //if only partial success when compiling expression, we need to double-check results using QGIS' expressions
-        mExpressionCompiled = ( result == QgsSqlExpressionCompiler::Complete );
-        mCompileStatus = ( mExpressionCompiled ? Compiled : PartiallyCompiled );
-        limitAtProvider = mExpressionCompiled;
-      }
+      mFallbackStatement = mStatement;
+      if ( !filterAdded )
+        mStatement += " WHERE (" + compiler.result() + ')';
       else
-      {
-        limitAtProvider = false;
-      }
+        mStatement += " AND (" + compiler.result() + ')';
+
+      //if only partial success when compiling expression, we need to double-check results using QGIS' expressions
+      mExpressionCompiled = ( result == QgsSqlExpressionCompiler::Complete );
+      mCompileStatus = ( mExpressionCompiled ? Compiled : PartiallyCompiled );
+      limitAtProvider = mExpressionCompiled;
     }
     else
     {
@@ -361,41 +374,34 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest &request )
   QStringList orderByParts;
   mOrderByCompiled = true;
 
-  if ( QgsSettings().value( QStringLiteral( "qgis/compileExpressions" ), true ).toBool() )
+  const auto constOrderBy = request.orderBy();
+  for ( const QgsFeatureRequest::OrderByClause &clause : constOrderBy )
   {
-    const auto constOrderBy = request.orderBy();
-    for ( const QgsFeatureRequest::OrderByClause &clause : constOrderBy )
+    if ( ( clause.ascending() && !clause.nullsFirst() ) || ( !clause.ascending() && clause.nullsFirst() ) )
     {
-      if ( ( clause.ascending() && !clause.nullsFirst() ) || ( !clause.ascending() && clause.nullsFirst() ) )
-      {
-        //not supported by SQL Server
-        mOrderByCompiled = false;
-        break;
-      }
-
-      QgsMssqlExpressionCompiler compiler = QgsMssqlExpressionCompiler( mSource );
-      QgsExpression expression = clause.expression();
-      if ( compiler.compile( &expression ) == QgsSqlExpressionCompiler::Complete )
-      {
-        QString part;
-        part = compiler.result();
-        part += clause.ascending() ? QStringLiteral( " ASC" ) : QStringLiteral( " DESC" );
-        orderByParts << part;
-      }
-      else
-      {
-        // Bail out on first non-complete compilation.
-        // Most important clauses at the beginning of the list
-        // will still be sent and used to pre-sort so the local
-        // CPU can use its cycles for fine-tuning.
-        mOrderByCompiled = false;
-        break;
-      }
+      //not supported by SQL Server
+      mOrderByCompiled = false;
+      break;
     }
-  }
-  else
-  {
-    mOrderByCompiled = false;
+
+    QgsMssqlExpressionCompiler compiler = QgsMssqlExpressionCompiler( mSource, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
+    QgsExpression expression = clause.expression();
+    if ( compiler.compile( &expression ) == QgsSqlExpressionCompiler::Complete )
+    {
+      QString part;
+      part = compiler.result();
+      part += clause.ascending() ? QStringLiteral( " ASC" ) : QStringLiteral( " DESC" );
+      orderByParts << part;
+    }
+    else
+    {
+      // Bail out on first non-complete compilation.
+      // Most important clauses at the beginning of the list
+      // will still be sent and used to pre-sort so the local
+      // CPU can use its cycles for fine-tuning.
+      mOrderByCompiled = false;
+      break;
+    }
   }
 
   if ( !mOrderByCompiled && !request.orderBy().isEmpty() )
@@ -429,26 +435,34 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest &request )
 #endif
 }
 
-
 bool QgsMssqlFeatureIterator::fetchFeature( QgsFeature &feature )
 {
   feature.setValid( false );
 
-  if ( !mDatabase.isValid() )
+  if ( !mDatabase )
   {
-    // No existing connection, so set it up now. It's safe to do here as we're now in
-    // the thread were iteration is actually occurring.
-    mDatabase = QgsMssqlConnection::getDatabase( mSource->mService, mSource->mHost, mSource->mDatabaseName, mSource->mUserName, mSource->mPassword );
+    if ( mSource->mTransactionConn )
+    {
+      // Using shared connection for the transaction, but that's fine because we use
+      // a mutex to prevent concurrent access to it from multiple threads.
+      mDatabase = mSource->mTransactionConn;
+    }
+    else
+    {
+      // No existing connection, so set it up now. It's safe to do here as we're now in
+      // the thread were iteration is actually occurring.
+      mDatabase = QgsMssqlDatabase::connectDb( mSource->mService, mSource->mHost, mSource->mDatabaseName, mSource->mUserName, mSource->mPassword );
+    }
 
-    if ( !mDatabase.open() )
+    if ( !mDatabase->isValid() )
     {
       QgsDebugMsg( QStringLiteral( "Failed to open database" ) );
-      QgsDebugMsg( mDatabase.lastError().text() );
+      QgsDebugMsg( mDatabase->errorText() );
       return false;
     }
 
     // create sql query
-    mQuery.reset( new QSqlQuery( mDatabase ) );
+    mQuery.reset( new QgsMssqlQuery( mDatabase ) );
 
     // start selection
     if ( !rewind() )
@@ -464,7 +478,7 @@ bool QgsMssqlFeatureIterator::fetchFeature( QgsFeature &feature )
     return false;
   }
 
-  if ( mQuery->next() )
+  while ( mQuery->next() )
   {
     feature.initAttributes( mSource->mFields.count() );
     feature.setFields( mSource->mFields ); // allow name-based attribute lookups
@@ -512,7 +526,7 @@ bool QgsMssqlFeatureIterator::fetchFeature( QgsFeature &feature )
       case PktFidMap:
       {
         QVariantList primaryKeyVals;
-        foreach ( int idx, mSource->mPrimaryKeyAttrs )
+        for ( int idx : std::as_const( mSource->mPrimaryKeyAttrs ) )
         {
           QgsField fld = mSource->mFields.at( idx );
 
@@ -550,8 +564,13 @@ bool QgsMssqlFeatureIterator::fetchFeature( QgsFeature &feature )
       }
     }
 
-    feature.setValid( true );
     geometryToDestinationCrs( feature, mTransform );
+    if ( mDistanceWithinEngine && mDistanceWithinEngine->distance( feature.geometry().constGet() ) > mRequest.distanceWithin() )
+    {
+      continue;
+    }
+
+    feature.setValid( true );
     return true;
   }
   return false;
@@ -589,35 +608,60 @@ bool QgsMssqlFeatureIterator::rewind()
   mQuery->clear();
   mQuery->setForwardOnly( true );
 
-  bool result = mQuery->exec( mOrderByClause.isEmpty() ? mStatement : mStatement + mOrderByClause );
-  if ( !result && !mFallbackStatement.isEmpty() )
+  QString sql { mOrderByClause.isEmpty() ? mStatement : mStatement + mOrderByClause };
+  std::unique_ptr<QgsDatabaseQueryLogWrapper> logWrapper = std::make_unique<QgsDatabaseQueryLogWrapper>( sql, mSource->connInfo(), QStringLiteral( "mssql" ), QStringLiteral( "QgsMssqlFeatureIterator" ), QGS_QUERY_LOG_ORIGIN );
+
+  bool result = mQuery->exec( sql );
+  if ( !result )
   {
-    //try with fallback statement
-    result = mQuery->exec( mOrderByClause.isEmpty() ? mFallbackStatement : mFallbackStatement + mOrderByClause );
-    if ( result )
+    logWrapper->setError( mQuery->lastError().text() );
+    if ( !mFallbackStatement.isEmpty() )
     {
-      mExpressionCompiled = false;
-      mCompileStatus = NoCompilation;
+      //try with fallback statement
+      sql = mOrderByClause.isEmpty() ? mFallbackStatement : mFallbackStatement + mOrderByClause;
+      logWrapper.reset( new QgsDatabaseQueryLogWrapper( sql, mSource->connInfo(), QStringLiteral( "mssql" ), QStringLiteral( "QgsMssqlFeatureIterator" ), QGS_QUERY_LOG_ORIGIN ) );
+      result = mQuery->exec( sql );
+      if ( result )
+      {
+        mExpressionCompiled = false;
+        mCompileStatus = NoCompilation;
+      }
+      else
+      {
+        logWrapper->setError( mQuery->lastError().text() );
+      }
     }
   }
 
   if ( !result && !mOrderByClause.isEmpty() )
   {
     //try without order by clause
+    logWrapper.reset( new QgsDatabaseQueryLogWrapper( mStatement, mSource->connInfo(), QStringLiteral( "mssql" ), QStringLiteral( "QgsMssqlFeatureIterator" ), QGS_QUERY_LOG_ORIGIN ) );
     result = mQuery->exec( mStatement );
     if ( result )
+    {
       mOrderByCompiled = false;
+    }
+    else
+    {
+      logWrapper->setError( mQuery->lastError().text() );
+    }
   }
 
   if ( !result && !mFallbackStatement.isEmpty() && !mOrderByClause.isEmpty() )
   {
     //try with fallback statement and without order by clause
+    logWrapper.reset( new QgsDatabaseQueryLogWrapper( mFallbackStatement, mSource->connInfo(), QStringLiteral( "mssql" ), QStringLiteral( "QgsMssqlFeatureIterator" ), QGS_QUERY_LOG_ORIGIN ) );
     result = mQuery->exec( mFallbackStatement );
     if ( result )
     {
       mExpressionCompiled = false;
       mOrderByCompiled = false;
       mCompileStatus = NoCompilation;
+    }
+    else
+    {
+      logWrapper->setError( mQuery->lastError().text() );
     }
   }
 
@@ -642,9 +686,6 @@ bool QgsMssqlFeatureIterator::close()
   }
 
   mQuery.reset();
-
-  if ( mDatabase.isOpen() )
-    mDatabase.close();
 
   iteratorClosed();
 
@@ -673,9 +714,16 @@ QgsMssqlFeatureSource::QgsMssqlFeatureSource( const QgsMssqlProvider *p )
   , mSqlWhereClause( p->mSqlWhereClause )
   , mDisableInvalidGeometryHandling( p->mDisableInvalidGeometryHandling )
   , mCrs( p->crs() )
+  , mTransactionConn( p->transaction() ? static_cast<QgsMssqlTransaction *>( p->transaction() )->conn() : std::shared_ptr<QgsMssqlDatabase>() )
+  , mConnInfo( p->uri().uri( ) )
 {}
 
 QgsFeatureIterator QgsMssqlFeatureSource::getFeatures( const QgsFeatureRequest &request )
 {
   return QgsFeatureIterator( new QgsMssqlFeatureIterator( this, false, request ) );
+}
+
+const QString &QgsMssqlFeatureSource::connInfo() const
+{
+  return mConnInfo;
 }

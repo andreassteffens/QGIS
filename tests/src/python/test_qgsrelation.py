@@ -196,6 +196,16 @@ class TestQgsRelation(unittest.TestCase):
         self.assertTrue(valid)
 
         # update style
+        # Note: the project is re-read because of a subtle bug with bindings involving
+        # QgsOptionalExpression mCollapsedExpressionv that makes the tab loose the information
+        # about the children. The issue couldn't be reproduced when the test is run from QGIS
+        # console and the new test testqgsrelation.cpp now covers this behavior without reloading
+        # the project.
+        self.assertTrue(p.read(myPath))
+        relations = QgsProject.instance().relationManager().relations()
+        relation = relations[list(relations.keys())[0]]
+        referencedLayer = relation.referencedLayer()
+
         referencedLayer.styleManager().setCurrentStyle("custom")
 
         for l in p.mapLayers().values():
@@ -211,6 +221,15 @@ class TestQgsRelation(unittest.TestCase):
                 if (t.type() == QgsAttributeEditorElement.AeTypeRelation):
                     valid = t.relation().isValid()
         self.assertTrue(valid)
+
+    def test_polymorphicRelationId(self):
+        rel = QgsRelation()
+
+        self.assertEqual(rel.polymorphicRelationId(), '')
+
+        rel.setPolymorphicRelationId('poly_rel_id')
+
+        self.assertEqual(rel.polymorphicRelationId(), 'poly_rel_id')
 
     def test_generateId_empty_relation(self):
         rel = QgsRelation()

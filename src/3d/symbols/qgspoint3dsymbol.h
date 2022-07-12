@@ -20,11 +20,11 @@
 
 #include "qgsabstract3dsymbol.h"
 #include "qgs3dtypes.h"
-#include "qgssymbol.h"
 
 #include <QMatrix4x4>
 
 class QgsAbstractMaterialSettings;
+class QgsMarkerSymbol;
 
 /**
  * \ingroup 3d
@@ -44,6 +44,8 @@ class _3D_EXPORT QgsPoint3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCTOR
     //! Copy Constructor for QgsPoint3DSymbol
     QgsPoint3DSymbol( const QgsPoint3DSymbol &other );
 
+    ~QgsPoint3DSymbol() override;
+
     /**
      * Creates a new QgsPoint3DSymbol.
      *
@@ -57,11 +59,12 @@ class _3D_EXPORT QgsPoint3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCTOR
     void writeXml( QDomElement &elem, const QgsReadWriteContext &context ) const override;
     void readXml( const QDomElement &elem, const QgsReadWriteContext &context ) override;
     QList< QgsWkbTypes::GeometryType > compatibleGeometryTypes() const override;
+    void setDefaultPropertiesFromLayer( const QgsVectorLayer *layer ) override;
 
     //! Returns method that determines altitude (whether to clamp to feature to terrain)
-    Qgs3DTypes::AltitudeClamping altitudeClamping() const { return mAltClamping; }
+    Qgis::AltitudeClamping altitudeClamping() const { return mAltClamping; }
     //! Sets method that determines altitude (whether to clamp to feature to terrain)
-    void setAltitudeClamping( Qgs3DTypes::AltitudeClamping altClamping ) { mAltClamping = altClamping; }
+    void setAltitudeClamping( Qgis::AltitudeClamping altClamping ) { mAltClamping = altClamping; }
 
     //! Returns material used for shading of the symbol
     QgsAbstractMaterialSettings *material() const;
@@ -103,9 +106,9 @@ class _3D_EXPORT QgsPoint3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCTOR
     void setShapeProperties( const QVariantMap &properties ) { mShapeProperties = properties; }
 
     //! Returns a symbol for billboard
-    QgsMarkerSymbol *billboardSymbol() const { return mBillboardSymbol.get(); }
+    QgsMarkerSymbol *billboardSymbol() const;
     //! Set symbol for billboard and the ownership is transferred
-    void setBillboardSymbol( QgsMarkerSymbol *symbol ) { mBillboardSymbol.reset( symbol ); }
+    void setBillboardSymbol( QgsMarkerSymbol *symbol );
 
     //! Returns transform for individual objects represented by the symbol
     QMatrix4x4 transform() const { return mTransform; }
@@ -122,7 +125,7 @@ class _3D_EXPORT QgsPoint3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCTOR
     bool exportGeometries( Qgs3DSceneExporter *exporter, Qt3DCore::QEntity *entity, const QString &objectNamePrefix ) const override SIP_SKIP;
   private:
     //! how to handle altitude of vector features
-    Qgs3DTypes::AltitudeClamping mAltClamping = Qgs3DTypes::AltClampRelative;
+    Qgis::AltitudeClamping mAltClamping = Qgis::AltitudeClamping::Relative;
 
     std::unique_ptr< QgsAbstractMaterialSettings> mMaterial;  //!< Defines appearance of objects
     Shape mShape = Cylinder;  //!< What kind of shape to use

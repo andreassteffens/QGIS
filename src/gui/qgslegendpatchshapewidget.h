@@ -62,12 +62,12 @@ class GUI_EXPORT QgsLegendPatchShapeWidget : public QgsPanelWidget, private Ui::
     void changed();
 
   private slots:
-    void setShapeFromStyle( const QString &name, QgsStyle::StyleEntity type );
+    void setShapeFromStyle( const QString &name, QgsStyle::StyleEntity type, const QString &stylePath );
     void saveShape();
 
   private:
 
-    QgsSymbol::SymbolType mType = QgsSymbol::Fill;
+    Qgis::SymbolType mType = Qgis::SymbolType::Fill;
 
 };
 

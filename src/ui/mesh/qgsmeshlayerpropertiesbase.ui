@@ -260,8 +260,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>470</width>
-                <height>383</height>
+                <width>661</width>
+                <height>508</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -294,29 +294,6 @@
                     </item>
                     <item>
                      <widget class="QLineEdit" name="mLayerOrigNameLineEd"/>
-                    </item>
-                    <item>
-                     <widget class="QLabel" name="label_13">
-                      <property name="text">
-                       <string>displayed as</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QLineEdit" name="leDisplayName">
-                      <property name="enabled">
-                       <bool>true</bool>
-                      </property>
-                      <property name="styleSheet">
-                       <string notr="true">color: #505050;
-background-color: #F0F0F0;
-border: 1px solid #B0B0B0;
-border-radius: 2px;</string>
-                      </property>
-                      <property name="readOnly">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
                     </item>
                    </layout>
                   </item>
@@ -399,19 +376,15 @@ border-radius: 2px;</string>
                 <widget class="QgsMeshDatasetGroupTreeWidget" name="mDatasetGroupTreeWidget" native="true"/>
                </item>
                <item>
-                <widget class="QCheckBox" name="mTemporalStaticDatasetCheckBox">
-                 <property name="toolTip">
-                  <string>Static dataset even if the temporal navigation is on</string>
-                 </property>
-                 <property name="text">
-                  <string>Always treat as a static dataset, regardless of temporal properties</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
                 <widget class="QgsCollapsibleGroupBoxBasic" name="mStaticDatasetGroupBox">
+                 <property name="toolTip">
+                  <string>Always treat as a static dataset even if the temporal navigation is on</string>
+                 </property>
                  <property name="title">
-                  <string>Static Dataset</string>
+                  <string>Treat as Static Dataset</string>
+                 </property>
+                 <property name="checkable">
+                  <bool>true</bool>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_7">
                   <item>
@@ -435,7 +408,7 @@ border-radius: 2px;</string>
                  <property name="sizeHint" stdset="0">
                   <size>
                    <width>20</width>
-                   <height>40</height>
+                   <height>0</height>
                   </size>
                  </property>
                 </spacer>
@@ -473,8 +446,8 @@ border-radius: 2px;</string>
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>100</width>
-                <height>30</height>
+                <width>661</width>
+                <height>508</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_10">
@@ -532,14 +505,14 @@ border-radius: 2px;</string>
               <item row="1" column="0">
                <widget class="QLabel" name="label_2">
                 <property name="text">
-                 <string>Maximal mesh resolution</string>
+                 <string>Minimum triangle size</string>
                 </property>
                </widget>
               </item>
               <item row="1" column="2">
                <widget class="QgsSpinBox" name="mSimplifyMeshResolutionSpinBox">
                 <property name="suffix">
-                 <string> pixels/triangle</string>
+                 <string> pixels</string>
                 </property>
                 <property name="minimum">
                  <number>1</number>
@@ -579,7 +552,7 @@ border-radius: 2px;</string>
              <property name="sizeHint" stdset="0">
               <size>
                <width>20</width>
-               <height>40</height>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -762,7 +735,7 @@ border-radius: 2px;</string>
              <property name="sizeHint" stdset="0">
               <size>
                <width>20</width>
-               <height>40</height>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -845,21 +818,20 @@ border-radius: 2px;</string>
  </widget>
  <customwidgets>
   <customwidget>
-   <class>QgsDoubleSpinBox</class>
-   <extends>QDoubleSpinBox</extends>
-   <header>qgsdoublespinbox.h</header>
-  </customwidget>
-  <customwidget>
-   <class>QgsScrollArea</class>
-   <extends>QScrollArea</extends>
-   <header>qgsscrollarea.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
    <class>QgsCollapsibleGroupBox</class>
    <extends>QGroupBox</extends>
    <header>qgscollapsiblegroupbox.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QgsSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>qgsspinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsDoubleSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qgsdoublespinbox.h</header>
   </customwidget>
   <customwidget>
    <class>QgsFilterLineEdit</class>
@@ -873,9 +845,16 @@ border-radius: 2px;</string>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>QgsSpinBox</class>
-   <extends>QSpinBox</extends>
-   <header>qgsspinbox.h</header>
+   <class>QgsScrollArea</class>
+   <extends>QScrollArea</extends>
+   <header>qgsscrollarea.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QgsCollapsibleGroupBoxBasic</class>
+   <extends>QGroupBox</extends>
+   <header location="global">qgscollapsiblegroupbox.h</header>
+   <container>1</container>
   </customwidget>
   <customwidget>
    <class>QgsMeshStaticDatasetWidget</class>
@@ -889,22 +868,29 @@ border-radius: 2px;</string>
    <header>qgsmeshdatasetgrouptreewidget.h</header>
    <container>1</container>
   </customwidget>
-  <customwidget>
-   <class>QgsCollapsibleGroupBoxBasic</class>
-   <extends>QGroupBox</extends>
-   <header>qgscollapsiblegroupbox.h</header>
-   <container>1</container>
-  </customwidget>
  </customwidgets>
  <tabstops>
   <tabstop>mSearchLineEdit</tabstop>
   <tabstop>mOptionsListWidget</tabstop>
   <tabstop>mInformationTextBrowser</tabstop>
   <tabstop>scrollArea_3</tabstop>
+  <tabstop>mLayerOrigNameLineEd</tabstop>
+  <tabstop>mCrsGroupBox</tabstop>
   <tabstop>mCrsSelector</tabstop>
+  <tabstop>mStaticDatasetGroupBox</tabstop>
   <tabstop>scrollArea</tabstop>
+  <tabstop>mSimplifyMeshGroupBox</tabstop>
+  <tabstop>mSimplifyReductionFactorSpinBox</tabstop>
+  <tabstop>mSimplifyMeshResolutionSpinBox</tabstop>
+  <tabstop>mTemporalDateTimeReference</tabstop>
+  <tabstop>mTemporalReloadButton</tabstop>
+  <tabstop>mTemporalDateTimeStart</tabstop>
+  <tabstop>mTemporalDateTimeEnd</tabstop>
+  <tabstop>mComboBoxTemporalDatasetMatchingMethod</tabstop>
+  <tabstop>mTemporalProviderTimeUnitComboBox</tabstop>
  </tabstops>
  <resources>
+  <include location="../../../images/images.qrc"/>
   <include location="../../../images/images.qrc"/>
  </resources>
  <connections>

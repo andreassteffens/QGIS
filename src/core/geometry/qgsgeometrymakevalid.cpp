@@ -30,6 +30,7 @@
 
 #include <memory>
 
+#if ( GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR<8 )
 
 // ------------ BuildArea stuff ---------------------------------------------------------------------
 
@@ -968,3 +969,5 @@ std::unique_ptr< QgsAbstractGeometry > _qgis_lwgeom_make_valid( const QgsAbstrac
 
   return lwgeom_out;
 }
+
+#endif

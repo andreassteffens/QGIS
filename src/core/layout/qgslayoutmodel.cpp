@@ -26,8 +26,8 @@
 #include <QDomElement>
 #include <QMimeData>
 #include <QSettings>
-#include <QMessageBox>
 #include <QIcon>
+#include <QIODevice>
 
 QgsLayoutModel::QgsLayoutModel( QgsLayout *layout, QObject *parent )
   : QAbstractItemModel( parent )
@@ -78,7 +78,7 @@ void QgsLayoutModel::refreshItemsInScene()
   const QList< QGraphicsItem * > items = mLayout->items();
   //filter paper items from list
   //TODO - correctly handle grouped item z order placement
-  for ( QgsLayoutItem *item : qgis::as_const( mItemZList ) )
+  for ( QgsLayoutItem *item : std::as_const( mItemZList ) )
   {
     if ( item->type() != QgsLayoutItemRegistry::LayoutPage && items.contains( item ) )
     {
@@ -173,7 +173,7 @@ QVariant QgsLayoutModel::data( const QModelIndex &index, int role ) const
       return QVariant::fromValue( qobject_cast<QObject *>( item ) );
 
     case Qt::TextAlignmentRole:
-      return Qt::AlignLeft & Qt::AlignVCenter;
+      return static_cast<Qt::Alignment::Int>( Qt::AlignLeft & Qt::AlignVCenter );
 
     case Qt::CheckStateRole:
       switch ( index.column() )
@@ -255,7 +255,7 @@ QVariant QgsLayoutModel::headerData( int section, Qt::Orientation orientation, i
     }
 
     case Qt::TextAlignmentRole:
-      return Qt::AlignLeft & Qt::AlignVCenter;
+      return static_cast<Qt::Alignment::Int>( Qt::AlignLeft & Qt::AlignVCenter );
 
     default:
       return QAbstractItemModel::headerData( section, orientation, role );
@@ -373,7 +373,7 @@ bool QgsLayoutModel::dropMimeData( const QMimeData *data,
 
   //calculate position to insert moved rows to
   int insertPos = destPos;
-  for ( QgsLayoutItem *item : qgis::as_const( droppedItems ) )
+  for ( QgsLayoutItem *item : std::as_const( droppedItems ) )
   {
     int listPos = mItemZList.indexOf( item );
     if ( listPos == -1 )
@@ -471,7 +471,7 @@ void QgsLayoutModel::rebuildSceneItemList()
   //emitting signals as required
   int row = 0;
   const QList< QGraphicsItem * > items = mLayout->items();
-  for ( QgsLayoutItem *item : qgis::as_const( mItemZList ) )
+  for ( QgsLayoutItem *item : std::as_const( mItemZList ) )
   {
     if ( item->type() == QgsLayoutItemRegistry::LayoutPage || !items.contains( item ) )
     {

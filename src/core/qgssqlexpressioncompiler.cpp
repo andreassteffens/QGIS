@@ -18,10 +18,10 @@
 #include "qgsexpressionfunction.h"
 #include "qgsexpression.h"
 
-QgsSqlExpressionCompiler::QgsSqlExpressionCompiler( const QgsFields &fields, Flags flags )
-  : mResult( None )
-  , mFields( fields )
+QgsSqlExpressionCompiler::QgsSqlExpressionCompiler( const QgsFields &fields, Flags flags, bool ignoreStaticNodes )
+  : mFields( fields )
   , mFlags( flags )
+  , mIgnoreStaticNodes( ignoreStaticNodes )
 {
 }
 
@@ -88,6 +88,10 @@ QString QgsSqlExpressionCompiler::quotedValue( const QVariant &value, bool &ok )
 
 QgsSqlExpressionCompiler::Result QgsSqlExpressionCompiler::compileNode( const QgsExpressionNode *node, QString &result )
 {
+  const QgsSqlExpressionCompiler::Result staticRes = replaceNodeByStaticCachedValueIfPossible( node, result );
+  if ( staticRes != Fail )
+    return staticRes;
+
   switch ( node->nodeType() )
   {
     case QgsExpressionNode::ntUnaryOperator:
@@ -263,13 +267,13 @@ QgsSqlExpressionCompiler::Result QgsSqlExpressionCompiler::compileNode( const Qg
         return Fail;
 
       QString left;
-      Result lr( compileNode( n->opLeft(), left ) );
+      const Result lr( compileNode( n->opLeft(), left ) );
 
       if ( opIsStringComparison( n ->op() ) )
         left = castToText( left );
 
       QString right;
-      Result rr( compileNode( n->opRight(), right ) );
+      const Result rr( compileNode( n->opRight(), right ) );
 
       if ( failOnPartialNode && ( lr == Partial || rr == Partial ) )
         return Fail;
@@ -301,6 +305,59 @@ QgsSqlExpressionCompiler::Result QgsSqlExpressionCompiler::compileNode( const Qg
         return Partial;
       else
         return Fail;
+    }
+
+    case QgsExpressionNode::ntBetweenOperator:
+    {
+      const QgsExpressionNodeBetweenOperator *n = static_cast<const QgsExpressionNodeBetweenOperator *>( node );
+      QString res;
+      Result betweenResult = Complete;
+
+      const Result rn = compileNode( n->node(), res );
+      if ( rn == Complete || rn == Partial )
+      {
+        if ( rn == Partial )
+        {
+          betweenResult = Partial;
+        }
+      }
+      else
+      {
+        return rn;
+      }
+
+      QString s;
+      const Result rl = compileNode( n->lowerBound(), s );
+      if ( rl == Complete || rl == Partial )
+      {
+        if ( rl == Partial )
+        {
+          betweenResult = Partial;
+        }
+      }
+      else
+      {
+        return rl;
+      }
+
+      res.append( n->negate() ? QStringLiteral( " NOT BETWEEN %1" ).arg( s ) : QStringLiteral( " BETWEEN %1" ).arg( s ) );
+
+      const Result rh = compileNode( n->higherBound(), s );
+      if ( rh == Complete || rh == Partial )
+      {
+        if ( rh == Partial )
+        {
+          betweenResult = Partial;
+        }
+      }
+      else
+      {
+        return rh;
+      }
+
+      res.append( QStringLiteral( " AND %1" ).arg( s ) );
+      result = res;
+      return betweenResult;
     }
 
     case QgsExpressionNode::ntLiteral:
@@ -347,7 +404,7 @@ QgsSqlExpressionCompiler::Result QgsSqlExpressionCompiler::compileNode( const Qg
       for ( const QgsExpressionNode *ln : constList )
       {
         QString s;
-        Result r = compileNode( ln, s );
+        const Result r = compileNode( ln, s );
         if ( r == Complete || r == Partial )
         {
           list << s;
@@ -359,7 +416,7 @@ QgsSqlExpressionCompiler::Result QgsSqlExpressionCompiler::compileNode( const Qg
       }
 
       QString nd;
-      Result rn = compileNode( n->node(), nd );
+      const Result rn = compileNode( n->node(), nd );
       if ( rn != Complete && rn != Partial )
         return rn;
 
@@ -373,7 +430,7 @@ QgsSqlExpressionCompiler::Result QgsSqlExpressionCompiler::compileNode( const Qg
       QgsExpressionFunction *fd = QgsExpression::Functions()[n->fnIndex()];
 
       // get sql function to compile node expression
-      QString nd = sqlFunctionFromFunctionName( fd->name() );
+      const QString nd = sqlFunctionFromFunctionName( fd->name() );
       // if no sql function the node can't be compiled
       if ( nd.isNull() )
         return Fail;
@@ -385,7 +442,7 @@ QgsSqlExpressionCompiler::Result QgsSqlExpressionCompiler::compileNode( const Qg
       for ( const QgsExpressionNode *ln : constList )
       {
         QString s;
-        Result r = compileNode( ln, s );
+        const Result r = compileNode( ln, s );
         if ( r == Complete || r == Partial )
         {
           args << s;
@@ -441,6 +498,30 @@ QString QgsSqlExpressionCompiler::castToInt( const QString &value ) const
 {
   Q_UNUSED( value )
   return QString();
+}
+
+QgsSqlExpressionCompiler::Result QgsSqlExpressionCompiler::replaceNodeByStaticCachedValueIfPossible( const QgsExpressionNode *node, QString &result )
+{
+  if ( mIgnoreStaticNodes )
+    return Fail;
+
+  if ( node->hasCachedStaticValue() )
+  {
+    bool ok = false;
+    if ( mFlags.testFlag( CaseInsensitiveStringMatch ) && node->cachedStaticValue().type() == QVariant::String )
+    {
+      // provider uses case insensitive matching, so if literal was a string then we only have a Partial compilation and need to
+      // double check results using QGIS' expression engine
+      result = quotedValue( node->cachedStaticValue(), ok );
+      return ok ? Partial : Fail;
+    }
+    else
+    {
+      result = quotedValue( node->cachedStaticValue(), ok );
+      return ok ? Complete : Fail;
+    }
+  }
+  return Fail;
 }
 
 bool QgsSqlExpressionCompiler::nodeIsNullLiteral( const QgsExpressionNode *node ) const

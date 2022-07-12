@@ -37,9 +37,11 @@ from qgis.core import (QgsCategorizedSymbolRenderer,
                        QgsProperty,
                        QgsMapSettings,
                        QgsRectangle,
-                       QgsRenderContext
+                       QgsRenderContext,
+                       QgsEmbeddedSymbolRenderer,
+                       QgsGeometry
                        )
-from qgis.PyQt.QtCore import Qt, QVariant, QSize
+from qgis.PyQt.QtCore import Qt, QVariant, QSize, QLocale, QTemporaryDir
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtXml import QDomDocument
 
@@ -691,6 +693,202 @@ class TestQgsCategorizedSymbolRenderer(unittest.TestCase):
         self.assertEqual([l.value() for l in renderer2.categories()], ['a', 'b', 'c', ['d', 'e'], ''])
         self.assertEqual([l.symbol().color().name() for l in renderer2.categories()],
                          ['#ff0000', '#00ff00', '#0000ff', '#ff00ff', '#ffffff'])
+
+    def testConvertFromEmbedded(self):
+        """
+        Test converting an embedded symbol renderer to a categorized renderer
+        """
+        points_layer = QgsVectorLayer('Point', 'Polys', 'memory')
+        f = QgsFeature()
+        f.setGeometry(QgsGeometry.fromWkt('Point(-100 30)'))
+        f.setEmbeddedSymbol(
+            QgsMarkerSymbol.createSimple({'name': 'triangle', 'size': 10, 'color': '#ff0000', 'outline_style': 'no'}))
+        self.assertTrue(points_layer.dataProvider().addFeature(f))
+        f.setGeometry(QgsGeometry.fromWkt('Point(-110 40)'))
+        f.setEmbeddedSymbol(
+            QgsMarkerSymbol.createSimple({'name': 'square', 'size': 7, 'color': '#00ff00', 'outline_style': 'no'}))
+        self.assertTrue(points_layer.dataProvider().addFeature(f))
+        f.setGeometry(QgsGeometry.fromWkt('Point(-90 50)'))
+        f.setEmbeddedSymbol(None)
+        self.assertTrue(points_layer.dataProvider().addFeature(f))
+
+        renderer = QgsEmbeddedSymbolRenderer(defaultSymbol=QgsMarkerSymbol.createSimple({'name': 'star', 'size': 10, 'color': '#ff00ff', 'outline_style': 'no'}))
+        points_layer.setRenderer(renderer)
+
+        categorized = QgsCategorizedSymbolRenderer.convertFromRenderer(renderer, points_layer)
+        self.assertEqual(categorized.classAttribute(), '$id')
+        self.assertEqual(len(categorized.categories()), 3)
+        cc = categorized.categories()[0]
+        self.assertEqual(cc.value(), 1)
+        self.assertEqual(cc.label(), '1')
+        self.assertEqual(cc.symbol().color().name(), '#ff0000')
+        cc = categorized.categories()[1]
+        self.assertEqual(cc.value(), 2)
+        self.assertEqual(cc.label(), '2')
+        self.assertEqual(cc.symbol().color().name(), '#00ff00')
+        cc = categorized.categories()[2]
+        self.assertEqual(cc.value(), None)
+        self.assertEqual(cc.label(), '')
+        self.assertEqual(cc.symbol().color().name(), '#ff00ff')
+
+    def test_displayString(self):
+        """Test the displayString method"""
+
+        # Default locale for tests is EN
+        original_locale = QLocale()
+        locale = QLocale(QLocale.English)
+        locale.setNumberOptions(QLocale.DefaultNumberOptions)
+        QLocale().setDefault(locale)
+
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString(1234.56), "1,234.56")
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString(1234.56, 4), "1,234.5600")
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString(1234567), "1,234,567")
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString(1234567.0, 4), "1,234,567.0000")
+        # Precision is ignored for integers
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString(1234567, 4), "1,234,567")
+
+        # Test list
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString([1234567, 891234], 4), "1,234,567;891,234")
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString([1234567.123, 891234.123], 4), "1,234,567.1230;891,234.1230")
+
+        locale.setNumberOptions(QLocale.OmitGroupSeparator)
+        QLocale().setDefault(locale)
+        self.assertTrue(QLocale().numberOptions() & QLocale.OmitGroupSeparator)
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString([1234567, 891234], 4), "1234567;891234")
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString([1234567.123, 891234.123], 4), "1234567.1230;891234.1230")
+
+        # Test a non-dot locale
+        locale = QLocale(QLocale.Italian)
+        locale.setNumberOptions(QLocale.DefaultNumberOptions)
+        QLocale().setDefault(locale)
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString(1234.56), "1.234,56")
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString(1234.56, 4), "1.234,5600")
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString(1234567), "1.234.567")
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString(1234567.0, 4), "1.234.567,0000")
+        # Precision is ignored for integers
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString(1234567, 4), "1.234.567")
+
+        # Test list
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString([1234567, 891234], 4), "1.234.567;891.234")
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString([1234567.123, 891234.123], 4), "1.234.567,1230;891.234,1230")
+
+        locale.setNumberOptions(QLocale.OmitGroupSeparator)
+        QLocale().setDefault(locale)
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString([1234567, 891234], 4), "1234567;891234")
+        self.assertEqual(QgsCategorizedSymbolRenderer.displayString([1234567.123, 891234.123], 4), "1234567,1230;891234,1230")
+
+        QLocale().setDefault(original_locale)
+
+    def test_localizedCategories(self):
+
+        # Default locale for tests is EN
+        original_locale = QLocale()
+        locale = QLocale(QLocale.English)
+        locale.setNumberOptions(QLocale.DefaultNumberOptions)
+        QLocale().setDefault(locale)
+
+        layer = QgsVectorLayer("Point?field=flddbl:double&field=fldint:integer", "addfeat", "memory")
+        result = QgsCategorizedSymbolRenderer.createCategories([1234.5, 2345.6, 3456.7], QgsMarkerSymbol(), layer, 'flddouble')
+
+        self.assertEqual(result[0].label(), '1,234.5')
+        self.assertEqual(result[1].label(), '2,345.6')
+        self.assertEqual(result[2].label(), '3,456.7')
+
+        # Test a non-dot locale
+        QLocale().setDefault(QLocale(QLocale.Italian))
+
+        result = QgsCategorizedSymbolRenderer.createCategories([[1234.5, 6789.1], 2345.6, 3456.7], QgsMarkerSymbol(), layer, 'flddouble')
+
+        self.assertEqual(result[0].label(), '1.234,5;6.789,1')
+        self.assertEqual(result[1].label(), '2.345,6')
+        self.assertEqual(result[2].label(), '3.456,7')
+
+        # Test round trip
+        temp_dir = QTemporaryDir()
+        temp_file = os.path.join(temp_dir.path(), 'project.qgs')
+
+        project = QgsProject()
+        layer.setRenderer(QgsCategorizedSymbolRenderer('Class', result))
+        project.addMapLayers([layer])
+        project.write(temp_file)
+
+        QLocale().setDefault(original_locale)
+
+        project = QgsProject()
+        project.read(temp_file)
+        results = project.mapLayersByName('addfeat')[0].renderer().categories()
+
+        self.assertEqual(result[0].label(), '1.234,5;6.789,1')
+        self.assertEqual(result[1].label(), '2.345,6')
+        self.assertEqual(result[2].label(), '3.456,7')
+        self.assertEqual(result[0].value(), [1234.5, 6789.1])
+        self.assertEqual(result[1].value(), 2345.6)
+        self.assertEqual(result[2].value(), 3456.7)
+
+    def test_legend_key_to_expression(self):
+        renderer = QgsCategorizedSymbolRenderer()
+        renderer.setClassAttribute('field_name')
+
+        exp, ok = renderer.legendKeyToExpression('xxxx', None)
+        self.assertFalse(ok)
+
+        # no categories
+        exp, ok = renderer.legendKeyToExpression('0', None)
+        self.assertFalse(ok)
+
+        symbol_a = createMarkerSymbol()
+        renderer.addCategory(QgsRendererCategory('a', symbol_a, 'a'))
+        symbol_b = createMarkerSymbol()
+        renderer.addCategory(QgsRendererCategory(5, symbol_b, 'b'))
+        symbol_c = createMarkerSymbol()
+        renderer.addCategory(QgsRendererCategory(5.5, symbol_c, 'c', False))
+        symbol_d = createMarkerSymbol()
+        renderer.addCategory(QgsRendererCategory(['d', 'e'], symbol_d, 'de'))
+
+        exp, ok = renderer.legendKeyToExpression('0', None)
+        self.assertTrue(ok)
+        self.assertEqual(exp, "field_name = 'a'")
+
+        exp, ok = renderer.legendKeyToExpression('1', None)
+        self.assertTrue(ok)
+        self.assertEqual(exp, "field_name = 5")
+
+        exp, ok = renderer.legendKeyToExpression('2', None)
+        self.assertTrue(ok)
+        self.assertEqual(exp, "field_name = 5.5")
+
+        exp, ok = renderer.legendKeyToExpression('3', None)
+        self.assertTrue(ok)
+        self.assertEqual(exp, "field_name IN ('d', 'e')")
+
+        layer = QgsVectorLayer("Point?field=field_name:double&field=fldint:integer", "addfeat", "memory")
+        # with layer
+        exp, ok = renderer.legendKeyToExpression('3', layer)
+        self.assertTrue(ok)
+        self.assertEqual(exp, "\"field_name\" IN ('d', 'e')")
+
+        # with expression as attribute
+        renderer.setClassAttribute('upper("field_name")')
+
+        exp, ok = renderer.legendKeyToExpression('0', None)
+        self.assertTrue(ok)
+        self.assertEqual(exp, """upper("field_name") = 'a'""")
+
+        exp, ok = renderer.legendKeyToExpression('1', None)
+        self.assertTrue(ok)
+        self.assertEqual(exp, """upper("field_name") = 5""")
+
+        exp, ok = renderer.legendKeyToExpression('2', None)
+        self.assertTrue(ok)
+        self.assertEqual(exp, """upper("field_name") = 5.5""")
+
+        exp, ok = renderer.legendKeyToExpression('3', None)
+        self.assertTrue(ok)
+        self.assertEqual(exp, """upper("field_name") IN ('d', 'e')""")
+
+        exp, ok = renderer.legendKeyToExpression('3', layer)
+        self.assertTrue(ok)
+        self.assertEqual(exp, """upper("field_name") IN ('d', 'e')""")
 
 
 if __name__ == "__main__":

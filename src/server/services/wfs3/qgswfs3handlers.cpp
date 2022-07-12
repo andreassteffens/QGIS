@@ -35,6 +35,8 @@
 #include "qgsvectorlayerutils.h"
 #include "qgslogger.h"
 
+#include <QTextCodec>
+
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
 #include "qgsfilterrestorer.h"
 #include "qgsaccesscontrol.h"
@@ -128,7 +130,7 @@ void QgsWfs3APIHandler::handleRequest( const QgsServerApiContext &context ) cons
   }
   else
   {
-    QgsMessageLog::logMessage( QStringLiteral( "Could not find schema.json in %1, please check your server configuration" ).arg( f.fileName() ), QStringLiteral( "Server" ), Qgis::Critical );
+    QgsMessageLog::logMessage( QStringLiteral( "Could not find schema.json in %1, please check your server configuration" ).arg( f.fileName() ), QStringLiteral( "Server" ), Qgis::MessageLevel::Critical );
     throw QgsServerApiInternalServerError( QStringLiteral( "Could not find schema.json" ) );
   }
 
@@ -260,6 +262,8 @@ QgsFields QgsWfs3AbstractItemsHandler::publishedFields( const QgsVectorLayer *vL
   {
     publishedAttributes = accessControl->layerAttributes( vLayer, publishedAttributes );
   }
+#else
+  ( void )context;
 #endif
 
   QgsFields publishedFields;
@@ -775,7 +779,7 @@ QList<QgsServerQueryStringParameter> QgsWfs3CollectionsItemsHandler::parameters(
                                         10 };
   limit.setCustomValidator( [ = ]( const QgsServerApiContext &, QVariant & value ) -> bool
   {
-    return value >= 0 && value <= maxLimit;   // TODO: make this configurable!
+    return value.toInt() >= 0 && value.toInt() <= maxLimit;   // TODO: make this configurable!
   } );
   params.push_back( limit );
 
@@ -896,9 +900,9 @@ QList<QgsServerQueryStringParameter> QgsWfs3CollectionsItemsHandler::parameters(
   params.push_back( offset );
 
   // BBOX
-  QgsServerQueryStringParameter bbox { QStringLiteral( "bbox" ), false,
-                                       QgsServerQueryStringParameter::Type::String,
-                                       QStringLiteral( "BBOX filter for the features to retrieve" ) };
+  const QgsServerQueryStringParameter bbox { QStringLiteral( "bbox" ), false,
+      QgsServerQueryStringParameter::Type::String,
+      QStringLiteral( "BBOX filter for the features to retrieve" ) };
   params.push_back( bbox );
 
   auto crsValidator = [ = ]( const QgsServerApiContext &, QVariant & value ) -> bool
@@ -923,21 +927,21 @@ QList<QgsServerQueryStringParameter> QgsWfs3CollectionsItemsHandler::parameters(
   params.push_back( crs );
 
   // Result type
-  QgsServerQueryStringParameter resultType { QStringLiteral( "resultType" ), false,
+  const QgsServerQueryStringParameter resultType { QStringLiteral( "resultType" ), false,
       QgsServerQueryStringParameter::Type::String,
       QStringLiteral( "Type of returned result: 'results' (default) or 'hits'" ),
       QStringLiteral( "results" ) };
   params.push_back( resultType );
 
   // Sortby
-  QgsServerQueryStringParameter sortBy { QStringLiteral( "sortby" ), false,
-                                         QgsServerQueryStringParameter::Type::String,
-                                         QStringLiteral( "Sort results by the specified field" )
-                                       };
+  const QgsServerQueryStringParameter sortBy { QStringLiteral( "sortby" ), false,
+      QgsServerQueryStringParameter::Type::String,
+      QStringLiteral( "Sort results by the specified field" )
+                                             };
   params.push_back( sortBy );
 
   // Sortdesc
-  QgsServerQueryStringParameter sortDesc { QStringLiteral( "sortdesc" ), false,
+  const QgsServerQueryStringParameter sortDesc { QStringLiteral( "sortdesc" ), false,
       QgsServerQueryStringParameter::Type::Boolean,
       QStringLiteral( "Sort results in descending order, field name must be specified with 'sortby' parameter" ),
       false };
@@ -1091,7 +1095,7 @@ const QList<QgsServerQueryStringParameter> QgsWfs3CollectionsItemsHandler::field
           t = QgsServerQueryStringParameter::Type::String;
           break;
       }
-      QgsServerQueryStringParameter fieldParam { fName, false,
+      const QgsServerQueryStringParameter fieldParam { fName, false,
           t, QStringLiteral( "Retrieve features filtered by: %1 (%2)" ).arg( fName )
           .arg( QgsServerQueryStringParameter::typeName( t ) ) };
       params.push_back( fieldParam );
@@ -1165,7 +1169,7 @@ void QgsWfs3CollectionsItemsHandler::handleRequest( const QgsServerApiContext &c
         const QString val = params.value( fName ).toString() ;
         if ( ! val.isEmpty() )
         {
-          QString sanitized { QgsServerApiUtils::sanitizedFieldValue( val ) };
+          const QString sanitized { QgsServerApiUtils::sanitizedFieldValue( val ) };
           if ( sanitized.isEmpty() )
           {
             throw QgsServerApiBadRequestException( QStringLiteral( "Invalid filter field value [%1=%2]" ).arg( f.name() ).arg( val ) );
@@ -1227,9 +1231,15 @@ void QgsWfs3CollectionsItemsHandler::handleRequest( const QgsServerApiContext &c
 
       if ( ! filterRect.isNull() )
       {
-        QgsCoordinateTransform ct( bboxCrs, mapLayer->crs(), context.project()->transformContext() );
-        ct.transform( filterRect );
-        featureRequest.setFilterRect( ct.transform( filterRect ) );
+        const QgsCoordinateTransform ct( bboxCrs, crs, context.project()->transformContext() );
+        try
+        {
+          featureRequest.setFilterRect( ct.transform( filterRect ) );
+        }
+        catch ( QgsCsException & )
+        {
+          throw QgsServerApiInternalServerError( QStringLiteral( "BBOX CRS could not be transformed to destination CRS" ) );
+        }
       }
 
       if ( ! attrFilters.isEmpty() )
@@ -1377,7 +1387,7 @@ void QgsWfs3CollectionsItemsHandler::handleRequest( const QgsServerApiContext &c
       navigation.push_back( {{ "title",  "Collections" }, { "href", parentLink( url, 2 ).toStdString() }} ) ;
       navigation.push_back( {{ "title",   title }, { "href", parentLink( url, 1 ).toStdString()  }} ) ;
 
-      json htmlMetadata
+      const json htmlMetadata
       {
         { "pageTitle", "Features in layer " + title },
         { "layerTitle", title },
@@ -1628,7 +1638,7 @@ void QgsWfs3CollectionsFeatureHandler::handleRequest( const QgsServerApiContext 
     navigation.push_back( {{ "title", "Collections" }, { "href", parentLink( url, 3 ).toStdString() }} ) ;
     navigation.push_back( {{ "title", title }, { "href", parentLink( url, 2 ).toStdString()  }} ) ;
     navigation.push_back( {{ "title", "Items of " + title }, { "href", parentLink( url ).toStdString() }} ) ;
-    json htmlMetadata
+    const json htmlMetadata
     {
       { "pageTitle", title + " - feature " + featureId.toStdString() },
       {
@@ -1696,7 +1706,7 @@ void QgsWfs3CollectionsFeatureHandler::handleRequest( const QgsServerApiContext 
           throw QgsServerApiBadRequestException( QStringLiteral( "Posted data does not contain any feature" ) );
         }
 
-        QgsFeature feat = features.first();
+        const QgsFeature feat = features.first();
         if ( ! feat.isValid() )
         {
           throw QgsServerApiInternalServerError( QStringLiteral( "Feature is not valid" ) );
@@ -1896,7 +1906,7 @@ void QgsWfs3CollectionsFeatureHandler::handleRequest( const QgsServerApiContext 
 
       if ( changedAttributes.isEmpty() && changedGeometries.isEmpty() )
       {
-        QgsMessageLog::logMessage( QStringLiteral( "Changeset is empty: no features have been modified" ), QStringLiteral( "Server" ), Qgis::Info );
+        QgsMessageLog::logMessage( QStringLiteral( "Changeset is empty: no features have been modified" ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
       }
 
       if ( ! mapLayer->dataProvider()->changeFeatures( changedAttributes, changedGeometries ) )

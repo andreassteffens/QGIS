@@ -14,7 +14,7 @@
 
 class QgsMapLayerStyleManager : QObject
 {
-%Docstring
+%Docstring(signature="appended")
 Management of styles for use with one map layer
 
 Stored styles are identified by their names. The manager
@@ -138,7 +138,7 @@ Each call must be paired with :py:func:`~QgsMapLayerStyleManager.restoreOverride
 Restore the original store after a call to :py:func:`~QgsMapLayerStyleManager.setOverrideStyle`
 %End
 
-    bool isDefault( const QString &styleName ) const;
+    static bool isDefault( const QString &styleName );
 %Docstring
 Returns ``True`` if this is the default style
 

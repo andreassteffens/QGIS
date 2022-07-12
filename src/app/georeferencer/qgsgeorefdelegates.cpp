@@ -21,12 +21,6 @@
 #include "qgsgeorefdelegates.h"
 #include <cmath>
 
-// ------------------------ QgsNonEditableDelegate ------------------------- //
-QgsNonEditableDelegate::QgsNonEditableDelegate( QWidget *parent )
-  : QStyledItemDelegate( parent )
-{
-}
-
 // ------------------------- QgsDmsAndDdDelegate --------------------------- //
 QgsDmsAndDdDelegate::QgsDmsAndDdDelegate( QWidget *parent )
   : QStyledItemDelegate( parent )
@@ -45,7 +39,7 @@ QWidget *QgsDmsAndDdDelegate::createEditor( QWidget *parent, const QStyleOptionV
 
 void QgsDmsAndDdDelegate::setEditorData( QWidget *editor, const QModelIndex &index ) const
 {
-  QString value = index.model()->data( index, Qt::EditRole ).toString();
+  const QString value = index.model()->data( index, Qt::EditRole ).toString();
 
   QLineEdit *lineEdit = static_cast<QLineEdit *>( editor );
   lineEdit->setText( value );
@@ -55,7 +49,7 @@ void QgsDmsAndDdDelegate::setModelData( QWidget *editor, QAbstractItemModel *mod
                                         const QModelIndex &index ) const
 {
   QLineEdit *lineEdit = static_cast<QLineEdit *>( editor );
-  QString stringValue = lineEdit->text();
+  const QString stringValue = lineEdit->text();
   double value = 0;
   if ( stringValue.contains( ' ' ) )
     value = dmsToDD( stringValue );
@@ -63,8 +57,6 @@ void QgsDmsAndDdDelegate::setModelData( QWidget *editor, QAbstractItemModel *mod
     value = stringValue.toDouble();
 
   model->setData( index, value, Qt::EditRole );
-  model->setData( index, value, Qt::DisplayRole );
-  model->setData( index, value, Qt::ToolTipRole );
 }
 
 void QgsDmsAndDdDelegate::updateEditorGeometry( QWidget *editor, const QStyleOptionViewItem &option,
@@ -75,7 +67,7 @@ void QgsDmsAndDdDelegate::updateEditorGeometry( QWidget *editor, const QStyleOpt
 
 double QgsDmsAndDdDelegate::dmsToDD( const QString &dms ) const
 {
-  QStringList list = dms.split( ' ' );
+  const QStringList list = dms.split( ' ' );
   QString tmpStr = list.at( 0 );
   double res = std::fabs( tmpStr.toDouble() );
 
@@ -100,7 +92,7 @@ QWidget *QgsCoordDelegate::createEditor( QWidget *parent, const QStyleOptionView
     const QModelIndex &/*index*/ ) const
 {
   QLineEdit *editor = new QLineEdit( parent );
-  QRegExp re( "-?\\d*(\\.\\d+)?" );
+  const QRegExp re( "-?\\d*(\\.\\d+)?" );
   QRegExpValidator *validator = new QRegExpValidator( re, editor );
   editor->setValidator( validator );
 
@@ -109,7 +101,7 @@ QWidget *QgsCoordDelegate::createEditor( QWidget *parent, const QStyleOptionView
 
 void QgsCoordDelegate::setEditorData( QWidget *editor, const QModelIndex &index ) const
 {
-  QString value = index.model()->data( index, Qt::EditRole ).toString();
+  const QString value = index.model()->data( index, Qt::EditRole ).toString();
 
   QLineEdit *lineEdit = static_cast<QLineEdit *>( editor );
   lineEdit->setText( value );
@@ -118,11 +110,9 @@ void QgsCoordDelegate::setEditorData( QWidget *editor, const QModelIndex &index 
 void QgsCoordDelegate::setModelData( QWidget *editor, QAbstractItemModel *model, const QModelIndex &index ) const
 {
   QLineEdit *lineEdit = static_cast<QLineEdit *>( editor );
-  QString stringValue = lineEdit->text();
-  double value = stringValue.toDouble();
+  const QString stringValue = lineEdit->text();
+  const double value = stringValue.toDouble();
   model->setData( index, value, Qt::EditRole );
-  model->setData( index, value, Qt::DisplayRole );
-  model->setData( index, value, Qt::ToolTipRole );
 }
 
 void QgsCoordDelegate::updateEditorGeometry( QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index ) const

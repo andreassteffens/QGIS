@@ -16,37 +16,32 @@
 
 #include "qgsmapcanvas.h"
 #include "qgsgcpcanvasitem.h"
-
+#include "qgscoordinatereferencesystem.h"
 #include "qgsgeorefdatapoint.h"
 
 QgsGeorefDataPoint::QgsGeorefDataPoint( QgsMapCanvas *srcCanvas, QgsMapCanvas *dstCanvas,
-                                        const QgsPointXY &pixelCoords, const QgsPointXY &mapCoords,
-                                        bool enable )
+                                        const QgsPointXY &sourceCoordinates, const QgsPointXY &destinationPoint,
+                                        const QgsCoordinateReferenceSystem &destinationPointCrs, bool enabled )
   : mSrcCanvas( srcCanvas )
   , mDstCanvas( dstCanvas )
-  , mPixelCoords( pixelCoords )
-  , mMapCoords( mapCoords )
+  , mGcpPoint( sourceCoordinates, destinationPoint, destinationPointCrs, enabled )
   , mId( -1 )
-  , mEnabled( enable )
 {
   mGCPSourceItem = new QgsGCPCanvasItem( srcCanvas, this, true );
   mGCPDestinationItem = new QgsGCPCanvasItem( dstCanvas, this, false );
-
-  mGCPSourceItem->setEnabled( enable );
-  mGCPDestinationItem->setEnabled( enable );
+  mGCPSourceItem->setEnabled( enabled );
+  mGCPDestinationItem->setEnabled( enabled );
   mGCPSourceItem->show();
   mGCPDestinationItem->show();
 }
 
 QgsGeorefDataPoint::QgsGeorefDataPoint( const QgsGeorefDataPoint &p )
   : QObject( nullptr )
+  , mGcpPoint( p.mGcpPoint )
 {
   // we share item representation on canvas between all points
 //  mGCPSourceItem = new QgsGCPCanvasItem(p.srcCanvas(), p.pixelCoords(), p.mapCoords(), p.isEnabled());
 //  mGCPDestinationItem = new QgsGCPCanvasItem(p.dstCanvas(), p.pixelCoords(), p.mapCoords(), p.isEnabled());
-  mPixelCoords = p.pixelCoords();
-  mMapCoords = p.mapCoords();
-  mEnabled = p.isEnabled();
   mResidual = p.residual();
   mId = p.id();
 }
@@ -57,29 +52,32 @@ QgsGeorefDataPoint::~QgsGeorefDataPoint()
   delete mGCPDestinationItem;
 }
 
-void QgsGeorefDataPoint::setPixelCoords( const QgsPointXY &p )
+void QgsGeorefDataPoint::setSourcePoint( const QgsPointXY &p )
 {
-  mPixelCoords = p;
-  mGCPSourceItem->update();
-  mGCPDestinationItem->update();
+  mGcpPoint.setSourcePoint( p );
+  updateCoords();
 }
 
-void QgsGeorefDataPoint::setMapCoords( const QgsPointXY &p )
+void QgsGeorefDataPoint::setDestinationPoint( const QgsPointXY &p )
 {
-  mMapCoords = p;
-  if ( mGCPSourceItem )
-  {
-    mGCPSourceItem->update();
-  }
-  if ( mGCPDestinationItem )
-  {
-    mGCPDestinationItem->update();
-  }
+  mGcpPoint.setDestinationPoint( p );
+  updateCoords();
+}
+
+void QgsGeorefDataPoint::setDestinationPointCrs( const QgsCoordinateReferenceSystem &crs )
+{
+  mGcpPoint.setDestinationPointCrs( crs );
+  updateCoords();
+}
+
+QgsPointXY QgsGeorefDataPoint::transformedDestinationPoint( const QgsCoordinateReferenceSystem &targetCrs, const QgsCoordinateTransformContext &context ) const
+{
+  return mGcpPoint.transformedDestinationPoint( targetCrs, context );
 }
 
 void QgsGeorefDataPoint::setEnabled( bool enabled )
 {
-  mEnabled = enabled;
+  mGcpPoint.setEnabled( enabled );
   if ( mGCPSourceItem )
   {
     mGCPSourceItem->update();
@@ -122,33 +120,48 @@ void QgsGeorefDataPoint::updateCoords()
   }
 }
 
-bool QgsGeorefDataPoint::contains( QPoint p, bool isMapPlugin )
+bool QgsGeorefDataPoint::contains( QPoint p, QgsGcpPoint::PointType type )
 {
-  if ( isMapPlugin )
+  switch ( type )
   {
-    QPointF pnt = mGCPSourceItem->mapFromScene( p );
-    return mGCPSourceItem->shape().contains( pnt );
+    case QgsGcpPoint::PointType::Source:
+    {
+      const QPointF pnt = mGCPSourceItem->mapFromScene( p );
+      return mGCPSourceItem->shape().contains( pnt );
+    }
+
+    case QgsGcpPoint::PointType::Destination:
+    {
+      const QPointF pnt = mGCPDestinationItem->mapFromScene( p );
+      return mGCPDestinationItem->shape().contains( pnt );
+    }
   }
-  else
-  {
-    QPointF pnt = mGCPDestinationItem->mapFromScene( p );
-    return mGCPDestinationItem->shape().contains( pnt );
-  }
+  BUILTIN_UNREACHABLE
 }
 
-void QgsGeorefDataPoint::moveTo( QPoint p, bool isMapPlugin )
+void QgsGeorefDataPoint::moveTo( QPoint canvasPixels, QgsGcpPoint::PointType type )
 {
-  if ( isMapPlugin )
+  switch ( type )
   {
-    QgsPointXY pnt = mGCPSourceItem->toMapCoordinates( p );
-    mPixelCoords = pnt;
+    case QgsGcpPoint::PointType::Source:
+    {
+      const QgsPointXY pnt = mGCPSourceItem->toMapCoordinates( canvasPixels );
+      mGcpPoint.setSourcePoint( pnt );
+      break;
+    }
+    case QgsGcpPoint::PointType::Destination:
+    {
+      mGcpPoint.setDestinationPoint( mGCPDestinationItem->toMapCoordinates( canvasPixels ) );
+      if ( mSrcCanvas && mSrcCanvas->mapSettings().destinationCrs().isValid() )
+        mGcpPoint.setDestinationPointCrs( mSrcCanvas->mapSettings().destinationCrs() );
+      else
+        mGcpPoint.setDestinationPointCrs( mGCPDestinationItem->canvas()->mapSettings().destinationCrs() );
+
+      if ( !mGcpPoint.destinationPointCrs().isValid() )
+        mGcpPoint.setDestinationPointCrs( QgsProject::instance()->crs() );
+      break;
+    }
   }
-  else
-  {
-    QgsPointXY pnt = mGCPDestinationItem->toMapCoordinates( p );
-    mMapCoords = pnt;
-  }
-  mGCPSourceItem->update();
-  mGCPDestinationItem->update();
+
   updateCoords();
 }

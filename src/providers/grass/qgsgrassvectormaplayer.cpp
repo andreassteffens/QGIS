@@ -30,9 +30,6 @@ extern "C"
 #if defined(_MSC_VER) && defined(M_PI_4)
 #undef M_PI_4 //avoid redefinition warning
 #endif
-#if defined(PROJ_VERSION_MAJOR) && PROJ_VERSION_MAJOR>=6 && PROJ_VERSION_MAJOR<8
-#define ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
-#endif
 #include <grass/gprojects.h>
 #include <grass/gis.h>
 #include <grass/dbmi.h>
@@ -95,17 +92,17 @@ void QgsGrassVectorMapLayer::load()
     return;
   }
 
-  QgsDebugMsg( QString( "cidxFieldIndex() = %1 cidxFieldNumCats() = %2" ).arg( cidxFieldIndex() ).arg( cidxFieldNumCats() ) );
+  QgsDebugMsgLevel( QString( "cidxFieldIndex() = %1 cidxFieldNumCats() = %2" ).arg( cidxFieldIndex() ).arg( cidxFieldNumCats() ), 2 );
 
   mFieldInfo = Vect_get_field( mMap->map(), mField ); // should work also with field = 0
 
   if ( !mFieldInfo )
   {
-    QgsDebugMsg( "No field info -> no attribute table" );
+    QgsDebugMsgLevel( "No field info -> no attribute table", 2 );
   }
   else
   {
-    QgsDebugMsg( "Field info found -> open database" );
+    QgsDebugMsgLevel( "Field info found -> open database", 2 );
 
     QFileInfo di( mMap->grassObject().mapsetPath() + "/vector/" + mMap->grassObject().name() + "/dbln" );
     mLastLoaded = di.lastModified();
@@ -119,14 +116,14 @@ void QgsGrassVectorMapLayer::load()
     }
     else
     {
-      QgsDebugMsg( "Database opened -> open select cursor" );
+      QgsDebugMsgLevel( "Database opened -> open select cursor", 2 );
       QgsGrass::lock(); // not sure if lock is necessary
       dbString dbstr;
       db_init_string( &dbstr );
       db_set_string( &dbstr, ( char * )"select * from " );
       db_append_string( &dbstr, mFieldInfo->table );
 
-      QgsDebugMsg( QString( "SQL: %1" ).arg( db_get_string( &dbstr ) ) );
+      QgsDebugMsgLevel( QString( "SQL: %1" ).arg( db_get_string( &dbstr ) ), 2 );
       dbCursor databaseCursor;
       if ( db_open_select_cursor( databaseDriver, &dbstr, &databaseCursor, DB_SCROLL ) != DB_OK )
       {

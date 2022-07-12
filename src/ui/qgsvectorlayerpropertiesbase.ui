@@ -321,7 +321,7 @@
           </property>
           <property name="icon">
            <iconset resource="../../images/images.qrc">
-            <normaloff>:/images/themes/default/propertyicons/overlay.svg</normaloff>:/images/themes/default/propertyicons/overlay.svg</iconset>
+            <normaloff>:/images/themes/default/propertyicons/network_and_proxy.svg</normaloff>:/images/themes/default/propertyicons/network_and_proxy.svg</iconset>
           </property>
          </item>
         </widget>
@@ -439,8 +439,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>644</width>
-                <height>664</height>
+                <width>653</width>
+                <height>679</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -473,29 +473,6 @@
                     </item>
                     <item>
                      <widget class="QLineEdit" name="mLayerOrigNameLineEdit"/>
-                    </item>
-                    <item>
-                     <widget class="QLabel" name="label_2">
-                      <property name="text">
-                       <string>displayed as</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QLineEdit" name="txtDisplayName">
-                      <property name="enabled">
-                       <bool>true</bool>
-                      </property>
-                      <property name="styleSheet">
-                       <string notr="true">color: #505050;
-background-color: #F0F0F0;
-border: 1px solid #B0B0B0;
-border-radius: 2px;</string>
-                      </property>
-                      <property name="readOnly">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
                     </item>
                    </layout>
                   </item>
@@ -601,6 +578,13 @@ border-radius: 2px;</string>
                    </widget>
                   </item>
                  </layout>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsCollapsibleGroupBox" name="mSourceGroupBox">
+                 <property name="title">
+                  <string>Layer Source</string>
+                 </property>
                 </widget>
                </item>
                <item>
@@ -749,8 +733,8 @@ border-radius: 2px;</string>
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>100</width>
-                <height>30</height>
+                <width>653</width>
+                <height>679</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_18">
@@ -966,8 +950,8 @@ border-radius: 2px;</string>
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>199</width>
-                <height>119</height>
+                <width>653</width>
+                <height>679</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_23">
@@ -1361,8 +1345,8 @@ border-radius: 2px;</string>
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>100</width>
-                <height>30</height>
+                <width>653</width>
+                <height>679</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -1563,8 +1547,8 @@ border-radius: 2px;</string>
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>652</width>
-                <height>368</height>
+                <width>689</width>
+                <height>665</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_32">
@@ -1710,6 +1694,58 @@ border-radius: 2px;</string>
                       <horstretch>0</horstretch>
                       <verstretch>0</verstretch>
                      </sizepolicy>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsCollapsibleGroupBox" name="mUseReferenceScaleGroupBox">
+                 <property name="focusPolicy">
+                  <enum>Qt::StrongFocus</enum>
+                 </property>
+                 <property name="title">
+                  <string>Fixed Reference Scale</string>
+                 </property>
+                 <property name="checkable">
+                  <bool>true</bool>
+                 </property>
+                 <property name="syncGroup" stdset="0">
+                  <string notr="true">vectorgeneral</string>
+                 </property>
+                 <layout class="QGridLayout" name="gridLayout">
+                  <item row="3" column="0">
+                   <widget class="Line" name="line_4">
+                    <property name="orientation">
+                     <enum>Qt::Vertical</enum>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="0">
+                   <widget class="QLabel" name="label">
+                    <property name="text">
+                     <string>Reference scale</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="1">
+                   <widget class="QgsScaleWidget" name="mReferenceScaleWidget" native="true">
+                    <property name="focusPolicy">
+                     <enum>Qt::StrongFocus</enum>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="0" colspan="2">
+                   <widget class="QLabel" name="label_8">
+                    <property name="text">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If set, the reference scale indicates the map scale at which symbology and labeling sizes which uses paper-based units (such as millimeters or points) relate to. The sizes will be scaled accordingly whenever the map is viewed at a different scale.&lt;/p&gt;&lt;p&gt;For instance, a line layer using a 2mm wide line with a 1:2000 reference scale set will be rendered using 4mm wide lines when the map is viewed at 1:1000.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="textFormat">
+                     <enum>Qt::RichText</enum>
+                    </property>
+                    <property name="wordWrap">
+                     <bool>true</bool>
                     </property>
                    </widget>
                   </item>
@@ -1980,6 +2016,9 @@ border-radius: 2px;</string>
                 <property name="enabled">
                  <bool>true</bool>
                 </property>
+                <attribute name="headerVisible">
+                 <bool>false</bool>
+                </attribute>
                </widget>
               </item>
               <item>
@@ -2020,6 +2059,18 @@ border-radius: 2px;</string>
               <string>Embedded Widgets in Legend</string>
              </property>
              <layout class="QVBoxLayout" name="verticalLayout_22">
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
               <item>
                <widget class="QgsLayerTreeEmbeddedConfigWidget" name="mLegendConfigEmbeddedWidget" native="true"/>
               </item>
@@ -2055,8 +2106,8 @@ border-radius: 2px;</string>
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>644</width>
-                <height>808</height>
+                <width>343</width>
+                <height>800</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -2207,7 +2258,7 @@ border-radius: 2px;</string>
                   <item row="6" column="0">
                    <widget class="QLabel" name="mLayerDataUrlLabel">
                     <property name="text">
-                     <string>DataUrl</string>
+                     <string>Data URL</string>
                     </property>
                    </widget>
                   </item>
@@ -2243,7 +2294,7 @@ border-radius: 2px;</string>
                   <item row="2" column="0">
                    <widget class="QLabel" name="mLayerAttributionUrlLabel">
                     <property name="text">
-                     <string>Url</string>
+                     <string>URL</string>
                     </property>
                    </widget>
                   </item>
@@ -2261,99 +2312,52 @@ border-radius: 2px;</string>
                 </widget>
                </item>
                <item>
-                <widget class="QgsCollapsibleGroupBox" name="mMetaMetaUrlGrpBx">
+                <widget class="QGroupBox" name="groupBox">
                  <property name="title">
-                  <string>MetadataUrl</string>
+                  <string>Metadata URL</string>
                  </property>
-                 <property name="syncGroup" stdset="0">
-                  <string notr="true">vectormeta</string>
-                 </property>
-                 <layout class="QGridLayout" name="gridLayout_9">
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="mLayerMetadataUrlLabel">
-                    <property name="text">
-                     <string>Url</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="1">
-                   <widget class="QLineEdit" name="mLayerMetadataUrlLineEdit">
-                    <property name="toolTip">
-                     <string>The URL of the metadata document.</string>
-                    </property>
-                    <property name="placeholderText">
-                     <string>The URL of the metadata document.</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="1">
-                   <layout class="QHBoxLayout" name="horizontalLayout_8">
+                 <layout class="QVBoxLayout" name="verticalLayout_34">
+                  <item>
+                   <layout class="QHBoxLayout" name="horizontalLayout_10">
                     <item>
-                     <widget class="QLabel" name="mLayerMetadataUrlTypeLabel">
-                      <property name="text">
-                       <string>Type</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QComboBox" name="mLayerMetadataUrlTypeComboBox">
-                      <item>
-                       <property name="text">
-                        <string notr="true"/>
-                       </property>
-                      </item>
-                      <item>
-                       <property name="text">
-                        <string notr="true" extracomment="FGDC-STD-001-1988">FGDC</string>
-                       </property>
-                      </item>
-                      <item>
-                       <property name="text">
-                        <string notr="true" extracomment="ISO 19115">TC211</string>
-                       </property>
-                      </item>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QLabel" name="mLayerMetadataUrlFormatLabel">
-                      <property name="text">
-                       <string>Format</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QComboBox" name="mLayerMetadataUrlFormatComboBox">
-                      <item>
-                       <property name="text">
-                        <string notr="true"/>
-                       </property>
-                      </item>
-                      <item>
-                       <property name="text">
-                        <string notr="true">text/plain</string>
-                       </property>
-                      </item>
-                      <item>
-                       <property name="text">
-                        <string notr="true">text/xml</string>
-                       </property>
-                      </item>
-                     </widget>
-                    </item>
-                    <item>
-                     <spacer name="horizontalSpacer_5">
+                     <spacer name="horizontalSpacer_6">
                       <property name="orientation">
                        <enum>Qt::Horizontal</enum>
                       </property>
                       <property name="sizeHint" stdset="0">
                        <size>
-                        <width>40</width>
-                        <height>20</height>
+                        <width>566</width>
+                        <height>21</height>
                        </size>
                       </property>
                      </spacer>
                     </item>
+                    <item>
+                     <widget class="QPushButton" name="buttonAddMetadataUrl">
+                      <property name="text">
+                       <string notr="true"/>
+                      </property>
+                      <property name="icon">
+                       <iconset resource="../../images/images.qrc">
+                        <normaloff>:/images/themes/default/symbologyAdd.svg</normaloff>:/images/themes/default/symbologyAdd.svg</iconset>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="buttonRemoveMetadataUrl">
+                      <property name="text">
+                       <string notr="true"/>
+                      </property>
+                      <property name="icon">
+                       <iconset resource="../../images/images.qrc">
+                        <normaloff>:/images/themes/default/symbologyRemove.svg</normaloff>:/images/themes/default/symbologyRemove.svg</iconset>
+                      </property>
+                     </widget>
+                    </item>
                    </layout>
+                  </item>
+                  <item>
+                   <widget class="QTableView" name="tableViewMetadataUrl"/>
                   </item>
                  </layout>
                 </widget>
@@ -2361,7 +2365,7 @@ border-radius: 2px;</string>
                <item>
                 <widget class="QgsCollapsibleGroupBox" name="mMetaLegendGrpBx">
                  <property name="title">
-                  <string>LegendUrl</string>
+                  <string>Legend URL</string>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_2">
                   <item row="0" column="0">
@@ -2369,7 +2373,7 @@ border-radius: 2px;</string>
                     <item>
                      <widget class="QLabel" name="mLayerLegendUrlLabel">
                       <property name="text">
-                       <string>Url</string>
+                       <string>URL</string>
                       </property>
                      </widget>
                     </item>
@@ -2560,27 +2564,15 @@ border-radius: 2px;</string>
  </widget>
  <customwidgets>
   <customwidget>
-   <class>QgsCodeEditorSQL</class>
-   <extends>QWidget</extends>
-   <header>qgscodeeditorsql.h</header>
+   <class>QgsCollapsibleGroupBox</class>
+   <extends>QGroupBox</extends>
+   <header>qgscollapsiblegroupbox.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>QgsDoubleSpinBox</class>
    <extends>QDoubleSpinBox</extends>
    <header>qgsdoublespinbox.h</header>
-  </customwidget>
-  <customwidget>
-   <class>QgsScrollArea</class>
-   <extends>QScrollArea</extends>
-   <header>qgsscrollarea.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>QgsCollapsibleGroupBox</class>
-   <extends>QGroupBox</extends>
-   <header>qgscollapsiblegroupbox.h</header>
-   <container>1</container>
   </customwidget>
   <customwidget>
    <class>QgsFilterLineEdit</class>
@@ -2594,14 +2586,15 @@ border-radius: 2px;</string>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>QgsScaleRangeWidget</class>
-   <extends>QWidget</extends>
-   <header>qgsscalerangewidget.h</header>
+   <class>QgsScrollArea</class>
+   <extends>QScrollArea</extends>
+   <header>qgsscrollarea.h</header>
+   <container>1</container>
   </customwidget>
   <customwidget>
-   <class>QgsLayerTreeEmbeddedConfigWidget</class>
+   <class>QgsFieldExpressionWidget</class>
    <extends>QWidget</extends>
-   <header>qgslayertreeembeddedconfigwidget.h</header>
+   <header>qgsfieldexpressionwidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
@@ -2616,9 +2609,20 @@ border-radius: 2px;</string>
    <header>qgsscalecombobox.h</header>
   </customwidget>
   <customwidget>
-   <class>QgsFieldExpressionWidget</class>
+   <class>QgsCodeEditorSQL</class>
    <extends>QWidget</extends>
-   <header>qgsfieldexpressionwidget.h</header>
+   <header>qgscodeeditorsql.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QgsScaleRangeWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsscalerangewidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsLayerTreeEmbeddedConfigWidget</class>
+   <extends>QWidget</extends>
+   <header>qgslayertreeembeddedconfigwidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
@@ -2632,6 +2636,12 @@ border-radius: 2px;</string>
    <header>qgsvectorlayerlegendwidget.h</header>
    <container>1</container>
   </customwidget>
+  <customwidget>
+   <class>QgsScaleWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsscalewidget.h</header>
+   <container>1</container>
+  </customwidget>
  </customwidgets>
  <tabstops>
   <tabstop>mSearchLineEdit</tabstop>
@@ -2639,12 +2649,12 @@ border-radius: 2px;</string>
   <tabstop>teMetadataViewer</tabstop>
   <tabstop>scrollArea_4</tabstop>
   <tabstop>mLayerOrigNameLineEdit</tabstop>
-  <tabstop>txtDisplayName</tabstop>
   <tabstop>cboProviderEncoding</tabstop>
+  <tabstop>mCrsGroupBox</tabstop>
   <tabstop>mCrsSelector</tabstop>
+  <tabstop>mGeomGroupBox</tabstop>
   <tabstop>pbnIndex</tabstop>
   <tabstop>pbnUpdateExtents</tabstop>
-  <tabstop>txtSubsetSQL</tabstop>
   <tabstop>pbnQueryBuilder</tabstop>
   <tabstop>scrollArea_3</tabstop>
   <tabstop>mJoinTreeWidget</tabstop>
@@ -2671,6 +2681,8 @@ border-radius: 2px;</string>
   <tabstop>mSimplifyAlgorithmComboBox</tabstop>
   <tabstop>mSimplifyDrawingAtProvider</tabstop>
   <tabstop>mSimplifyMaximumScaleComboBox</tabstop>
+  <tabstop>mUseReferenceScaleGroupBox</tabstop>
+  <tabstop>mReferenceScaleWidget</tabstop>
   <tabstop>mForceRasterCheckBox</tabstop>
   <tabstop>mRefreshLayerCheckBox</tabstop>
   <tabstop>mRefreshLayerIntervalSpinBox</tabstop>
@@ -2687,11 +2699,14 @@ border-radius: 2px;</string>
   <tabstop>mLayerDataUrlFormatComboBox</tabstop>
   <tabstop>mLayerAttributionLineEdit</tabstop>
   <tabstop>mLayerAttributionUrlLineEdit</tabstop>
-  <tabstop>mLayerMetadataUrlLineEdit</tabstop>
-  <tabstop>mLayerMetadataUrlTypeComboBox</tabstop>
-  <tabstop>mLayerMetadataUrlFormatComboBox</tabstop>
+  <tabstop>buttonAddMetadataUrl</tabstop>
+  <tabstop>buttonRemoveMetadataUrl</tabstop>
   <tabstop>mLayerLegendUrlLineEdit</tabstop>
   <tabstop>mLayerLegendUrlFormatComboBox</tabstop>
+  <tabstop>mWmsDimensionsTreeWidget</tabstop>
+  <tabstop>mButtonAddWmsDimension</tabstop>
+  <tabstop>mButtonEditWmsDimension</tabstop>
+  <tabstop>mButtonRemoveWmsDimension</tabstop>
  </tabstops>
  <resources>
   <include location="../../images/images.qrc"/>

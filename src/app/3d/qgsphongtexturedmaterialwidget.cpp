@@ -52,17 +52,21 @@ void QgsPhongTexturedMaterialWidget::setSettings( const QgsAbstractMaterialSetti
   textureFile->setSource( phongMaterial->diffuseTexturePath() );
   textureScaleSpinBox->setValue( 100.0 / phongMaterial->textureScale() );
   textureRotationSpinBox->setValue( phongMaterial->textureRotation() );
+
+  mPropertyCollection = settings->dataDefinedProperties();
 }
 
 QgsAbstractMaterialSettings *QgsPhongTexturedMaterialWidget::settings()
 {
-  std::unique_ptr< QgsPhongTexturedMaterialSettings > m = qgis::make_unique< QgsPhongTexturedMaterialSettings >();
+  std::unique_ptr< QgsPhongTexturedMaterialSettings > m = std::make_unique< QgsPhongTexturedMaterialSettings >();
   m->setAmbient( btnAmbient->color() );
   m->setSpecular( btnSpecular->color() );
   m->setShininess( spinShininess->value() );
   m->setDiffuseTexturePath( textureFile->source() );
   m->setTextureScale( 100.0 / textureScaleSpinBox->value() );
   m->setTextureRotation( textureRotationSpinBox->value() );
+  m->setDataDefinedProperties( mPropertyCollection );
+
   return m.release();
 }
 

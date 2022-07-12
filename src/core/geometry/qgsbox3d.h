@@ -21,7 +21,9 @@
 #include "qgis_core.h"
 #include "qgsrectangle.h"
 
-class QgsPoint;
+#include <QVector3D>
+
+#include "qgspoint.h"
 
 /**
  * \ingroup core
@@ -203,7 +205,31 @@ class CORE_EXPORT QgsBox3d
      */
     QgsRectangle toRectangle() const { return mBounds2d; }
 
+    /**
+     * Returns the smallest distance between the box and the point \a point
+     * (returns 0 if the point is inside the box)
+     *
+     * \since QGIS 3.18
+     */
+    double distanceTo( const  QVector3D &point ) const;
+
     bool operator==( const QgsBox3d &other ) const;
+
+    /**
+     * Scale the rectangle around a \a center QgsPoint.
+     *
+     * If no \a center point is specified then the current center of the box will be used.
+     *
+     * \since QGIS 3.26
+     */
+    void scale( double scaleFactor, const QgsPoint &center = QgsPoint() );
+
+    /**
+     * Scale the rectangle around a center coordinates.
+     *
+     * \since QGIS 3.26
+     */
+    void scale( double scaleFactor, double centerX, double centerY, double centerZ );
 
   private:
 

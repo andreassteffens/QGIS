@@ -19,11 +19,17 @@
 #include <qgsmaptoolpan.h>
 #include <qgsmaptoolemitpoint.h>
 #include <qgsmaptoolidentify.h>
+#include <qgsmaptooldigitizefeature.h>
+#include <qgsmaptoolextent.h>
+#include <qgsmaptoolidentifyfeature.h>
+#include <qgsmaptoolcapture.h>
+#include <qgsmaptooladvanceddigitizing.h>
+#include <qgsmaptooledit.h>
 %End
 
 class QgsMapTool : QObject
 {
-%Docstring
+%Docstring(signature="appended")
 Abstract base class for all map tools.
 Map tools are user interactive tools for manipulating the
 map canvas. For example map pan and zoom features are
@@ -40,8 +46,20 @@ implemented as map tools.
       sipType = sipType_QgsMapToolPan;
     else if ( dynamic_cast<QgsMapToolEmitPoint *>( sipCpp ) != NULL )
       sipType = sipType_QgsMapToolEmitPoint;
+    else if ( dynamic_cast<QgsMapToolExtent *>( sipCpp ) != NULL )
+      sipType = sipType_QgsMapToolExtent;
+    else if ( dynamic_cast<QgsMapToolIdentifyFeature *>( sipCpp ) != NULL )
+      sipType = sipType_QgsMapToolIdentifyFeature;
     else if ( dynamic_cast<QgsMapToolIdentify *>( sipCpp ) != NULL )
       sipType = sipType_QgsMapToolIdentify;
+    else if ( dynamic_cast<QgsMapToolDigitizeFeature *>( sipCpp ) != NULL )
+      sipType = sipType_QgsMapToolDigitizeFeature;
+    else if ( dynamic_cast<QgsMapToolCapture *>( sipCpp ) != NULL )
+      sipType = sipType_QgsMapToolCapture;
+    else if ( dynamic_cast<QgsMapToolAdvancedDigitizing *>( sipCpp ) != NULL )
+      sipType = sipType_QgsMapToolAdvancedDigitizing;
+    else if ( dynamic_cast<QgsMapToolEdit *>( sipCpp ) != NULL )
+      sipType = sipType_QgsMapToolEdit;
     else
       sipType = NULL;
 %End
@@ -106,6 +124,14 @@ Key event for overriding. Default implementation does nothing.
 gesture event for overriding. Default implementation does nothing.
 %End
 
+    virtual bool canvasToolTipEvent( QHelpEvent *e );
+%Docstring
+Tooltip event for overriding. Default implementation does nothing.
+Returns whether the event was handled by the tool and should not be propagated further.
+
+.. versionadded:: 3.22
+%End
+
     void setAction( QAction *action );
 %Docstring
 Use this to associate a QAction to this maptool. Then when the setMapTool
@@ -166,6 +192,8 @@ returns pointer to the tool's map canvas
 %Docstring
 Emit map tool changed with the old tool
 
+.. seealso:: :py:func:`setToolName`
+
 .. versionadded:: 2.3
 %End
 
@@ -212,8 +240,35 @@ The default implementation does nothing.
 .. versionadded:: 3.14
 %End
 
+    virtual bool populateContextMenuWithEvent( QMenu *menu, QgsMapMouseEvent *event );
+%Docstring
+Allows the tool to populate and customize the given ``menu``,
+prior to showing it in response to a right-mouse button click.
+
+``menu`` will be initially populated with a set of default, generic actions.
+Any new actions added to the menu should be correctly parented to ``menu``.
+
+A pointer to the map mouse ``event`` can be provided to allow particular behavior depending on the map tool.
+
+This method can return true to inform the caller that the menu was effectively populated.
+
+The default implementation does nothing and returns false.
+
+.. note::
+
+   The context menu is only shown when the ShowContextMenu flag
+   is present in :py:func:`~QgsMapTool.flags`.
+
+.. versionadded:: 3.18
+%End
+
+    QgsPointXY toMapCoordinates( QPoint point );
+%Docstring
+Transforms a ``point`` from screen coordinates to map coordinates.
+%End
+
   signals:
-    void messageEmitted( const QString &message, Qgis::MessageLevel = Qgis::Info );
+    void messageEmitted( const QString &message, Qgis::MessageLevel = Qgis::MessageLevel::Info );
 %Docstring
 emit a message
 %End
@@ -237,47 +292,72 @@ signal emitted once the map tool is deactivated
 
     QgsMapTool( QgsMapCanvas *canvas /TransferThis/ );
 %Docstring
-constructor takes map canvas as a parameter
+Constructor takes a map canvas as a parameter.
 %End
 
-    QgsPointXY toMapCoordinates( QPoint point );
+    QgsPoint toLayerCoordinates( const QgsMapLayer *layer, const QgsPoint &point ) /PyName=toLayerCoordinatesV2/;
 %Docstring
-transformation from screen coordinates to map coordinates
+Transforms a ``point`` from map coordinates to ``layer`` coordinates.
+
+.. note::
+
+   This method is available in the Python bindings as toLayerCoordinatesV2.
 %End
 
     QgsPointXY toLayerCoordinates( const QgsMapLayer *layer, QPoint point );
 %Docstring
-transformation from screen coordinates to layer's coordinates
+Transforms a ``point`` from screen coordinates to ``layer`` coordinates.
 %End
 
     QgsPointXY toLayerCoordinates( const QgsMapLayer *layer, const QgsPointXY &point );
 %Docstring
-transformation from map coordinates to layer's coordinates
+Transforms a ``point`` from map coordinates to ``layer`` coordinates.
 %End
 
     QgsPointXY toMapCoordinates( const QgsMapLayer *layer, const QgsPointXY &point );
 %Docstring
-transformation from layer's coordinates to map coordinates (which is different in case reprojection is used)
+Transforms a ``point`` from ``layer`` coordinates to map coordinates (which is different in case reprojection is used).
 %End
 
     QgsPoint toMapCoordinates( const QgsMapLayer *layer, const QgsPoint &point ) /PyName=toMapCoordinatesV2/;
 %Docstring
-transformation from layer's coordinates to map coordinates (which is different in case reprojection is used)
+Transforms a ``point`` from ``layer`` coordinates to map coordinates (which is different in case reprojection is used).
 
 .. note::
 
-   available in Python bindings as toMapCoordinatesV2
+   This method is available in the Python bindings as toMapCoordinatesV2.
 %End
 
     QgsRectangle toLayerCoordinates( const QgsMapLayer *layer, const QgsRectangle &rect );
 %Docstring
-trnasformation of the rect from map coordinates to layer's coordinates
+Transforms a ``rect`` from map coordinates to ``layer`` coordinates.
 %End
 
     QPoint toCanvasCoordinates( const QgsPointXY &point ) const;
 %Docstring
-transformation from map coordinates to screen coordinates
+Transforms a ``point`` from map coordinates to screen coordinates.
 %End
+
+    QgsMapLayer *layer( const QString &id );
+%Docstring
+Returns the map layer with the matching ID, or ``None`` if no layers could be found.
+
+This method searches both layers associated with the map canvas (see :py:func:`QgsMapCanvas.layers()`)
+and layers from the :py:class:`QgsProject` associated with the canvas. It can be used to resolve layer IDs to
+layers which may be visible in the canvas, but not associated with a :py:class:`QgsProject`.
+
+.. versionadded:: 3.22
+%End
+
+    void setToolName( const QString &name );
+%Docstring
+Sets the tool's ``name``.
+
+.. seealso:: :py:func:`toolName`
+
+.. versionadded:: 3.20
+%End
+
 
 
 

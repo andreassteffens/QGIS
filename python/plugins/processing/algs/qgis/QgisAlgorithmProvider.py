@@ -37,7 +37,6 @@ from .Climb import Climb
 from .ConcaveHull import ConcaveHull
 from .DefineProjection import DefineProjection
 from .Delaunay import Delaunay
-from .DeleteColumn import DeleteColumn
 from .EliminateSelection import EliminateSelection
 from .ExecuteSQL import ExecuteSQL
 from .ExportGeometryInfo import ExportGeometryInfo
@@ -49,7 +48,6 @@ from .HubDistanceLines import HubDistanceLines
 from .HubDistancePoints import HubDistancePoints
 from .HypsometricCurves import HypsometricCurves
 from .IdwInterpolation import IdwInterpolation
-from .ImportIntoPostGIS import ImportIntoPostGIS
 from .ImportIntoSpatialite import ImportIntoSpatialite
 from .KeepNBiggestParts import KeepNBiggestParts
 from .KNearestConcaveHull import KNearestConcaveHull
@@ -59,7 +57,6 @@ from .MinimumBoundingGeometry import MinimumBoundingGeometry
 from .PointDistance import PointDistance
 from .PointsDisplacement import PointsDisplacement
 from .PointsFromLines import PointsFromLines
-from .PointsToPaths import PointsToPaths
 from .PolarPlot import PolarPlot
 from .PostGISExecuteAndLoadSQL import PostGISExecuteAndLoadSQL
 from .RandomExtractWithinSubsets import RandomExtractWithinSubsets
@@ -107,7 +104,6 @@ class QgisAlgorithmProvider(QgsProcessingProvider):
                 ConcaveHull(),
                 DefineProjection(),
                 Delaunay(),
-                DeleteColumn(),
                 EliminateSelection(),
                 ExecuteSQL(),
                 ExportGeometryInfo(),
@@ -119,7 +115,6 @@ class QgisAlgorithmProvider(QgsProcessingProvider):
                 HubDistancePoints(),
                 HypsometricCurves(),
                 IdwInterpolation(),
-                ImportIntoPostGIS(),
                 ImportIntoSpatialite(),
                 KeepNBiggestParts(),
                 KNearestConcaveHull(),
@@ -129,7 +124,6 @@ class QgisAlgorithmProvider(QgsProcessingProvider):
                 PointDistance(),
                 PointsDisplacement(),
                 PointsFromLines(),
-                PointsToPaths(),
                 PolarPlot(),
                 PostGISExecuteAndLoadSQL(),
                 RandomExtractWithinSubsets(),

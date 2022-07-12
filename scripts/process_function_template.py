@@ -4,6 +4,7 @@ import sys
 import os
 import json
 import glob
+from copy import deepcopy
 
 sys.path.append(
     os.path.join(
@@ -74,9 +75,10 @@ for f in sorted(glob.glob('resources/function_help/json/*')):
     if json_params['type'] == 'operator':
         for v in json_params['variants']:
             if 'arguments' not in v:
-                raise BaseException("%s: arguments expected for operator")
-            if len(list(v['arguments'])) < 1 or len(list(v['arguments'])) > 2:
-                raise BaseException("%s: 1 or 2 arguments expected for operator")
+                raise BaseException("%s: arguments expected for operator" % f)
+            a_list = list(deepcopy(v['arguments']))
+            if not 1 <= len(a_list) <= 2:
+                raise BaseException("%s: 1 or 2 arguments expected for operator found %i" % (f, len(a_list)))
 
     cpp.write("\n\n    functionHelpTexts().insert( QStringLiteral( {0} ),\n      Help( QStringLiteral( {0} ), tr( \"{1}\" ), tr( \"{2}\" ),\n        QList<HelpVariant>()".format(
         name, json_params['type'], json_params['description'])
@@ -115,11 +117,9 @@ for f in sorted(glob.glob('resources/function_help/json/*')):
         else:
             cpp.write(",\n            QString()")
 
+        cpp.write(",\n            QStringList()")
         if 'tags' in v:
-            cpp.write(",\n            QStringList()")
-
-            for t in v['tags']:
-                cpp.write("\n              << QStringLiteral( \"{0}\" ) << tr( \"{0}\" )".format(t))
+            cpp.write("\n              << tr( \"{0}\" )".format(",".join(v['tags'])))
 
         cpp.write("\n         )")
 

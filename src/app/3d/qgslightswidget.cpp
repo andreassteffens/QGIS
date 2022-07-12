@@ -59,43 +59,74 @@ QgsLightsWidget::QgsLightsWidget( QWidget *parent )
 
   connect( btnRemoveLight, &QToolButton::clicked, this, &QgsLightsWidget::onRemoveLight );
 
-  connect( spinPositionX, qgis::overload<double>::of( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::updateCurrentLightParameters );
-  connect( spinPositionY, qgis::overload<double>::of( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::updateCurrentLightParameters );
-  connect( spinPositionZ, qgis::overload<double>::of( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::updateCurrentLightParameters );
-  connect( spinIntensity, qgis::overload<double>::of( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::updateCurrentLightParameters );
+  connect( spinPositionX, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::updateCurrentLightParameters );
+  connect( spinPositionY, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::updateCurrentLightParameters );
+  connect( spinPositionZ, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::updateCurrentLightParameters );
+  connect( spinIntensity, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::updateCurrentLightParameters );
   connect( btnColor, &QgsColorButton::colorChanged, this, &QgsLightsWidget::updateCurrentLightParameters );
-  connect( spinA0, qgis::overload<double>::of( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::updateCurrentLightParameters );
-  connect( spinA1, qgis::overload<double>::of( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::updateCurrentLightParameters );
-  connect( spinA2, qgis::overload<double>::of( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::updateCurrentLightParameters );
+  connect( spinA0, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::updateCurrentLightParameters );
+  connect( spinA1, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::updateCurrentLightParameters );
+  connect( spinA2, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::updateCurrentLightParameters );
 
-  connect( spinDirectionalIntensity, qgis::overload<double>::of( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::updateCurrentDirectionalLightParameters );
+  connect( spinDirectionalIntensity, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::updateCurrentDirectionalLightParameters );
   connect( btnDirectionalColor, &QgsColorButton::colorChanged, this, &QgsLightsWidget::updateCurrentDirectionalLightParameters );
 
-  connect( dialAzimuth, &QSlider::valueChanged, [this]( int value ) {spinBoxAzimuth->setValue( ( value + 180 ) % 360 );} );
+  connect( dialAzimuth, &QSlider::valueChanged, this, [this]( int value ) {spinBoxAzimuth->setValue( ( value + 180 ) % 360 );} );
   connect( sliderAltitude, &QSlider::valueChanged, spinBoxAltitude, &QgsDoubleSpinBox::setValue );
-  connect( spinBoxAzimuth, qgis::overload<double>::of( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::onDirectionChange );
-  connect( spinBoxAltitude, qgis::overload<double>::of( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::onDirectionChange );
+  connect( spinBoxAzimuth, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::onDirectionChange );
+  connect( spinBoxAltitude, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsLightsWidget::onDirectionChange );
 
   mLightsListView->selectionModel()->select( mLightsModel->index( 0, 0 ), QItemSelectionModel::ClearAndSelect );
   selectedLightChanged( mLightsListView->selectionModel()->selection(), QItemSelection() );
 }
 
-void QgsLightsWidget::setLights( const QList<QgsPointLightSettings> &pointLights, const QList<QgsDirectionalLightSettings> &directionalLights )
+void QgsLightsWidget::setLights( const QList<QgsLightSource *> sources )
 {
+  QList< QgsPointLightSettings > pointLights;
+  QList< QgsDirectionalLightSettings > directionalLights;
+  for ( const QgsLightSource *source : sources )
+  {
+    switch ( source->type() )
+    {
+      case Qgis::LightSourceType::Point:
+        pointLights.append( *qgis::down_cast< const QgsPointLightSettings *>( source ) );
+        break;
+      case Qgis::LightSourceType::Directional:
+        directionalLights.append( *qgis::down_cast< const QgsDirectionalLightSettings *>( source ) );
+        break;
+    }
+  }
+
   mLightsModel->setPointLights( pointLights );
   mLightsModel->setDirectionalLights( directionalLights );
   mLightsListView->selectionModel()->select( mLightsModel->index( 0, 0 ), QItemSelectionModel::ClearAndSelect );
   selectedLightChanged( mLightsListView->selectionModel()->selection(), QItemSelection() );
 }
 
-QList<QgsPointLightSettings> QgsLightsWidget::pointLights()
+QList<QgsLightSource *> QgsLightsWidget::lightSources()
 {
-  return mLightsModel->pointLights();
+  QList<QgsLightSource *> res;
+  const QList<QgsPointLightSettings> pointLights = mLightsModel->pointLights();
+  const QList<QgsDirectionalLightSettings> directionalLights = mLightsModel->directionalLights();
+  for ( const QgsPointLightSettings &light : pointLights )
+  {
+    res.append( light.clone() );
+  }
+  for ( const QgsDirectionalLightSettings &light : directionalLights )
+  {
+    res.append( light.clone() );
+  }
+  return res;
 }
 
-QList<QgsDirectionalLightSettings> QgsLightsWidget::directionalLights()
+int QgsLightsWidget::directionalLightCount() const
 {
-  return mLightsModel->directionalLights();
+  return mLightsModel->directionalLights().count();
+}
+
+int QgsLightsWidget::lightSourceCount() const
+{
+  return mLightsModel->rowCount( QModelIndex() );
 }
 
 void QgsLightsWidget::selectedLightChanged( const QItemSelection &selected, const QItemSelection & )
@@ -201,6 +232,7 @@ void QgsLightsWidget::onAddDirectionalLight()
   const QModelIndex newIndex = mLightsModel->addDirectionalLight( QgsDirectionalLightSettings() );
   mLightsListView->selectionModel()->select( newIndex, QItemSelectionModel::ClearAndSelect );
   emit lightsAdded();
+  emit directionalLightsCountChanged( mLightsModel->directionalLights().size() );
 }
 
 void QgsLightsWidget::onRemoveLight()
@@ -228,7 +260,7 @@ void QgsLightsWidget::setAzimuthAltitude()
   double azimuthAngle;
   double altitudeAngle;
 
-  double horizontalVectorMagnitude = sqrt( mDirectionX * mDirectionX + mDirectionZ * mDirectionZ );
+  const double horizontalVectorMagnitude = sqrt( mDirectionX * mDirectionX + mDirectionZ * mDirectionZ );
 
   if ( horizontalVectorMagnitude == 0 )
     azimuthAngle = 0;
@@ -256,10 +288,10 @@ void QgsLightsWidget::setAzimuthAltitude()
 
 void QgsLightsWidget::onDirectionChange()
 {
-  double altitudeValue = spinBoxAltitude->value();
-  double azimuthValue = spinBoxAzimuth->value();
+  const double altitudeValue = spinBoxAltitude->value();
+  const double azimuthValue = spinBoxAzimuth->value();
 
-  double horizontalVectorMagnitude = cos( altitudeValue / 180 * M_PI );
+  const double horizontalVectorMagnitude = cos( altitudeValue / 180 * M_PI );
   mDirectionX = -horizontalVectorMagnitude * sin( azimuthValue / 180 * M_PI );
   mDirectionZ = horizontalVectorMagnitude * cos( azimuthValue / 180 * M_PI );
   mDirectionY = -sin( altitudeValue / 180 * M_PI );

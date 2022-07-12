@@ -28,6 +28,8 @@ import time
 from datetime import datetime
 
 from qgis.core import (
+    Qgis,
+    QgsApplication,
     QgsVectorLayer,
     QgsVectorLayerExporter,
     QgsFeatureRequest,
@@ -35,14 +37,17 @@ from qgis.core import (
     QgsFeature,
     QgsFieldConstraints,
     QgsDataProvider,
-    NULL,
     QgsVectorLayerUtils,
     QgsSettings,
     QgsTransactionGroup,
     QgsReadWriteContext,
     QgsRectangle,
+    QgsReferencedGeometry,
     QgsDefaultValue,
     QgsCoordinateReferenceSystem,
+    QgsProcessingUtils,
+    QgsProcessingContext,
+    QgsProcessingFeedback,
     QgsProject,
     QgsWkbTypes,
     QgsGeometry,
@@ -50,7 +55,9 @@ from qgis.core import (
     QgsVectorDataProvider,
     QgsDataSourceUri,
     QgsProviderConnectionException,
+    NULL,
 )
+from qgis.analysis import QgsNativeAlgorithms
 from qgis.gui import QgsGui, QgsAttributeForm
 from qgis.PyQt.QtCore import QDate, QTime, QDateTime, QVariant, QDir, QObject, QByteArray, QTemporaryDir
 from qgis.PyQt.QtWidgets import QLabel
@@ -71,18 +78,21 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         cls.dbconn = 'service=qgis_test'
         if 'QGIS_PGTEST_DB' in os.environ:
             cls.dbconn = os.environ['QGIS_PGTEST_DB']
+
         # Create test layers
         cls.vl = QgsVectorLayer(
             cls.dbconn +
             ' sslmode=disable key=\'pk\' srid=4326 type=POINT table="qgis_test"."someData" (geom) sql=',
             'test', 'postgres')
-        assert cls.vl.isValid()
+        assert cls.vl.isValid(), "Could not create a layer from the 'qgis_test.someData' table using dbconn '" + cls.dbconn + "'"
+
         cls.source = cls.vl.dataProvider()
         cls.poly_vl = QgsVectorLayer(
             cls.dbconn +
             ' sslmode=disable key=\'pk\' srid=4326 type=POLYGON table="qgis_test"."some_poly_data" (geom) sql=',
             'test', 'postgres')
-        assert cls.poly_vl.isValid()
+        assert cls.poly_vl.isValid(), "Could not create a layer from the 'qgis_test.some_poly_data' table using dbconn '" + cls.dbconn + "'"
+
         cls.poly_provider = cls.poly_vl.dataProvider()
         QgsGui.editorWidgetRegistry().initEditors()
         cls.con = psycopg2.connect(cls.dbconn)
@@ -99,6 +109,46 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         cur.close()
         self.con.commit()
 
+    # Create instances of this class for scoped backups,
+    # example:
+    #
+    #  backup1 = self.scopedTableBackup('qgis_test', 'datatable1')
+    #  backup2 = self.scopedTableBackup('qgis_test', 'datatable2')
+    #
+    def scopedTableBackup(self, schema, table):
+
+        class ScopedBackup():
+            def __init__(self, tester, schema, table):
+                self.schema = schema
+                self.table = table
+                self.tester = tester
+                tester.execSQLCommand('DROP TABLE IF EXISTS {s}.{t}_edit CASCADE'.format(s=schema, t=table))
+                tester.execSQLCommand('CREATE TABLE {s}.{t}_edit AS SELECT * FROM {s}.{t}'.format(s=schema, t=table))
+
+            def __del__(self):
+                self.tester.execSQLCommand('TRUNCATE TABLE {s}.{t}'.format(s=self.schema, t=self.table))
+                self.tester.execSQLCommand('INSERT INTO {s}.{t} SELECT * FROM {s}.{t}_edit'.format(s=self.schema, t=self.table))
+                self.tester.execSQLCommand('DROP TABLE {s}.{t}_edit'.format(s=self.schema, t=self.table))
+
+        return ScopedBackup(self, schema, table)
+
+    def temporarySchema(self, name):
+
+        class TemporarySchema():
+            def __init__(self, tester, name):
+                self.tester = tester
+                self.name = name + '_tmp'
+
+            def __enter__(self):
+                self.tester.execSQLCommand('DROP SCHEMA IF EXISTS {} CASCADE'.format(self.name))
+                self.tester.execSQLCommand('CREATE SCHEMA {}'.format(self.name))
+                return self.name
+
+            def __exit__(self, type, value, traceback):
+                self.tester.execSQLCommand('DROP SCHEMA {} CASCADE'.format(self.name))
+
+        return TemporarySchema(self, 'qgis_test_' + name)
+
     def getSource(self):
         # create temporary table for edit tests
         self.execSQLCommand(
@@ -111,6 +161,7 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
                             "(1, 100, 'Orange', 'oranGe', '1', TIMESTAMP '2020-05-03 12:13:14', '2020-05-03', '12:13:14', '0101000020E61000006891ED7C3F9551C085EB51B81E955040'),"
                             "(2, 200, 'Apple', 'Apple', '2', TIMESTAMP '2020-05-04 12:14:14', '2020-05-04', '12:14:14', '0101000020E6100000CDCCCCCCCC0C51C03333333333B35140'),"
                             "(4, 400, 'Honey', 'Honey', '4', TIMESTAMP '2021-05-04 13:13:14', '2021-05-04', '13:13:14', '0101000020E610000014AE47E17A5450C03333333333935340')")
+        self.execSQLCommand("SELECT setval('qgis_test.\"editData_pk_seq\"', 5, true)")
         vl = QgsVectorLayer(
             self.dbconn +
             ' sslmode=disable key=\'pk\' srid=4326 type=POINT table="qgis_test"."editData" (geom) sql=',
@@ -531,6 +582,10 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         if pgversion < 120000:
             return
 
+        # Backup test table (will be edited)
+        self.execSQLCommand('DROP TABLE IF EXISTS qgis_test.test_gen_col_edit CASCADE')
+        self.execSQLCommand('CREATE TABLE qgis_test.test_gen_col_edit AS SELECT id,name,geom FROM qgis_test.test_gen_col')
+
         # Geometry columns
         vl = QgsVectorLayer('{} table="qgis_test"."{}" (geom) srid=4326 type=POLYGON key="id" sql='.format(self.dbconn, "test_gen_col"), "test_gen_col", "postgres")
         self.assertTrue(vl.isValid())
@@ -555,7 +610,7 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         expected_area = 43069568296.34387
 
         assert compareWkt(generated_geometry, expected_geometry), "Geometry mismatch! Expected:\n{}\nGot:\n{}\n".format(expected_geometry, generated_geometry)
-        self.assertEqual(f2['poly_area'], expected_area)
+        self.assertAlmostEqual(f2['poly_area'], expected_area, places=4)
         self.assertEqual(f2['name'], 'QGIS-3')
 
         # Checking if we can correctly change values of an existing feature.
@@ -583,7 +638,7 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         # reading back
         vl2 = QgsVectorLayer('{} table="qgis_test"."{}" (geom) srid=4326 type=POLYGON key="id" sql='.format(self.dbconn, "test_gen_col"), "test_gen_col", "postgres")
         f2 = next(vl2.getFeatures(QgsFeatureRequest()))
-        self.assertEqual(f2['poly_area'], expected_area)
+        self.assertAlmostEqual(f2['poly_area'], expected_area, places=4)
 
         # now, getting a brand new QgsVectorLayer to check if changes (UPDATE) in the geometry are reflected in the generated fields
         vl = QgsVectorLayer('{} table="qgis_test"."{}" (geom) srid=4326 type=POLYGON key="id" sql='.format(self.dbconn, "test_gen_col"), "test_gen_col", "postgres")
@@ -604,7 +659,7 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         expected_area = 67718478405.28429
 
         assert compareWkt(generated_geometry, expected_geometry), "Geometry mismatch! Expected:\n{}\nGot:\n{}\n".format(expected_geometry, generated_geometry)
-        self.assertEqual(f2['poly_area'], expected_area)
+        self.assertAlmostEqual(f2['poly_area'], expected_area, places=4)
         self.assertEqual(f2['name'], 'New')
 
         # Geography columns
@@ -628,6 +683,11 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         assert compareWkt(generated_geometry, expected_geometry), "Geometry mismatch! Expected:\n{}\nGot:\n{}\n".format(expected_geometry, generated_geometry)
         self.assertEqual(f4['poly_area'], expected_area)
 
+        # Restore test table (after editing it)
+        self.execSQLCommand('TRUNCATE TABLE qgis_test.test_gen_col')
+        self.execSQLCommand('INSERT INTO qgis_test.test_gen_col(id,name,geom) SELECT id,name,geom FROM qgis_test.test_gen_col_edit')
+        self.execSQLCommand('DROP TABLE qgis_test.test_gen_col_edit')
+
     def testNonPkBigintField(self):
         """Test if we can correctly insert, read and change attributes(fields) of type bigint and which are not PKs."""
         vl = QgsVectorLayer(
@@ -636,6 +696,9 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
             "bigint_pk", "postgres")
         self.assertTrue(vl.isValid())
         flds = vl.fields()
+
+        # Backup test table (will be edited)
+        scopedBackup = self.scopedTableBackup('qgis_test', 'bigint_pk')
 
         # check if default values are correctly read back
         f = next(vl.getFeatures(QgsFeatureRequest()))
@@ -696,6 +759,9 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
             "bigint_pk", "postgres")
         flds = vl.fields()
 
+        # Backup test table (will be edited)
+        scopedBackup = self.scopedTableBackup('qgis_test', 'bigint_pk')
+
         self.assertTrue(vl.isValid())
 
         vl.startEditing()
@@ -750,44 +816,51 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
 
         vl.startEditing()
 
+        # Backup test table (will be edited)
+        scopedBackup = self.scopedTableBackup('qgis_test', 'bigint_non_first_pk')
+
         statuses = [-1, -1, -1, -1]
+        values = ['first value', 'second value', 'zero value', 'negative value']
+        newvalues = ['1st value', '2nd value', '0th value', '-1th value']
         # changing values...
         for ft in vl.getFeatures():
-            if ft['value'] == 'first value':
+            if ft['value'] == values[0]:
                 vl.changeAttributeValue(
-                    ft.id(), flds.indexOf('value'), '1st value')
+                    ft.id(), flds.indexOf('value'), newvalues[0])
                 statuses[0] = 0
-            elif ft['value'] == 'second value':
+            elif ft['value'] == values[1]:
                 vl.changeAttributeValue(
-                    ft.id(), flds.indexOf('value'), '2nd value')
+                    ft.id(), flds.indexOf('value'), newvalues[1])
                 statuses[1] = 0
-            elif ft['value'] == 'zero value':
+            elif ft['value'] == values[2]:
                 vl.changeAttributeValue(
-                    ft.id(), flds.indexOf('value'), '0th value')
+                    ft.id(), flds.indexOf('value'), newvalues[2])
                 statuses[2] = 0
-            elif ft['value'] == 'negative value':
+            elif ft['value'] == values[3]:
                 vl.changeAttributeValue(
-                    ft.id(), flds.indexOf('value'), '-1th value')
+                    ft.id(), flds.indexOf('value'), newvalues[3])
                 statuses[3] = 0
         self.assertTrue(vl.commitChanges())
-        self.assertTrue(all(x == 0 for x in statuses))
+        for i in range(len(statuses)):
+            self.assertEqual(statuses[i], 0, 'start value "{}" not found'.format(values[i]))
 
         # now, let's see if the values were changed
         vl2 = QgsVectorLayer(
             '{} sslmode=disable srid=4326 key="pk" table="qgis_test".{} (geom)'.format(
-                self.dbconn, 'bigint_pk'),
+                self.dbconn, 'bigint_non_first_pk'),
             "bigint_pk_nonfirst", "postgres")
         self.assertTrue(vl2.isValid())
         for ft in vl2.getFeatures():
-            if ft['value'] == '1st value':
+            if ft['value'] == newvalues[0]:
                 statuses[0] = 1
-            elif ft['value'] == '2nd value':
+            elif ft['value'] == newvalues[1]:
                 statuses[1] = 1
-            elif ft['value'] == '0th value':
+            elif ft['value'] == newvalues[2]:
                 statuses[2] = 1
-            elif ft['value'] == '-1th value':
+            elif ft['value'] == newvalues[3]:
                 statuses[3] = 1
-        self.assertTrue(all(x == 1 for x in statuses))
+        for i in range(len(statuses)):
+            self.assertEqual(statuses[i], 1, 'changed value "{}" not found'.format(newvalues[i]))
 
     def testPktComposite(self):
         """
@@ -804,6 +877,9 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         self.assertEqual(f['pk1'], 1)
         self.assertEqual(f['pk2'], 2)
         self.assertEqual(f['value'], 'test 2')
+
+        # Backup test table (will be edited)
+        scopedBackup = self.scopedTableBackup('qgis_test', 'tb_test_compound_pk')
 
         # can we edit a field?
         vl.startEditing()
@@ -869,8 +945,11 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         self.assertEqual(f['pk1'], 1)
         self.assertEqual(f['pk2'], 2)
 
-        self.assertEqual(round(f['pk3'], 6), round(3.14159274, 6))
+        self.assertAlmostEqual(f['pk3'], 3.14159274)
         self.assertEqual(f['value'], 'test 2')
+
+        # Backup test table (will be edited)
+        scopedBackup = self.scopedTableBackup('qgis_test', 'tb_test_composite_float_pk')
 
         # can we edit a field?
         vl.startEditing()
@@ -884,8 +963,7 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         self.assertTrue(f2.isValid())
 
         # just making sure we have the correct feature
-        # Only 6 decimals for PostgreSQL 11.
-        self.assertEqual(round(f2['pk3'], 6), round(3.14159274, 6))
+        self.assertAlmostEqual(f2['pk3'], 3.14159274)
 
         # Then, making sure we really did change our value.
         self.assertEqual(f2['value'], 'Edited Test 2')
@@ -906,8 +984,11 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
 
         self.assertTrue(f4.isValid())
         expected_attrs = [4, -9223372036854775800, 7.29154, 'other test']
-        gotten_attrs = [f4['pk1'], f4['pk2'], round(f4['pk3'], 5), f4['value']]
-        self.assertEqual(gotten_attrs, expected_attrs)
+        gotten_attrs = [f4['pk1'], f4['pk2'], f4['pk3'], f4['value']]
+        self.assertEqual(gotten_attrs[0], expected_attrs[0])
+        self.assertEqual(gotten_attrs[1], expected_attrs[1])
+        self.assertAlmostEqual(gotten_attrs[2], expected_attrs[2], places=4)
+        self.assertEqual(gotten_attrs[3], expected_attrs[3])
 
         # Finally, let's delete one of the features.
         f5 = next(vl2.getFeatures(QgsFeatureRequest().setFilterExpression("pk3 = '7.29154'")))
@@ -931,6 +1012,11 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         """
         Check if we can handle floating point/numeric primary keys correctly
         """
+
+        # 0. Backup test table (will be edited)
+        scopedBackup1 = self.scopedTableBackup('qgis_test', 'tb_test_float_pk')
+        scopedBackup2 = self.scopedTableBackup('qgis_test', 'tb_test_double_pk')
+
         # 1. 32 bit float (PostgreSQL "REAL" type)
         vl = QgsVectorLayer(self.dbconn + ' sslmode=disable srid=4326 key="pk" table="qgis_test"."tb_test_float_pk" (geom)', "test_float_pk", "postgres")
         self.assertTrue(vl.isValid())
@@ -977,7 +1063,7 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         # 1.4.1. Checking insertion
         f2 = next(vl2.getFeatures(QgsFeatureRequest().setFilterExpression("pk = '0.22222222222222222222222'")))
         self.assertTrue(f2.isValid())
-        self.assertEqual(round(f2['pk'], 6), round(0.2222222222222222, 6))
+        self.assertAlmostEqual(f2['pk'], 0.2222222222222222)
         self.assertEqual(f2['value'], 'newly inserted')
         assert compareWkt(f2.geometry().asWkt(), newpointwkt), "Geometry mismatch. Expected: {} Got: {} \n".format(f2.geometry().asWkt(), newpointwkt)
         # One more check: can we retrieve the same row with the value that we got from this layer?
@@ -1033,7 +1119,7 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         # 2.4.1. Checking insertion
         f2 = next(vl2.getFeatures(QgsFeatureRequest().setFilterExpression("pk = '0.22222222222222222222222'")))
         self.assertTrue(f2.isValid())
-        self.assertEqual(round(f2['pk'], 15), round(0.2222222222222222, 15))
+        self.assertAlmostEqual(f2['pk'], 0.2222222222222222, places=15)
         self.assertEqual(f2['value'], 'newly inserted')
         assert compareWkt(f2.geometry().asWkt(), newpointwkt), "Geometry mismatch. Expected: {} Got: {} \n".format(f2.geometry().asWkt(), newpointwkt)
         # One more check: can we retrieve the same row with the value that we got from this layer?
@@ -1057,6 +1143,22 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         self.assertTrue(r)
         self.assertNotEqual(f[0]['obj_id'], NULL, f[0].attributes())
         vl.deleteFeatures([f[0].id()])
+
+    def testClonePreservesFidMap(self):
+        vl = QgsVectorLayer(
+            '{} sslmode=disable srid=4326 key="pk" table="qgis_test".{} (geom)'.format(
+                self.dbconn, 'bigint_pk'),
+            "bigint_pk", "postgres")
+
+        # Generate primary keys
+        f = next(vl.getFeatures('pk = 2'))  # 1
+        f = next(vl.getFeatures('pk = -1'))  # 2
+        fid_orig = f.id()
+
+        clone = vl.clone()
+        f = next(clone.getFeatures('pk = -1'))  # should still be 2
+        fid_copy = f.id()
+        self.assertEqual(fid_orig, fid_copy)
 
     def testNull(self):
         """
@@ -1087,13 +1189,15 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
 
     def testNestedInsert(self):
         tg = QgsTransactionGroup()
-        tg.addLayer(self.vl)
-        self.vl.startEditing()
-        it = self.vl.getFeatures()
+        l = self.getEditableLayer()
+        tg.addLayer(l)
+        l.startEditing()
+        it = l.getFeatures()
         f = next(it)
         f['pk'] = NULL
-        self.vl.addFeature(f)  # Should not deadlock during an active iteration
+        self.assertTrue(l.addFeature(f))  # Should not deadlock during an active iteration
         f = next(it)
+        l.commitChanges()
 
     def testTimeout(self):
         """
@@ -1117,7 +1221,7 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
 
         # prepare a project with transactions enabled
         p = QgsProject()
-        p.setAutoTransaction(True)
+        p.setTransactionMode(Qgis.TransactionMode.AutomaticGroups)
         p.addMapLayers([vl])
         vl.startEditing()
 
@@ -1143,7 +1247,7 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
 
         # prepare a project with transactions enabled
         p = QgsProject()
-        p.setAutoTransaction(True)
+        p.setTransactionMode(Qgis.TransactionMode.AutomaticGroups)
         p.addMapLayers([vl])
         vl.startEditing()
 
@@ -1190,7 +1294,7 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
 
         # prepare a project with transactions enabled
         p = QgsProject()
-        p.setAutoTransaction(True)
+        p.setTransactionMode(Qgis.TransactionMode.AutomaticGroups)
         p.addMapLayers([vl])
 
         # get feature
@@ -1233,7 +1337,7 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
 
         # prepare a project with transactions enabled
         p = QgsProject()
-        p.setAutoTransaction(True)
+        p.setTransactionMode(Qgis.TransactionMode.AutomaticGroups)
         p.addMapLayers([vl])
         vl.startEditing()
 
@@ -1384,6 +1488,9 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         vl = QgsVectorLayer('%s table="qgis_test"."json" sql=' %
                             (self.dbconn), "testjson", "postgres")
         self.assertTrue(vl.isValid())
+
+        # Backup test table (will be edited)
+        tableBackup = self.scopedTableBackup('qgis_test', 'json')
 
         attrs = (
             123,
@@ -1801,17 +1908,25 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
             vl.dataProvider().isSaveAndLoadStyleToDatabaseSupported())
         self.assertTrue(vl.dataProvider().isDeleteStyleFromDatabaseSupported())
 
-        # table layer_styles does not exit
+        # table layer_styles does not exist
+
+        res, err = QgsProviderRegistry.instance().styleExists('postgres', vl.source(), '')
+        self.assertFalse(res)
+        self.assertFalse(err)
+        res, err = QgsProviderRegistry.instance().styleExists('postgres', vl.source(), 'a style')
+        self.assertFalse(res)
+        self.assertFalse(err)
+
         related_count, idlist, namelist, desclist, errmsg = vl.listStylesInDatabase()
         self.assertEqual(related_count, -1)
         self.assertEqual(idlist, [])
         self.assertEqual(namelist, [])
         self.assertEqual(desclist, [])
-        self.assertNotEqual(errmsg, "")
+        self.assertFalse(errmsg)
 
         qml, errmsg = vl.getStyleFromDatabase("1")
-        self.assertEqual(qml, "")
-        self.assertNotEqual(errmsg, "")
+        self.assertFalse(qml)
+        self.assertTrue(errmsg)
 
         mFilePath = QDir.toNativeSeparators(
             '%s/symbol_layer/%s.qml' % (unitTestDataPath(), "singleSymbol"))
@@ -1821,27 +1936,37 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         # The style is saved as non-default
         errorMsg = vl.saveStyleToDatabase(
             "by day", "faded greens and elegant patterns", False, "")
-        self.assertEqual(errorMsg, "")
+        self.assertFalse(errorMsg)
 
         # the style id should be "1", not "by day"
         qml, errmsg = vl.getStyleFromDatabase("by day")
         self.assertEqual(qml, "")
         self.assertNotEqual(errmsg, "")
 
+        res, err = QgsProviderRegistry.instance().styleExists('postgres', vl.source(), '')
+        self.assertFalse(res)
+        self.assertFalse(err)
+        res, err = QgsProviderRegistry.instance().styleExists('postgres', vl.source(), 'a style')
+        self.assertFalse(res)
+        self.assertFalse(err)
+        res, err = QgsProviderRegistry.instance().styleExists('postgres', vl.source(), 'by day')
+        self.assertTrue(res)
+        self.assertFalse(err)
+
         related_count, idlist, namelist, desclist, errmsg = vl.listStylesInDatabase()
         self.assertEqual(related_count, 1)
-        self.assertEqual(errmsg, "")
+        self.assertFalse(errmsg)
         self.assertEqual(idlist, ["1"])
         self.assertEqual(namelist, ["by day"])
         self.assertEqual(desclist, ["faded greens and elegant patterns"])
 
         qml, errmsg = vl.getStyleFromDatabase("100")
-        self.assertEqual(qml, "")
-        self.assertNotEqual(errmsg, "")
+        self.assertFalse(qml)
+        self.assertTrue(errmsg)
 
         qml, errmsg = vl.getStyleFromDatabase("1")
         self.assertTrue(qml.startswith('<!DOCTYPE qgis'), qml)
-        self.assertEqual(errmsg, "")
+        self.assertFalse(errmsg)
 
         res, errmsg = vl.deleteStyleFromDatabase("100")
         self.assertTrue(res)
@@ -1849,15 +1974,31 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
 
         res, errmsg = vl.deleteStyleFromDatabase("1")
         self.assertTrue(res)
-        self.assertEqual(errmsg, "")
+        self.assertFalse(errmsg)
 
         # We save now the style again twice but with one as default
-        errorMsg = vl.saveStyleToDatabase(
+        errmsg = vl.saveStyleToDatabase(
             "related style", "faded greens and elegant patterns", False, "")
-        self.assertEqual(errorMsg, "")
-        errorMsg = vl.saveStyleToDatabase(
+        self.assertEqual(errmsg, "")
+        errmsg = vl.saveStyleToDatabase(
             "default style", "faded greens and elegant patterns", True, "")
-        self.assertEqual(errorMsg, "")
+        self.assertFalse(errmsg)
+
+        res, err = QgsProviderRegistry.instance().styleExists('postgres', vl.source(), '')
+        self.assertFalse(res)
+        self.assertFalse(err)
+        res, err = QgsProviderRegistry.instance().styleExists('postgres', vl.source(), 'a style')
+        self.assertFalse(res)
+        self.assertFalse(err)
+        res, err = QgsProviderRegistry.instance().styleExists('postgres', vl.source(), 'default style')
+        self.assertTrue(res)
+        self.assertFalse(err)
+        res, err = QgsProviderRegistry.instance().styleExists('postgres', vl.source(), 'related style')
+        self.assertTrue(res)
+        self.assertFalse(err)
+        res, err = QgsProviderRegistry.instance().styleExists('postgres', vl.source(), 'by day')
+        self.assertFalse(res)
+        self.assertFalse(err)
 
         related_count, idlist, namelist, desclist, errmsg = vl.listStylesInDatabase()
         self.assertEqual(related_count, 2)
@@ -1869,18 +2010,31 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         # We remove these 2 styles
         res, errmsg = vl.deleteStyleFromDatabase("2")
         self.assertTrue(res)
-        self.assertEqual(errmsg, "")
+        self.assertFalse(errmsg)
         res, errmsg = vl.deleteStyleFromDatabase("3")
         self.assertTrue(res)
-        self.assertEqual(errmsg, "")
+        self.assertFalse(errmsg)
 
-        # table layer_styles does exit, but is now empty
+        # table layer_styles does exist, but is now empty
         related_count, idlist, namelist, desclist, errmsg = vl.listStylesInDatabase()
         self.assertEqual(related_count, 0)
         self.assertEqual(idlist, [])
         self.assertEqual(namelist, [])
         self.assertEqual(desclist, [])
-        self.assertEqual(errmsg, "")
+        self.assertFalse(errmsg)
+
+        res, err = QgsProviderRegistry.instance().styleExists('postgres', vl.source(), '')
+        self.assertFalse(res)
+        self.assertFalse(err)
+        res, err = QgsProviderRegistry.instance().styleExists('postgres', vl.source(), 'a style')
+        self.assertFalse(res)
+        self.assertFalse(err)
+        res, err = QgsProviderRegistry.instance().styleExists('postgres', vl.source(), 'default style')
+        self.assertFalse(res)
+        self.assertFalse(err)
+        res, err = QgsProviderRegistry.instance().styleExists('postgres', vl.source(), 'related style')
+        self.assertFalse(res)
+        self.assertFalse(err)
 
     def testStyleWithGeometryType(self):
         """Test saving styles with the additional geometry type
@@ -2309,6 +2463,9 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         _test(vl, [1, 3])
 
     def testValidLayerDiscoverRelationsNone(self):
+        """
+        Test checks that discover relation feature can be used on a layer that has no relation.
+        """
         vl = QgsVectorLayer(
             self.dbconn +
             ' sslmode=disable key=\'pk\' srid=4326 type=POINT table="qgis_test"."someData" (geom) sql=',
@@ -2317,10 +2474,42 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         self.assertEqual(vl.dataProvider().discoverRelations(vl, []), [])
 
     def testInvalidLayerDiscoverRelations(self):
+        """
+        Test that discover relations feature can be used on invalid layer.
+        """
         vl = QgsVectorLayer('{} table="qgis_test"."invalid_layer" sql='.format(self.dbconn), "invalid_layer",
                             "postgres")
         self.assertFalse(vl.isValid())
         self.assertEqual(vl.dataProvider().discoverRelations(vl, []), [])
+
+    def testValidLayerDiscoverRelations(self):
+        """
+        Test implicit relations that can be discovers between tables, based on declared foreign keys.
+        The test also checks that two distinct relations can be discovered when two foreign keys are declared (see #41138).
+        """
+        vl = QgsVectorLayer(
+            self.dbconn +
+            ' sslmode=disable key=\'pk\' checkPrimaryKeyUnicity=\'1\' table="qgis_test"."referencing_layer"',
+            'referencing_layer', 'postgres')
+        vls = [
+            QgsVectorLayer(
+                self.dbconn +
+                ' sslmode=disable key=\'pk_ref_1\' checkPrimaryKeyUnicity=\'1\' table="qgis_test"."referenced_layer_1"',
+                'referenced_layer_1', 'postgres'),
+            QgsVectorLayer(
+                self.dbconn +
+                ' sslmode=disable key=\'pk_ref_2\' checkPrimaryKeyUnicity=\'1\' table="qgis_test"."referenced_layer_2"',
+                'referenced_layer_2', 'postgres'),
+            vl
+        ]
+
+        for lyr in vls:
+            self.assertTrue(lyr.isValid())
+            QgsProject.instance().addMapLayer(lyr)
+        relations = vl.dataProvider().discoverRelations(vl, vls)
+        self.assertEqual(len(relations), 2)
+        for i, r in enumerate(relations):
+            self.assertEqual(r.referencedLayer(), vls[i])
 
     def testCheckTidPkOnViews(self):
         """Test vector layer based on a view with `ctid` as a key"""
@@ -2345,6 +2534,8 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
             'test', 'postgres')
         self.assertTrue(vl.isValid())
         self.assertTrue(vl.featureCount() > 0)
+        vl.setSubsetString('"pk" = 3')
+        self.assertGreaterEqual(vl.featureCount(), 1)
 
     def testFeatureCountEstimatedOnView(self):
         """
@@ -2359,6 +2550,8 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
             'test', 'postgres')
         self.assertTrue(vl.isValid())
         self.assertTrue(vl.featureCount() > 0)
+        vl.setSubsetString('"pk" = 3')
+        self.assertGreaterEqual(vl.featureCount(), 1)
 
     def testIdentityPk(self):
         """Test a table with identity pk, see GH #29560"""
@@ -2373,6 +2566,8 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         geom = QgsGeometry.fromWkt('POLYGON EMPTY')
         feature.setGeometry(geom)
         self.assertTrue(vl.dataProvider().addFeature(feature))
+
+        self.assertEqual(vl.dataProvider().defaultValueClause(0), "nextval('b29560_gid_seq'::regclass)")
 
         del (vl)
 
@@ -2598,6 +2793,123 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
 
         _test(vl, QgsRectangle(-181, -90, 181, 90), [1, 2, 3])  # no use of spatial index currently
 
+    def testReadCustomSRID(self):
+        """Test that we can correctly read the SRS from a custom SRID"""
+
+        md = QgsProviderRegistry.instance().providerMetadata("postgres")
+        conn = md.createConnection(self.dbconn, {})
+
+        # Cleanup if needed
+        try:
+            conn.dropVectorTable('qgis_test', 'test_custom_srid')
+        except QgsProviderConnectionException:
+            pass
+
+        conn.executeSql("DELETE FROM spatial_ref_sys WHERE srid = 543210 AND auth_name='FOO' AND auth_srid=32600;")
+        conn.executeSql("""INSERT INTO spatial_ref_sys (srid, auth_name, auth_srid, srtext, proj4text) VALUES (543210, 'FOO', 32600, 'PROJCS["my_projection",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",0],PARAMETER["scale_factor",1],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH]]','+proj=tmerc +lat_0=0 +lon_0=0 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs');""")
+
+        conn.executeSql('''
+        CREATE TABLE "qgis_test"."test_custom_srid" (
+            gid serial primary key,
+            geom geometry(Point, 543210)
+        );''')
+
+        layer = QgsVectorLayer(self.dbconn + ' sslmode=disable key=\'gid\'table="qgis_test"."test_custom_srid" (geom) sql=', 'test', 'postgres')
+
+        conn.executeSql("DELETE FROM spatial_ref_sys WHERE srid = 543210 AND auth_name='FOO' AND auth_srid=32600;")
+
+        self.assertTrue(layer.isValid())
+        self.assertEqual(layer.crs().description(), 'my_projection')
+
+    def testSingleMultiColumnPkSmallData(self):
+        """Test Single and Multi Column PK, `Small` Data"""
+        from itertools import combinations
+
+        def test_for_pk_combinations(test_type_list, pk_column_name_list, fids_get_count):
+            pk_column_name = ','.join(pk_column_name_list)
+            set_new_pk = '''
+                ALTER TABLE qgis_test.multi_column_pk_small_data_table DROP CONSTRAINT multi_column_pk_small_data_pk;
+                ALTER TABLE qgis_test.multi_column_pk_small_data_table
+                    ADD CONSTRAINT multi_column_pk_small_data_pk PRIMARY KEY ({});'''
+            set_new_layer = ' sslmode=disable key=\'{}\' srid=3857 type=POLYGON table="qgis_test"."multi_column_pk_small_data_{}" (geom) sql='
+            error_string = 'from {} with PK - {} : expected {}, got {}'
+
+            if 'table' in test_type_list:
+                self.execSQLCommand(set_new_pk.format(pk_column_name))
+            for test_type in test_type_list:
+                vl = QgsVectorLayer(self.dbconn + set_new_layer.format(pk_column_name, test_type), 'test_multi_column_pk_small_data', 'postgres')
+                fids = [f.id() for f in vl.getFeatures(QgsFeatureRequest().setLimit(fids_get_count))]
+                fids2 = [f.id() for f in vl.getFeatures(fids)]
+                self.assertEqual(fids_get_count, len(fids), "Get with limit " +
+                                 error_string.format(test_type, pk_column_name, fids_get_count, len(fids)))
+                self.assertEqual(fids_get_count, len(fids2), "Get by fids " +
+                                 error_string.format(test_type, pk_column_name, fids_get_count, len(fids2)))
+
+        self.execSQLCommand('DROP TABLE IF EXISTS qgis_test.multi_column_pk_small_data_table CASCADE;')
+        self.execSQLCommand('''
+        CREATE TABLE qgis_test.multi_column_pk_small_data_table (
+          id_serial serial NOT NULL,
+          id_uuid uuid NOT NULL,
+          id_int int NOT NULL,
+          id_bigint bigint NOT NULL,
+          id_str character varying(20) NOT NULL,
+          id_inet4 inet NOT NULL,
+          id_inet6 inet NOT NULL,
+          id_cidr4 cidr NOT NULL,
+          id_cidr6 cidr NOT NULL,
+          id_macaddr macaddr NOT NULL,
+          id_macaddr8 macaddr8 NOT NULL,
+          id_timestamp timestamp with time zone NOT NULL,
+          id_half_null_uuid uuid,
+          id_all_null_uuid uuid,
+          geom geometry(Polygon,3857),
+          CONSTRAINT multi_column_pk_small_data_pk
+            PRIMARY KEY (id_serial, id_uuid, id_int, id_bigint, id_str) );''')
+        self.execSQLCommand('''
+        CREATE OR REPLACE VIEW qgis_test.multi_column_pk_small_data_view AS
+          SELECT * FROM qgis_test.multi_column_pk_small_data_table;
+        DROP MATERIALIZED VIEW IF EXISTS qgis_test.multi_column_pk_small_data_mat_view;
+        CREATE MATERIALIZED VIEW qgis_test.multi_column_pk_small_data_mat_view AS
+          SELECT * FROM qgis_test.multi_column_pk_small_data_table;''')
+        self.execSQLCommand('''
+        TRUNCATE qgis_test.multi_column_pk_small_data_table;
+        INSERT INTO qgis_test.multi_column_pk_small_data_table(
+          id_uuid, id_int, id_bigint, id_str, id_inet4, id_inet6, id_cidr4, id_cidr6,
+            id_macaddr, id_macaddr8, id_timestamp, id_half_null_uuid, id_all_null_uuid, geom)
+          SELECT
+            ( (10000000)::text || (100000000000 + dy)::text || (100000000000 + dx)::text )::uuid,
+            dx + 1000000 * dy,                                                    --id_int
+            dx + 1000000 * dy,                                                    --id_bigint
+            dx || E\' ot\\'her \' || dy,                                          --id_str
+            (\'192.168.0.1\'::inet + dx + 100 * dy )::inet,                       --id_inet4
+            (\'2001:4f8:3:ba:2e0:81ff:fe22:d1f1\'::inet + dx + 100 * dy )::inet,  --id_inet6
+            (\'192.168.0.1\'::cidr + dx + 100 * dy )::cidr,                       --id_cidr4
+            (\'2001:4f8:3:ba:2e0:81ff:fe22:d1f1\'::cidr + dx + 100 * dy )::cidr,  --id_cidr6
+            ((112233445566 + dx + 100 * dy)::text)::macaddr,                      --id_macaddr
+            ((1122334455667788 + dx + 100 * dy)::text)::macaddr8,                 --id_macaddr8
+            now() - ((dx||\' hour\')::text)::interval - ((dy||\' day\')::text)::interval,
+            NULLIF( ( (10000000)::text || (100000000000 + dy)::text || (100000000000 + dx)::text )::uuid,
+              ( (10000000)::text || (100000000000 + dy + dy%2)::text || (100000000000 + dx)::text )::uuid ),
+            NULL,
+            ST_Translate(
+              ST_GeomFromText(\'POLYGON((3396900.0 6521800.0,3396900.0 6521870.0,
+                  3396830.0 6521870.0,3396830.0 6521800.0,3396900.0 6521800.0))\', 3857 ),
+              100.0 * dx,
+              100.0 * dy )
+          FROM generate_series(1,3) dx, generate_series(1,3) dy;
+        REFRESH MATERIALIZED VIEW qgis_test.multi_column_pk_small_data_mat_view;''')
+
+        pk_col_list = ("id_serial", "id_uuid", "id_int", "id_bigint", "id_str", "id_inet4", "id_inet6", "id_cidr4", "id_cidr6", "id_macaddr", "id_macaddr8")
+        test_type_list = ["table", "view", "mat_view"]
+        for n in [1, 2, len(pk_col_list)]:
+            pk_col_set_list = list(combinations(pk_col_list, n))
+            for pk_col_set in pk_col_set_list:
+                test_for_pk_combinations(test_type_list, pk_col_set, 7)
+
+        for col_name in ["id_serial", "id_uuid", "id_int", "id_bigint", "id_str", "id_inet4"]:
+            test_for_pk_combinations(["view", "mat_view"], ["id_half_null_uuid", col_name], 7)
+            test_for_pk_combinations(["view", "mat_view"], ["id_all_null_uuid", col_name], 7)
+
     def testChangeAttributeWithDefaultValue(self):
         """Test that we can change an attribute value with its default value"""
 
@@ -2648,6 +2960,201 @@ class TestPyQgsPostgresProvider(unittest.TestCase, ProviderTestCase):
         self.assertEqual(feat["thetext2"], NULL)
         self.assertEqual(feat["thetext3"], "blabla")
         self.assertEqual(feat["thenumber"], 4)
+
+    def testExtractWithinDistanceAlgorithm(self):
+
+        with self.temporarySchema('extract_within_distance') as schema:
+
+            # Create and populate target table in PseudoWebMercator CRS
+            self.execSQLCommand(
+                'CREATE TABLE {}.target_3857 (id serial primary key, g geometry(linestring, 3857))'
+                .format(schema))
+            # -- first line (id=1)
+            self.execSQLCommand(
+                "INSERT INTO {}.target_3857 (g) values('SRID=3857;LINESTRING(0 0, 1000 1000)')"
+                .format(schema))
+            # -- secodn line is a great circle line on the right (id=2)
+            self.execSQLCommand(
+                "INSERT INTO {}.target_3857 (g) values( ST_Transform('SRID=4326;LINESTRING(80 0,160 80)'::geometry, 3857) )"
+                .format(schema))
+
+            # Create and populate reference table in PseudoWebMercator CRS
+            self.execSQLCommand(
+                'CREATE TABLE {}.reference_3857 (id serial primary key, g geometry(point, 3857))'
+                .format(schema))
+            self.execSQLCommand(
+                "INSERT INTO {}.reference_3857 (g) values('SRID=3857;POINT(500 999)')"
+                .format(schema))
+            self.execSQLCommand(
+                "INSERT INTO {}.reference_3857 (g) values('SRID=3857;POINT(501 999)')"
+                .format(schema))
+            self.execSQLCommand(
+                # -- this reference (id=3) is ON the first line (id=1) in webmercator
+                # -- and probably very close in latlong WGS84
+                "INSERT INTO {}.reference_3857 (g) values('SRID=3857;POINT(500 500)')"
+                .format(schema))
+            self.execSQLCommand(
+                # -- this reference (id=4) is at ~ 5 meters from second line (id=2) in webmercator
+                "INSERT INTO {}.reference_3857 (g) values('SRID=3857;POINT(12072440.688888172 5525668.358321408)')"
+                .format(schema))
+            self.execSQLCommand(
+                "INSERT INTO {}.reference_3857 (g) values('SRID=3857;POINT(503 999)')"
+                .format(schema))
+            self.execSQLCommand(
+                "INSERT INTO {}.reference_3857 (g) values('SRID=3857;POINT(504 999)')"
+                .format(schema))
+
+            # Create and populate target and reference table in WGS84 latlong
+            self.execSQLCommand(
+                'CREATE TABLE {0}.target_4326 AS SELECT id, ST_Transform(g, 4326)::geometry(linestring,4326) as g FROM {0}.target_3857'
+                .format(schema))
+            self.execSQLCommand(
+                'CREATE TABLE {0}.reference_4326 AS SELECT id, ST_Transform(g, 4326)::geometry(point,4326) as g FROM {0}.reference_3857'
+                .format(schema))
+
+            # Create target and reference layers
+            vl_target_3857 = QgsVectorLayer(
+                '{} sslmode=disable key=id srid=3857 type=LINESTRING table="{}"."target_3857" (g) sql='
+                .format(self.dbconn, schema),
+                'target_3857', 'postgres')
+            self.assertTrue(vl_target_3857.isValid(), "Could not create a layer from the '{}.target_3857' table using dbconn '{}'" .format(schema, self.dbconn))
+            vl_reference_3857 = QgsVectorLayer(
+                '{} sslmode=disable key=id srid=3857 type=POINT table="{}"."reference_3857" (g) sql='
+                .format(self.dbconn, schema),
+                'reference_3857', 'postgres')
+            self.assertTrue(vl_reference_3857.isValid(), "Could not create a layer from the '{}.reference_3857' table using dbconn '{}'" .format(schema, self.dbconn))
+            vl_target_4326 = QgsVectorLayer(
+                '{} sslmode=disable key=id srid=4326 type=LINESTRING table="{}"."target_4326" (g) sql='
+                .format(self.dbconn, schema),
+                'target_4326', 'postgres')
+            self.assertTrue(vl_target_4326.isValid(), "Could not create a layer from the '{}.target_4326' table using dbconn '{}'" .format(schema, self.dbconn))
+            vl_reference_4326 = QgsVectorLayer(
+                '{} sslmode=disable key=id srid=4326 type=POINT table="{}"."reference_4326" (g) sql='
+                .format(self.dbconn, schema),
+                'reference_4326', 'postgres')
+            self.assertTrue(vl_reference_4326.isValid(), "Could not create a layer from the '{}.reference_4326' table using dbconn '{}'" .format(schema, self.dbconn))
+
+            # Create the ExtractWithinDistance algorithm
+            # TODO: move registry initialization in class initialization ?
+            QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
+            registry = QgsApplication.instance().processingRegistry()
+            alg = registry.createAlgorithmById('native:extractwithindistance')
+            self.assertIsNotNone(alg)
+
+            # Utility feedback and context objects
+            class ConsoleFeedBack(QgsProcessingFeedback):
+                _error = ''
+
+                def reportError(self, error, fatalError=False):
+                    self._error = error
+                    print(error)
+
+            feedback = ConsoleFeedBack()
+            context = QgsProcessingContext()
+
+            # ----------------------------------------------------------------
+            # Run the ExtractWithinDistance algorithm with matching
+            # target_3857 and reference_3857 CRSs
+
+            parameters = {
+                # extract features from here:
+                'INPUT': vl_target_3857,
+                # extracted features must be within given
+                # distance from this layer:
+                'REFERENCE': vl_reference_3857,
+                # distance (in INPUT units)
+                'DISTANCE': 10,  # meters
+                'OUTPUT': 'memory:result'
+            }
+
+            # Note: the following returns true also in case of errors ...
+            result = alg.run(parameters, context, feedback)
+            self.assertEqual(result[1], True)
+
+            result_layer_name = result[0]['OUTPUT']
+            vl_result = QgsProcessingUtils.mapLayerFromString(result_layer_name, context)
+            self.assertTrue(vl_result.isValid())
+
+            extracted_fids = [f['id'] for f in vl_result.getFeatures()]
+            self.assertEqual(set(extracted_fids), {1, 2})
+
+            # ----------------------------------------------------------------
+            # Run the ExtractWithinDistance algorithm with matching
+            # target_4326 and reference_4326 CRSs
+
+            parameters = {
+                # extract features from here:
+                'INPUT': vl_target_4326,
+                # extracted features must be within given
+                # distance from this layer:
+                'REFERENCE': vl_reference_4326,
+                # distance (in INPUT units)
+                'DISTANCE': 9e-5,  # degrees
+                'OUTPUT': 'memory:result'
+            }
+
+            # Note: the following returns true also in case of errors ...
+            result = alg.run(parameters, context, feedback)
+            self.assertEqual(result[1], True)
+
+            result_layer_name = result[0]['OUTPUT']
+            vl_result = QgsProcessingUtils.mapLayerFromString(result_layer_name, context)
+            self.assertTrue(vl_result.isValid())
+
+            extracted_fids = [f['id'] for f in vl_result.getFeatures()]
+            self.assertEqual(set(extracted_fids), {1})
+
+            # ----------------------------------------------------------------
+            # Run the ExtractWithinDistance algorithm with
+            # target in 4326 CRS and reference in 3857 CRS
+
+            parameters = {
+                # extract features from here:
+                'INPUT': vl_target_4326,
+                # extracted features must be within given
+                # distance from this layer:
+                'REFERENCE': vl_reference_3857,
+                # distance (in INPUT units)
+                'DISTANCE': 9e-5,  # degrees
+                'OUTPUT': 'memory:result'
+            }
+
+            # Note: the following returns true also in case of errors ...
+            result = alg.run(parameters, context, feedback)
+            self.assertEqual(result[1], True)
+
+            result_layer_name = result[0]['OUTPUT']
+            vl_result = QgsProcessingUtils.mapLayerFromString(result_layer_name, context)
+            self.assertTrue(vl_result.isValid())
+
+            extracted_fids = [f['id'] for f in vl_result.getFeatures()]
+            self.assertEqual(set(extracted_fids), {1})
+
+            # ----------------------------------------------------------------
+            # Run the ExtractWithinDistance algorithm with
+            # target in 3857 CRS and reference in 4326 CRS
+
+            parameters = {
+                # extract features from here:
+                'INPUT': vl_target_3857,
+                # extracted features must be within given
+                # distance from this layer:
+                'REFERENCE': vl_reference_4326,
+                # distance (in INPUT units)
+                'DISTANCE': 10,  # meters
+                'OUTPUT': 'memory:result'
+            }
+
+            # Note: the following returns true also in case of errors ...
+            result = alg.run(parameters, context, feedback)
+            self.assertEqual(result[1], True)
+
+            result_layer_name = result[0]['OUTPUT']
+            vl_result = QgsProcessingUtils.mapLayerFromString(result_layer_name, context)
+            self.assertTrue(vl_result.isValid())
+
+            extracted_fids = [f['id'] for f in vl_result.getFeatures()]
+            self.assertEqual(set(extracted_fids), {1, 2})  # Bug ?
 
 
 class TestPyQgsPostgresProviderCompoundKey(unittest.TestCase, ProviderTestCase):
@@ -3131,6 +3638,17 @@ class TestPyQgsPostgresProviderBigintSinglePk(unittest.TestCase, ProviderTestCas
         self.assertTrue(lines.isValid())
         self.assertTrue(polygons.isValid())
 
+    def test_read_wkb(self):
+        """ Test to read WKB from Postgis. """
+        md = QgsProviderRegistry.instance().providerMetadata("postgres")
+        conn = md.createConnection(self.dbconn, {})
+        results = conn.executeSql("SELECT ST_AsBinary(ST_MakePoint(5, 10));")
+        wkb = results[0][0]
+        geom = QgsGeometry()
+        import binascii
+        geom.fromWkb(binascii.unhexlify(wkb[2:]))
+        self.assertEqual(geom.asWkt(), "Point (5 10)")
+
     def testTrustFlag(self):
         """Test regression https://github.com/qgis/QGIS/issues/38809"""
 
@@ -3185,6 +3703,38 @@ class TestPyQgsPostgresProviderBigintSinglePk(unittest.TestCase, ProviderTestCas
         self.assertEqual(l.fields().count(), 3)
         self.assertEqual([f.name() for f in l.fields()], ['__rid__', 'id', 'id (2)'])
 
+    def testInsertOnlyFieldIsEditable(self):
+        """Test issue #40922 when an INSERT only use cannot insert a new feature"""
+
+        md = QgsProviderRegistry.instance().providerMetadata("postgres")
+        conn = md.createConnection(self.dbconn, {})
+        conn.executeSql('DROP TABLE IF EXISTS public.insert_only_points')
+        conn.executeSql('DROP USER IF EXISTS insert_only_user')
+        conn.executeSql('CREATE USER insert_only_user WITH PASSWORD \'insert_only_user\'')
+        conn.executeSql('CREATE TABLE insert_only_points (id SERIAL PRIMARY KEY, name VARCHAR(64))')
+        conn.executeSql("SELECT AddGeometryColumn('public', 'insert_only_points', 'geom', 4326, 'POINT', 2 )")
+        conn.executeSql('GRANT SELECT ON "public"."insert_only_points" TO insert_only_user')
+
+        uri = QgsDataSourceUri(self.dbconn +
+                               ' sslmode=disable  key=\'id\'srid=4326 type=POINT table="public"."insert_only_points" (geom) sql=')
+        uri.setUsername('insert_only_user')
+        uri.setPassword('insert_only_user')
+        vl = QgsVectorLayer(uri.uri(), 'test', 'postgres')
+        self.assertTrue(vl.isValid())
+        self.assertFalse(vl.startEditing())
+
+        feature = QgsFeature(vl.fields())
+        self.assertFalse(QgsVectorLayerUtils.fieldIsEditable(vl, 0, feature))
+        self.assertFalse(QgsVectorLayerUtils.fieldIsEditable(vl, 1, feature))
+
+        conn.executeSql('GRANT INSERT ON "public"."insert_only_points" TO insert_only_user')
+        vl = QgsVectorLayer(uri.uri(), 'test', 'postgres')
+
+        feature = QgsFeature(vl.fields())
+        self.assertTrue(vl.startEditing())
+        self.assertTrue(QgsVectorLayerUtils.fieldIsEditable(vl, 0, feature))
+        self.assertTrue(QgsVectorLayerUtils.fieldIsEditable(vl, 1, feature))
+
     def testPkeyIntArray(self):
         """
         Test issue #42778 when pkey is an int array
@@ -3210,6 +3760,82 @@ class TestPyQgsPostgresProviderBigintSinglePk(unittest.TestCase, ProviderTestCas
         feat = vl.getFeature(fid)
         self.assertTrue(feat.isValid())
         self.assertEqual(feat["name"], "test")
+
+    def testExportPkGuessLogic(self):
+        """Test that when creating an empty layer a NOT NULL UNIQUE numeric field is identified as a PK"""
+
+        md = QgsProviderRegistry.instance().providerMetadata("postgres")
+        conn = md.createConnection(self.dbconn, {})
+        conn.executeSql(
+            'DROP TABLE IF EXISTS qgis_test."testExportPkGuessLogic_source" CASCADE')
+        conn.executeSql(
+            'DROP TABLE IF EXISTS qgis_test."testExportPkGuessLogic_exported" CASCADE')
+        conn.executeSql(
+            """CREATE TABLE qgis_test."testExportPkGuessLogic_source" ( id bigint generated always as identity primary key,
+                    geom geometry(Point, 4326) check (st_isvalid(geom)),
+                    name text unique, author text not null)""")
+
+        source_layer = QgsVectorLayer(self.dbconn + ' sslmode=disable key=\'id\' srid=4326 type=POINT table="qgis_test"."testExportPkGuessLogic_source" (geom) sql=', 'testExportPkGuessLogic_source', 'postgres')
+
+        md = QgsProviderRegistry.instance().providerMetadata('postgres')
+        conn = md.createConnection(self.dbconn, {})
+        table = conn.table("qgis_test", "testExportPkGuessLogic_source")
+        self.assertEqual(table.primaryKeyColumns(), ['id'])
+
+        self.assertTrue(source_layer.isValid())
+
+        # Create the URI as the browser does (no PK information)
+        uri = self.dbconn + ' sslmode=disable srid=4326 type=POINT table="qgis_test"."testExportPkGuessLogic_exported" (geom) sql='
+
+        exporter = QgsVectorLayerExporter(uri, 'postgres', source_layer.fields(), source_layer.wkbType(), source_layer.crs(), True, {})
+        self.assertTrue(exporter.lastError() == '')
+
+        exported_layer = QgsVectorLayer(self.dbconn + ' sslmode=disable srid=4326 type=POINT table="qgis_test"."testExportPkGuessLogic_exported" (geom) sql=', 'testExportPkGuessLogic_exported', 'postgres')
+        self.assertTrue(exported_layer.isValid())
+
+        table = conn.table("qgis_test", "testExportPkGuessLogic_exported")
+        self.assertEqual(table.primaryKeyColumns(), ['id'])
+
+        self.assertEqual(exported_layer.fields().names(), ['id', 'name', 'author'])
+
+    def testEwkt(self):
+        vl = QgsVectorLayer(f'{self.dbconn} table="qgis_test"."someData" sql=', "someData", "postgres")
+        tg = QgsTransactionGroup()
+        tg.addLayer(vl)
+
+        feature = next(vl.getFeatures())
+        # make sure we get a QgsReferenceGeometry and not "just" a string
+        self.assertEqual(feature['geom'].crs().authid(), 'EPSG:4326')
+
+        vl.startEditing()
+
+        # Layer accepts a referenced geometry
+        feature['geom'] = QgsReferencedGeometry(QgsGeometry.fromWkt('POINT(70 70)'), QgsCoordinateReferenceSystem.fromEpsgId(4326))
+        self.assertTrue(vl.updateFeature(feature))
+
+        # Layer will accept null geometry
+        feature['geom'] = QgsReferencedGeometry()
+        self.assertTrue(vl.updateFeature(feature))
+
+        # Layer will not accept invalid crs
+        feature['geom'] = QgsReferencedGeometry(QgsGeometry.fromWkt('POINT(1 1)'), QgsCoordinateReferenceSystem())
+        self.assertFalse(vl.updateFeature(feature))
+
+        # EWKT strings are accepted too
+        feature['geom'] = 'SRID=4326;Point (71 78)'
+        self.assertTrue(vl.updateFeature(feature))
+
+        # addFeature
+        feature['pk'] = 8
+        self.assertTrue(vl.addFeature(feature))
+
+        # changeAttributeValue
+        geom = QgsReferencedGeometry(QgsGeometry.fromWkt('POINT(3 3)'), QgsCoordinateReferenceSystem.fromEpsgId(4326))
+
+        feature['pk'] = 8
+        self.assertTrue(vl.changeAttributeValue(8, 8, geom))
+        self.assertEqual(vl.getFeature(8)['geom'].asWkt(), geom.asWkt())
+        self.assertEqual(vl.getFeature(8)['geom'].crs(), geom.crs())
 
 
 if __name__ == '__main__':

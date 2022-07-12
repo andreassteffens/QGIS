@@ -23,6 +23,7 @@
 #include <QSqlQuery>
 
 #include "qgsoracleprovider.h"
+#include "qgscoordinatetransform.h"
 
 class QgsOracleConn;
 class QgsOracleProvider;
@@ -98,6 +99,10 @@ class QgsOracleFeatureIterator final: public QgsAbstractFeatureIteratorFromSourc
 
     QgsCoordinateTransform mTransform;
     QgsRectangle mFilterRect;
+
+    QgsGeometry mDistanceWithinGeom;
+    std::unique_ptr< QgsGeometryEngine > mDistanceWithinEngine;
+
     bool mIsTransactionConnection = false;
 };
 

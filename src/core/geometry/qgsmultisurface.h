@@ -51,7 +51,7 @@ class CORE_EXPORT QgsMultiSurface: public QgsGeometryCollection
     /**
      * Returns the surface with the specified \a index.
      *
-     * An IndexError will be raised if no surface with the specified index exists.
+     * \throws IndexError if no surface with the specified index exists.
      *
      * \since QGIS 3.16
      */
@@ -102,12 +102,12 @@ class CORE_EXPORT QgsMultiSurface: public QgsGeometryCollection
      * \note Not available in Python. Objects will be automatically be converted to the appropriate target type.
      * \since QGIS 3.0
      */
-    inline const QgsMultiSurface *cast( const QgsAbstractGeometry *geom ) const
+    inline static const QgsMultiSurface *cast( const QgsAbstractGeometry *geom )
     {
       if ( !geom )
         return nullptr;
 
-      QgsWkbTypes::Type flatType = QgsWkbTypes::flatType( geom->wkbType() );
+      const QgsWkbTypes::Type flatType = QgsWkbTypes::flatType( geom->wkbType() );
 
       if ( flatType == QgsWkbTypes::MultiSurface
            || flatType == QgsWkbTypes::MultiPolygon )

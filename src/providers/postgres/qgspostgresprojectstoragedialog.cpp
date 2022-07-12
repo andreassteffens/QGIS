@@ -51,7 +51,7 @@ QgsPostgresProjectStorageDialog::QgsPostgresProjectStorageDialog( bool saving, Q
     setWindowTitle( tr( "Load project from PostgreSQL" ) );
   }
 
-  connect( mCboConnection, qgis::overload< int >::of( &QComboBox::currentIndexChanged ), this, &QgsPostgresProjectStorageDialog::populateSchemas );
+  connect( mCboConnection, qOverload< int >( &QComboBox::currentIndexChanged ), this, &QgsPostgresProjectStorageDialog::populateSchemas );
 
   mLblProjectsNotAllowed->setVisible( false );
 
@@ -63,8 +63,8 @@ QgsPostgresProjectStorageDialog::QgsPostgresProjectStorageDialog( bool saving, Q
   mCboConnection->setCurrentIndex( mCboConnection->findText( toSelect ) );
   populateProjects();
 
-  connect( mCboSchema, qgis::overload< int >::of( &QComboBox::currentIndexChanged ), this, &QgsPostgresProjectStorageDialog::populateProjects );
-  connect( mCboProject, qgis::overload< int >::of( &QComboBox::currentIndexChanged ), this, &QgsPostgresProjectStorageDialog::projectChanged );
+  connect( mCboSchema, qOverload< int >( &QComboBox::currentIndexChanged ), this, &QgsPostgresProjectStorageDialog::populateProjects );
+  connect( mCboProject, &QComboBox::currentTextChanged, this, &QgsPostgresProjectStorageDialog::projectChanged );
 
   projectChanged();
 }
@@ -119,7 +119,7 @@ void QgsPostgresProjectStorageDialog::populateSchemas()
     return;
   }
 
-  for ( const QgsPostgresSchemaProperty &schema : qgis::as_const( schemas ) )
+  for ( const QgsPostgresSchemaProperty &schema : std::as_const( schemas ) )
   {
     mCboSchema->addItem( schema.name );
   }
@@ -130,11 +130,13 @@ void QgsPostgresProjectStorageDialog::populateSchemas()
 void QgsPostgresProjectStorageDialog::populateProjects()
 {
   mCboProject->clear();
+  mExistingProjects.clear();
 
   QString uri = currentProjectUri();
   QgsProjectStorage *storage = QgsApplication::projectStorageRegistry()->projectStorageFromType( QStringLiteral( "postgresql" ) );
   Q_ASSERT( storage );
-  mCboProject->addItems( storage->listProjects( uri ) );
+  mExistingProjects = storage->listProjects( uri );
+  mCboProject->addItems( mExistingProjects );
   projectChanged();
 }
 
@@ -146,7 +148,7 @@ void QgsPostgresProjectStorageDialog::onOK()
 
   if ( mSaving )
   {
-    if ( mCboProject->findText( mCboProject->currentText() ) != -1 )
+    if ( mExistingProjects.contains( mCboProject->currentText() ) )
     {
       int res = QMessageBox::question( this, tr( "Overwrite project" ),
                                        tr( "A project with the same name already exists. Would you like to overwrite it?" ),
@@ -161,7 +163,7 @@ void QgsPostgresProjectStorageDialog::onOK()
 
 void QgsPostgresProjectStorageDialog::projectChanged()
 {
-  mActionRemoveProject->setEnabled( mCboProject->count() != 0 && mCboProject->findText( mCboProject->currentText() ) != -1 );
+  mActionRemoveProject->setEnabled( mCboProject->count() != 0 && mExistingProjects.contains( mCboProject->currentText() ) );
 }
 
 void QgsPostgresProjectStorageDialog::removeProject()

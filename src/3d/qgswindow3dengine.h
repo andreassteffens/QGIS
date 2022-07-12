@@ -59,10 +59,8 @@ class _3D_EXPORT QgsWindow3DEngine : public QgsAbstract3DEngine
     //! Returns the internal 3D window where all the rendered output is displayed
     QWindow *window();
 
-    //! Returns the frame graph object
-    QgsShadowRenderingFrameGraph *shadowRenderingFrameGraph() { return mShadowRenderingFrameGraph; }
-
-    void requestCaptureImage() override;
+    //! Returns the root entity
+    Qt3DCore::QEntity *root() const;
 
     //! Sets whether shadow rendering is enabled
     void setShadowRenderingEnabled( bool enabled );
@@ -78,17 +76,17 @@ class _3D_EXPORT QgsWindow3DEngine : public QgsAbstract3DEngine
     QSize size() const override;
     QSurface *surface() const override;
 
+    void setSize( QSize s ) override;
   private:
     //! 3D window with all the 3D magic inside
     Qt3DExtras::Qt3DWindow *mWindow3D = nullptr;
     //! Frame graph node for render capture
     bool mShadowRenderingEnabled = false;
-    QgsShadowRenderingFrameGraph *mShadowRenderingFrameGraph = nullptr;
-    Qt3DExtras::QForwardRenderer *mDefaultForwardRenderer = nullptr;
     Qt3DCore::QEntity *mRoot = nullptr;
     Qt3DCore::QEntity *mSceneRoot = nullptr;
 
     QgsPreviewQuad *mPreviewQuad = nullptr;
+    QSize mSize = QSize( 1024, 768 );
 };
 
 #endif // QGSWINDOW3DENGINE_H

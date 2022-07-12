@@ -52,7 +52,7 @@ bool QgsProcessingParameterVectorTileWriterLayers::checkValueIsAcceptable( const
     if ( !inputItemMap.contains( "layer" ) )
       return false;
 
-    QVariant inputItemLayer = inputItemMap["layer"];
+    const QVariant inputItemLayer = inputItemMap["layer"];
 
     if ( qobject_cast< QgsVectorLayer * >( qvariant_cast<QObject *>( inputItemLayer ) ) )
       continue;
@@ -84,7 +84,7 @@ QString QgsProcessingParameterVectorTileWriterLayers::valueAsPythonString( const
     if ( layer.maxZoom() >= 0 )
       layerDefParts << QStringLiteral( "'maxZoom': " ) + QgsProcessingUtils::variantToPythonLiteral( layer.maxZoom() );
 
-    QString layerDef = QStringLiteral( "{ %1 }" ).arg( layerDefParts.join( ',' ) );
+    const QString layerDef = QStringLiteral( "{ %1 }" ).arg( layerDefParts.join( ',' ) );
     parts << layerDef;
   }
   return parts.join( ',' ).prepend( '[' ).append( ']' );
@@ -96,7 +96,8 @@ QString QgsProcessingParameterVectorTileWriterLayers::asPythonString( QgsProcess
   {
     case QgsProcessing::PythonQgsProcessingAlgorithmSubclass:
     {
-      QString code = QStringLiteral( "QgsProcessingParameterVectorTileWriterLayers('%1', '%2')" ).arg( name(), description() );
+      QString code = QStringLiteral( "QgsProcessingParameterVectorTileWriterLayers('%1', %2)" )
+                     .arg( name(), QgsProcessingUtils::stringToPythonLiteral( description() ) );
       return code;
     }
   }
@@ -109,7 +110,7 @@ QList<QgsVectorTileWriter::Layer> QgsProcessingParameterVectorTileWriterLayers::
   const QVariantList layersVariantList = layersVariant.toList();
   for ( const QVariant &layerItem : layersVariantList )
   {
-    QVariantMap layerVariantMap = layerItem.toMap();
+    const QVariantMap layerVariantMap = layerItem.toMap();
     layers << variantMapAsLayer( layerVariantMap, context );
   }
   return layers;
@@ -117,7 +118,7 @@ QList<QgsVectorTileWriter::Layer> QgsProcessingParameterVectorTileWriterLayers::
 
 QgsVectorTileWriter::Layer QgsProcessingParameterVectorTileWriterLayers::variantMapAsLayer( const QVariantMap &layerVariantMap, QgsProcessingContext &context )
 {
-  QVariant layerVariant = layerVariantMap["layer"];
+  const QVariant layerVariant = layerVariantMap["layer"];
 
   QgsVectorLayer *inputLayer = nullptr;
   if ( ( inputLayer = qobject_cast< QgsVectorLayer * >( qvariant_cast<QObject *>( layerVariant ) ) ) )

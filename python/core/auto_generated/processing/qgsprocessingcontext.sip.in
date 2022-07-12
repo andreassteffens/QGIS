@@ -11,9 +11,11 @@
 
 
 
+
+
 class QgsProcessingContext
 {
-%Docstring
+%Docstring(signature="appended")
 Contains information about the context in which a processing algorithm is executed.
 
 Contextual information includes settings such as the associated project, and
@@ -34,6 +36,12 @@ expression context.
     };
     typedef QFlags<QgsProcessingContext::Flag> Flags;
 
+
+    enum LogLevel
+    {
+      DefaultLevel,
+      Verbose,
+    };
 
     QgsProcessingContext();
 %Docstring
@@ -176,6 +184,24 @@ If not explicitly set, the unit will default to the :py:func:`~QgsProcessingCont
 .. versionadded:: 3.16
 %End
 
+    QgsDateTimeRange currentTimeRange() const;
+%Docstring
+Returns the current time range to use for temporal operations.
+
+.. seealso:: :py:func:`setCurrentTimeRange`
+
+.. versionadded:: 3.18
+%End
+
+    void setCurrentTimeRange( const QgsDateTimeRange &currentTimeRange );
+%Docstring
+Sets the ``current`` time range to use for temporal operations.
+
+.. seealso:: :py:func:`currentTimeRange`
+
+.. versionadded:: 3.18
+%End
+
     QgsMapLayerStore *temporaryLayerStore();
 %Docstring
 Returns a reference to the layer store used for storing temporary layers during
@@ -184,7 +210,7 @@ algorithm execution.
 
     class LayerDetails
 {
-%Docstring
+%Docstring(signature="appended")
 Details for layers to load into projects.
 
 .. versionadded:: 3.0
@@ -331,7 +357,7 @@ Returns the behavior used for checking invalid geometries in input layers.
     void setInvalidGeometryCheck( QgsFeatureRequest::InvalidGeometryCheck check );
 %Docstring
 Sets the behavior used for checking invalid geometries in input layers.
-Settings this to anything but QgsFeatureRequest.GeometryNoCheck will also
+Settings this to anything but :py:class:`QgsFeatureRequest`.GeometryNoCheck will also
 reset the :py:func:`~QgsProcessingContext.invalidGeometryCallback` to a default implementation.
 
 .. seealso:: :py:func:`invalidGeometryCheck`
@@ -543,17 +569,58 @@ function will be used when creating these outputs.
 .. versionadded:: 3.10
 %End
 
+    LogLevel logLevel() const;
+%Docstring
+Returns the logging level for algorithms to use when pushing feedback messages to users.
+
+.. seealso:: :py:func:`setLogLevel`
+
+.. versionadded:: 3.20
+%End
+
+    void setLogLevel( LogLevel level );
+%Docstring
+Sets the logging ``level`` for algorithms to use when pushing feedback messages to users.
+
+.. seealso:: :py:func:`logLevel`
+
+.. versionadded:: 3.20
+%End
+
+    QVariantMap exportToMap() const;
+%Docstring
+Exports the context's settings to a variant map.
+
+.. versionadded:: 3.24
+%End
+
+    enum class ProcessArgumentFlag
+    {
+      IncludeProjectPath,
+    };
+    typedef QFlags<QgsProcessingContext::ProcessArgumentFlag> ProcessArgumentFlags;
+
+
+    QStringList asQgisProcessArguments( QgsProcessingContext::ProcessArgumentFlags flags = QgsProcessingContext::ProcessArgumentFlags() ) const;
+%Docstring
+Returns list of the equivalent qgis_process arguments representing the settings from the context.
+
+.. versionadded:: 3.24
+%End
+
   private:
     QgsProcessingContext( const QgsProcessingContext &other );
 };
 
 QFlags<QgsProcessingContext::Flag> operator|(QgsProcessingContext::Flag f1, QFlags<QgsProcessingContext::Flag> f2);
 
+QFlags<QgsProcessingContext::ProcessArgumentFlag> operator|(QgsProcessingContext::ProcessArgumentFlag f1, QFlags<QgsProcessingContext::ProcessArgumentFlag> f2);
+
 
 
 class QgsProcessingLayerPostProcessorInterface
 {
-%Docstring
+%Docstring(signature="appended")
 An interface for layer post-processing handlers for execution following a processing algorithm operation.
 
 Note that post-processing of a layer will ONLY occur if that layer is set to be loaded into a QGIS project

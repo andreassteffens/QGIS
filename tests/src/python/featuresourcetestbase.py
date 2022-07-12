@@ -34,13 +34,12 @@ from utilities import compareWkt
 
 
 class FeatureSourceTestCase(object):
-    '''
-        This is a collection of tests for QgsFeatureSources subclasses and kept generic.
-        To make use of it, subclass it and set self.source to a QgsFeatureSource you want to test.
-        Make sure that your source uses the default dataset by converting one of the provided datasets from the folder
-        tests/testdata/source to a dataset your source is able to handle.
-
-    '''
+    """
+    This is a collection of tests for QgsFeatureSources subclasses and kept generic.
+    To make use of it, subclass it and set self.source to a QgsFeatureSource you want to test.
+    Make sure that your source uses the default dataset by converting one of the provided datasets from the folder
+    tests/testdata/source to a dataset your source is able to handle.
+    """
 
     def treat_date_as_datetime(self):
         return False
@@ -141,7 +140,7 @@ class FeatureSourceTestCase(object):
                 self.assertFalse(geometries[pk], 'Expected null geometry for {}'.format(pk))
 
     def assert_query(self, source, expression, expected):
-        request = QgsFeatureRequest().setFilterExpression(expression).setFlags(QgsFeatureRequest.NoGeometry)
+        request = QgsFeatureRequest().setFilterExpression(expression).setFlags(QgsFeatureRequest.NoGeometry | QgsFeatureRequest.IgnoreStaticNodesDuringExpressionCompilation)
         result = set([f['pk'] for f in source.getFeatures(request)])
         assert set(expected) == result, 'Expected {} and got {} when testing expression "{}"'.format(set(expected),
                                                                                                      result, expression)
@@ -149,17 +148,18 @@ class FeatureSourceTestCase(object):
 
         # Also check that filter works when referenced fields are not being retrieved by request
         result = set([f['pk'] for f in source.getFeatures(
-            QgsFeatureRequest().setFilterExpression(expression).setSubsetOfAttributes(['pk'], self.source.fields()))])
+            QgsFeatureRequest().setFilterExpression(expression).setSubsetOfAttributes(['pk'], self.source.fields()).setFlags(QgsFeatureRequest.IgnoreStaticNodesDuringExpressionCompilation))])
         assert set(
             expected) == result, 'Expected {} and got {} when testing expression "{}" using empty attribute subset'.format(
             set(expected), result, expression)
 
         # test that results match QgsFeatureRequest.acceptFeature
-        request = QgsFeatureRequest().setFilterExpression(expression)
+        request = QgsFeatureRequest().setFilterExpression(expression).setFlags(QgsFeatureRequest.IgnoreStaticNodesDuringExpressionCompilation)
         for f in source.getFeatures():
             self.assertEqual(request.acceptFeature(f), f['pk'] in expected)
 
     def runGetFeatureTests(self, source):
+
         self.assertEqual(len([f for f in source.getFeatures()]), 5)
         self.assert_query(source, 'name ILIKE \'QGIS\'', [])
         self.assert_query(source, '"name" IS NULL', [5])
@@ -301,6 +301,17 @@ class FeatureSourceTestCase(object):
         self.assert_query(source,
                           'intersects($geometry,geom_from_gml( \'<gml:Polygon srsName="EPSG:4326"><gml:outerBoundaryIs><gml:LinearRing><gml:coordinates>-72.2,66.1 -65.2,66.1 -65.2,72.0 -72.2,72.0 -72.2,66.1</gml:coordinates></gml:LinearRing></gml:outerBoundaryIs></gml:Polygon>\'))',
                           [1, 2])
+
+        # between/not between
+        self.assert_query(source, 'cnt BETWEEN -200 AND 200', [1, 2, 5])
+        self.assert_query(source, 'cnt NOT BETWEEN 100 AND 200', [3, 4, 5])
+
+        if self.treat_datetime_as_string():
+            self.assert_query(source, """dt BETWEEN format_date(make_datetime(2020, 5, 3, 12, 13, 14),  'yyyy-MM-dd hh:mm:ss') AND format_date(make_datetime(2020, 5, 4, 12, 14, 14), 'yyyy-MM-dd hh:mm:ss')""", [1, 2, 5])
+            self.assert_query(source, """dt NOT BETWEEN format_date(make_datetime(2020, 5, 3, 12, 13, 14), 'yyyy-MM-dd hh:mm:ss') AND format_date(make_datetime(2020, 5, 4, 12, 14, 14), 'yyyy-MM-dd hh:mm:ss')""", [4])
+        else:
+            self.assert_query(source, 'dt BETWEEN make_datetime(2020, 5, 3, 12, 13, 14) AND make_datetime(2020, 5, 4, 12, 14, 14)', [1, 2, 5])
+            self.assert_query(source, 'dt NOT BETWEEN make_datetime(2020, 5, 3, 12, 13, 14) AND make_datetime(2020, 5, 4, 12, 14, 14)', [4])
 
         # datetime
         if self.treat_datetime_as_string():
@@ -610,20 +621,102 @@ class FeatureSourceTestCase(object):
         for f in self.source.getFeatures():
             self.assertEqual(request.acceptFeature(f), f['pk'] in expected)
 
+    def testGetFeaturesDistanceWithinTests(self):
+        request = QgsFeatureRequest().setDistanceWithin(QgsGeometry.fromWkt('LineString (-63.2 69.9, -68.47 69.86, -69.74 79.28)'), 1.7)
+        features = [f['pk'] for f in self.source.getFeatures(request)]
+        all_valid = (all(f.isValid() for f in self.source.getFeatures(request)))
+        assert set(features) == set([2, 5]), 'Got {} instead'.format(features)
+        self.assertTrue(all_valid)
+
+        # test that results match QgsFeatureRequest.acceptFeature
+        for f in self.source.getFeatures():
+            self.assertEqual(request.acceptFeature(f), f['pk'] in set([2, 5]))
+
+        request = QgsFeatureRequest().setDistanceWithin(QgsGeometry.fromWkt('LineString (-63.2 69.9, -68.47 69.86, -69.74 79.28)'), 0.6)
+        features = [f['pk'] for f in self.source.getFeatures(request)]
+        all_valid = (all(f.isValid() for f in self.source.getFeatures(request)))
+        assert set(features) == set([2]), 'Got {} instead'.format(features)
+        self.assertTrue(all_valid)
+
+        # test that results match QgsFeatureRequest.acceptFeature
+        for f in self.source.getFeatures():
+            self.assertEqual(request.acceptFeature(f), f['pk'] in set([2]))
+
+        # in different crs
+        request = QgsFeatureRequest().setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:3857'), QgsProject.instance().transformContext()).setDistanceWithin(QgsGeometry.fromWkt('LineString (-7035391 11036245, -7622045 11023301, -7763421 15092839)'), 250000)
+        features = [f['pk'] for f in self.source.getFeatures(request)]
+        all_valid = (all(f.isValid() for f in self.source.getFeatures(request)))
+        self.assertEqual(set(features), {2, 5})
+        self.assertTrue(all_valid)
+
+        # point geometry
+        request = QgsFeatureRequest().setDistanceWithin(
+            QgsGeometry.fromWkt('Point (-68.1 78.1)'), 3.6)
+        features = [f['pk'] for f in self.source.getFeatures(request)]
+        all_valid = (all(f.isValid() for f in self.source.getFeatures(request)))
+        assert set(features) == set([4, 5]), 'Got {} instead'.format(features)
+        self.assertTrue(all_valid)
+
+        # test that results match QgsFeatureRequest.acceptFeature
+        for f in self.source.getFeatures():
+            self.assertEqual(request.acceptFeature(f), f['pk'] in set([4, 5]))
+
+        request = QgsFeatureRequest().setDistanceWithin(
+            QgsGeometry.fromWkt('Polygon ((-64.47 79.59, -64.37 73.59, -72.69 73.61, -72.73 68.07, -62.51 68.01, -62.71 79.55, -64.47 79.59))'), 0)
+        features = [f['pk'] for f in self.source.getFeatures(request)]
+        all_valid = (all(f.isValid() for f in self.source.getFeatures(request)))
+        assert set(features) == set([2]), 'Got {} instead'.format(features)
+        self.assertTrue(all_valid)
+
+        # test that results match QgsFeatureRequest.acceptFeature
+        for f in self.source.getFeatures():
+            self.assertEqual(request.acceptFeature(f), f['pk'] in set([2]))
+
+        request = QgsFeatureRequest().setDistanceWithin(
+            QgsGeometry.fromWkt('Polygon ((-64.47 79.59, -64.37 73.59, -72.69 73.61, -72.73 68.07, -62.51 68.01, -62.71 79.55, -64.47 79.59))'), 1.3)
+        features = [f['pk'] for f in self.source.getFeatures(request)]
+        all_valid = (all(f.isValid() for f in self.source.getFeatures(request)))
+        assert set(features) == set([2, 4]), 'Got {} instead'.format(features)
+        self.assertTrue(all_valid)
+
+        # test that results match QgsFeatureRequest.acceptFeature
+        for f in self.source.getFeatures():
+            self.assertEqual(request.acceptFeature(f), f['pk'] in set([2, 4]))
+
+        request = QgsFeatureRequest().setDistanceWithin(
+            QgsGeometry.fromWkt('Polygon ((-64.47 79.59, -64.37 73.59, -72.69 73.61, -72.73 68.07, -62.51 68.01, -62.71 79.55, -64.47 79.59))'), 2.3)
+        features = [f['pk'] for f in self.source.getFeatures(request)]
+        all_valid = (all(f.isValid() for f in self.source.getFeatures(request)))
+        assert set(features) == set([1, 2, 4]), 'Got {} instead'.format(features)
+        self.assertTrue(all_valid)
+
+        # test that results match QgsFeatureRequest.acceptFeature
+        for f in self.source.getFeatures():
+            self.assertEqual(request.acceptFeature(f), f['pk'] in set([1, 2, 4]))
+
+        # test with linestring whose bounding box overlaps all query
+        # points but being only within one of them, which we hope will
+        # be returned NOT as the first one.
+        # This is a test for https://github.com/qgis/QGIS/issues/45352
+        request = QgsFeatureRequest().setDistanceWithin(
+            QgsGeometry.fromWkt('LINESTRING(-100 80, -100 66, -30 66, -30 80)'), 0.5)
+        features = {f['pk'] for f in self.source.getFeatures(request)}
+        self.assertEqual(features, {1}, "Unexpected return from QgsFeatureRequest with DistanceWithin filter")
+
     def testGeomAndAllAttributes(self):
         """
         Test combination of a filter which requires geometry and all attributes
         """
         request = QgsFeatureRequest().setFilterExpression(
             'attribute($currentfeature,\'cnt\')>200 and $x>=-70 and $x<=-60').setSubsetOfAttributes([]).setFlags(
-            QgsFeatureRequest.NoGeometry)
+            QgsFeatureRequest.NoGeometry | QgsFeatureRequest.IgnoreStaticNodesDuringExpressionCompilation)
         result = set([f['pk'] for f in self.source.getFeatures(request)])
         all_valid = (all(f.isValid() for f in self.source.getFeatures(request)))
         self.assertEqual(result, {4})
         self.assertTrue(all_valid)
 
         request = QgsFeatureRequest().setFilterExpression(
-            'attribute($currentfeature,\'cnt\')>200 and $x>=-70 and $x<=-60')
+            'attribute($currentfeature,\'cnt\')>200 and $x>=-70 and $x<=-60').setFlags(QgsFeatureRequest.IgnoreStaticNodesDuringExpressionCompilation)
         result = set([f['pk'] for f in self.source.getFeatures(request)])
         all_valid = (all(f.isValid() for f in self.source.getFeatures(request)))
         self.assertEqual(result, {4})

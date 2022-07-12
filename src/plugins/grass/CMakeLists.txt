@@ -150,27 +150,8 @@ set (GRASS_BROWSER_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/qgis.g.browser.cpp)
 include_directories(
   ${CMAKE_SOURCE_DIR}/src/plugins
   ${CMAKE_SOURCE_DIR}/src/app
-  ${CMAKE_SOURCE_DIR}/src/core
-  ${CMAKE_SOURCE_DIR}/src/core/expression
-  ${CMAKE_SOURCE_DIR}/src/core/geometry
-  ${CMAKE_SOURCE_DIR}/src/core/metadata
-  ${CMAKE_SOURCE_DIR}/src/core/labeling
-  ${CMAKE_SOURCE_DIR}/src/core/layertree
-  ${CMAKE_SOURCE_DIR}/src/core/raster
-  ${CMAKE_SOURCE_DIR}/src/core/symbology
-  ${CMAKE_SOURCE_DIR}/src/core/effects
-  ${CMAKE_SOURCE_DIR}/src/core/textrenderer
-  ${CMAKE_SOURCE_DIR}/src/gui
-  ${CMAKE_SOURCE_DIR}/src/gui/codeeditors
-  ${CMAKE_SOURCE_DIR}/src/gui/editorwidgets
-  ${CMAKE_SOURCE_DIR}/src/gui/symbology
-  ${CMAKE_SOURCE_DIR}/src/gui/layertree
   ${CMAKE_SOURCE_DIR}/src/providers/grass
-  ${CMAKE_SOURCE_DIR}/external
-  ${CMAKE_SOURCE_DIR}/external/nlohmann
 
-  ${CMAKE_BINARY_DIR}/src/core
-  ${CMAKE_BINARY_DIR}/src/gui
   ${CMAKE_BINARY_DIR}/src/ui
   ${CMAKE_BINARY_DIR}/src/app
   ${CMAKE_CURRENT_BINARY_DIR}
@@ -189,21 +170,26 @@ macro(ADD_GRASSPLUGIN GRASS_BUILD_VERSION)
     set(GRASS_MAJOR_VERSION ${GRASS_MAJOR_VERSION${GRASS_BUILD_VERSION}})
     set(GRASS_MINOR_VERSION ${GRASS_MINOR_VERSION${GRASS_BUILD_VERSION}})
 
-    QT5_WRAP_UI (GRASS_PLUGIN_UIS_H ${GRASS_PLUGIN_UIS})
-    QT5_WRAP_CPP (GRASS_PLUGIN_MOC_SRCS ${GRASS_PLUGIN_MOC_HDRS})
+    if (WITH_QT6)
+      QT6_WRAP_UI (GRASS_PLUGIN_UIS_H ${GRASS_PLUGIN_UIS})
+      QT6_WRAP_CPP (GRASS_PLUGIN_MOC_SRCS ${GRASS_PLUGIN_MOC_HDRS})
+    else()
+      QT5_WRAP_UI (GRASS_PLUGIN_UIS_H ${GRASS_PLUGIN_UIS})
+      QT5_WRAP_CPP (GRASS_PLUGIN_MOC_SRCS ${GRASS_PLUGIN_MOC_HDRS})
+    endif()
 
     include_directories(
       ${CMAKE_BINARY_DIR}/src/providers/grass/${GRASS_BUILD_VERSION}
     )
 
-    add_library (grassplugin${GRASS_BUILD_VERSION} MODULE
+    add_library (plugin_grass${GRASS_BUILD_VERSION} MODULE
       ${GRASS_PLUGIN_SRCS}
       ${GRASS_PLUGIN_MOC_SRCS}
       ${GRASS_PLUGIN_UIS_H}
       ${GRASS_PLUGIN_RCCS}
     )
 
-    set_target_properties(grassplugin${GRASS_BUILD_VERSION} PROPERTIES
+    set_target_properties(plugin_grass${GRASS_BUILD_VERSION} PROPERTIES
       COMPILE_FLAGS "-DGRASS_BASE=\\\"${GRASS_PREFIX}\\\" ${GRASS_EXTRA_INCLUDE_DIRS${GRASS_BUILD_VERSION}}"
     )
 
@@ -211,7 +197,9 @@ macro(ADD_GRASSPLUGIN GRASS_BUILD_VERSION)
       set_source_files_properties(${GRASS_PLUGIN_SRCS} PROPERTIES COMPILE_FLAGS "-wd4611")
     endif()
 
-    target_link_libraries(grassplugin${GRASS_BUILD_VERSION}
+    target_compile_features(plugin_grass${GRASS_BUILD_VERSION} PRIVATE cxx_std_17)
+
+    target_link_libraries(plugin_grass${GRASS_BUILD_VERSION}
       qgisgrass${GRASS_BUILD_VERSION}
       qgis_app
       qgis_gui
@@ -219,7 +207,7 @@ macro(ADD_GRASSPLUGIN GRASS_BUILD_VERSION)
     )
 
     if (CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
-      target_link_libraries(grassplugin${GRASS_BUILD_VERSION} ulog)
+      target_link_libraries(plugin_grass${GRASS_BUILD_VERSION} ulog)
     endif()
 
     # override default path where built files are put to allow running qgis without installing
@@ -234,15 +222,15 @@ macro(ADD_GRASSPLUGIN GRASS_BUILD_VERSION)
     )
 
     target_link_libraries (qgis.g.browser${GRASS_BUILD_VERSION}
-      ${Qt5Gui_LIBRARIES}
-      ${Qt5Widgets_LIBRARIES}
-      ${Qt5Core_LIBRARIES}
+      ${QT_VERSION_BASE}::Gui
+      ${QT_VERSION_BASE}::Widgets
+      ${QT_VERSION_BASE}::Core
     )
 
     ########################################################
     # Install
 
-    install(TARGETS grassplugin${GRASS_BUILD_VERSION}
+    install(TARGETS plugin_grass${GRASS_BUILD_VERSION}
       RUNTIME DESTINATION ${QGIS_PLUGIN_DIR}
       LIBRARY DESTINATION ${QGIS_PLUGIN_DIR})
 
@@ -265,7 +253,7 @@ if(NOT WIN32)
   install(DIRECTORY qtermwidget/color-schemes/ DESTINATION "${COLORSCHEMES_DIR}" FILES_MATCHING PATTERN "*.*schem*")
 endif()
 
-foreach(GRASS_BUILD_VERSION 6 7) # GRASS 6 and GRASS 7
+foreach(GRASS_BUILD_VERSION 6 7 8)
   if(GRASS_FOUND${GRASS_BUILD_VERSION})
     add_subdirectory(${GRASS_BUILD_VERSION})
   endif()

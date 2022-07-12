@@ -26,12 +26,12 @@ QgsReferencedRectangle::QgsReferencedRectangle( const QgsRectangle &rect, const 
   , QgsReferencedGeometryBase( crs )
 {}
 
-bool QgsReferencedRectangle::operator==( const QgsReferencedRectangle &other )
+bool QgsReferencedRectangle::operator==( const QgsReferencedRectangle &other ) const
 {
   return QgsRectangle::operator==( other ) && crs() == other.crs();
 }
 
-bool QgsReferencedRectangle::operator!=( const QgsReferencedRectangle &other )
+bool QgsReferencedRectangle::operator!=( const QgsReferencedRectangle &other ) const
 {
   return !( *this == other );
 }
@@ -65,4 +65,3 @@ QgsReferencedGeometry QgsReferencedGeometry::fromReferencedRect( const QgsRefere
 {
   return QgsReferencedGeometry( QgsGeometry::fromRect( rectangle ), rectangle.crs() );
 }
-

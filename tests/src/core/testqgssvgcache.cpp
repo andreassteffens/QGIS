@@ -54,9 +54,9 @@ class TestQgsSvgCache : public QObject
     void changeImage(); //check that cache is updated if svg source file changes
     void base64();
     void replaceParams();
+    void dynamicSvg();
     void aspectRatio();
     void noViewBox();
-
 };
 
 
@@ -71,7 +71,7 @@ void TestQgsSvgCache::cleanupTestCase()
 {
   QgsApplication::exitQgis();
 
-  QString myReportFile = QDir::tempPath() + "/qgistest.html";
+  const QString myReportFile = QDir::tempPath() + "/qgistest.html";
   QFile myFile( myReportFile );
   if ( myFile.open( QIODevice::WriteOnly | QIODevice::Append ) )
   {
@@ -86,7 +86,7 @@ void TestQgsSvgCache::fillCache()
 {
   QgsSvgCache cache;
   // flood cache to fill it
-  QString svgPath = TEST_DATA_DIR + QStringLiteral( "/sample_svg.svg" );
+  const QString svgPath = TEST_DATA_DIR + QStringLiteral( "/sample_svg.svg" );
   bool fitInCache = false;
 
   // we loop forever, continually increasing the size of the requested
@@ -98,7 +98,7 @@ void TestQgsSvgCache::fillCache()
   int uncached = 0;
   for ( double size = 1000; uncached < 10; size += 100 )
   {
-    QImage image = cache.svgAsImage( svgPath, size, QColor( 255, 0, 0 ), QColor( 0, 255, 0 ), 1, 1, fitInCache );
+    const QImage image = cache.svgAsImage( svgPath, size, QColor( 255, 0, 0 ), QColor( 0, 255, 0 ), 1, 1, fitInCache );
     QVERIFY( !image.isNull() );
     if ( !fitInCache )
       uncached++;
@@ -109,11 +109,11 @@ void TestQgsSvgCache::broken()
 {
   QgsSvgCache cache;
   bool missingImage = false;
-  QByteArray content = cache.svgContent( QStringLiteral( "bbbbbbb" ), 14, QColor( 0, 0, 0 ), QColor( 255, 255, 255 ), 1, 1, 0, false, &missingImage );
+  QByteArray content = cache.svgContent( QStringLiteral( "bbbbbbb" ), 14, QColor( 0, 0, 0 ), QColor( 255, 255, 255 ), 1, 1, 0, false, {}, &missingImage );
   QVERIFY( missingImage );
-  content = cache.svgContent( QStringLiteral( "bbbbbbb" ), 14, QColor( 0, 0, 0 ), QColor( 255, 255, 255 ), 1, 1, 0, false, &missingImage );
+  content = cache.svgContent( QStringLiteral( "bbbbbbb" ), 14, QColor( 0, 0, 0 ), QColor( 255, 255, 255 ), 1, 1, 0, false, {}, &missingImage );
   QVERIFY( missingImage );
-  content = cache.svgContent( TEST_DATA_DIR + QStringLiteral( "/sample_svg.svg" ), 14, QColor( 0, 0, 0 ), QColor( 255, 255, 255 ), 1, 1, 0, false, &missingImage );
+  content = cache.svgContent( TEST_DATA_DIR + QStringLiteral( "/sample_svg.svg" ), 14, QColor( 0, 0, 0 ), QColor( 255, 255, 255 ), 1, 1, 0, false, {}, &missingImage );
   QVERIFY( !missingImage );
 }
 
@@ -128,8 +128,8 @@ struct RenderPictureWrapper
   {}
   void operator()( int )
   {
-    QPicture pic = cache.svgAsPicture( svgPath, size, QColor( 255, 0, 0 ), QColor( 0, 255, 0 ), 1, 1, true );
-    QSize imageSize = pic.boundingRect().size();
+    const QPicture pic = cache.svgAsPicture( svgPath, size, QColor( 255, 0, 0 ), QColor( 0, 255, 0 ), 1, 1, true );
+    const QSize imageSize = pic.boundingRect().size();
     QImage image( imageSize, QImage::Format_ARGB32_Premultiplied );
     image.fill( 0 ); // transparent background
     QPainter p( &image );
@@ -148,7 +148,7 @@ void TestQgsSvgCache::threadSafePicture()
   // https://github.com/qgis/QGIS/issues/24988
 
   QgsSvgCache cache;
-  QString svgPath = TEST_DATA_DIR + QStringLiteral( "/sample_svg.svg" );
+  const QString svgPath = TEST_DATA_DIR + QStringLiteral( "/sample_svg.svg" );
 
   // smash picture rendering over multiple threads
   QVector< int > list;
@@ -169,7 +169,7 @@ struct RenderImageWrapper
   void operator()( int )
   {
     bool fitsInCache = false;
-    QImage cachedImage = cache.svgAsImage( svgPath, size, QColor( 255, 0, 0 ), QColor( 0, 255, 0 ), 1, 1, fitsInCache );
+    const QImage cachedImage = cache.svgAsImage( svgPath, size, QColor( 255, 0, 0 ), QColor( 0, 255, 0 ), 1, 1, fitsInCache );
     QImage image( cachedImage.size(), QImage::Format_ARGB32_Premultiplied );
     image.fill( 0 ); // transparent background
     QPainter p( &image );
@@ -183,7 +183,7 @@ void TestQgsSvgCache::threadSafeImage()
   // works without issues across threads
 
   QgsSvgCache cache;
-  QString svgPath = TEST_DATA_DIR + QStringLiteral( "/sample_svg.svg" );
+  const QString svgPath = TEST_DATA_DIR + QStringLiteral( "/sample_svg.svg" );
 
   // smash image rendering over multiple threads
   QVector< int > list;
@@ -199,9 +199,9 @@ void TestQgsSvgCache::changeImage()
   cache.mFileModifiedCheckTimeout = 0;
 
   //copy an image to the temp folder
-  QString tempImagePath = QDir::tempPath() + "/svg_cache.svg";
+  const QString tempImagePath = QDir::tempPath() + "/svg_cache.svg";
 
-  QString originalImage = TEST_DATA_DIR + QStringLiteral( "/test_symbol_svg.svg" );
+  const QString originalImage = TEST_DATA_DIR + QStringLiteral( "/test_symbol_svg.svg" );
   if ( QFileInfo::exists( tempImagePath ) )
     QFile::remove( tempImagePath );
   QFile::copy( originalImage, tempImagePath );
@@ -218,7 +218,7 @@ void TestQgsSvgCache::changeImage()
   {}
 
   //replace the image in the temp folder
-  QString newImage = TEST_DATA_DIR + QStringLiteral( "/test_symbol_svg2.svg" );
+  const QString newImage = TEST_DATA_DIR + QStringLiteral( "/test_symbol_svg2.svg" );
   QFile::remove( tempImagePath );
   QFile::copy( newImage, tempImagePath );
 
@@ -282,7 +282,7 @@ void TestQgsSvgCache::replaceParams()
   elem.setAttribute( QStringLiteral( "style" ), QStringLiteral( "font-weight:bold; font-size:12px" ) );
 
   QgsSvgCache cache;
-  cache.replaceElemParams( elem, QColor( 255, 0, 0, 150 ), QColor( 0, 255, 0, 100 ), 0.6 );
+  cache.replaceElemParams( elem, QColor( 255, 0, 0, 150 ), QColor( 0, 255, 0, 100 ), 0.6, {} );
 
   // params in styles
   QCOMPARE( elem.attribute( QStringLiteral( "not_style" ) ), QStringLiteral( "val" ) );
@@ -290,48 +290,60 @@ void TestQgsSvgCache::replaceParams()
 
   // with fill color
   elem.setAttribute( QStringLiteral( "style" ), QStringLiteral( "font-weight:bold; fill: param(Fill); font-size:12px" ) );
-  cache.replaceElemParams( elem, QColor( 255, 0, 0, 150 ), QColor( 0, 255, 0, 100 ), 0.6 );
+  cache.replaceElemParams( elem, QColor( 255, 0, 0, 150 ), QColor( 0, 255, 0, 100 ), 0.6, {} );
   QCOMPARE( elem.attribute( QStringLiteral( "style" ) ), QStringLiteral( "font-weight:bold; fill:#ff0000; font-size:12px" ) );
   // with fill opacity
   elem.setAttribute( QStringLiteral( "style" ), QStringLiteral( "font-weight:bold; fill: param(Fill);fill-opacity:param(fill-opacity);font-size:12px" ) );
-  cache.replaceElemParams( elem, QColor( 255, 0, 0, 25 ), QColor( 0, 255, 0, 100 ), 0.6 );
+  cache.replaceElemParams( elem, QColor( 255, 0, 0, 25 ), QColor( 0, 255, 0, 100 ), 0.6, {} );
   QCOMPARE( elem.attribute( QStringLiteral( "style" ) ), QStringLiteral( "font-weight:bold; fill:#ff0000;fill-opacity:0.0980392;font-size:12px" ) );
   // with stroke color
   elem.setAttribute( QStringLiteral( "style" ), QStringLiteral( "font-weight:bold; outline: param(Outline);font-size:12px" ) );
-  cache.replaceElemParams( elem, QColor( 255, 0, 0, 25 ), QColor( 0, 255, 0, 100 ), 0.6 );
+  cache.replaceElemParams( elem, QColor( 255, 0, 0, 25 ), QColor( 0, 255, 0, 100 ), 0.6, {} );
   QCOMPARE( elem.attribute( QStringLiteral( "style" ) ), QStringLiteral( "font-weight:bold; outline:#00ff00;font-size:12px" ) );
   // with stroke opacity
   elem.setAttribute( QStringLiteral( "style" ), QStringLiteral( "font-weight:bold; outline: param(Outline);outline-opacity:param(outline-opacity);font-size:12px" ) );
-  cache.replaceElemParams( elem, QColor( 255, 0, 0, 25 ), QColor( 0, 255, 0, 100 ), 0.6 );
+  cache.replaceElemParams( elem, QColor( 255, 0, 0, 25 ), QColor( 0, 255, 0, 100 ), 0.6, {} );
   QCOMPARE( elem.attribute( QStringLiteral( "style" ) ), QStringLiteral( "font-weight:bold; outline:#00ff00;outline-opacity:0.392157;font-size:12px" ) );
   // with stroke size
   elem.setAttribute( QStringLiteral( "style" ), QStringLiteral( "font-weight:bold; outline: param(Outline);outline-opacity:param(outline-opacity);stroke-width: param(outline-width) ;font-size:12px" ) );
-  cache.replaceElemParams( elem, QColor( 255, 0, 0, 25 ), QColor( 0, 255, 0, 100 ), 0.6 );
+  cache.replaceElemParams( elem, QColor( 255, 0, 0, 25 ), QColor( 0, 255, 0, 100 ), 0.6, {} );
   QCOMPARE( elem.attribute( QStringLiteral( "style" ) ), QStringLiteral( "font-weight:bold; outline:#00ff00;outline-opacity:0.392157;stroke-width:0.6;font-size:12px" ) );
 
   // params in attributes
 
   // with fill color
   elem.setAttribute( QStringLiteral( "fill" ), QStringLiteral( " param(Fill) " ) );
-  cache.replaceElemParams( elem, QColor( 255, 0, 0, 150 ), QColor( 0, 255, 0, 100 ), 0.6 );
+  cache.replaceElemParams( elem, QColor( 255, 0, 0, 150 ), QColor( 0, 255, 0, 100 ), 0.6, {} );
   QCOMPARE( elem.attribute( QStringLiteral( "fill" ) ), QStringLiteral( "#ff0000" ) );
   // with fill opacity
   elem.setAttribute( QStringLiteral( "fill-opacity" ), QStringLiteral( "param(fill-opacity)" ) );
-  cache.replaceElemParams( elem, QColor( 255, 0, 0, 25 ), QColor( 0, 255, 0, 100 ), 0.6 );
+  cache.replaceElemParams( elem, QColor( 255, 0, 0, 25 ), QColor( 0, 255, 0, 100 ), 0.6, {} );
   QCOMPARE( elem.attribute( QStringLiteral( "fill-opacity" ) ).left( 6 ), QStringLiteral( "0.0980" ) );
   // with stroke color
   elem.setAttribute( QStringLiteral( "stroke" ), QStringLiteral( " param(Outline) " ) );
-  cache.replaceElemParams( elem, QColor( 255, 0, 0, 25 ), QColor( 0, 255, 0, 100 ), 0.6 );
+  cache.replaceElemParams( elem, QColor( 255, 0, 0, 25 ), QColor( 0, 255, 0, 100 ), 0.6, {} );
   QCOMPARE( elem.attribute( QStringLiteral( "stroke" ) ), QStringLiteral( "#00ff00" ) );
   // with stroke opacity
   elem.setAttribute( QStringLiteral( "stroke-opacity" ), QStringLiteral( "param(outline-opacity)" ) );
-  cache.replaceElemParams( elem, QColor( 255, 0, 0, 25 ), QColor( 0, 255, 0, 100 ), 0.6 );
+  cache.replaceElemParams( elem, QColor( 255, 0, 0, 25 ), QColor( 0, 255, 0, 100 ), 0.6, {} );
   QCOMPARE( elem.attribute( QStringLiteral( "stroke-opacity" ) ).left( 6 ), QStringLiteral( "0.3921" ) );
   // with stroke size
   elem.setAttribute( QStringLiteral( "stroke-size" ), QStringLiteral( "param(outline-width) " ) );
-  cache.replaceElemParams( elem, QColor( 255, 0, 0, 25 ), QColor( 0, 255, 0, 100 ), 0.6 );
+  cache.replaceElemParams( elem, QColor( 255, 0, 0, 25 ), QColor( 0, 255, 0, 100 ), 0.6, {} );
   QCOMPARE( elem.attribute( QStringLiteral( "stroke-size" ) ), QStringLiteral( "0.6" ) );
+}
 
+void TestQgsSvgCache::dynamicSvg()
+{
+  // test rendering SVGs with manual aspect ratio
+  QgsSvgCache cache;
+  const QString dynamicImage = TEST_DATA_DIR + QStringLiteral( "/svg/test_dynamic_svg.svg" );
+  const QByteArray svg = cache.svgContent( dynamicImage, 200, QColor( 0, 0, 0 ), QColor( 0, 0, 0 ), 1.0,
+  1.0, 0, false, {{"text1", "green?"}, {"text2", "supergreen"}, {"align",  "middle" }} );
+  const QString contolImage = TEST_DATA_DIR + QStringLiteral( "/svg/test_dynamic_svg_control.svg" );
+  const QByteArray control_svg = cache.svgContent( contolImage, 200, QColor( 0, 0, 0 ), QColor( 0, 0, 0 ), 1.0,
+                                 1.0, 0, false, {} );
+  QCOMPARE( svg, control_svg );
 }
 
 void TestQgsSvgCache::aspectRatio()
@@ -352,12 +364,12 @@ void TestQgsSvgCache::noViewBox()
   // we can correctly determine the svg's aspect ratio
   const QString originalImage = TEST_DATA_DIR + QStringLiteral( "/svg/no_viewbox.svg" );
   QgsSvgCache cache;
-  double size = 12;
+  const double size = 12;
   const QColor fill = QColor( 0, 0, 0 );
   const QColor stroke = QColor( 0, 0, 0 );
-  double strokeWidth = 1;
-  double widthScaleFactor = 1;
-  QSizeF viewBoxSize = cache.svgViewboxSize( originalImage, size, fill, stroke, strokeWidth, widthScaleFactor );
+  const double strokeWidth = 1;
+  const double widthScaleFactor = 1;
+  const QSizeF viewBoxSize = cache.svgViewboxSize( originalImage, size, fill, stroke, strokeWidth, widthScaleFactor );
   QGSCOMPARENEAR( viewBoxSize.width(), 1.329267, 0.0001 );
   QGSCOMPARENEAR( viewBoxSize.height(), 6.358467, 0.0001 );
 }
@@ -372,14 +384,14 @@ bool TestQgsSvgCache::imageCheck( const QString &testName, QImage &image, int mi
   painter.end();
 
   mReport += "<h2>" + testName + "</h2>\n";
-  QString tempDir = QDir::tempPath() + '/';
-  QString fileName = tempDir + testName + ".png";
+  const QString tempDir = QDir::tempPath() + '/';
+  const QString fileName = tempDir + testName + ".png";
   imageWithBackground.save( fileName, "PNG" );
   QgsRenderChecker checker;
   checker.setControlName( "expected_" + testName );
   checker.setRenderedImage( fileName );
   checker.setColorTolerance( 2 );
-  bool resultFlag = checker.compareImages( testName, mismatchCount );
+  const bool resultFlag = checker.compareImages( testName, mismatchCount );
   mReport += checker.report();
   return resultFlag;
 }

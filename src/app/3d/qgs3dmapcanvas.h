@@ -18,23 +18,30 @@
 
 #include <QWidget>
 #include <Qt3DRender/QRenderCapture>
+#include <QSplitter>
 
 #include "qgsrange.h"
+#include "qgscameracontroller.h"
+#include "qgsrectangle.h"
 
 namespace Qt3DExtras
 {
   class Qt3DWindow;
 }
 
+namespace Qt3DLogic
+{
+  class QFrameAction;
+}
+
 class Qgs3DMapSettings;
 class Qgs3DMapScene;
 class Qgs3DMapTool;
 class QgsWindow3DEngine;
-class QgsCameraController;
 class QgsPointXY;
 class Qgs3DNavigationWidget;
 class QgsTemporalController;
-
+class QgsRubberBand;
 
 class Qgs3DMapCanvas : public QWidget
 {
@@ -56,13 +63,13 @@ class Qgs3DMapCanvas : public QWidget
     QgsCameraController *cameraController();
 
     //! Resets camera position to the default: looking down at the origin of world coordinates
-    void resetView();
+    void resetView( bool resetExtent = false );
 
     //! Sets camera position to look down at the given point (in map coordinates) in given distance from plane with zero elevation
     void setViewFromTop( const QgsPointXY &center, float distance, float rotation = 0 );
 
     //! Saves the current scene as an image
-    void saveAsImage( QString fileName, QString fileFormat );
+    void saveAsImage( const QString &fileName, const QString &fileFormat );
 
     /**
      * Sets the active map tool that will receive events from the 3D canvas. Does not transfer ownership.
@@ -77,6 +84,11 @@ class Qgs3DMapCanvas : public QWidget
     Qgs3DMapTool *mapTool() const { return mMapTool; }
 
     /**
+     * Returns the 3D engine.
+     */
+    QgsWindow3DEngine *engine() const { return mEngine; }
+
+    /**
      * Sets the visibility of on-screen navigation widget.
      */
     void setOnScreenNavigationVisibility( bool visibility );
@@ -86,15 +98,58 @@ class Qgs3DMapCanvas : public QWidget
      */
     void setTemporalController( QgsTemporalController *temporalController );
 
+    /**
+     * Returns the size of the 3D canvas window
+     *
+     * \since QGIS 3.18
+     */
+    QSize windowSize() const;
+
+    /**
+     * Resets camera view to show the extent \a extent (top view)
+     *
+     * \since QGIS 3.26
+     */
+    void setViewFrom2DExtent( const QgsRectangle &extent );
+
+    /**
+     * Calculates the 2D extent viewed by the 3D camera as the vertices of the viewed trapezoid
+     *
+     * \since QGIS 3.26
+     */
+    QVector<QgsPointXY> viewFrustum2DExtent();
+
   signals:
     //! Emitted when the 3D map canvas was successfully saved as image
-    void savedAsImage( QString fileName );
+    void savedAsImage( const QString &fileName );
 
     //! Emitted when the the map setting is changed
     void mapSettingsChanged();
 
+    //! Emitted when the FPS count changes (at most every frame)
+    void fpsCountChanged( float fpsCount );
+    //! Emitted when the FPS counter is enabled or disabeld
+    void fpsCounterEnabledChanged( bool enabled );
+
+    /**
+     * Emitted when the viewed 2D extent seen by the 3D camera has changed
+     *
+     * \since QGIS 3.26
+     */
+    void viewed2DExtentFrom3DChanged( QVector<QgsPointXY> extent );
+
+    /**
+     * Emitted when the camera navigation \a speed is changed.
+     *
+     * \since QGIS 3.18
+     */
+    void cameraNavigationSpeedChanged( double speed );
+  public slots:
+    void captureDepthBuffer();
+
   private slots:
     void updateTemporalRange( const QgsDateTimeRange &timeRange );
+    void onNavigationModeChanged( QgsCameraController::NavigationMode mode );
 
   protected:
     void resizeEvent( QResizeEvent *ev ) override;
@@ -102,9 +157,6 @@ class Qgs3DMapCanvas : public QWidget
 
   private:
     QgsWindow3DEngine *mEngine = nullptr;
-
-    QString mCaptureFileName;
-    QString mCaptureFileFormat;
 
     //! Container QWidget that encapsulates mWindow3D so we can use it embedded in ordinary widgets app
     QWidget *mContainer = nullptr;
@@ -116,10 +168,15 @@ class Qgs3DMapCanvas : public QWidget
     //! Active map tool that receives events (if NULLPTR then mouse/keyboard events are used for camera manipulation)
     Qgs3DMapTool *mMapTool = nullptr;
 
+    QString mCaptureFileName;
+    QString mCaptureFileFormat;
+
     //! On-Screen Navigation widget.
     Qgs3DNavigationWidget *mNavigationWidget = nullptr;
 
     QgsTemporalController *mTemporalController = nullptr;
+
+    QSplitter *mSplitter = nullptr;
 };
 
 #endif // QGS3DMAPCANVAS_H

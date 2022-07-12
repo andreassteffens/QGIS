@@ -22,8 +22,11 @@
 #include "qgsprocessingutils.h"
 #include "qgsvectorlayer.h"
 
-QgsProcessingAlgRunnerTask::QgsProcessingAlgRunnerTask( const QgsProcessingAlgorithm *algorithm, const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
-  : QgsTask( tr( "Executing “%1”" ).arg( algorithm->displayName() ), algorithm->flags() & QgsProcessingAlgorithm::FlagCanCancel ? QgsTask::CanCancel : QgsTask::Flag() )
+QgsProcessingAlgRunnerTask::QgsProcessingAlgRunnerTask( const QgsProcessingAlgorithm *algorithm, const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback, Flags flags )
+  : QgsTask(
+      tr( "Executing “%1”" ).arg( algorithm->displayName() ),
+      flags & ( !( algorithm->flags() & QgsProcessingAlgorithm::FlagCanCancel ) ? ( ~QgsTask::CanCancel ) : ( ~QgsTask::Flags() ) )
+    )
   , mParameters( parameters )
   , mContext( context )
   , mFeedback( feedback )
@@ -41,7 +44,7 @@ QgsProcessingAlgRunnerTask::QgsProcessingAlgRunnerTask( const QgsProcessingAlgor
   }
   catch ( QgsProcessingException &e )
   {
-    QgsMessageLog::logMessage( e.what(), QObject::tr( "Processing" ), Qgis::Critical );
+    QgsMessageLog::logMessage( e.what(), QObject::tr( "Processing" ), Qgis::MessageLevel::Critical );
     mFeedback->reportError( e.what() );
     cancel();
   }
@@ -68,7 +71,7 @@ bool QgsProcessingAlgRunnerTask::run()
   }
   catch ( QgsProcessingException &e )
   {
-    QgsMessageLog::logMessage( e.what(), QObject::tr( "Processing" ), Qgis::Critical );
+    QgsMessageLog::logMessage( e.what(), QObject::tr( "Processing" ), Qgis::MessageLevel::Critical );
     mFeedback->reportError( e.what() );
     return false;
   }

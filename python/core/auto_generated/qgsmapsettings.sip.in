@@ -13,7 +13,7 @@
 
 class QgsLabelBlockingRegion
 {
-%Docstring
+%Docstring(signature="appended")
 
 Label blocking region (in map coordinates and CRS).
 
@@ -37,11 +37,11 @@ Constructor for a label blocking region
 
 class QgsMapSettings : QgsTemporalRangeObject
 {
-%Docstring
-The QgsMapSettings class contains configuration for rendering of the map.
-The rendering itself is done by QgsMapRendererJob subclasses.
+%Docstring(signature="appended")
+The :py:class:`QgsMapSettings` class contains configuration for rendering of the map.
+The rendering itself is done by :py:class:`QgsMapRendererJob` subclasses.
 
-In order to set up QgsMapSettings instance, it is necessary to set at least
+In order to set up :py:class:`QgsMapSettings` instance, it is necessary to set at least
 few members: extent, output size and layers.
 
 Some systems use high DPI scaling that is an alternative to the traditional
@@ -193,6 +193,26 @@ Sets the ``dpi`` (dots per inch) used for conversion between real world units (e
 .. seealso:: :py:func:`outputDpi`
 %End
 
+    double dpiTarget() const;
+%Docstring
+Returns the target DPI (dots per inch) to be taken into consideration when rendering.
+
+The default value is -1, which states no DPI target is provided.
+
+.. seealso:: :py:func:`setDpiTarget`
+
+.. versionadded:: 3.20
+%End
+
+    void setDpiTarget( double dpi );
+%Docstring
+Sets the target ``dpi`` (dots per inch) to be taken into consideration when rendering.
+
+.. seealso:: :py:func:`dpiTarget`
+
+.. versionadded:: 3.20
+%End
+
     void setMagnificationFactor( double factor, const QgsPointXY *center = 0 );
 %Docstring
 Set the magnification factor.
@@ -214,22 +234,28 @@ Returns the magnification factor.
 .. versionadded:: 2.16
 %End
 
-    QStringList layerIds() const;
+    QStringList layerIds( bool expandGroupLayers = false ) const;
 %Docstring
 Returns the list of layer IDs which will be rendered in the map.
 
 The layers are stored in the reverse order of how they are rendered (layer with index 0 will be on top).
+
+Since QGIS 3.24, if the ``expandGroupLayers`` option is ``True`` then group layers will be converted to
+all their child layers.
 
 .. seealso:: :py:func:`layers`
 
 .. seealso:: :py:func:`setLayers`
 %End
 
-    QList<QgsMapLayer *> layers() const;
+    QList<QgsMapLayer *> layers( bool expandGroupLayers = false ) const;
 %Docstring
 Returns the list of layers which will be rendered in the map.
 
 The layers are stored in the reverse order of how they are rendered (layer with index 0 will be on top)
+
+Since QGIS 3.24, if the ``expandGroupLayers`` option is ``True`` then group layers will be converted to
+all their child layers.
 
 .. seealso:: :py:func:`setLayers`
 
@@ -280,7 +306,7 @@ Returns custom rendering flags. Layers might honour these to alter their renderi
 .. versionadded:: 2.16
 
 .. deprecated::
-   use \see customRenderingFlags().
+   use \see :py:func:`~QgsMapSettings.customRenderingFlags`.
 %End
 
  void setCustomRenderFlags( const QString &customRenderFlags );
@@ -294,7 +320,7 @@ Sets the custom rendering flags. Layers might honour these to alter their render
 .. versionadded:: 2.16
 
 .. deprecated::
-   use \see setCustomRenderingFlag() instead.
+   use \see :py:func:`~QgsMapSettings.setCustomRenderingFlag` instead.
 %End
 
     QVariantMap customRenderingFlags() const;
@@ -401,45 +427,24 @@ Returns the color that is used for drawing of selected vector features.
 .. seealso:: :py:func:`setSelectionColor`
 %End
 
-    enum Flag
-    {
-      Antialiasing,
-      DrawEditingInfo,
-      ForceVectorOutput,
-      UseAdvancedEffects,
-      DrawLabeling,
-      UseRenderingOptimization,
-      DrawSelection,
-      DrawSymbolBounds,
-      RenderMapTile,
-      RenderPartialOutput,
-      RenderPreviewJob,
-      RenderBlocking,
-      LosslessImageRendering,
-      Render3DMap,
-      // TODO: ignore scale-based visibility (overview)
-    };
-    typedef QFlags<QgsMapSettings::Flag> Flags;
-
-
-    void setFlags( QgsMapSettings::Flags flags );
+    void setFlags( Qgis::MapSettingsFlags flags );
 %Docstring
 Sets combination of flags that will be used for rendering
 %End
-    void setFlag( Flag flag, bool on = true );
+    void setFlag( Qgis::MapSettingsFlag flag, bool on = true );
 %Docstring
 Enable or disable a particular flag (other flags are not affected)
 %End
-    Flags flags() const;
+    Qgis::MapSettingsFlags flags() const;
 %Docstring
 Returns combination of flags used for rendering
 %End
-    bool testFlag( Flag flag ) const;
+    bool testFlag( Qgis::MapSettingsFlag flag ) const;
 %Docstring
 Check whether a particular flag is enabled
 %End
 
-    QgsRenderContext::TextRenderFormat textRenderFormat() const;
+    Qgis::TextRenderFormat textRenderFormat() const;
 %Docstring
 Returns the text render format, which dictates how text is rendered (e.g. as paths or real text objects).
 
@@ -448,7 +453,7 @@ Returns the text render format, which dictates how text is rendered (e.g. as pat
 .. versionadded:: 3.4.3
 %End
 
-    void setTextRenderFormat( QgsRenderContext::TextRenderFormat format );
+    void setTextRenderFormat( Qgis::TextRenderFormat format );
 %Docstring
 Sets the text render ``format``, which dictates how text is rendered (e.g. as paths or real text objects).
 
@@ -656,6 +661,39 @@ Returns the coordinate transform from layer's CRS to destination CRS
 :return: transform - may be invalid if the transform is not needed
 %End
 
+    QgsRectangle computeExtentForScale( const QgsPointXY &center, double scale ) const;
+%Docstring
+Compute the extent such that its ``center`` is at the specified
+position (mapped to the destinatonCrs) and the zoom factor corresponds
+to the specified ``scale``
+
+:param center: the center, in map coordinates
+:param scale: the desired zoom factor (the x part of 1:x)
+
+:return: an extent which can be passed to :py:class:`QgsMapCanvas`.setExtent
+
+.. seealso:: :py:func:`computeScaleForExtent`
+
+.. versionadded:: 3.22
+%End
+
+    double computeScaleForExtent( const QgsRectangle &extent ) const;
+%Docstring
+Compute the scale that corresponds to the specified ``extent``
+
+:param extent: the extent, as passed to :py:func:`QgsMapCanvas.setExtent`
+
+:return: the scale denominator
+
+.. seealso:: :py:func:`computeExtentForScale`
+
+.. note::
+
+   This function does not consider any map rotation
+
+.. versionadded:: 3.22
+%End
+
     QgsRectangle fullExtent() const;
 %Docstring
 returns current extent of layer set
@@ -855,7 +893,94 @@ Returns the list of rendered feature handlers to use while rendering the map set
 .. versionadded:: 3.10
 %End
 
+    QgsDoubleRange zRange() const;
+%Docstring
+Returns the range of z-values which will be visible in the map.
+
+.. seealso:: :py:func:`setZRange`
+
+.. versionadded:: 3.18
+%End
+
+    void setZRange( const QgsDoubleRange &range );
+%Docstring
+Sets the ``range`` of z-values which will be visible in the map.
+
+.. seealso:: :py:func:`zRange`
+
+.. versionadded:: 3.18
+%End
+
+    Qgis::RendererUsage rendererUsage() const;
+%Docstring
+Returns the rendering usage
+
+.. seealso:: :py:func:`setRendererUsage`
+
+.. versionadded:: 3.24
+%End
+
+    void setRendererUsage( Qgis::RendererUsage rendererUsage );
+%Docstring
+Sets the rendering usage
+
+.. note::
+
+   This usage not alter how the map gets rendered but the intention is that data provider
+   knows the context of rendering and may report that to the backend.
+
+.. seealso:: :py:func:`rendererUsage`
+
+.. versionadded:: 3.24
+%End
+
+    double frameRate() const;
+%Docstring
+Returns the frame rate of the map (in frames per second), for maps which are part of an animation.
+
+Returns -1 if the map is not associated with an animation.
+
+.. seealso:: :py:func:`setFrameRate`
+
+.. versionadded:: 3.26
+%End
+
+    void setFrameRate( double rate );
+%Docstring
+Sets the frame ``rate`` of the map (in frames per second), for maps which are part of an animation.
+
+Defaults to -1 if the map is not associated with an animation.
+
+.. seealso:: :py:func:`frameRate`
+
+.. versionadded:: 3.26
+%End
+
+    long long currentFrame() const;
+%Docstring
+Returns the current frame number of the map, for maps which are part of an animation.
+
+Returns -1 if the map is not associated with an animation.
+
+.. seealso:: :py:func:`setCurrentFrame`
+
+.. versionadded:: 3.26
+%End
+
+    void setCurrentFrame( long long frame );
+%Docstring
+Sets the current ``frame`` of the map, for maps which are part of an animation.
+
+Defaults to -1 if the map is not associated with an animation.
+
+.. seealso:: :py:func:`currentFrame`
+
+.. versionadded:: 3.26
+%End
+
   protected:
+
+
 
 
 
@@ -879,10 +1004,6 @@ Returns the list of rendered feature handlers to use while rendering the map set
     void updateDerived();
 
 };
-
-QFlags<QgsMapSettings::Flag> operator|(QgsMapSettings::Flag f1, QFlags<QgsMapSettings::Flag> f2);
-
-
 
 /************************************************************************
  * This file has been generated automatically from                      *

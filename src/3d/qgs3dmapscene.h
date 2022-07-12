@@ -22,6 +22,8 @@
 
 #include "qgsfeatureid.h"
 #include "qgsshadowrenderingframegraph.h"
+#include "qgsray3d.h"
+#include "qgscameracontroller.h"
 
 namespace Qt3DRender
 {
@@ -42,10 +44,10 @@ namespace Qt3DExtras
   class QSkyboxEntity;
 }
 
+class Qgs3DAxis;
 class QgsAbstract3DEngine;
 class QgsAbstract3DRenderer;
 class QgsMapLayer;
-class QgsCameraController;
 class Qgs3DMapScenePickHandler;
 class Qgs3DMapSettings;
 class QgsTerrainEntity;
@@ -55,7 +57,7 @@ class QgsSkyboxSettings;
 class Qgs3DMapExportSettings;
 class QgsShadowRenderingFrameGraph;
 class QgsPostprocessingEntity;
-
+class QgsChunkNode;
 
 #define SIP_NO_FILE
 
@@ -70,7 +72,7 @@ class _3D_EXPORT Qgs3DMapScene : public Qt3DCore::QEntity
     Q_OBJECT
   public:
     //! Constructs a 3D scene based on map settings and Qt 3D renderer configuration
-    Qgs3DMapScene( const Qgs3DMapSettings &map, QgsAbstract3DEngine *engine );
+    Qgs3DMapScene( Qgs3DMapSettings &map, QgsAbstract3DEngine *engine );
 
     //! Returns camera controller
     QgsCameraController *cameraController() { return mCameraController; }
@@ -79,6 +81,20 @@ class _3D_EXPORT Qgs3DMapScene : public Qt3DCore::QEntity
 
     //! Resets camera view to show the whole scene (top view)
     void viewZoomFull();
+
+    /**
+     * Resets camera view to show the extent \a extent (top view)
+     *
+     * \since QGIS 3.26
+     */
+    void setViewFrom2DExtent( const QgsRectangle &extent );
+
+    /**
+     * Calculates the 2D extent viewed by the 3D camera as the vertices of the viewed trapezoid
+     *
+     * \since QGIS 3.26
+     */
+    QVector<QgsPointXY> viewFrustum2DExtent();
 
     //! Returns number of pending jobs of the terrain entity
     int terrainPendingJobsCount() const;
@@ -112,6 +128,35 @@ class _3D_EXPORT Qgs3DMapScene : public Qt3DCore::QEntity
 
     //! Exports the scene according to the scene export settings
     void exportScene( const Qgs3DMapExportSettings &exportSettings );
+
+    /**
+     * Returns the active chunk nodes of \a layer
+     *
+     * \since QGIS 3.18
+     */
+    QVector<const QgsChunkNode *> getLayerActiveChunkNodes( QgsMapLayer *layer ) SIP_SKIP;
+
+    /**
+     * Returns the scene extent in the map's CRS
+     *
+     * \since QGIS 3.20
+     */
+    QgsRectangle sceneExtent();
+
+    /**
+     * Returns the 3D axis object
+     *
+     * \since QGIS 3.26
+     */
+    Qgs3DAxis *get3DAxis() { return m3DAxis; }
+
+    /**
+     * Returns the abstract 3D engine
+     *
+     * \since QGIS 3.26
+     */
+    QgsAbstract3DEngine *engine() { return mEngine; }
+
   signals:
     //! Emitted when the current terrain entity is replaced by a new one
     void terrainEntityChanged();
@@ -125,6 +170,18 @@ class _3D_EXPORT Qgs3DMapScene : public Qt3DCore::QEntity
     void totalPendingJobsCountChanged();
     //! Emitted when the scene's state has changed
     void sceneStateChanged();
+
+    //! Emitted when the FPS count changes
+    void fpsCountChanged( float fpsCount );
+    //! Emitted when the FPS counter is activated or deactivated
+    void fpsCounterEnabledChanged( bool fpsCounterEnabled );
+
+    /**
+     * Emitted when the viewed 2D extent seen by the 3D camera has changed
+     *
+     * \since QGIS 3.26
+     */
+    void viewed2DExtentFrom3DChanged( QVector<QgsPointXY> extent );
 
   public slots:
     //! Updates the temporale entities
@@ -144,20 +201,30 @@ class _3D_EXPORT Qgs3DMapScene : public Qt3DCore::QEntity
     void onRenderersChanged();
     void onSkyboxSettingsChanged();
     void onShadowSettingsChanged();
+    void onEyeDomeShadingSettingsChanged();
+    void onDebugShadowMapSettingsChanged();
+    void onDebugDepthMapSettingsChanged();
+    void onCameraMovementSpeedChanged();
+    void onCameraNavigationModeChanged();
+    void onDebugOverlayEnabledChanged();
+
+    void on3DAxisSettingsChanged();
+
+    bool updateCameraNearFarPlanes();
 
   private:
     void addLayerEntity( QgsMapLayer *layer );
     void removeLayerEntity( QgsMapLayer *layer );
     void addCameraViewCenterEntity( Qt3DRender::QCamera *camera );
+    void addCameraRotationCenterEntity( QgsCameraController *controller );
     void setSceneState( SceneState state );
     void updateSceneState();
     void updateScene();
-    bool updateCameraNearFarPlanes();
     void finalizeNewEntity( Qt3DCore::QEntity *newEntity );
     int maximumTextureSize() const;
 
   private:
-    const Qgs3DMapSettings &mMap;
+    Qgs3DMapSettings &mMap;
     QgsAbstract3DEngine *mEngine = nullptr;
     //! Provides a way to have a synchronous function executed each frame
     Qt3DLogic::QFrameAction *mFrameAction = nullptr;
@@ -175,10 +242,14 @@ class _3D_EXPORT Qgs3DMapScene : public Qt3DCore::QEntity
     QList<Qgs3DMapScenePickHandler *> mPickHandlers;
     //! List of lights in the scene
     QList<Qt3DCore::QEntity *> mLightEntities;
-    //! List of light origins in the scene
-    QList<Qt3DCore::QEntity *> mLightOriginEntities;
     QList<QgsMapLayer *> mModelVectorLayers;
     QgsSkyboxEntity *mSkybox = nullptr;
+    //! Entity that shows rotation center = useful for debugging camera issues
+    Qt3DCore::QEntity *mEntityRotationCenter = nullptr;
+
+    //! 3d axis visualization
+    Qgs3DAxis *m3DAxis = nullptr;
+
 };
 
 #endif // QGS3DMAPSCENE_H

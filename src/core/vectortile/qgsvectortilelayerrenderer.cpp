@@ -29,22 +29,23 @@
 #include "qgslabelingengine.h"
 #include "qgsvectortilelabeling.h"
 #include "qgsmapclippingutils.h"
+#include "qgsrendercontext.h"
 
 QgsVectorTileLayerRenderer::QgsVectorTileLayerRenderer( QgsVectorTileLayer *layer, QgsRenderContext &context )
   : QgsMapLayerRenderer( layer->id(), &context )
   , mSourceType( layer->sourceType() )
   , mSourcePath( layer->sourcePath() )
-  , mSourceMinZoom( layer->sourceMinZoom() )
-  , mSourceMaxZoom( layer->sourceMaxZoom() )
   , mRenderer( layer->renderer()->clone() )
   , mDrawTileBoundaries( layer->isTileBorderRenderingEnabled() )
   , mFeedback( new QgsFeedback )
+  , mLayerOpacity( layer->opacity() )
+  , mTileMatrixSet( layer->tileMatrixSet() )
 {
 
   QgsDataSourceUri dsUri;
   dsUri.setEncodedUri( layer->source() );
   mAuthCfg = dsUri.authConfigId();
-  mReferer = dsUri.param( QStringLiteral( "referer" ) );
+  mHeaders = dsUri.httpHeaders();
 
   if ( QgsLabelingEngine *engine = context.labelingEngine() )
   {
@@ -68,7 +69,7 @@ bool QgsVectorTileLayerRenderer::render()
   if ( ctx.renderingStopped() )
     return false;
 
-  QgsScopedQPainterState painterState( ctx.painter() );
+  const QgsScopedQPainterState painterState( ctx.painter() );
 
   if ( !mClippingRegions.empty() )
   {
@@ -81,13 +82,14 @@ bool QgsVectorTileLayerRenderer::render()
   QElapsedTimer tTotal;
   tTotal.start();
 
+  const double tileRenderScale = mTileMatrixSet.scaleForRenderContext( ctx );
   QgsDebugMsgLevel( QStringLiteral( "Vector tiles rendering extent: " ) + ctx.extent().toString( -1 ), 2 );
-  QgsDebugMsgLevel( QStringLiteral( "Vector tiles map scale 1 : %1" ).arg( ctx.rendererScale() ), 2 );
+  QgsDebugMsgLevel( QStringLiteral( "Vector tiles map scale 1 : %1" ).arg( tileRenderScale ), 2 );
 
-  mTileZoom = QgsVectorTileUtils::scaleToZoomLevel( ctx.rendererScale(), mSourceMinZoom, mSourceMaxZoom );
+  mTileZoom = mTileMatrixSet.scaleToZoomLevel( tileRenderScale );
   QgsDebugMsgLevel( QStringLiteral( "Vector tiles zoom level: %1" ).arg( mTileZoom ), 2 );
 
-  mTileMatrix = QgsTileMatrix::fromWebMercator( mTileZoom );
+  mTileMatrix = mTileMatrixSet.tileMatrix( mTileZoom );
 
   mTileRange = mTileMatrix.tileRangeFromExtent( ctx.extent() );
   QgsDebugMsgLevel( QStringLiteral( "Vector tiles range X: %1 - %2  Y: %3 - %4" )
@@ -95,7 +97,7 @@ bool QgsVectorTileLayerRenderer::render()
                     .arg( mTileRange.startRow() ).arg( mTileRange.endRow() ), 2 );
 
   // view center is used to sort the order of tiles for fetching and rendering
-  QPointF viewCenter = mTileMatrix.mapToTileCoordinates( ctx.extent().center() );
+  const QPointF viewCenter = mTileMatrix.mapToTileCoordinates( ctx.extent().center() );
 
   if ( !mTileRange.isValid() )
   {
@@ -103,7 +105,23 @@ bool QgsVectorTileLayerRenderer::render()
     return true;   // nothing to do
   }
 
-  bool isAsync = ( mSourceType == QLatin1String( "xyz" ) );
+  const bool isAsync = ( mSourceType == QLatin1String( "xyz" ) );
+
+  if ( mSourceType == QLatin1String( "xyz" ) && mSourcePath.contains( QLatin1String( "{usage}" ) ) )
+  {
+    switch ( renderContext()->rendererUsage() )
+    {
+      case Qgis::RendererUsage::View:
+        mSourcePath.replace( QLatin1String( "{usage}" ), QLatin1String( "view" ) );
+        break;
+      case Qgis::RendererUsage::Export:
+        mSourcePath.replace( QLatin1String( "{usage}" ), QLatin1String( "export" ) );
+        break;
+      case Qgis::RendererUsage::Unknown:
+        mSourcePath.replace( QLatin1String( "{usage}" ), QString() );
+        break;
+    }
+  }
 
   std::unique_ptr<QgsVectorTileLoader> asyncLoader;
   QList<QgsVectorTileRawData> rawTiles;
@@ -111,14 +129,14 @@ bool QgsVectorTileLayerRenderer::render()
   {
     QElapsedTimer tFetch;
     tFetch.start();
-    rawTiles = QgsVectorTileLoader::blockingFetchTileRawData( mSourceType, mSourcePath, mTileMatrix, viewCenter, mTileRange, mAuthCfg, mReferer );
+    rawTiles = QgsVectorTileLoader::blockingFetchTileRawData( mSourceType, mSourcePath, mTileMatrix, viewCenter, mTileRange, mAuthCfg, mHeaders, mFeedback.get() );
     QgsDebugMsgLevel( QStringLiteral( "Tile fetching time: %1" ).arg( tFetch.elapsed() / 1000. ), 2 );
     QgsDebugMsgLevel( QStringLiteral( "Fetched tiles: %1" ).arg( rawTiles.count() ), 2 );
   }
   else
   {
-    asyncLoader.reset( new QgsVectorTileLoader( mSourcePath, mTileMatrix, mTileRange, viewCenter, mAuthCfg, mReferer, mFeedback.get() ) );
-    QObject::connect( asyncLoader.get(), &QgsVectorTileLoader::tileRequestFinished, [this]( const QgsVectorTileRawData & rawTile )
+    asyncLoader.reset( new QgsVectorTileLoader( mSourcePath, mTileMatrix, mTileRange, viewCenter, mAuthCfg, mHeaders, mFeedback.get() ) );
+    QObject::connect( asyncLoader.get(), &QgsVectorTileLoader::tileRequestFinished, asyncLoader.get(), [this]( const QgsVectorTileRawData & rawTile )
     {
       QgsDebugMsgLevel( QStringLiteral( "Got tile asynchronously: " ) + rawTile.id.toString(), 2 );
       if ( !rawTile.data.isEmpty() )
@@ -131,9 +149,9 @@ bool QgsVectorTileLayerRenderer::render()
 
   // add @zoom_level variable which can be used in styling
   QgsExpressionContextScope *scope = new QgsExpressionContextScope( QObject::tr( "Tiles" ) ); // will be deleted by popper
-  scope->setVariable( "zoom_level", mTileZoom, true );
-  scope->setVariable( "vector_tile_zoom", QgsVectorTileUtils::scaleToZoom( ctx.rendererScale() ), true );
-  QgsExpressionContextScopePopper popper( ctx.expressionContext(), scope );
+  scope->setVariable( QStringLiteral( "zoom_level" ), mTileZoom, true );
+  scope->setVariable( QStringLiteral( "vector_tile_zoom" ), mTileMatrixSet.scaleToZoom( tileRenderScale ), true );
+  const QgsExpressionContextScopePopper popper( ctx.expressionContext(), scope );
 
   mRenderer->startRender( *renderContext(), mTileZoom, mTileRange );
 
@@ -141,16 +159,15 @@ bool QgsVectorTileLayerRenderer::render()
 
   if ( mLabelProvider )
   {
-    QMap<QString, QSet<QString> > requiredFieldsLabeling = mLabelProvider->usedAttributes( ctx, mTileZoom );
-    for ( QString layerName : requiredFieldsLabeling.keys() )
+    const QMap<QString, QSet<QString> > requiredFieldsLabeling = mLabelProvider->usedAttributes( ctx, mTileZoom );
+    for ( auto it = requiredFieldsLabeling.begin(); it != requiredFieldsLabeling.end(); ++it )
     {
-      requiredFields[layerName].unite( requiredFieldsLabeling[layerName] );
+      requiredFields[it.key()].unite( it.value() );
     }
   }
 
-  QMap<QString, QgsFields> perLayerFields;
-  for ( QString layerName : requiredFields.keys() )
-    mPerLayerFields[layerName] = QgsVectorTileUtils::makeQgisFields( requiredFields[layerName] );
+  for ( auto it = requiredFields.constBegin(); it != requiredFields.constEnd(); ++it )
+    mPerLayerFields[it.key()] = QgsVectorTileUtils::makeQgisFields( it.value() );
 
   mRequiredLayers = mRenderer->requiredLayers( ctx, mTileZoom );
 
@@ -163,13 +180,15 @@ bool QgsVectorTileLayerRenderer::render()
       ctx.labelingEngine()->removeProvider( mLabelProvider );
       mLabelProvider = nullptr; // provider is deleted by the engine
     }
-
-    mRequiredLayers.unite( mLabelProvider->requiredLayers( ctx, mTileZoom ) );
+    else
+    {
+      mRequiredLayers.unite( mLabelProvider->requiredLayers( ctx, mTileZoom ) );
+    }
   }
 
   if ( !isAsync )
   {
-    for ( QgsVectorTileRawData &rawTile : rawTiles )
+    for ( const QgsVectorTileRawData &rawTile : std::as_const( rawTiles ) )
     {
       if ( ctx.renderingStopped() )
         break;
@@ -182,6 +201,8 @@ bool QgsVectorTileLayerRenderer::render()
     // Block until tiles are fetched and rendered. If the rendering gets canceled at some point,
     // the async loader will catch the signal, abort requests and return from downloadBlocking()
     asyncLoader->downloadBlocking();
+    if ( !asyncLoader->error().isEmpty() )
+      mErrors.append( asyncLoader->error() );
   }
 
   mRenderer->stopRender( ctx );
@@ -191,6 +212,11 @@ bool QgsVectorTileLayerRenderer::render()
   QgsDebugMsgLevel( QStringLiteral( "Total time: %1" ).arg( tTotal.elapsed() / 1000. ), 2 );
 
   return !ctx.renderingStopped();
+}
+
+bool QgsVectorTileLayerRenderer::forceRasterRender() const
+{
+  return renderContext()->testFlag( Qgis::RenderContextFlag::UseAdvancedEffects ) && ( !qgsDoubleNear( mLayerOpacity, 1.0 ) );
 }
 
 void QgsVectorTileLayerRenderer::decodeAndDrawTile( const QgsVectorTileRawData &rawTile )
@@ -203,7 +229,7 @@ void QgsVectorTileLayerRenderer::decodeAndDrawTile( const QgsVectorTileRawData &
   tLoad.start();
 
   // currently only MVT encoding supported
-  QgsVectorTileMVTDecoder decoder;
+  QgsVectorTileMVTDecoder decoder( mTileMatrixSet );
   if ( !decoder.decode( rawTile.id, rawTile.data ) )
   {
     QgsDebugMsgLevel( QStringLiteral( "Failed to parse raw tile data! " ) + rawTile.id.toString(), 2 );
@@ -213,7 +239,7 @@ void QgsVectorTileLayerRenderer::decodeAndDrawTile( const QgsVectorTileRawData &
   if ( ctx.renderingStopped() )
     return;
 
-  QgsCoordinateTransform ct = ctx.coordinateTransform();
+  const QgsCoordinateTransform ct = ctx.coordinateTransform();
 
   QgsVectorTileRendererData tile( rawTile.id );
   tile.setFields( mPerLayerFields );
@@ -223,7 +249,7 @@ void QgsVectorTileLayerRenderer::decodeAndDrawTile( const QgsVectorTileRawData &
   {
     tile.setTilePolygon( QgsVectorTileUtils::tilePolygon( rawTile.id, ct, mTileMatrix, ctx.mapToPixel() ) );
   }
-  catch ( QgsCsException )
+  catch ( QgsCsException & )
   {
     QgsDebugMsgLevel( QStringLiteral( "Failed to generate tile polygon " ) + rawTile.id.toString(), 2 );
     return;
@@ -236,29 +262,38 @@ void QgsVectorTileLayerRenderer::decodeAndDrawTile( const QgsVectorTileRawData &
   if ( ctx.renderingStopped() )
     return;
 
-  // set up clipping so that rendering does not go behind tile's extent
-  QgsScopedQPainterState savePainterState( ctx.painter() );
-  // we have to intersect with any existing painter clip regions, or we risk overwriting valid clip
-  // regions setup outside of the vector tile renderer (e.g. layout map clip region)
-  ctx.painter()->setClipRegion( QRegion( tile.tilePolygon() ), Qt::IntersectClip );
+  {
+    // set up clipping so that rendering does not go behind tile's extent
+    const QgsScopedQPainterState savePainterState( ctx.painter() );
+    // we have to intersect with any existing painter clip regions, or we risk overwriting valid clip
+    // regions setup outside of the vector tile renderer (e.g. layout map clip region)
+    ctx.painter()->setClipRegion( QRegion( tile.tilePolygon() ), Qt::IntersectClip );
 
-  QElapsedTimer tDraw;
-  tDraw.start();
+    QElapsedTimer tDraw;
+    tDraw.start();
 
-  mRenderer->renderTile( tile, ctx );
-  mTotalDrawTime += tDraw.elapsed();
+    mRenderer->renderTile( tile, ctx );
+    mTotalDrawTime += tDraw.elapsed();
+  }
 
   if ( mLabelProvider )
     mLabelProvider->registerTileFeatures( tile, ctx );
 
   if ( mDrawTileBoundaries )
   {
-    QgsScopedQPainterState savePainterState( ctx.painter() );
+    const QgsScopedQPainterState savePainterState( ctx.painter() );
     ctx.painter()->setClipping( false );
 
     QPen pen( Qt::red );
     pen.setWidth( 3 );
+    QBrush brush( QColor( 255, 0, 0, 40 ), Qt::BrushStyle::Dense3Pattern );
+
     ctx.painter()->setPen( pen );
+    ctx.painter()->setBrush( brush );
     ctx.painter()->drawPolygon( tile.tilePolygon() );
+#if 0
+    ctx.painter()->setBrush( QBrush( QColor( 255, 0, 0 ) ) );
+    ctx.painter()->drawText( tile.tilePolygon().boundingRect().center(), tile.id().toString() );
+#endif
   }
 }

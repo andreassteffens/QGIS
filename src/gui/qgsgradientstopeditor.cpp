@@ -18,7 +18,11 @@
 #include "qgssymbollayerutils.h"
 
 #include <QPainter>
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #include <QStyleOptionFrameV3>
+#else
+#include <QStyleOptionFrame>
+#endif
 #include <QMouseEvent>
 
 #define MARKER_WIDTH 11
@@ -168,7 +172,10 @@ QgsGradientStop QgsGradientStopEditor::selectedStop() const
   }
   else
   {
-    return QgsGradientStop( 1.0, mGradient.color2() );
+    QgsGradientStop stop( 1.0, mGradient.color2() );
+    stop.setColorSpec( mGradient.colorSpec() );
+    stop.setDirection( mGradient.direction() );
+    return stop;
   }
 }
 
@@ -197,6 +204,40 @@ void QgsGradientStopEditor::setSelectedStopOffset( double offset )
   {
     mStops[ mSelectedStop - 1 ].offset = offset;
     mGradient.setStops( mStops );
+    update();
+    emit changed();
+  }
+}
+
+void QgsGradientStopEditor::setSelectedStopColorSpec( QColor::Spec spec )
+{
+  if ( mSelectedStop > 0 && mSelectedStop < mGradient.count() - 1 )
+  {
+    mStops[ mSelectedStop - 1 ].setColorSpec( spec );
+    mGradient.setStops( mStops );
+    update();
+    emit changed();
+  }
+  else if ( mSelectedStop == mGradient.count() - 1 )
+  {
+    mGradient.setColorSpec( spec );
+    update();
+    emit changed();
+  }
+}
+
+void QgsGradientStopEditor::setSelectedStopDirection( Qgis::AngularDirection direction )
+{
+  if ( mSelectedStop > 0 && mSelectedStop < mGradient.count() - 1 )
+  {
+    mStops[ mSelectedStop - 1 ].setDirection( direction );
+    mGradient.setStops( mStops );
+    update();
+    emit changed();
+  }
+  else if ( mSelectedStop == mGradient.count() - 1 )
+  {
+    mGradient.setDirection( direction );
     update();
     emit changed();
   }
@@ -365,7 +406,7 @@ void QgsGradientStopEditor::keyPressEvent( QKeyEvent *e )
       if ( e->key() == Qt::Key_Left )
         offsetDiff *= -1;
 
-      mStops[ mSelectedStop - 1 ].offset = qBound( 0.0, mStops[ mSelectedStop - 1 ].offset + offsetDiff, 1.0 );
+      mStops[ mSelectedStop - 1 ].offset = std::clamp( mStops[ mSelectedStop - 1 ].offset + offsetDiff, 0.0, 1.0 );
       mGradient.setStops( mStops );
       update();
       e->accept();

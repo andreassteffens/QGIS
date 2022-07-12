@@ -28,6 +28,8 @@
 #include "qgssymbol.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgsvectorlayerlabelprovider.h"
+#include "qgslabelingresults.h"
+#include "qgsfillsymbol.h"
 
 // helper function for checking for job cancellation within PAL
 static bool _palIsCanceled( void *ctx )
@@ -126,12 +128,12 @@ QList< QgsMapLayer * > QgsLabelingEngine::participatingLayers() const
     return false;
   } );
 
-  for ( QgsAbstractLabelProvider *provider : qgis::as_const( providersByZ ) )
+  for ( QgsAbstractLabelProvider *provider : std::as_const( providersByZ ) )
   {
     if ( provider->layer() && !layers.contains( provider->layer() ) )
       layers << provider->layer();
   }
-  for ( QgsAbstractLabelProvider *provider : qgis::as_const( subProvidersByZ ) )
+  for ( QgsAbstractLabelProvider *provider : std::as_const( subProvidersByZ ) )
   {
     if ( provider->layer() && !layers.contains( provider->layer() ) )
       layers << provider->layer();
@@ -172,12 +174,12 @@ QStringList QgsLabelingEngine::participatingLayerIds() const
     return false;
   } );
 
-  for ( QgsAbstractLabelProvider *provider : qgis::as_const( providersByZ ) )
+  for ( QgsAbstractLabelProvider *provider : std::as_const( providersByZ ) )
   {
     if ( !layers.contains( provider->layerId() ) )
       layers << provider->layerId();
   }
-  for ( QgsAbstractLabelProvider *provider : qgis::as_const( subProvidersByZ ) )
+  for ( QgsAbstractLabelProvider *provider : std::as_const( subProvidersByZ ) )
   {
     if ( !layers.contains( provider->layerId() ) )
       layers << provider->layerId();
@@ -210,8 +212,7 @@ void QgsLabelingEngine::processProvider( QgsAbstractLabelProvider *provider, Qgs
                               provider->placement(),
                               provider->priority(),
                               true,
-                              flags.testFlag( QgsAbstractLabelProvider::DrawLabels ),
-                              flags.testFlag( QgsAbstractLabelProvider::DrawAllLabels ) );
+                              flags.testFlag( QgsAbstractLabelProvider::DrawLabels ) );
 
   // set whether adjacent lines should be merged
   l->setMergeConnectedLines( flags.testFlag( QgsAbstractLabelProvider::MergeConnectedLines ) );
@@ -223,21 +224,7 @@ void QgsLabelingEngine::processProvider( QgsAbstractLabelProvider *provider, Qgs
   l->setCentroidInside( flags.testFlag( QgsAbstractLabelProvider::CentroidMustBeInside ) );
 
   // set how to show upside-down labels
-  pal::Layer::UpsideDownLabels upsdnlabels = pal::Layer::ShowAll;
-  switch ( provider->upsidedownLabels() )
-  {
-    case QgsPalLayerSettings::Upright:
-      upsdnlabels = pal::Layer::Upright;
-      break;
-    case QgsPalLayerSettings::ShowDefined:
-      upsdnlabels = pal::Layer::ShowDefined;
-      break;
-    case QgsPalLayerSettings::ShowAll:
-      upsdnlabels = pal::Layer::ShowAll;
-      break;
-  }
-  l->setUpsidedownLabels( upsdnlabels );
-
+  l->setUpsidedownLabels( provider->upsidedownLabels() );
 
   const QList<QgsLabelFeature *> features = provider->labelFeatures( context );
 
@@ -266,9 +253,14 @@ void QgsLabelingEngine::processProvider( QgsAbstractLabelProvider *provider, Qgs
 
 void QgsLabelingEngine::registerLabels( QgsRenderContext &context )
 {
+  QgsLabelingEngineFeedback *feedback = qobject_cast< QgsLabelingEngineFeedback * >( context.feedback() );
+
+  if ( feedback )
+    feedback->emit labelRegistrationAboutToBegin();
+
   const QgsLabelingEngineSettings &settings = mMapSettings.labelingEngineSettings();
 
-  mPal = qgis::make_unique< pal::Pal >();
+  mPal = std::make_unique< pal::Pal >();
 
   mPal->setMaximumLineCandidatesPerMapUnit( settings.maximumLineCandidatesPerCm() / context.convertToMapUnits( 10, QgsUnitTypes::RenderMillimeters ) );
   mPal->setMaximumPolygonCandidatesPerMapUnitSquared( settings.maximumPolygonCandidatesPerCmSquared() / std::pow( context.convertToMapUnits( 10, QgsUnitTypes::RenderMillimeters ), 2 ) );
@@ -277,15 +269,27 @@ void QgsLabelingEngine::registerLabels( QgsRenderContext &context )
   mPal->setPlacementVersion( settings.placementVersion() );
 
   // for each provider: get labels and register them in PAL
-  for ( QgsAbstractLabelProvider *provider : qgis::as_const( mProviders ) )
+  const double step = !mProviders.empty() ? 100.0 / mProviders.size() : 1;
+  int index = 0;
+  for ( QgsAbstractLabelProvider *provider : std::as_const( mProviders ) )
   {
-    std::unique_ptr< QgsExpressionContextScopePopper > layerScopePopper;
-    if ( QgsMapLayer *ml = provider->layer() )
+    if ( feedback )
     {
-      layerScopePopper = qgis::make_unique< QgsExpressionContextScopePopper >( context.expressionContext(), QgsExpressionContextUtils::layerScope( ml ) );
+      feedback->emit providerRegistrationAboutToBegin( provider );
+      feedback->setProgress( index * step );
+    }
+    index++;
+    std::unique_ptr< QgsExpressionContextScopePopper > layerScopePopper;
+    if ( provider->layerExpressionContextScope() )
+    {
+      layerScopePopper = std::make_unique< QgsExpressionContextScopePopper >( context.expressionContext(), new QgsExpressionContextScope( *provider->layerExpressionContextScope() ) );
     }
     processProvider( provider, context, *mPal );
+    if ( feedback )
+      feedback->emit providerRegistrationFinished( provider );
   }
+  if ( feedback )
+    feedback->emit labelRegistrationFinished();
 }
 
 void QgsLabelingEngine::solve( QgsRenderContext &context )
@@ -319,7 +323,7 @@ void QgsLabelingEngine::solve( QgsRenderContext &context )
     // draw map boundary
     QgsFeature f;
     f.setGeometry( mapBoundaryGeom );
-    QgsStringMap properties;
+    QVariantMap properties;
     properties.insert( QStringLiteral( "style" ), QStringLiteral( "no" ) );
     properties.insert( QStringLiteral( "style_border" ), QStringLiteral( "solid" ) );
     properties.insert( QStringLiteral( "color_border" ), QStringLiteral( "#0000ff" ) );
@@ -349,7 +353,7 @@ void QgsLabelingEngine::solve( QgsRenderContext &context )
   // do the labeling itself
   try
   {
-    mProblem = mPal->extractProblem( extent, mapBoundaryGeom );
+    mProblem = mPal->extractProblem( extent, mapBoundaryGeom, context );
   }
   catch ( std::exception &e )
   {
@@ -393,7 +397,9 @@ void QgsLabelingEngine::solve( QgsRenderContext &context )
   }
 
   // find the solution
-  mLabels = mPal->solveProblem( mProblem.get(), settings.testFlag( QgsLabelingEngineSettings::UseAllLabels ), settings.testFlag( QgsLabelingEngineSettings::DrawUnplacedLabels ) ? &mUnlabeled : nullptr );
+  mLabels = mPal->solveProblem( mProblem.get(), context,
+                                settings.testFlag( QgsLabelingEngineSettings::UseAllLabels ),
+                                settings.testFlag( QgsLabelingEngineSettings::DrawUnplacedLabels ) || settings.testFlag( QgsLabelingEngineSettings::CollectUnplacedLabels ) ? &mUnlabeled : nullptr );
 
   // sort labels
   std::sort( mLabels.begin(), mLabels.end(), QgsLabelSorter( mMapSettings ) );
@@ -412,22 +418,24 @@ void QgsLabelingEngine::drawLabels( QgsRenderContext &context, const QString &la
   QPainter *painter = context.painter();
 
   // prepare for rendering
-  for ( QgsAbstractLabelProvider *provider : qgis::as_const( mProviders ) )
+  for ( QgsAbstractLabelProvider *provider : std::as_const( mProviders ) )
   {
     if ( !layerId.isEmpty() && provider->layerId() != layerId )
       continue;
 
     // provider will require the correct layer scope for expression preparation - at this stage, the existing expression context
     // only contains generic scopes
-    QgsExpressionContextScopePopper popper( context.expressionContext(), QgsExpressionContextUtils::layerScope( provider->layer() ) );
+    QgsExpressionContextScopePopper popper( context.expressionContext(), provider->layerExpressionContextScope() ? new QgsExpressionContextScope( *provider->layerExpressionContextScope() ) : new QgsExpressionContextScope() );
+
+    QgsScopedRenderContextReferenceScaleOverride referenceScaleOverride( context, provider->layerReferenceScale() );
     provider->startRender( context );
   }
 
   QgsExpressionContextScope *symbolScope = new QgsExpressionContextScope();
-  std::unique_ptr< QgsExpressionContextScopePopper > symbolScopePopper = qgis::make_unique< QgsExpressionContextScopePopper >( context.expressionContext(), symbolScope );
+  std::unique_ptr< QgsExpressionContextScopePopper > symbolScopePopper = std::make_unique< QgsExpressionContextScopePopper >( context.expressionContext(), symbolScope );
 
   // draw label backgrounds
-  for ( pal::LabelPosition *label : qgis::as_const( mLabels ) )
+  for ( pal::LabelPosition *label : std::as_const( mLabels ) )
   {
     if ( context.renderingStopped() )
       break;
@@ -443,6 +451,9 @@ void QgsLabelingEngine::drawLabels( QgsRenderContext &context, const QString &la
 
     context.expressionContext().setFeature( lf->feature() );
     context.expressionContext().setFields( lf->feature().fields() );
+
+    QgsScopedRenderContextReferenceScaleOverride referenceScaleOverride( context, lf->provider()->layerReferenceScale() );
+
     if ( lf->symbol() )
     {
       symbolScope = QgsExpressionContextUtils::updateSymbolScope( lf->symbol(), symbolScope );
@@ -451,7 +462,7 @@ void QgsLabelingEngine::drawLabels( QgsRenderContext &context, const QString &la
   }
 
   // draw the labels
-  for ( pal::LabelPosition *label : qgis::as_const( mLabels ) )
+  for ( pal::LabelPosition *label : std::as_const( mLabels ) )
   {
     if ( context.renderingStopped() )
       break;
@@ -467,6 +478,8 @@ void QgsLabelingEngine::drawLabels( QgsRenderContext &context, const QString &la
 
     context.expressionContext().setFeature( lf->feature() );
     context.expressionContext().setFields( lf->feature().fields() );
+
+    QgsScopedRenderContextReferenceScaleOverride referenceScaleOverride( context, lf->provider()->layerReferenceScale() );
     if ( lf->symbol() )
     {
       symbolScope = QgsExpressionContextUtils::updateSymbolScope( lf->symbol(), symbolScope );
@@ -477,9 +490,9 @@ void QgsLabelingEngine::drawLabels( QgsRenderContext &context, const QString &la
   }
 
   // draw unplaced labels. These are always rendered on top
-  if ( settings.testFlag( QgsLabelingEngineSettings::DrawUnplacedLabels ) )
+  if ( settings.testFlag( QgsLabelingEngineSettings::DrawUnplacedLabels ) || settings.testFlag( QgsLabelingEngineSettings::CollectUnplacedLabels ) )
   {
-    for ( pal::LabelPosition *label : qgis::as_const( mUnlabeled ) )
+    for ( pal::LabelPosition *label : std::as_const( mUnlabeled ) )
     {
       if ( context.renderingStopped() )
         break;
@@ -494,6 +507,8 @@ void QgsLabelingEngine::drawLabels( QgsRenderContext &context, const QString &la
 
       context.expressionContext().setFeature( lf->feature() );
       context.expressionContext().setFields( lf->feature().fields() );
+
+      QgsScopedRenderContextReferenceScaleOverride referenceScaleOverride( context, lf->provider()->layerReferenceScale() );
       if ( lf->symbol() )
       {
         symbolScope = QgsExpressionContextUtils::updateSymbolScope( lf->symbol(), symbolScope );
@@ -507,7 +522,7 @@ void QgsLabelingEngine::drawLabels( QgsRenderContext &context, const QString &la
   symbolScopePopper.reset();
 
   // cleanup
-  for ( QgsAbstractLabelProvider *provider : qgis::as_const( mProviders ) )
+  for ( QgsAbstractLabelProvider *provider : std::as_const( mProviders ) )
   {
     if ( !layerId.isEmpty() && provider->layerId() != layerId )
       continue;
@@ -617,11 +632,13 @@ QgsAbstractLabelProvider::QgsAbstractLabelProvider( QgsMapLayer *layer, const QS
   : mLayerId( layer ? layer->id() : QString() )
   , mLayer( layer )
   , mProviderId( providerId )
-  , mFlags( DrawLabels )
-  , mPlacement( QgsPalLayerSettings::AroundPoint )
-  , mPriority( 0.5 )
-  , mUpsidedownLabels( QgsPalLayerSettings::Upright )
 {
+  if ( QgsVectorLayer *vl = qobject_cast< QgsVectorLayer * >( layer ) )
+  {
+    mLayerExpressionContextScope.reset( vl->createExpressionContextScope() );
+    if ( const QgsFeatureRenderer *renderer = vl->renderer() )
+      mLayerReferenceScale = renderer->referenceScale();
+  }
 }
 
 void QgsAbstractLabelProvider::drawUnplacedLabel( QgsRenderContext &, pal::LabelPosition * ) const
@@ -652,52 +669,57 @@ void QgsAbstractLabelProvider::stopRender( QgsRenderContext &context )
   }
 }
 
+QgsExpressionContextScope *QgsAbstractLabelProvider::layerExpressionContextScope() const
+{
+  return mLayerExpressionContextScope.get();
+}
+
 //
 // QgsLabelingUtils
 //
 
-QString QgsLabelingUtils::encodePredefinedPositionOrder( const QVector<QgsPalLayerSettings::PredefinedPointPosition> &positions )
+QString QgsLabelingUtils::encodePredefinedPositionOrder( const QVector<Qgis::LabelPredefinedPointPosition> &positions )
 {
   QStringList predefinedOrderString;
   const auto constPositions = positions;
-  for ( QgsPalLayerSettings::PredefinedPointPosition position : constPositions )
+  for ( Qgis::LabelPredefinedPointPosition position : constPositions )
   {
     switch ( position )
     {
-      case QgsPalLayerSettings::TopLeft:
+      case Qgis::LabelPredefinedPointPosition::TopLeft:
         predefinedOrderString << QStringLiteral( "TL" );
         break;
-      case QgsPalLayerSettings::TopSlightlyLeft:
+      case Qgis::LabelPredefinedPointPosition::TopSlightlyLeft:
         predefinedOrderString << QStringLiteral( "TSL" );
         break;
-      case QgsPalLayerSettings::TopMiddle:
+      case Qgis::LabelPredefinedPointPosition::TopMiddle:
         predefinedOrderString << QStringLiteral( "T" );
         break;
-      case QgsPalLayerSettings::TopSlightlyRight:
+      case Qgis::LabelPredefinedPointPosition::TopSlightlyRight:
         predefinedOrderString << QStringLiteral( "TSR" );
         break;
-      case QgsPalLayerSettings::TopRight:
+      case Qgis::LabelPredefinedPointPosition::TopRight:
         predefinedOrderString << QStringLiteral( "TR" );
         break;
-      case QgsPalLayerSettings::MiddleLeft:
+      case Qgis::LabelPredefinedPointPosition::MiddleLeft:
         predefinedOrderString << QStringLiteral( "L" );
         break;
-      case QgsPalLayerSettings::MiddleRight:
+      case Qgis::LabelPredefinedPointPosition::MiddleRight:
         predefinedOrderString << QStringLiteral( "R" );
         break;
-      case QgsPalLayerSettings::BottomLeft:
+      case Qgis::LabelPredefinedPointPosition::BottomLeft:
         predefinedOrderString << QStringLiteral( "BL" );
         break;
-      case QgsPalLayerSettings::BottomSlightlyLeft:
+      case Qgis::LabelPredefinedPointPosition::BottomSlightlyLeft:
         predefinedOrderString << QStringLiteral( "BSL" );
         break;
-      case QgsPalLayerSettings::BottomMiddle:
+      case Qgis::LabelPredefinedPointPosition::BottomMiddle:
         predefinedOrderString << QStringLiteral( "B" );
         break;
-      case QgsPalLayerSettings::BottomSlightlyRight:
+      case Qgis::LabelPredefinedPointPosition::BottomSlightlyRight:
         predefinedOrderString << QStringLiteral( "BSR" );
         break;
-      case QgsPalLayerSettings::BottomRight:
+      case Qgis::LabelPredefinedPointPosition::BottomRight:
         predefinedOrderString << QStringLiteral( "BR" );
         break;
     }
@@ -705,38 +727,38 @@ QString QgsLabelingUtils::encodePredefinedPositionOrder( const QVector<QgsPalLay
   return predefinedOrderString.join( ',' );
 }
 
-QVector<QgsPalLayerSettings::PredefinedPointPosition> QgsLabelingUtils::decodePredefinedPositionOrder( const QString &positionString )
+QVector<Qgis::LabelPredefinedPointPosition> QgsLabelingUtils::decodePredefinedPositionOrder( const QString &positionString )
 {
-  QVector<QgsPalLayerSettings::PredefinedPointPosition> result;
+  QVector<Qgis::LabelPredefinedPointPosition> result;
   const QStringList predefinedOrderList = positionString.split( ',' );
   result.reserve( predefinedOrderList.size() );
   for ( const QString &position : predefinedOrderList )
   {
     QString cleaned = position.trimmed().toUpper();
     if ( cleaned == QLatin1String( "TL" ) )
-      result << QgsPalLayerSettings::TopLeft;
+      result << Qgis::LabelPredefinedPointPosition::TopLeft;
     else if ( cleaned == QLatin1String( "TSL" ) )
-      result << QgsPalLayerSettings::TopSlightlyLeft;
+      result << Qgis::LabelPredefinedPointPosition::TopSlightlyLeft;
     else if ( cleaned == QLatin1String( "T" ) )
-      result << QgsPalLayerSettings::TopMiddle;
+      result << Qgis::LabelPredefinedPointPosition::TopMiddle;
     else if ( cleaned == QLatin1String( "TSR" ) )
-      result << QgsPalLayerSettings::TopSlightlyRight;
+      result << Qgis::LabelPredefinedPointPosition::TopSlightlyRight;
     else if ( cleaned == QLatin1String( "TR" ) )
-      result << QgsPalLayerSettings::TopRight;
+      result << Qgis::LabelPredefinedPointPosition::TopRight;
     else if ( cleaned == QLatin1String( "L" ) )
-      result << QgsPalLayerSettings::MiddleLeft;
+      result << Qgis::LabelPredefinedPointPosition::MiddleLeft;
     else if ( cleaned == QLatin1String( "R" ) )
-      result << QgsPalLayerSettings::MiddleRight;
+      result << Qgis::LabelPredefinedPointPosition::MiddleRight;
     else if ( cleaned == QLatin1String( "BL" ) )
-      result << QgsPalLayerSettings::BottomLeft;
+      result << Qgis::LabelPredefinedPointPosition::BottomLeft;
     else if ( cleaned == QLatin1String( "BSL" ) )
-      result << QgsPalLayerSettings::BottomSlightlyLeft;
+      result << Qgis::LabelPredefinedPointPosition::BottomSlightlyLeft;
     else if ( cleaned == QLatin1String( "B" ) )
-      result << QgsPalLayerSettings::BottomMiddle;
+      result << Qgis::LabelPredefinedPointPosition::BottomMiddle;
     else if ( cleaned == QLatin1String( "BSR" ) )
-      result << QgsPalLayerSettings::BottomSlightlyRight;
+      result << Qgis::LabelPredefinedPointPosition::BottomSlightlyRight;
     else if ( cleaned == QLatin1String( "BR" ) )
-      result << QgsPalLayerSettings::BottomRight;
+      result << Qgis::LabelPredefinedPointPosition::BottomRight;
   }
   return result;
 }

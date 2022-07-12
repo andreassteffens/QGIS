@@ -33,9 +33,11 @@ from owslib.wms import WebMapService
 
 from test_qgsserver import QgsServerTestBase
 from qgis.core import QgsProject
+from qgis.server import QgsServer, QgsServerRequest, QgsBufferServerResponse
+from qgis.PyQt.QtCore import QUrl
 
 # Strip path and content length because path may vary
-RE_STRIP_UNCHECKABLE = b'MAP=[^"]+|Content-Length: \\d+'
+RE_STRIP_UNCHECKABLE = b'MAP=[^"]+|SERVICE=[^"]+|Content-Length: \\d+'
 RE_STRIP_EXTENTS = b'<(north|east|south|west)Bound(Lat|Long)itude>.*</(north|east|south|west)Bound(Lat|Long)itude>|<BoundingBox .*/>'
 RE_ATTRIBUTES = b'[^>\\s]+=[^>\\s]+'
 
@@ -93,11 +95,32 @@ class TestQgsServerWMS(TestQgsServerWMSTestBase):
     """QGIS Server WMS Tests"""
 
     def test_getcapabilities(self):
-        self.wms_request_compare('GetCapabilities')
+        self.wms_request_compare('GetCapabilities', reference_file="getcapabilities-map")
 
     def test_getcapabilities_case_insensitive(self):
-        self.wms_request_compare('getcapabilities')
-        self.wms_request_compare('GETCAPABILITIES')
+        self.wms_request_compare('getcapabilities', reference_file="getcapabilities-map")
+        self.wms_request_compare('GETCAPABILITIES', reference_file="getcapabilities-map")
+
+    def test_getcapabilities_advertised_url(self):
+        server = QgsServer()
+        request = QgsServerRequest()
+        projectPath = os.path.join(self.testdata_path, 'test_project.qgs')
+        request.setUrl(QUrl('http://localhost/qgis_mapserv.fcgi?MAP=' + projectPath + '&SERVICE=WMS&REQUEST=GetCapabilities'))
+        request.setOriginalUrl(QUrl('http://localhost/wms/test_project'))
+        response = QgsBufferServerResponse()
+        server.handleRequest(request, response)
+        response.flush()
+
+        headers = []
+        rh = response.headers()
+        rk = sorted(rh.keys())
+        for k in rk:
+            headers.append(("%s: %s" % (k, rh[k])).encode('utf-8'))
+
+        reference_path = os.path.join(self.testdata_path, 'wms_getcapabilities_rewriting.txt')
+        f = open(reference_path, 'rb')
+        expected = f.read()
+        self.assertXMLEqual(b"\n".join(headers) + b"\n\n" + bytes(response.body()), expected)
 
     def test_getprojectsettings(self):
         self.wms_request_compare('GetProjectSettings')
@@ -127,6 +150,12 @@ class TestQgsServerWMS(TestQgsServerWMSTestBase):
 
         # Test GetStyles with labeling
         self.wms_request_compare('GetStyles',
+                                 '&layers=pointlabel',
+                                 'getstyles_pointlabel',
+                                 project=self.projectPath)
+
+        # Test GetStyle with labeling
+        self.wms_request_compare('GetStyle',
                                  '&layers=pointlabel',
                                  'getstyles_pointlabel',
                                  project=self.projectPath)

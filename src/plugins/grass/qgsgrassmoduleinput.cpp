@@ -69,7 +69,7 @@ QgsGrassModuleInputModel::QgsGrassModuleInputModel( QObject *parent )
 
 void QgsGrassModuleInputModel::onDirectoryChanged( const QString &path )
 {
-  QgsDebugMsg( "path = " + path );
+  QgsDebugMsgLevel( "path = " + path, 2 );
 
   QString locationPath = QgsGrass::getDefaultLocationPath();
   QDir parentDir( path );
@@ -78,7 +78,7 @@ void QgsGrassModuleInputModel::onDirectoryChanged( const QString &path )
   QList<QgsGrassObject::Type> types;
   if ( path == locationPath )
   {
-    QgsDebugMsg( "location = " + path );
+    QgsDebugMsgLevel( "location = " + path, 2 );
     QStringList dirNames = locationDirNames();
     //QStringList mapsets = QgsGrass::mapsets( QgsGrass::getDefaultGisdbase(), QgsGrass::getDefaultLocation() );
 
@@ -87,12 +87,12 @@ void QgsGrassModuleInputModel::onDirectoryChanged( const QString &path )
       QString mapset = item( i )->text();
       if ( !QgsGrass::isMapset( locationPath + "/" + mapset ) )
       {
-        QgsDebugMsg( "removed mapset " + mapset );
+        QgsDebugMsgLevel( "removed mapset " + mapset, 2 );
         removeRows( i, 1 );
       }
     }
 
-    Q_FOREACH ( const QString &dirName, dirNames )
+    for ( const QString &dirName : dirNames )
     {
       // Add to watcher in any case, either for WIND, cellhd or vector
       QString dirPath = locationPath + "/" + dirName;
@@ -105,10 +105,10 @@ void QgsGrassModuleInputModel::onDirectoryChanged( const QString &path )
   }
   else if ( parentDir.canonicalPath() == QDir( locationPath ).canonicalPath() ) // mapset
   {
-    QgsDebugMsg( "mapset = " + path );
+    QgsDebugMsgLevel( "mapset = " + path, 2 );
     QDir dir( path );
     mapset = dir.dirName();
-    Q_FOREACH ( const QString &watchedDir, watchedDirs() )
+    for ( const QString &watchedDir : watchedDirs() )
     {
       watch( path + "/" + watchedDir );
     }
@@ -117,7 +117,7 @@ void QgsGrassModuleInputModel::onDirectoryChanged( const QString &path )
   }
   else // cellhd or vector dir
   {
-    QgsDebugMsg( "cellhd/vector = " + path );
+    QgsDebugMsgLevel( "cellhd/vector = " + path, 2 );
     mapset = parentDir.dirName();
     if ( path.endsWith( QLatin1String( "cellhd" ) ) )
     {
@@ -140,7 +140,7 @@ void QgsGrassModuleInputModel::onDirectoryChanged( const QString &path )
 
 void QgsGrassModuleInputModel::onFileChanged( const QString &path )
 {
-  QgsDebugMsg( "path = " + path );
+  QgsDebugMsgLevel( "path = " + path, 2 );
   // when tgis/sqlite.db is changed, this gets called twice, probably the file changes more times when it is modified
   if ( path.endsWith( QLatin1String( "/tgis/sqlite.db" ) ) )
   {
@@ -178,7 +178,7 @@ QStringList QgsGrassModuleInputModel::locationDirNames()
 
 void QgsGrassModuleInputModel::addMapset( const QString &mapset )
 {
-  QgsDebugMsg( "mapset = " + mapset );
+  QgsDebugMsgLevel( "mapset = " + mapset, 2 );
 
   QStandardItem *mapsetItem = new QStandardItem( mapset );
   mapsetItem->setData( mapset, MapsetRole );
@@ -193,7 +193,7 @@ void QgsGrassModuleInputModel::addMapset( const QString &mapset )
 
 void QgsGrassModuleInputModel::refreshMapset( QStandardItem *mapsetItem, const QString &mapset, const QList<QgsGrassObject::Type> &types )
 {
-  QgsDebugMsg( "mapset = " + mapset );
+  QgsDebugMsgLevel( "mapset = " + mapset, 2 );
   if ( !mapsetItem )
   {
     return;
@@ -205,12 +205,12 @@ void QgsGrassModuleInputModel::refreshMapset( QStandardItem *mapsetItem, const Q
     typesCopy << QgsGrassObject::Raster << QgsGrassObject::Vector;
     typesCopy << QgsGrassObject::Strds << QgsGrassObject::Stvds << QgsGrassObject::Str3ds;
   }
-  Q_FOREACH ( QgsGrassObject::Type type, typesCopy )
+  for ( QgsGrassObject::Type type : typesCopy )
   {
     QgsGrassObject mapsetObject( QgsGrass::getDefaultGisdbase(), QgsGrass::getDefaultLocation(), mapset, QString(), QgsGrassObject::Mapset );
     QStringList maps = QgsGrass::grassObjects( mapsetObject, type );
     QStringList mapNames;
-    Q_FOREACH ( const QString &map, maps )
+    for ( const QString &map : maps )
     {
       if ( map.startsWith( QLatin1String( "qgis_import_tmp_" ) ) )
       {
@@ -230,7 +230,7 @@ void QgsGrassModuleInputModel::refreshMapset( QStandardItem *mapsetItem, const Q
       }
       if ( !found )
       {
-        QgsDebugMsg( "add map : " + mapName );
+        QgsDebugMsgLevel( "add map : " + mapName, 2 );
         QStandardItem *mapItem = new QStandardItem( mapName );
         mapItem->setData( mapName, Qt::EditRole );
         mapItem->setData( map, MapRole );
@@ -240,7 +240,7 @@ void QgsGrassModuleInputModel::refreshMapset( QStandardItem *mapsetItem, const Q
       }
       else
       {
-        QgsDebugMsg( "map exists : " + mapName );
+        QgsDebugMsgLevel( "map exists : " + mapName, 2 );
       }
       mapNames << mapName;
     }
@@ -254,7 +254,7 @@ void QgsGrassModuleInputModel::refreshMapset( QStandardItem *mapsetItem, const Q
       QString mapName = mapsetItem->child( i )->text();
       if ( !mapNames.contains( mapName ) )
       {
-        QgsDebugMsg( "remove map : " + mapName );
+        QgsDebugMsgLevel( "remove map : " + mapName, 2 );
         mapsetItem->removeRows( i, 1 );
       }
     }
@@ -278,7 +278,7 @@ void QgsGrassModuleInputModel::reload()
   mLocationPath = QgsGrass::getDefaultLocationPath();
 
   QStringList mapsets = QgsGrass::mapsets( QgsGrass::getDefaultGisdbase(), QgsGrass::getDefaultLocation() );
-  Q_FOREACH ( const QString &mapset, mapsets )
+  for ( const QString &mapset : mapsets )
   {
     addMapset( mapset );
   }
@@ -287,13 +287,13 @@ void QgsGrassModuleInputModel::reload()
 
   // Watching all dirs in location because a dir may become a mapset later, when WIND is created
   QStringList dirNames = locationDirNames();
-  Q_FOREACH ( const QString &dirName, dirNames )
+  for ( const QString &dirName : dirNames )
   {
     QString dirPath = mLocationPath + "/" + dirName;
     // Watch the dir in any case, WIND maybe created later
     mWatcher->addPath( dirPath );
 
-    Q_FOREACH ( const QString &watchedDir, watchedDirs() )
+    for ( const QString &watchedDir : watchedDirs() )
     {
       watch( dirPath + "/" + watchedDir );
     }
@@ -357,7 +357,7 @@ bool QgsGrassModuleInputProxy::filterAcceptsRow( int sourceRow, const QModelInde
   }
   QModelIndex sourceIndex = sourceModel()->index( sourceRow, 0, sourceParent );
 
-  QgsDebugMsg( QString( "mType = %1 item type = %2" ).arg( mType ).arg( sourceModel()->data( sourceIndex, QgsGrassModuleInputModel::TypeRole ).toInt() ) );
+  QgsDebugMsgLevel( QString( "mType = %1 item type = %2" ).arg( mType ).arg( sourceModel()->data( sourceIndex, QgsGrassModuleInputModel::TypeRole ).toInt() ), 2 );
   QgsGrassObject::Type itemType = ( QgsGrassObject::Type )( sourceModel()->data( sourceIndex, QgsGrassModuleInputModel::TypeRole ).toInt() );
 
   if ( itemType == QgsGrassObject::Mapset )
@@ -477,7 +477,7 @@ void QgsGrassModuleInputCompleterProxy::refreshMapping()
   mIndexes.clear();
   mRows.clear();
   map( QModelIndex() );
-  QgsDebugMsg( QString( "mRows.size() = %1" ).arg( mRows.size() ) );
+  QgsDebugMsgLevel( QString( "mRows.size() = %1" ).arg( mRows.size() ), 2 );
 }
 
 void QgsGrassModuleInputCompleterProxy::map( const QModelIndex &parent, int level )
@@ -486,7 +486,7 @@ void QgsGrassModuleInputCompleterProxy::map( const QModelIndex &parent, int leve
   {
     return;
   }
-  //QgsDebugMsg( "parent = " + sourceModel()->data(parent).toString() );
+  //QgsDebugMsgLevel( "parent = " + sourceModel()->data(parent).toString(), 2 );
   for ( int i = 0; i < sourceModel()->rowCount( parent ); i++ )
   {
     QModelIndex index = sourceModel()->index( i, 0, parent );
@@ -519,7 +519,7 @@ bool QgsGrassModuleInputCompleter::eventFilter( QObject *watched, QEvent *event 
     // Disable Up/Down in edit line (causing selection of previous/next item + activated() signal)
     if ( keyEvent->key() == Qt::Key_Up || keyEvent->key() == Qt::Key_Down )
     {
-      QgsDebugMsg( "Up/Down" );
+      QgsDebugMsgLevel( "Up/Down", 2 );
       return true;
     }
   }
@@ -629,7 +629,7 @@ void QgsGrassModuleInputComboBox::setCurrent( const QModelIndex &proxyIndex )
 bool QgsGrassModuleInputComboBox::setCurrent( const QString &map, const QString &mapset )
 {
   QString ms = mapset.isEmpty() ? QgsGrass::getDefaultMapset() : mapset;
-  QgsDebugMsg( " map = " + map + " mapset = " + mapset + " ms = " + ms );
+  QgsDebugMsgLevel( " map = " + map + " mapset = " + mapset + " ms = " + ms, 2 );
   mTreeView->selectionModel()->clear();
   for ( int i = 0; i < mProxy->rowCount(); i++ )
   {
@@ -752,7 +752,7 @@ bool QgsGrassModuleInputSelectedView::eventFilter( QObject *obj, QEvent *event )
 {
   if ( obj == this && event->type() == QEvent::KeyPress && currentIndex().isValid() )
   {
-    QgsDebugMsg( "KeyPress" );
+    QgsDebugMsgLevel( "KeyPress", 4 );
     QKeyEvent *ke = static_cast<QKeyEvent *>( event );
     if ( ( ke->key() == Qt::Key_Delete || ke->key() == Qt::Key_Backspace ) && ke->modifiers() == 0 )
     {
@@ -761,7 +761,7 @@ bool QgsGrassModuleInputSelectedView::eventFilter( QObject *obj, QEvent *event )
   }
   else if ( obj == viewport() && event->type() == QEvent::MouseButtonRelease )
   {
-    QgsDebugMsg( "MouseButtonRelease" );
+    QgsDebugMsgLevel( "MouseButtonRelease", 4 );
     QMouseEvent *me = static_cast<QMouseEvent *>( event );
     if ( me->button() == Qt::LeftButton && me->modifiers() == Qt::NoModifier )
     {
@@ -786,7 +786,6 @@ QgsGrassModuleInput::QgsGrassModuleInput( QgsGrassModule *module,
   , mModuleStandardOptions( options )
   , mUpdate( false )
   , mUsesRegion( false )
-  , mRequired( false )
 {
   mGeometryTypeMask = GV_POINT | GV_LINE | GV_AREA;
 
@@ -795,9 +794,6 @@ QgsGrassModuleInput::QgsGrassModuleInput( QgsGrassModule *module,
     mTitle = tr( "Input" );
   }
   adjustTitle();
-
-  // Check if this parameter is required
-  mRequired = gnode.toElement().attribute( QStringLiteral( "required" ) ) == QLatin1String( "yes" );
 
   QDomNode promptNode = gnode.namedItem( QStringLiteral( "gisprompt" ) );
   QDomElement promptElem = promptNode.toElement();
@@ -848,7 +844,7 @@ QgsGrassModuleInput::QgsGrassModuleInput( QgsGrassModule *module,
             }
             valueNode = valueNode.nextSibling();
           }
-          QgsDebugMsg( QString( "mGeometryTypeMask = %1" ).arg( mGeometryTypeMask ) );
+          QgsDebugMsgLevel( QString( "mGeometryTypeMask = %1" ).arg( mGeometryTypeMask ), 2 );
         }
       }
     }
@@ -859,13 +855,13 @@ QgsGrassModuleInput::QgsGrassModuleInput( QgsGrassModule *module,
     {
       int mask = 0;
 
-      Q_FOREACH ( const QString &typeName, opt.split( ',' ) )
+      for ( const QString &typeName : opt.split( ',' ) )
       {
         mask |= QgsGrass::vectorType( typeName );
       }
 
       mGeometryTypeMask &= mask;
-      QgsDebugMsg( QString( "mask = %1 -> mGeometryTypeMask = %2" ).arg( mask ).arg( mGeometryTypeMask ) );
+      QgsDebugMsgLevel( QString( "mask = %1 -> mGeometryTypeMask = %2" ).arg( mask ).arg( mGeometryTypeMask ), 2 );
     }
 
     // Read "layeroption" if defined
@@ -976,7 +972,7 @@ QgsGrassModuleInput::QgsGrassModuleInput( QgsGrassModule *module,
 
       QList<int> types;
       types << GV_POINT << GV_LINE << GV_BOUNDARY << GV_CENTROID << GV_AREA;
-      Q_FOREACH ( int type, types )
+      for ( int type : types )
       {
         if ( !( type & mGeometryTypeMask ) )
         {
@@ -1014,7 +1010,7 @@ QgsGrassModuleInput::QgsGrassModuleInput( QgsGrassModule *module,
     if ( type() == QgsGrassObject::Raster )
       mUsesRegion = true;
   }
-  QgsDebugMsg( QString( "mUsesRegion = %1" ).arg( mUsesRegion ) );
+  QgsDebugMsgLevel( QString( "mUsesRegion = %1" ).arg( mUsesRegion ), 2 );
   onChanged( QString() );
 }
 
@@ -1105,7 +1101,7 @@ QgsGrassVectorLayer *QgsGrassModuleInput::currentLayer()
 QStringList QgsGrassModuleInput::currentGeometryTypeNames()
 {
   QStringList typeNames;
-  Q_FOREACH ( int checkBoxType, mTypeCheckBoxes.keys() )
+  for ( int checkBoxType : mTypeCheckBoxes.keys() )
   {
     QCheckBox *checkBox = mTypeCheckBoxes.value( checkBoxType );
     if ( checkBox->isChecked() )
@@ -1122,20 +1118,20 @@ QStringList QgsGrassModuleInput::currentLayerCodes()
 
   if ( auto *lCurrentLayer = currentLayer() )
   {
-    Q_FOREACH ( QString type, currentGeometryTypeNames() )
+    for ( QString type : currentGeometryTypeNames() )
     {
       type.replace( QLatin1String( "area" ), QLatin1String( "polygon" ) );
       list << QStringLiteral( "%1_%2" ).arg( lCurrentLayer->number() ).arg( type );
     }
   }
-  QgsDebugMsg( "list = " + list.join( "," ) );
+  QgsDebugMsgLevel( "list = " + list.join( "," ), 2 );
   return list;
 }
 
 void QgsGrassModuleInput::onChanged( const QString &text )
 {
   Q_UNUSED( text ) // silence warning
-  QgsDebugMsg( "text = " + text );
+  QgsDebugMsgLevel( "text = " + text, 2 );
 
   if ( multiple() )
   {
@@ -1153,7 +1149,7 @@ void QgsGrassModuleInput::onChanged( const QString &text )
     QgsGrassObject grassObject = currentGrassObject();
     if ( QgsGrass::objectExists( grassObject ) )
     {
-      QgsDebugMsg( "map exists" );
+      QgsDebugMsgLevel( "map exists", 2 );
       mVector = new QgsGrassVector( grassObject );
       if ( !mVector->openHead() )
       {
@@ -1162,9 +1158,9 @@ void QgsGrassModuleInput::onChanged( const QString &text )
       else
       {
         // Find layers matching type mask
-        Q_FOREACH ( QgsGrassVectorLayer *layer, mVector->layers() )
+        for ( QgsGrassVectorLayer *layer : mVector->layers() )
         {
-          QgsDebugMsg( QString( "layer->number() = %1 layer.type() = %2 mGeometryTypeMask = %3" ).arg( layer->number() ).arg( layer->type() ).arg( mGeometryTypeMask ) );
+          QgsDebugMsgLevel( QString( "layer->number() = %1 layer.type() = %2 mGeometryTypeMask = %3" ).arg( layer->number() ).arg( layer->type() ).arg( mGeometryTypeMask ), 2 );
           // TODO: does it make sense to add layer 0, i.e. no layer?
           if ( layer->number() > 0 && layer->type() & mGeometryTypeMask )
           {
@@ -1172,10 +1168,10 @@ void QgsGrassModuleInput::onChanged( const QString &text )
           }
         }
       }
-      QgsDebugMsg( QString( "mLayers.size() = %1" ).arg( mLayers.size() ) );
+      QgsDebugMsgLevel( QString( "mLayers.size() = %1" ).arg( mLayers.size() ), 2 );
 
       // Combo is used to get layer even if just one
-      Q_FOREACH ( QgsGrassVectorLayer *layer, mLayers )
+      for ( QgsGrassVectorLayer *layer : mLayers )
       {
         mLayerComboBox->addItem( QString::number( layer->number() ), layer->number() );
       }
@@ -1201,7 +1197,7 @@ void QgsGrassModuleInput::onLayerChanged()
   {
     return;
   }
-  Q_FOREACH ( int checkBoxType, mTypeCheckBoxes.keys() )
+  for ( int checkBoxType : mTypeCheckBoxes.keys() )
   {
     QCheckBox *checkBox = mTypeCheckBoxes.value( checkBoxType );
     checkBox->setChecked( false );
@@ -1213,17 +1209,17 @@ void QgsGrassModuleInput::onLayerChanged()
   {
     // number of types  in the layer matching mGeometryTypeMask
     int typeCount = 0;
-    Q_FOREACH ( int type, layer->types() )
+    for ( int type : layer->types() )
     {
       if ( type & mGeometryTypeMask )
       {
         typeCount++;
       }
     }
-    QgsDebugMsg( QString( "typeCount = %1" ).arg( typeCount ) );
+    QgsDebugMsgLevel( QString( "typeCount = %1" ).arg( typeCount ), 2 );
 
     int layerType = layer->type(); // may be multiple
-    Q_FOREACH ( int checkBoxType, mTypeCheckBoxes.keys() )
+    for ( int checkBoxType : mTypeCheckBoxes.keys() )
     {
       QCheckBox *checkBox = mTypeCheckBoxes.value( checkBoxType );
       checkBox->hide();
@@ -1256,7 +1252,7 @@ QString QgsGrassModuleInput::ready()
   }
   else
   {
-    QgsDebugMsg( QString( "count = %1" ).arg( mComboBox->count() ) );
+    QgsDebugMsgLevel( QString( "count = %1" ).arg( mComboBox->count() ), 2 );
     if ( mComboBox->count() == 0 )
     {
       error = noInput;
@@ -1285,7 +1281,7 @@ QString QgsGrassModuleInput::ready()
 
 void QgsGrassModuleInput::onActivated( const QString &text )
 {
-  QgsDebugMsg( "text = " + text );
+  QgsDebugMsgLevel( "text = " + text, 2 );
   if ( multiple() )
   {
     if ( mSelectedModel->findItems( text ).size() == 0 )

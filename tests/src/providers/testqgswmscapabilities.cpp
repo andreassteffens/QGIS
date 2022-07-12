@@ -14,6 +14,7 @@
  ***************************************************************************/
 #include <QFile>
 #include <QObject>
+#include <qgsrasterinterface.h>
 #include "qgstest.h"
 #include <qgswmscapabilities.h>
 #include <qgsapplication.h>
@@ -120,10 +121,10 @@ class TestQgsWmsCapabilities: public QObject
         "P1Y1DT3S", "P1MT1M", "PT23H3M", "P26DT23H3M", "PT30S"
       };
 
-      for ( QString resolutionText : resolutionList )
+      for ( const QString &resolutionText : resolutionList )
       {
-        QgsWmstResolution resolution = settings.parseWmstResolution( resolutionText );
-        QCOMPARE( resolution.text(), resolutionText );
+        QgsTimeDuration resolution = settings.parseWmstResolution( resolutionText );
+        QCOMPARE( resolution.toString(), resolutionText );
       }
 
       QgsWmstDimensionExtent extent = settings.parseTemporalExtent( QStringLiteral( "2020-01-02T00:00:00.000Z/2020-01-09T00:00:00.000Z/P1D" ) );
@@ -132,14 +133,14 @@ class TestQgsWmsCapabilities: public QObject
       QDateTime start = QDateTime( QDate( 2020, 1, 2 ), QTime( 0, 0, 0 ), Qt::UTC );
       QDateTime end = QDateTime( QDate( 2020, 1, 9 ), QTime( 0, 0, 0 ), Qt::UTC );
 
-      QgsWmstResolution res;
-      res.day = 1;
-      QgsWmstResolution extentResolution = extent.datesResolutionList.at( 0 ).resolution;
+      QgsTimeDuration res;
+      res.days = 1;
+      QgsTimeDuration extentResolution = extent.datesResolutionList.at( 0 ).resolution;
 
       QCOMPARE( extent.datesResolutionList.at( 0 ).dates.dateTimes.at( 0 ), start );
       QCOMPARE( extent.datesResolutionList.at( 0 ).dates.dateTimes.at( 1 ), end );
 
-      QCOMPARE( extentResolution.text(), res.text() );
+      QCOMPARE( extentResolution.toString(), res.toString() );
 
       QDateTime firstClosest = settings.findLeastClosestDateTime( QDateTime( QDate( 2020, 1, 3 ), QTime( 16, 0, 0 ), Qt::UTC ) );
       QDateTime firstExpected = QDateTime( QDate( 2020, 1, 3 ), QTime( 0, 0, 0 ), Qt::UTC );
@@ -447,6 +448,40 @@ class TestQgsWmsCapabilities: public QObject
 
       QCOMPARE( firstLayerProp.equal( secondLayerProp ), result );
 
+    }
+
+    void wmsIdentifyFormat_data()
+    {
+      QTest::addColumn<QByteArray>( "format" );
+      QTest::addColumn<int>( "capability" );
+
+      QTest::newRow( "text/plain" ) << QByteArray( "text/plain" ) << static_cast<int>( QgsRasterInterface::IdentifyText );
+      QTest::newRow( "text/xml" ) << QByteArray( "text/xml" ) << static_cast<int>( QgsRasterInterface::NoCapabilities );
+      QTest::newRow( "text/html" ) << QByteArray( "text/html" ) << static_cast<int>( QgsRasterInterface::IdentifyHtml );
+      QTest::newRow( "application/json" ) << QByteArray( "application/json" ) << static_cast<int>( QgsRasterInterface::IdentifyFeature );
+      QTest::newRow( "application/geojson" ) << QByteArray( "application/geojson" ) << static_cast<int>( QgsRasterInterface::IdentifyFeature );
+      QTest::newRow( "application/vnd.ogc.gml" ) << QByteArray( "application/vnd.ogc.gml" ) << static_cast<int>( QgsRasterInterface::IdentifyFeature );
+      QTest::newRow( "application/vnd.esri.wms_featureinfo_xml" ) << QByteArray( "application/vnd.esri.wms_featureinfo_xml" ) << static_cast<int>( QgsRasterInterface::NoCapabilities );
+    }
+
+    void wmsIdentifyFormat()
+    {
+      QFETCH( QByteArray, format );
+      QFETCH( int, capability );
+
+      QgsWmsCapabilities capabilities;
+
+      QFile file( QStringLiteral( TEST_DATA_DIR ) + "/provider/GetCapabilities3.xml" );
+      QVERIFY( file.open( QIODevice::ReadOnly | QIODevice::Text ) );
+      const QByteArray content = file.readAll().replace( "@INFO_FORMAT@", format );
+
+      QVERIFY( content.size() > 0 );
+      const QgsWmsParserSettings config;
+
+      QVERIFY( capabilities.parseResponse( content, config ) );
+
+      // check info formats
+      QVERIFY( capabilities.identifyCapabilities() == capability );
     }
 
 };

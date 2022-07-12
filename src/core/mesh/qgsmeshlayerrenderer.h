@@ -31,7 +31,6 @@ class QgsMeshLayer;
 #include "qgsrasterinterface.h"
 #include "qgstriangularmesh.h"
 #include "qgsmeshlayer.h"
-#include "qgssymbol.h"
 #include "qgsmeshdataprovider.h"
 #include "qgsmeshtracerenderer.h"
 #include "qgsmapclippingregion.h"
@@ -97,6 +96,7 @@ class QgsMeshLayerRenderer : public QgsMapLayerRenderer
     ~QgsMeshLayerRenderer() override = default;
     QgsFeedback *feedback() const override;
     bool render() override;
+    bool forceRasterRender() const override;
 
   private:
     void renderMesh();
@@ -114,6 +114,7 @@ class QgsMeshLayerRenderer : public QgsMapLayerRenderer
     QgsPointXY fractionPoint( const QgsPointXY &p1, const QgsPointXY &p2, double fraction ) const;
     bool mIsMeshSimplificationActive = false;
     QColor colorAt( QgsColorRampShader *shader, double val ) const;
+    bool mIsEditable = false;
 
   protected:
     //! feedback class for cancellation
@@ -151,6 +152,10 @@ class QgsMeshLayerRenderer : public QgsMapLayerRenderer
 
     // output screen size
     QSize mOutputSize;
+
+  private:
+
+    double mLayerOpacity = 1.0;
 };
 
 

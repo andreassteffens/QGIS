@@ -84,7 +84,7 @@ class CORE_EXPORT QgsTextBlock
      *
      * \since QGIS 3.16
      */
-    void applyCapitalization( QgsStringUtils::Capitalization capitalization );
+    void applyCapitalization( Qgis::Capitalization capitalization );
 
 #ifdef SIP_RUN
     int __len__() const;
@@ -93,11 +93,20 @@ class CORE_EXPORT QgsTextBlock
     % End
 #endif
 
+#ifndef SIP_RUN
+
     /**
      * Returns the fragment at the specified \a index.
      */
     const QgsTextFragment &at( int index ) const SIP_FACTORY;
-#ifdef SIP_RUN
+#else
+
+    /**
+     * Returns the fragment at the specified \a index.
+     *
+     * \throws KeyError if no fragment exists at the specified index.
+     */
+    const QgsTextFragment &at( int index ) const SIP_FACTORY;
     % MethodCode
     if ( a0 < 0 || a0 >= sipCpp->size() )
     {

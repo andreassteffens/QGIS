@@ -23,7 +23,10 @@ from qgis.PyQt.QtCore import Qt, QByteArray, QCoreApplication, QFile, QSize
 from qgis.PyQt.QtWidgets import QDialog, QMenu, QShortcut, QApplication
 from qgis.PyQt.QtGui import QKeySequence, QFontMetrics, QStandardItemModel, QStandardItem, QClipboard
 from qgis.PyQt.Qsci import QsciScintilla
-from qgis.gui import QgsCodeEditorPython, QgsCodeEditorColorScheme
+from qgis.gui import (
+    QgsCodeEditorPython,
+    QgsCodeEditorColorScheme
+)
 
 import sys
 import os
@@ -37,7 +40,7 @@ from qgis.gui import QgsCodeEditor
 
 from .ui_console_history_dlg import Ui_HistoryDialogPythonConsole
 
-_init_commands = ["import sys", "import os", "import re", "import math", "from qgis.core import *",
+_init_commands = ["import sys", "import os", "from pathlib import Path", "import re", "import math", "from qgis.core import *",
                   "from qgis.gui import *", "from qgis.analysis import *", "from qgis._3d import *",
                   "import processing", "import qgis.utils",
                   "from qgis.utils import iface", "from qgis.PyQt.QtCore import *", "from qgis.PyQt.QtGui import *",
@@ -568,6 +571,9 @@ class HistoryDialog(QDialog, Ui_HistoryDialogPythonConsole):
                                                        "Python Console - Command History"))
         self.listView.setToolTip(QCoreApplication.translate("PythonConsole",
                                                             "Double-click on item to execute"))
+
+        self.listView.setFont(QgsCodeEditorPython.getMonospaceFont())
+
         self.model = QStandardItemModel(self.listView)
 
         self._reloadHistory()
@@ -577,6 +583,13 @@ class HistoryDialog(QDialog, Ui_HistoryDialogPythonConsole):
         self.listView.doubleClicked.connect(self._runHistory)
         self.reloadHistory.clicked.connect(self._reloadHistory)
         self.saveHistory.clicked.connect(self._saveHistory)
+        self.runHistoryButton.clicked.connect(self._executeSelectedHistory)
+
+    def _executeSelectedHistory(self):
+        items = self.listView.selectionModel().selectedIndexes()
+        items.sort()
+        for item in items:
+            self.parent.runCommand(item.data(Qt.DisplayRole))
 
     def _runHistory(self, item):
         cmd = item.data(Qt.DisplayRole)
@@ -587,6 +600,7 @@ class HistoryDialog(QDialog, Ui_HistoryDialogPythonConsole):
 
     def _reloadHistory(self):
         self.model.clear()
+        item = None
         for i in self.parent.history:
             item = QStandardItem(i)
             if sys.platform.startswith('win'):
@@ -595,6 +609,8 @@ class HistoryDialog(QDialog, Ui_HistoryDialogPythonConsole):
 
         self.listView.setModel(self.model)
         self.listView.scrollToBottom()
+        if item:
+            self.listView.setCurrentIndex(self.model.indexFromItem(item))
 
     def _deleteItem(self):
         itemsSelected = self.listView.selectionModel().selectedIndexes()

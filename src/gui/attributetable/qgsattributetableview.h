@@ -16,9 +16,9 @@
 #ifndef QGSATTRIBUTETABLEVIEW_H
 #define QGSATTRIBUTETABLEVIEW_H
 
-#include <QTableView>
 #include <QAction>
 #include "qgsfeatureid.h"
+#include "qgstableview.h"
 
 #include "qgis_gui.h"
 #include "qgsattributetableconfig.h"
@@ -45,7 +45,7 @@ class QgsFeature;
  * Or this can be used within the QgsDualView stacked widget.
  */
 
-class GUI_EXPORT QgsAttributeTableView : public QTableView
+class GUI_EXPORT QgsAttributeTableView : public QgsTableView
 {
     Q_OBJECT
 
@@ -54,7 +54,14 @@ class GUI_EXPORT QgsAttributeTableView : public QTableView
     //! Constructor for QgsAttributeTableView
     QgsAttributeTableView( QWidget *parent SIP_TRANSFERTHIS = nullptr );
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Woverloaded-virtual"
+#endif
     virtual void setModel( QgsAttributeTableFilterModel *filterModel );
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
     /**
      * \brief setFeatureSelectionManager
@@ -88,16 +95,14 @@ class GUI_EXPORT QgsAttributeTableView : public QTableView
      */
     QList<QgsFeatureId> selectedFeaturesIds() const;
 
-
     /**
      * Scroll to a feature with a given \a fid.
-
-      Optionally a \a column can be specified, which will also bring that column into view.
-
+     *
+     * Optionally a \a column can be specified, which will also bring that column into view.
+     *
      * \since QGIS 3.16
      */
     void scrollToFeature( const QgsFeatureId &fid, int column = -1 );
-
 
   protected:
 
@@ -200,6 +205,7 @@ class GUI_EXPORT QgsAttributeTableView : public QTableView
     QItemSelectionModel::SelectionFlag mCtrlDragSelectionFlag = QItemSelectionModel::Select;
     QMap< QModelIndex, QWidget * > mActionWidgets;
     QgsAttributeTableConfig mConfig;
+    QString mSortExpression;
 };
 
 #endif

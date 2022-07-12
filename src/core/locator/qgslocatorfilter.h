@@ -18,7 +18,6 @@
 #ifndef QGSLOCATORFILTER_H
 #define QGSLOCATORFILTER_H
 
-#include <QAction>
 #include <QIcon>
 #include <QString>
 #include <QVariant>
@@ -58,7 +57,7 @@ class CORE_EXPORT QgsLocatorResult
     /**
      * Returns the ``userData``.
      *
-     * \since QGIS 3.16.2
+     * \since QGIS 3.18
      */
     QVariant getUserData() const;
 
@@ -99,7 +98,7 @@ class CORE_EXPORT QgsLocatorResult
       * \note This should be translated.
       * \since QGIS 3.2
       */
-    QString group = QString();
+    QString group;
 
     /**
      * The ResultAction stores basic information for additional
@@ -197,6 +196,12 @@ class CORE_EXPORT QgsLocatorFilter : public QObject
      * \see name()
      */
     virtual QString displayName() const = 0;
+
+    /**
+     * Returns a translated, description for the filter.
+     * \since QGIS 3.20
+     */
+    virtual QString description() const { return QString(); }
 
     /**
      * Returns flags which specify the filter's behavior.
@@ -353,8 +358,22 @@ class CORE_EXPORT QgsLocatorFilter : public QObject
      *          since fetching results does not happen in the main thread.
      * \since QGIS 3.2
      */
-    void logMessage( const QString &message, Qgis::MessageLevel level = Qgis::Info );
+    void logMessage( const QString &message, Qgis::MessageLevel level = Qgis::MessageLevel::Info );
 
+    /**
+     * Returns the delay (in milliseconds) for the filter to wait prior to fetching results.
+     * \see setFetchResultsDelay()
+     * \since QGIS 3.18
+     */
+    int fetchResultsDelay() const { return mFetchResultsDelay; }
+
+    /**
+     * Sets a \a delay (in milliseconds) for the filter to wait prior to fetching results.
+     * \see fetchResultsDelay()
+     * \note If the locator filter has a FastFlag, this value is ignored.
+     * \since QGIS 3.18
+     */
+    void setFetchResultsDelay( int delay ) { mFetchResultsDelay = delay; }
 
   signals:
 
@@ -374,6 +393,7 @@ class CORE_EXPORT QgsLocatorFilter : public QObject
     bool mEnabled = true;
     bool mUseWithoutPrefix = true;
     QString mActivePrefifx = QString();
+    int mFetchResultsDelay = 0;
 
 };
 

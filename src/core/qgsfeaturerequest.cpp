@@ -16,7 +16,9 @@
 
 #include "qgsfields.h"
 #include "qgsgeometry.h"
+#include "qgsgeometryengine.h"
 #include "qgsmessagelog.h"
+
 #include <QStringList>
 
 //constants
@@ -24,47 +26,50 @@ const QString QgsFeatureRequest::ALL_ATTRIBUTES = QStringLiteral( "#!allattribut
 
 QgsFeatureRequest::QgsFeatureRequest()
 {
-	mSbRenderMinPixelSize = 0;
-	mSbRenderMinPixelSizeMaxScale = 0;
-	mSbScaleFactor = 0;
-	mSbMapUnitsPerPixel = 0;
-	mSbCurrentScale = 0;
-	mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
+  mSbRenderMinPixelSize = 0;
+  mSbRenderMinPixelSizeMaxScale = 0;
+  mSbScaleFactor = 0;
+  mSbMapUnitsPerPixel = 0;
+  mSbCurrentScale = 0;
+  mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
 }
+
+QgsFeatureRequest::~QgsFeatureRequest() = default;
 
 QgsFeatureRequest::QgsFeatureRequest( QgsFeatureId fid )
   : mFilter( FilterFid )
   , mFilterFid( fid )
 {
-	mSbRenderMinPixelSize = 0;
-	mSbRenderMinPixelSizeMaxScale = 0;
-	mSbScaleFactor = 0;
-	mSbMapUnitsPerPixel = 0;
-	mSbCurrentScale = 0;
-	mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
+mSbRenderMinPixelSize = 0;
+  mSbRenderMinPixelSizeMaxScale = 0;
+  mSbScaleFactor = 0;
+  mSbMapUnitsPerPixel = 0;
+  mSbCurrentScale = 0;
+  mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
 }
 
 QgsFeatureRequest::QgsFeatureRequest( const QgsFeatureIds &fids )
   : mFilter( FilterFids )
   , mFilterFids( fids )
 {
-	mSbRenderMinPixelSize = 0;
-	mSbRenderMinPixelSizeMaxScale = 0;
-	mSbScaleFactor = 0;
-	mSbMapUnitsPerPixel = 0;
-	mSbCurrentScale = 0;
-	mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
+  mSbRenderMinPixelSize = 0;
+  mSbRenderMinPixelSizeMaxScale = 0;
+  mSbScaleFactor = 0;
+  mSbMapUnitsPerPixel = 0;
+  mSbCurrentScale = 0;
+  mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
 }
 
 QgsFeatureRequest::QgsFeatureRequest( const QgsRectangle &rect )
-  : mFilterRect( rect )
+  : mSpatialFilter( !rect.isNull() ? Qgis::SpatialFilterType::BoundingBox : Qgis::SpatialFilterType::NoFilter )
+  , mFilterRect( rect )
 {
-	mSbRenderMinPixelSize = 0;
-	mSbRenderMinPixelSizeMaxScale = 0;
-	mSbScaleFactor = 0;
-	mSbMapUnitsPerPixel = 0;
-	mSbCurrentScale = 0;
-	mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
+  mSbRenderMinPixelSize = 0;
+  mSbRenderMinPixelSizeMaxScale = 0;
+  mSbScaleFactor = 0;
+  mSbMapUnitsPerPixel = 0;
+  mSbCurrentScale = 0;
+  mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
 }
 
 QgsFeatureRequest::QgsFeatureRequest( const QgsExpression &expr, const QgsExpressionContext &context )
@@ -72,12 +77,12 @@ QgsFeatureRequest::QgsFeatureRequest( const QgsExpression &expr, const QgsExpres
   , mFilterExpression( new QgsExpression( expr ) )
   , mExpressionContext( context )
 {
-	mSbRenderMinPixelSize = 0;
-	mSbRenderMinPixelSizeMaxScale = 0;
-	mSbScaleFactor = 0;
-	mSbMapUnitsPerPixel = 0;
-	mSbCurrentScale = 0;
-	mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
+  mSbRenderMinPixelSize = 0;
+  mSbRenderMinPixelSizeMaxScale = 0;
+  mSbScaleFactor = 0;
+  mSbMapUnitsPerPixel = 0;
+  mSbCurrentScale = 0;
+  mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
 }
 
 QgsFeatureRequest::QgsFeatureRequest( const QgsFeatureRequest &rh )
@@ -92,7 +97,11 @@ QgsFeatureRequest &QgsFeatureRequest::operator=( const QgsFeatureRequest &rh )
 
   mFlags = rh.mFlags;
   mFilter = rh.mFilter;
+  mSpatialFilter = rh.mSpatialFilter;
   mFilterRect = rh.mFilterRect;
+  mReferenceGeometry = rh.mReferenceGeometry;
+  mReferenceGeometryEngine = rh.mReferenceGeometryEngine;
+  mDistanceWithin = rh.mDistanceWithin;
   mFilterFid = rh.mFilterFid;
   mFilterFids = rh.mFilterFids;
   if ( rh.mFilterExpression )
@@ -115,20 +124,54 @@ QgsFeatureRequest &QgsFeatureRequest::operator=( const QgsFeatureRequest &rh )
   mTransformErrorCallback = rh.mTransformErrorCallback;
   mTimeout = rh.mTimeout;
   mRequestMayBeNested = rh.mRequestMayBeNested;
-  mSbRenderMinPixelSize = rh.mSbRenderMinPixelSize;
-  mSbRenderMinPixelSizeMaxScale = rh.mSbRenderMinPixelSizeMaxScale;
-  mSbScaleFactor = rh.mSbScaleFactor;
-  mSbMapUnitsPerPixel = rh.mSbMapUnitsPerPixel;
-  mSbCurrentScale = rh.mSbCurrentScale;
-  mSbGeometryType = rh.mSbGeometryType;
+  mFeedback = rh.mFeedback;
+  mSbRenderMinPixelSize = 0;
+  mSbRenderMinPixelSizeMaxScale = 0;
+  mSbScaleFactor = 0;
+  mSbMapUnitsPerPixel = 0;
+  mSbCurrentScale = 0;
+  mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
   mSbQuerySubstitutions = rh.mSbQuerySubstitutions;
-
   return *this;
 }
 
 QgsFeatureRequest &QgsFeatureRequest::setFilterRect( const QgsRectangle &rect )
 {
   mFilterRect = rect;
+  mReferenceGeometry = QgsGeometry();
+  mDistanceWithin = 0;
+  if ( mFilterRect.isNull() )
+  {
+    mSpatialFilter = Qgis::SpatialFilterType::NoFilter;
+  }
+  else
+  {
+    mSpatialFilter = Qgis::SpatialFilterType::BoundingBox;
+  }
+  return *this;
+}
+
+QgsRectangle QgsFeatureRequest::filterRect() const
+{
+  return mFilterRect;
+}
+
+QgsFeatureRequest &QgsFeatureRequest::setDistanceWithin( const QgsGeometry &geometry, double distance )
+{
+  mReferenceGeometry = geometry;
+  if ( !mReferenceGeometry.isEmpty() )
+  {
+    mReferenceGeometryEngine.reset( QgsGeometry::createGeometryEngine( mReferenceGeometry.constGet() ) );
+    mReferenceGeometryEngine->prepareGeometry();
+  }
+  else
+  {
+    mReferenceGeometryEngine.reset();
+  }
+  mDistanceWithin = distance;
+  mSpatialFilter = Qgis::SpatialFilterType::DistanceWithin;
+  mFilterRect = mReferenceGeometry.boundingBox().buffered( mDistanceWithin );
+
   return *this;
 }
 
@@ -148,7 +191,7 @@ QgsFeatureRequest &QgsFeatureRequest::setFilterFids( const QgsFeatureIds &fids )
 
 void QgsFeatureRequest::sbSetQuerySubstitutions(const QStringList &substitutions)
 {
-	mSbQuerySubstitutions = substitutions;
+  mSbQuerySubstitutions = substitutions;
 }
 
 QgsFeatureRequest &QgsFeatureRequest::setInvalidGeometryCheck( QgsFeatureRequest::InvalidGeometryCheck check )
@@ -212,7 +255,7 @@ QgsFeatureRequest &QgsFeatureRequest::setOrderBy( const QgsFeatureRequest::Order
   return *this;
 }
 
-QgsFeatureRequest &QgsFeatureRequest::setLimit( long limit )
+QgsFeatureRequest &QgsFeatureRequest::setLimit( long long limit )
 {
   mLimit = limit;
   return *this;
@@ -250,7 +293,7 @@ QgsFeatureRequest &QgsFeatureRequest::setSubsetOfAttributes( const QStringList &
   const auto constAttrNames = attrNames;
   for ( const QString &attrName : constAttrNames )
   {
-    int attrNum = fields.lookupField( attrName );
+    const int attrNum = fields.lookupField( attrName );
     if ( attrNum != -1 && !mAttrs.contains( attrNum ) )
       mAttrs.append( attrNum );
   }
@@ -272,7 +315,7 @@ QgsFeatureRequest &QgsFeatureRequest::setSubsetOfAttributes( const QSet<QString>
   const auto constAttrNames = attrNames;
   for ( const QString &attrName : constAttrNames )
   {
-    int attrNum = fields.lookupField( attrName );
+    const int attrNum = fields.lookupField( attrName );
     if ( attrNum != -1 && !mAttrs.contains( attrNum ) )
       mAttrs.append( attrNum );
   }
@@ -312,67 +355,89 @@ QgsFeatureRequest &QgsFeatureRequest::setTransformErrorCallback( const std::func
 
 void QgsFeatureRequest::sbSetRenderMinPixelSizeFilter(double dRenderMinPixelSize, int iRenderMinPixelSizeMaxScale, double dScaleFactor, double dMapUnitsPerPixel, double dCurrentScale, QgsWkbTypes::GeometryType geometryType)
 {
-	mSbRenderMinPixelSize = dRenderMinPixelSize;
-	mSbRenderMinPixelSizeMaxScale = iRenderMinPixelSizeMaxScale;
-	mSbScaleFactor = dScaleFactor;
-	mSbMapUnitsPerPixel = dMapUnitsPerPixel;
-	mSbCurrentScale = dCurrentScale;
-	mSbGeometryType = geometryType;
+  mSbRenderMinPixelSize = dRenderMinPixelSize;
+  mSbRenderMinPixelSizeMaxScale = iRenderMinPixelSizeMaxScale;
+  mSbScaleFactor = dScaleFactor;
+  mSbMapUnitsPerPixel = dMapUnitsPerPixel;
+  mSbCurrentScale = dCurrentScale;
+  mSbGeometryType = geometryType;
 }
 
 bool QgsFeatureRequest::sbTestRenderMinPixelSizeFilter(const QgsFeature& f)
 {
-	if (mSbRenderMinPixelSize > 0 && mSbRenderMinPixelSizeMaxScale > 0)
-	{
-		if (mSbGeometryType == QgsWkbTypes::GeometryType::LineGeometry || mSbGeometryType == QgsWkbTypes::GeometryType::PolygonGeometry)
-		{
-			if (!f.hasGeometry() || f.geometry().isEmpty())
-				return false;
+  if (mSbRenderMinPixelSize > 0 && mSbRenderMinPixelSizeMaxScale > 0)
+  {
+    if (mSbGeometryType == QgsWkbTypes::GeometryType::LineGeometry || mSbGeometryType == QgsWkbTypes::GeometryType::PolygonGeometry)
+    {
+      if (!f.hasGeometry() || f.geometry().isEmpty())
+        return false;
 
-			if (mSbCurrentScale > mSbRenderMinPixelSizeMaxScale)
-			{
-				QgsRectangle rectBoundsSource = f.geometry().boundingBox();
+      if (mSbCurrentScale > mSbRenderMinPixelSizeMaxScale)
+      {
+        QgsRectangle rectBoundsSource = f.geometry().boundingBox();
 
-				double dWidth = ((rectBoundsSource.xMaximum() - rectBoundsSource.xMinimum()) * mSbScaleFactor) / mSbMapUnitsPerPixel;
-				double dHeight = ((rectBoundsSource.yMaximum() - rectBoundsSource.yMinimum()) * mSbScaleFactor) / mSbMapUnitsPerPixel;
+        double dWidth = ((rectBoundsSource.xMaximum() - rectBoundsSource.xMinimum()) * mSbScaleFactor) / mSbMapUnitsPerPixel;
+        double dHeight = ((rectBoundsSource.yMaximum() - rectBoundsSource.yMinimum()) * mSbScaleFactor) / mSbMapUnitsPerPixel;
 
-				if (dWidth < mSbRenderMinPixelSize && dHeight < mSbRenderMinPixelSize)
-					return false;
-			}
-		}
-	}
+        if (dWidth < mSbRenderMinPixelSize && dHeight < mSbRenderMinPixelSize)
+          return false;
+      }
+    }
+  }
 
-	return true;
+  return true;
 }
 
 bool QgsFeatureRequest::acceptFeature( const QgsFeature &feature )
 {
-  if ( !mFilterRect.isNull() )
+  // check the attribute/id filter first, it's more likely to be faster than
+  // the spatial filter
+  switch ( mFilter )
   {
-    if ( !feature.hasGeometry() ||
-         (
-           ( mFlags & ExactIntersect && !feature.geometry().intersects( mFilterRect ) )
-           ||
-           ( !( mFlags & ExactIntersect ) && !feature.geometry().boundingBoxIntersects( mFilterRect ) )
-         )
-       )
-      return false;
+    case QgsFeatureRequest::FilterNone:
+      break;
+
+    case QgsFeatureRequest::FilterFid:
+      if ( feature.id() != mFilterFid )
+        return false;
+      break;
+
+    case QgsFeatureRequest::FilterExpression:
+      mExpressionContext.setFeature( feature );
+      if ( !mFilterExpression->evaluate( &mExpressionContext ).toBool() )
+        return false;
+      break;
+
+    case QgsFeatureRequest::FilterFids:
+      if ( !mFilterFids.contains( feature.id() ) )
+        return false;
+      break;
   }
 
-  switch (mFilter)
+  switch ( mSpatialFilter )
   {
-  case QgsFeatureRequest::FilterNone:
-	  return true;
+    case Qgis::SpatialFilterType::NoFilter:
+      break;
 
-  case QgsFeatureRequest::FilterFid:
-	  return (feature.id() == mFilterFid);
+    case Qgis::SpatialFilterType::BoundingBox:
+      if ( !feature.hasGeometry() ||
+           (
+             ( mFlags & ExactIntersect && !feature.geometry().intersects( mFilterRect ) )
+             ||
+             ( !( mFlags & ExactIntersect ) && !feature.geometry().boundingBoxIntersects( mFilterRect ) )
+           )
+         )
+        return false;
+      break;
 
-  case QgsFeatureRequest::FilterExpression:
-	  mExpressionContext.setFeature(feature);
-	  return (mFilterExpression->evaluate(&mExpressionContext).toBool());
-
-  case QgsFeatureRequest::FilterFids:
-	  return (mFilterFids.contains(feature.id()));
+    case Qgis::SpatialFilterType::DistanceWithin:
+      if ( !feature.hasGeometry()
+           || !mReferenceGeometryEngine
+           || !feature.geometry().boundingBoxIntersects( mFilterRect )
+           || !mReferenceGeometryEngine->distanceWithin( feature.geometry().constGet(), mDistanceWithin )
+         )
+        return false;
+      break;
   }
 
   return true;
@@ -409,6 +474,16 @@ QgsFeatureRequest &QgsFeatureRequest::setRequestMayBeNested( bool requestMayBeNe
 {
   mRequestMayBeNested = requestMayBeNested;
   return *this;
+}
+
+void QgsFeatureRequest::setFeedback( QgsFeedback *feedback )
+{
+  mFeedback = feedback;
+}
+
+QgsFeedback *QgsFeatureRequest::feedback() const
+{
+  return mFeedback;
 }
 
 
@@ -542,14 +617,14 @@ void QgsFeatureRequest::OrderBy::load( const QDomElement &elem )
 {
   clear();
 
-  QDomNodeList clauses = elem.childNodes();
+  const QDomNodeList clauses = elem.childNodes();
 
   for ( int i = 0; i < clauses.size(); ++i )
   {
-    QDomElement clauseElem = clauses.at( i ).toElement();
-    QString expression = clauseElem.text();
-    bool asc = clauseElem.attribute( QStringLiteral( "asc" ) ).toInt() != 0;
-    bool nullsFirst  = clauseElem.attribute( QStringLiteral( "nullsFirst" ) ).toInt() != 0;
+    const QDomElement clauseElem = clauses.at( i ).toElement();
+    const QString expression = clauseElem.text();
+    const bool asc = clauseElem.attribute( QStringLiteral( "asc" ) ).toInt() != 0;
+    const bool nullsFirst  = clauseElem.attribute( QStringLiteral( "nullsFirst" ) ).toInt() != 0;
 
     append( OrderByClause( expression, asc, nullsFirst ) );
   }
@@ -578,7 +653,7 @@ QSet<int> QgsFeatureRequest::OrderBy::usedAttributeIndices( const QgsFields &fie
     const auto referencedColumns = clause.expression().referencedColumns();
     for ( const QString &fieldName : referencedColumns )
     {
-      int idx = fields.lookupField( fieldName );
+      const int idx = fields.lookupField( fieldName );
       if ( idx >= 0 )
       {
         usedAttributeIdx.insert( idx );

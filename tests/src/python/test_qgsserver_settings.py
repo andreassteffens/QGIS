@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """QGIS Unit tests for QgsServerSettings.
 
+From build dir, run: ctest -R PyQgsServerSettings -V
+
 .. note:: This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
@@ -18,6 +20,8 @@ from qgis.PyQt.QtCore import QCoreApplication
 from utilities import unitTestDataPath
 from qgis.testing import unittest
 from qgis.server import QgsServerSettings, QgsServerSettingsEnv
+
+DEFAULT_CACHE_SIZE = 256 * 1024 * 1024
 
 
 class TestQgsServerSettings(unittest.TestCase):
@@ -85,20 +89,6 @@ class TestQgsServerSettings(unittest.TestCase):
         self.assertEqual(self.settings.projectFile(), "/tmp/myproject2.qgs")
         os.environ.pop(env)
 
-    def test_env_max_cache_layers(self):
-        env = "MAX_CACHE_LAYERS"
-
-        # test parallel rendering value from environment variable
-        os.environ[env] = "3"
-        self.settings.load()
-        self.assertEqual(self.settings.maxCacheLayers(), 3)
-        os.environ.pop(env)
-
-        os.environ[env] = "100"
-        self.settings.load()
-        self.assertEqual(self.settings.maxCacheLayers(), 100)
-        os.environ.pop(env)
-
     def test_env_max_threads(self):
         env = "QGIS_SERVER_MAX_THREADS"
 
@@ -116,7 +106,7 @@ class TestQgsServerSettings(unittest.TestCase):
     def test_env_cache_size(self):
         env = "QGIS_SERVER_CACHE_SIZE"
 
-        self.assertEqual(self.settings.cacheSize(), 50 * 1024 * 1024)
+        self.assertEqual(self.settings.cacheSize(), DEFAULT_CACHE_SIZE)
 
         os.environ[env] = "1024"
         self.settings.load()

@@ -101,8 +101,14 @@ class _3D_EXPORT QgsGoochMaterialSettings : public QgsAbstractMaterialSettings
 #ifndef SIP_RUN
     Qt3DRender::QMaterial *toMaterial( QgsMaterialSettingsRenderingTechnique technique, const QgsMaterialContext &context ) const override;
     void addParametersToEffect( Qt3DRender::QEffect *effect ) const override;
+
+    QByteArray dataDefinedVertexColorsAsByte( const QgsExpressionContext &expressionContext ) const override;
+    int dataDefinedByteStride() const override;
+    void applyDataDefinedToGeometry( Qt3DRender::QGeometry *geometry, int vertexCount, const QByteArray &data ) const override;
+
 #endif
 
+    // TODO c++20 - replace with = default
     bool operator==( const QgsGoochMaterialSettings &other ) const
     {
       return mDiffuse == other.mDiffuse &&
@@ -122,6 +128,9 @@ class _3D_EXPORT QgsGoochMaterialSettings : public QgsAbstractMaterialSettings
     float mShininess = 100.0f;
     float mAlpha = 0.25f;
     float mBeta = 0.5f;
+
+    //! Constructs a material from shader files
+    Qt3DRender::QMaterial *dataDefinedMaterial() const;
 };
 
 

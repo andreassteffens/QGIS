@@ -78,14 +78,14 @@ void QgsMapMouseEvent::snapToGrid( double precision, const QgsCoordinateReferenc
 
   try
   {
-    QgsCoordinateTransform ct( mMapCanvas->mapSettings().destinationCrs(), crs, mMapCanvas->mapSettings().transformContext() );
+    const QgsCoordinateTransform ct( mMapCanvas->mapSettings().destinationCrs(), crs, mMapCanvas->mapSettings().transformContext() );
 
     QgsPointXY pt = ct.transform( mMapPoint );
 
     pt.setX( std::round( pt.x() / precision ) * precision );
     pt.setY( std::round( pt.y() / precision ) * precision );
 
-    pt = ct.transform( pt, QgsCoordinateTransform::ReverseTransform );
+    pt = ct.transform( pt, Qgis::TransformDirection::Reverse );
 
     setMapPoint( pt );
   }

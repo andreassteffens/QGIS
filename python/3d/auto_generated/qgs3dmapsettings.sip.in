@@ -17,7 +17,7 @@
 
 class Qgs3DMapSettings : QObject, QgsTemporalRangeObject
 {
-%Docstring
+%Docstring(signature="appended")
 Definition of the world.
 
 .. versionadded:: 3.0
@@ -27,7 +27,6 @@ Definition of the world.
 #include "qgs3dmapsettings.h"
 %End
   public:
-
     Qgs3DMapSettings();
 %Docstring
 Constructor for Qgs3DMapSettings
@@ -167,15 +166,9 @@ Sets the list of 3D map ``layers`` to be rendered in the scene.
 
 This setting dictates which layers are to be rendered using their 3D rendering configuration, if available.
 
-.. note::
-
-   Layers which are rendered as part of the map terrain are specified via ``setTerrainLayers``().
-
 .. seealso:: :py:func:`layers`
 
 .. seealso:: :py:func:`layersChanged`
-
-.. seealso:: :py:func:`setTerrainLayers`
 %End
 
     QList<QgsMapLayer *> layers() const;
@@ -184,61 +177,12 @@ Returns the list of 3D map layers to be rendered in the scene.
 
 This setting dictates which layers are to be rendered using their 3D rendering configuration, if available.
 
-.. note::
-
-   Layers which are rendered as part of the map terrain are retrieved via ``terrainLayers``().
-
 .. seealso:: :py:func:`setLayers`
 
 .. seealso:: :py:func:`layersChanged`
-
-.. seealso:: :py:func:`terrainLayers`
 %End
 
 
-    void setTerrainLayers( const QList<QgsMapLayer *> &layers );
-%Docstring
-Sets the list of 2d map ``layers`` to be rendered in the terrain.
-
-.. note::
-
-   Layers which are rendered as 3D layers as part of the scene are specified via ``setLayers``().
-
-.. note::
-
-   If :py:func:`~Qgs3DMapSettings.terrainMapTheme` is set, it has a priority over the list of layers specified here.
-
-
-.. seealso:: :py:func:`terrainLayers`
-
-.. seealso:: :py:func:`terrainLayersChanged`
-
-.. seealso:: :py:func:`setLayers`
-
-.. versionadded:: 3.16
-%End
-
-    QList<QgsMapLayer *> terrainLayers() const;
-%Docstring
-Returns the list of map layers to be rendered as a texture of the terrain.
-
-.. note::
-
-   Layers which are rendered as 3D layers as part of the scene are retrieved via ``layers``().
-
-.. note::
-
-   If :py:func:`~Qgs3DMapSettings.terrainMapTheme` is set, it has a priority over the list of layers returned here.
-
-
-.. seealso:: :py:func:`setTerrainLayers`
-
-.. seealso:: :py:func:`terrainLayersChanged`
-
-.. seealso:: :py:func:`layers`
-
-.. versionadded:: 3.16
-%End
 
     void setTerrainVerticalScale( double zScale );
 %Docstring
@@ -293,6 +237,21 @@ how many zoom levels there will be (together with :py:func:`~Qgs3DMapSettings.ma
 This value tells that when the given ground error is reached (e.g. 10 meters), it makes no sense
 to further split terrain tiles into finer ones because they will not add extra details anymore.
 %End
+
+    void setTerrainElevationOffset( float offset );
+%Docstring
+Sets the terrain elevation offset (used to move the terrain up or down)
+
+.. seealso:: :py:func:`terrainElevationOffset`
+
+.. versionadded:: 3.18
+%End
+
+    float terrainElevationOffset() const;
+%Docstring
+Returns the elevation offset of the terrain (used to move the terrain up or down)
+%End
+
 
 
     void setTerrainShadingEnabled( bool enabled );
@@ -392,6 +351,20 @@ Returns whether to show camera's view center as a sphere (for debugging)
 .. versionadded:: 3.4
 %End
 
+    void setShowCameraRotationCenter( bool enabled );
+%Docstring
+Sets whether to show camera's rotation center as a sphere (for debugging)
+
+.. versionadded:: 3.24
+%End
+
+    bool showCameraRotationCenter() const;
+%Docstring
+Returns whether to show camera's rotation center as a sphere (for debugging)
+
+.. versionadded:: 3.24
+%End
+
     void setShowLightSourceOrigins( bool enabled );
 %Docstring
 Sets whether to show light source origins as a sphere (for debugging)
@@ -415,32 +388,105 @@ Sets whether to display labels on terrain tiles
 Returns whether to display labels on terrain tiles
 %End
 
-    QList<QgsPointLightSettings> pointLights() const;
+    void setEyeDomeLightingEnabled( bool enabled );
 %Docstring
-Returns list of point lights defined in the scene
+Sets whether eye dome lighting will be used
 
-.. versionadded:: 3.6
+.. seealso:: :py:func:`eyeDomeLightingEnabled`
+
+.. versionadded:: 3.18
+%End
+    bool eyeDomeLightingEnabled() const;
+%Docstring
+Returns whether eye dome lighting is used
 %End
 
-    QList<QgsDirectionalLightSettings> directionalLights() const;
+    void setEyeDomeLightingStrength( double strength );
 %Docstring
-Returns list of directional lights defined in the scene
+Sets the eye dome lighting strength value
 
-.. versionadded:: 3.16
+.. seealso:: :py:func:`eyeDomeLightingStrength`
+
+.. versionadded:: 3.18
+%End
+    double eyeDomeLightingStrength() const;
+%Docstring
+Returns the eye dome lighting strength value
 %End
 
-    void setPointLights( const QList<QgsPointLightSettings> &pointLights );
+    void setEyeDomeLightingDistance( int distance );
 %Docstring
-Sets list of point lights defined in the scene
+Sets the eye dome lighting distance value (contributes to the contrast of the image
 
-.. versionadded:: 3.6
+.. seealso:: :py:func:`eyeDomeLightingDistance`
+
+.. versionadded:: 3.18
+%End
+    int eyeDomeLightingDistance() const;
+%Docstring
+Returns the eye dome lighting distance value (contributes to the contrast of the image)
 %End
 
-    void setDirectionalLights( const QList<QgsDirectionalLightSettings> &directionalLights );
+    void setDebugShadowMapSettings( bool enabled, Qt::Corner corner, double size );
 %Docstring
-Sets list of directional lights defined in the scene
+Sets the debugging settings of the shadow map
 
-.. versionadded:: 3.16
+.. seealso:: :py:func:`debugShadowMapEnabled`
+
+.. versionadded:: 3.18
+%End
+    bool debugShadowMapEnabled() const;
+%Docstring
+Returns whether the shadow map debugging is enabled
+%End
+    Qt::Corner debugShadowMapCorner() const;
+%Docstring
+Returns the corner where the shadow map preview is displayed
+%End
+    double debugShadowMapSize() const;
+%Docstring
+Returns the size of the shadow map preview
+%End
+
+    void setDebugDepthMapSettings( bool enabled, Qt::Corner corner, double size );
+%Docstring
+Sets the debugging settings of the depth map
+
+.. seealso:: :py:func:`debugDepthMapEnabled`
+
+.. versionadded:: 3.18
+%End
+    bool debugDepthMapEnabled() const;
+%Docstring
+Returns whether the shadow map debugging is enabled
+%End
+    Qt::Corner debugDepthMapCorner() const;
+%Docstring
+Returns the corner where the shadow map preview is displayed
+%End
+    double debugDepthMapSize() const;
+%Docstring
+Returns the size of the shadow map preview
+%End
+
+    QList<QgsLightSource *> lightSources() const;
+%Docstring
+Returns list of directional light sources defined in the scene.
+
+.. seealso:: :py:func:`setLightSources`
+
+.. versionadded:: 3.26
+%End
+
+    void setLightSources( const QList<QgsLightSource *> &lights /Transfer/ );
+%Docstring
+Sets the list of ``light`` sources defined in the scene.
+
+Ownership of the lights is transferred to the settings.
+
+.. seealso:: :py:func:`lightSources`
+
+.. versionadded:: 3.26
 %End
 
     float fieldOfView() const;
@@ -455,6 +501,23 @@ Returns the camera lens' field of view
 Sets the camera lens' field of view
 
 .. versionadded:: 3.8
+%End
+
+
+
+
+    double cameraMovementSpeed() const;
+%Docstring
+Returns the camera movement speed
+
+.. versionadded:: 3.18
+%End
+
+    void setCameraMovementSpeed( double movementSpeed );
+%Docstring
+Sets the camera movement speed
+
+.. versionadded:: 3.18
 %End
 
     void setOutputDpi( const double dpi );
@@ -497,7 +560,120 @@ Sets whether the skybox is enabled.
 .. versionadded:: 3.16
 %End
 
+    bool isFpsCounterEnabled() const;
+%Docstring
+Returns whether FPS counter label is enabled
+
+.. seealso:: :py:func:`setIsFpsCounterEnabled`
+
+.. versionadded:: 3.18
+%End
+
+    void setIsFpsCounterEnabled( bool fpsCounterEnabled );
+%Docstring
+Sets whether FPS counter label is enabled
+
+.. seealso:: :py:func:`isFpsCounterEnabled`
+
+.. versionadded:: 3.18
+%End
+
+    bool terrainRenderingEnabled() const;
+%Docstring
+Returns whether the 2D terrain surface will be rendered.
+
+.. seealso:: :py:func:`setTerrainRenderingEnabled`
+
+.. versionadded:: 3.22
+%End
+
+    void setTerrainRenderingEnabled( bool terrainRenderingEnabled );
+%Docstring
+Sets whether the 2D terrain surface will be rendered in.
+
+.. seealso:: :py:func:`terrainRenderingEnabled`
+
+.. versionadded:: 3.22
+%End
+
+    Qgis::RendererUsage rendererUsage() const;
+%Docstring
+Returns the renderer usage
+
+.. seealso:: :py:func:`rendererUsage`
+
+.. versionadded:: 3.24
+%End
+
+    void setRendererUsage( Qgis::RendererUsage rendererUsage );
+%Docstring
+Sets the renderer usage
+
+.. seealso:: :py:func:`rendererUsage`
+
+.. versionadded:: 3.24
+%End
+
+    Qgis::ViewSyncModeFlags viewSyncMode() const;
+%Docstring
+Returns the view sync mode (used to synchronize the 2D main map canvas and the 3D camera navigation)
+
+.. versionadded:: 3.26
+%End
+
+    void setViewSyncMode( Qgis::ViewSyncModeFlags mode );
+%Docstring
+Sets the view sync mode (used to synchronize the 2D main map canvas and the 3D camera navigation)
+
+.. versionadded:: 3.26
+%End
+
+    bool viewFrustumVisualizationEnabled() const;
+%Docstring
+Returns whether the camera's view frustum is visualized on the 2D map canvas
+
+.. versionadded:: 3.26
+%End
+
+    void setViewFrustumVisualizationEnabled( bool enabled );
+%Docstring
+Sets whether the camera's view frustum is visualized on the 2D map canvas
+
+.. versionadded:: 3.26
+%End
+
+
+
+    bool isDebugOverlayEnabled() const;
+%Docstring
+Returns whether debug overlay is enabled
+
+.. seealso:: :py:func:`setIsDebugOverlayEnabled`
+
+.. versionadded:: 3.26
+%End
+
+    void setIsDebugOverlayEnabled( bool debugOverlayEnabled );
+%Docstring
+Sets whether debug overlay is enabled
+The debug overlay displays some debugging and profiling information.
+It has been introduced in Qt version 5.15.
+This parameter is transient. It is not saved in the project parameters.
+
+.. seealso:: :py:func:`isDebugOverlayEnabled`
+
+.. versionadded:: 3.26
+%End
+
   signals:
+
+    void settingsChanged();
+%Docstring
+Emitted when one of the configuration settings has changed
+
+.. versionadded:: 3.24
+%End
+
     void backgroundColorChanged();
 %Docstring
 Emitted when the background color has changed
@@ -514,21 +690,6 @@ Emitted when the list of map layers for 3d rendering has changed.
 .. seealso:: :py:func:`setLayers`
 
 .. seealso:: :py:func:`layers`
-
-.. seealso:: :py:func:`terrainLayersChanged`
-%End
-
-    void terrainLayersChanged();
-%Docstring
-Emitted when the list of map layers for terrain texture has changed.
-
-.. seealso:: :py:func:`terrainLayers`
-
-.. seealso:: :py:func:`setTerrainLayers`
-
-.. seealso:: :py:func:`layersChanged`
-
-.. versionadded:: 3.16
 %End
 
     void terrainGeneratorChanged();
@@ -550,6 +711,13 @@ Emitted when the maximum terrain screen error has changed
     void maxTerrainGroundErrorChanged();
 %Docstring
 Emitted when the maximum terrain ground error has changed
+%End
+
+    void terrainElevationOffsetChanged( float newElevation );
+%Docstring
+Emitted when the terrain elevation offset is changed
+
+.. versionadded:: 3.16
 %End
 
     void terrainShadingChanged();
@@ -589,6 +757,13 @@ Emitted when the flag whether camera's view center is shown has changed
 .. versionadded:: 3.4
 %End
 
+    void showCameraRotationCenterChanged();
+%Docstring
+Emitted when the flag whether camera's rotation center is shown has changed
+
+.. versionadded:: 3.24
+%End
+
     void showLightSourceOriginsChanged();
 %Docstring
 Emitted when the flag whether light source origins are shown has changed.
@@ -601,11 +776,53 @@ Emitted when the flag whether light source origins are shown has changed.
 Emitted when the flag whether labels are displayed on terrain tiles has changed
 %End
 
+    void eyeDomeLightingEnabledChanged();
+%Docstring
+Emitted when the flag whether eye dome lighting is used has changed
+
+.. versionadded:: 3.18
+%End
+
+    void eyeDomeLightingStrengthChanged();
+%Docstring
+Emitted when the eye dome lighting strength has changed
+
+.. versionadded:: 3.18
+%End
+
+    void eyeDomeLightingDistanceChanged();
+%Docstring
+Emitted when the eye dome lighting distance has changed
+
+.. versionadded:: 3.18
+%End
+
+    void debugShadowMapSettingsChanged();
+%Docstring
+Emitted when shadow map debugging has changed
+
+.. versionadded:: 3.18
+%End
+
+    void debugDepthMapSettingsChanged();
+%Docstring
+Emitted when depth map debugging has changed
+
+.. versionadded:: 3.18
+%End
+
     void pointLightsChanged();
 %Docstring
 Emitted when the list of point lights changes
 
 .. versionadded:: 3.6
+%End
+
+    void lightSourcesChanged();
+%Docstring
+Emitted when any of the light source settings in the map changes.
+
+.. versionadded:: 3.26
 %End
 
     void directionalLightsChanged();
@@ -622,6 +839,27 @@ Emitted when the camera lens field of view changes
 .. versionadded:: 3.8
 %End
 
+    void projectionTypeChanged();
+%Docstring
+Emitted when the camera lens projection type changes
+
+.. versionadded:: 3.18
+%End
+
+    void cameraNavigationModeChanged();
+%Docstring
+Emitted when the camera navigation mode was changed
+
+.. versionadded:: 3.18
+%End
+
+    void cameraMovementSpeedChanged();
+%Docstring
+Emitted when the camera movement speed was changed
+
+.. versionadded:: 3.18
+%End
+
     void skyboxSettingsChanged();
 %Docstring
 Emitted when skybox settings are changed
@@ -634,6 +872,34 @@ Emitted when skybox settings are changed
 Emitted when shadow rendering settings are changed
 
 .. versionadded:: 3.16
+%End
+
+    void fpsCounterEnabledChanged( bool fpsCounterEnabled );
+%Docstring
+Emitted when the FPS counter is enabled or disabled
+
+.. versionadded:: 3.18
+%End
+
+    void viewFrustumVisualizationEnabledChanged();
+%Docstring
+Emitted when the camera's view frustum visualization on the main 2D map canvas is enabled or disabled
+
+.. versionadded:: 3.26
+%End
+
+    void axisSettingsChanged();
+%Docstring
+Emitted when 3d axis rendering settings are changed
+
+.. versionadded:: 3.26
+%End
+
+    void debugOverlayEnabledChanged( bool debugOverlayEnabled );
+%Docstring
+Emitted when the debug overaly is enabled or disabled
+
+.. versionadded:: 3.26
 %End
 
   private:

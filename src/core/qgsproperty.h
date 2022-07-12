@@ -19,7 +19,6 @@
 #include "qgis_sip.h"
 #include "qgsexpression.h"
 #include "qgsexpressioncontext.h"
-#include "qgscolorramp.h"
 
 #include <QVariant>
 #include <QHash>
@@ -242,11 +241,26 @@ class CORE_EXPORT QgsProperty
     };
 
     /**
-     * Constructor for a QgsAbstractProperty. The property will be set to an InvalidProperty type.
+     * Convert a map of QgsProperty to a map of QVariant
+     * This is useful to save a map of properties
+     * \since QGIS 3.20
+     */
+    static QVariantMap propertyMapToVariantMap( const QMap<QString, QgsProperty> &propertyMap );
+
+    /**
+     * Convert a map of QVariant to a map of QgsProperty
+     * This is useful to restore a map of properties.
+     * The properties are created using QgsProperty::loadVariant
+     * \since QGIS 3.20
+     */
+    static QMap<QString, QgsProperty> variantMapToPropertyMap( const QVariantMap &variantMap );
+
+    /**
+     * Constructor for a QgsProperty. The property will be set to an InvalidProperty type.
      */
     QgsProperty();
 
-    virtual ~QgsProperty();
+    ~QgsProperty();
 
     /**
      * Returns a new ExpressionBasedProperty created from the specified expression.
@@ -286,6 +300,22 @@ class CORE_EXPORT QgsProperty
      * \see setActive()
      */
     bool isActive() const;
+
+    /**
+     * Returns TRUE if the property is effectively a static value
+     * in the specified \a context.
+     *
+     * I.e. if the property type is QgsProperty::ExpressionBasedProperty with
+     * a fixed value expression ('some static value'), this method will return
+     * TRUE.
+     *
+     * \param context expression context
+     * \param staticValue will be set to evaluated static value if property is effectively a static value
+     * \returns TRUE if property is a static value
+     *
+     * \since QGIS 3.24
+     */
+    bool isStaticValueInContext( const QgsExpressionContext &context, QVariant &staticValue SIP_OUT ) const;
 
     /**
      * Sets whether the property is currently active.

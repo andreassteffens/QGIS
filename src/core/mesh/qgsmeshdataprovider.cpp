@@ -38,22 +38,24 @@ const QgsMeshDataProviderTemporalCapabilities *QgsMeshDataProvider::temporalCapa
 
 void QgsMeshDataProvider::setTemporalUnit( QgsUnitTypes::TemporalUnit unit )
 {
-  QgsUnitTypes::TemporalUnit oldUnit = mTemporalCapabilities->temporalUnit();
+  const QgsUnitTypes::TemporalUnit oldUnit = mTemporalCapabilities->temporalUnit();
   mTemporalCapabilities->setTemporalUnit( unit );
   if ( oldUnit != unit )
     reloadData();
 }
 
+QgsMeshDriverMetadata QgsMeshDataProvider::driverMetadata() const { return QgsMeshDriverMetadata();}
+
 QgsMeshDatasetIndex QgsMeshDatasetSourceInterface::datasetIndexAtTime(
   const QDateTime &referenceTime,
-  int groupIndex, quint64 time,
+  int groupIndex, qint64 time,
   QgsMeshDataProviderTemporalCapabilities::MatchingTemporalDatasetMethod method ) const
 {
-  QDateTime requestDateTime = referenceTime.addMSecs( time );
-  quint64 providerTime;
-  QDateTime providerReferenceTime = mTemporalCapabilities->referenceTime();
-  if ( mTemporalCapabilities->referenceTime().isValid() )
-    providerTime = referenceTime.msecsTo( requestDateTime );
+  const QDateTime requestDateTime = referenceTime.addMSecs( time );
+  qint64 providerTime;
+  const QDateTime providerReferenceTime = mTemporalCapabilities->referenceTime();
+  if ( providerReferenceTime.isValid() )
+    providerTime = providerReferenceTime.msecsTo( requestDateTime );
   else
     providerTime = time;
 
@@ -70,8 +72,37 @@ QgsMeshDatasetIndex QgsMeshDatasetSourceInterface::datasetIndexAtTime(
   return QgsMeshDatasetIndex();
 }
 
+QList<QgsMeshDatasetIndex> QgsMeshDatasetSourceInterface::datasetIndexInTimeInterval( const QDateTime &referenceTime, int groupIndex, qint64 time1, qint64 time2 ) const
+{
+  const QDateTime requestDateTime = referenceTime.addMSecs( time1 );
+  qint64 providerTime1;
+  qint64 providerTime2;
+  const QDateTime providerReferenceTime = mTemporalCapabilities->referenceTime();
+  if ( mTemporalCapabilities->referenceTime().isValid() )
+  {
+    providerTime1 = providerReferenceTime.msecsTo( requestDateTime );
+    providerTime2 = providerTime1 - time1 + time2;
+  }
+  else
+  {
+    providerTime1 = time1;
+    providerTime2 = time2;
+  }
+
+  QList<QgsMeshDatasetIndex> ret;
+  for ( int i = 0; i < datasetCount( groupIndex ); ++i )
+  {
+    QgsMeshDatasetIndex datasetIndex( groupIndex, i );
+    qint64 time = mTemporalCapabilities->datasetTime( datasetIndex );
+    if ( time >= providerTime1 && time <= providerTime2 )
+      ret.append( datasetIndex );
+  }
+
+  return ret;
+}
+
 QgsMeshDatasetSourceInterface::QgsMeshDatasetSourceInterface():
-  mTemporalCapabilities( qgis::make_unique<QgsMeshDataProviderTemporalCapabilities>() ) {}
+  mTemporalCapabilities( std::make_unique<QgsMeshDataProviderTemporalCapabilities>() ) {}
 
 int QgsMeshDatasetSourceInterface::datasetCount( QgsMeshDatasetIndex index ) const
 {

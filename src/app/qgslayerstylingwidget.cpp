@@ -33,8 +33,10 @@
 #include "qgsrasterrendererwidget.h"
 #include "qgsmapcanvas.h"
 #include "qgsmaplayer.h"
+#include "qgsmaplayerstylemanager.h"
 #include "qgsstyle.h"
 #include "qgsvectorlayer.h"
+#include "qgspointcloudlayer.h"
 #include "qgsvectortilelayer.h"
 #include "qgsvectortilebasiclabelingwidget.h"
 #include "qgsvectortilebasicrendererwidget.h"
@@ -52,6 +54,7 @@
 #include "qgsrasterminmaxwidget.h"
 #include "qgisapp.h"
 #include "qgssymbolwidgetcontext.h"
+#include "qgsannotationlayer.h"
 
 #ifdef HAVE_3D
 #include "qgsvectorlayer3drendererwidget.h"
@@ -59,7 +62,7 @@
 #endif
 
 
-QgsLayerStylingWidget::QgsLayerStylingWidget( QgsMapCanvas *canvas, QgsMessageBar *messageBar, const QList<QgsMapLayerConfigWidgetFactory *> &pages, QWidget *parent )
+QgsLayerStylingWidget::QgsLayerStylingWidget( QgsMapCanvas *canvas, QgsMessageBar *messageBar, const QList<const QgsMapLayerConfigWidgetFactory *> &pages, QWidget *parent )
   : QWidget( parent )
   , mNotSupportedPage( 0 )
   , mLayerPage( 1 )
@@ -69,6 +72,9 @@ QgsLayerStylingWidget::QgsLayerStylingWidget( QgsMapCanvas *canvas, QgsMessageBa
   , mPageFactories( pages )
 {
   setupUi( this );
+
+  mContext.setMapCanvas( canvas );
+  mContext.setMessageBar( messageBar );
 
   mOptionsListWidget->setIconSize( QgisApp::instance()->iconSize( false ) );
   mOptionsListWidget->setMaximumWidth( static_cast< int >( mOptionsListWidget->iconSize().width() * 1.18 ) );
@@ -105,7 +111,10 @@ QgsLayerStylingWidget::QgsLayerStylingWidget( QgsMapCanvas *canvas, QgsMessageBa
                            | QgsMapLayerProxyModel::Filter::RasterLayer
                            | QgsMapLayerProxyModel::Filter::PluginLayer
                            | QgsMapLayerProxyModel::Filter::MeshLayer
-                           | QgsMapLayerProxyModel::Filter::VectorTileLayer );
+                           | QgsMapLayerProxyModel::Filter::VectorTileLayer
+                           | QgsMapLayerProxyModel::Filter::PointCloudLayer
+                           | QgsMapLayerProxyModel::Filter::AnnotationLayer );
+  mLayerCombo->setAdditionalLayers( { QgsProject::instance()->mainAnnotationLayer() } );
 
   mStackedWidget->setCurrentIndex( 0 );
 }
@@ -115,7 +124,7 @@ QgsLayerStylingWidget::~QgsLayerStylingWidget()
   delete mStyleManagerFactory;
 }
 
-void QgsLayerStylingWidget::setPageFactories( const QList<QgsMapLayerConfigWidgetFactory *> &factories )
+void QgsLayerStylingWidget::setPageFactories( const QList<const QgsMapLayerConfigWidgetFactory *> &factories )
 {
   mPageFactories = factories;
   // Always append the style manager factory at the bottom of the list
@@ -142,12 +151,15 @@ void QgsLayerStylingWidget::setLayer( QgsMapLayer *layer )
   if ( layer == mCurrentLayer )
     return;
 
+
   // when current layer is changed, apply the main panel stack to allow it to gracefully clean up
   mWidgetStack->acceptAllPanels();
 
   if ( mCurrentLayer )
   {
     disconnect( mCurrentLayer, &QgsMapLayer::styleChanged, this, &QgsLayerStylingWidget::updateCurrentWidgetLayer );
+    disconnect( mCurrentLayer->styleManager(), &QgsMapLayerStyleManager::currentStyleChanged, this, &QgsLayerStylingWidget::emitLayerStyleChanged );
+    disconnect( mCurrentLayer->styleManager(), &QgsMapLayerStyleManager::styleRenamed, this, &QgsLayerStylingWidget::emitLayerStyleRenamed );
   }
 
   if ( !layer || !layer->isSpatial() || !QgsProject::instance()->layerIsEmbedded( layer->id() ).isEmpty() )
@@ -156,6 +168,7 @@ void QgsLayerStylingWidget::setLayer( QgsMapLayer *layer )
     mStackedWidget->setCurrentIndex( mNotSupportedPage );
     mLastStyleXml.clear();
     mCurrentLayer = nullptr;
+    emitLayerStyleChanged( QString() );
     return;
   }
 
@@ -166,10 +179,13 @@ void QgsLayerStylingWidget::setLayer( QgsMapLayer *layer )
   }
 
   mCurrentLayer = layer;
+  mContext.setLayerTreeGroup( nullptr );
 
   mUndoWidget->setUndoStack( layer->undoStackStyles() );
 
   connect( mCurrentLayer, &QgsMapLayer::styleChanged, this, &QgsLayerStylingWidget::updateCurrentWidgetLayer );
+  connect( mCurrentLayer->styleManager(), &QgsMapLayerStyleManager::currentStyleChanged, this, &QgsLayerStylingWidget::emitLayerStyleChanged );
+  connect( mCurrentLayer->styleManager(), &QgsMapLayerStyleManager::styleRenamed, this, &QgsLayerStylingWidget::emitLayerStyleRenamed );
 
   int lastPage = mOptionsListWidget->currentIndex().row();
   mOptionsListWidget->blockSignals( true );
@@ -250,12 +266,14 @@ void QgsLayerStylingWidget::setLayer( QgsMapLayer *layer )
       break;
     }
 
+    case QgsMapLayerType::PointCloudLayer:
     case QgsMapLayerType::PluginLayer:
     case QgsMapLayerType::AnnotationLayer:
+    case QgsMapLayerType::GroupLayer:
       break;
   }
 
-  for ( QgsMapLayerConfigWidgetFactory *factory : qgis::as_const( mPageFactories ) )
+  for ( const QgsMapLayerConfigWidgetFactory *factory : std::as_const( mPageFactories ) )
   {
     if ( factory->supportsStyleDock() && factory->supportsLayer( layer ) )
     {
@@ -288,14 +306,15 @@ void QgsLayerStylingWidget::setLayer( QgsMapLayer *layer )
   mLastStyleXml = doc.createElement( QStringLiteral( "style" ) );
   doc.appendChild( mLastStyleXml );
   mCurrentLayer->writeStyle( mLastStyleXml, doc, errorMsg, QgsReadWriteContext() );
+  emit layerStyleChanged( mCurrentLayer->styleManager()->currentStyle() );
 }
 
 void QgsLayerStylingWidget::apply()
 {
-  if ( !mCurrentLayer )
-    return;
-
-  disconnect( mCurrentLayer, &QgsMapLayer::styleChanged, this, &QgsLayerStylingWidget::updateCurrentWidgetLayer );
+  if ( mCurrentLayer )
+  {
+    disconnect( mCurrentLayer, &QgsMapLayer::styleChanged, this, &QgsLayerStylingWidget::updateCurrentWidgetLayer );
+  }
 
   QString undoName = QStringLiteral( "Style Change" );
 
@@ -346,14 +365,19 @@ void QgsLayerStylingWidget::apply()
     triggerRepaint = widget->shouldTriggerLayerRepaint();
   }
 
-  pushUndoItem( undoName, triggerRepaint );
+  if ( mCurrentLayer )
+    pushUndoItem( undoName, triggerRepaint );
 
-  if ( styleWasChanged )
+  if ( mCurrentLayer && styleWasChanged )
   {
     emit styleChanged( mCurrentLayer );
     QgsProject::instance()->setDirty( true );
   }
-  connect( mCurrentLayer, &QgsMapLayer::styleChanged, this, &QgsLayerStylingWidget::updateCurrentWidgetLayer );
+
+  if ( mCurrentLayer )
+  {
+    connect( mCurrentLayer, &QgsMapLayer::styleChanged, this, &QgsLayerStylingWidget::updateCurrentWidgetLayer );
+  }
 }
 
 void QgsLayerStylingWidget::autoApply()
@@ -378,12 +402,13 @@ void QgsLayerStylingWidget::redo()
 
 void QgsLayerStylingWidget::updateCurrentWidgetLayer()
 {
-  if ( !mCurrentLayer )
+  if ( !mCurrentLayer && !mContext.layerTreeGroup() )
     return;  // non-spatial are ignored in setLayer()
 
   mBlockAutoApply = true;
 
-  whileBlocking( mLayerCombo )->setLayer( mCurrentLayer );
+  if ( mCurrentLayer )
+    whileBlocking( mLayerCombo )->setLayer( mCurrentLayer );
 
   int row = mOptionsListWidget->currentIndex().row();
 
@@ -434,17 +459,19 @@ void QgsLayerStylingWidget::updateCurrentWidgetLayer()
     QgsMapLayerConfigWidget *panel = mUserPages[row]->createWidget( mCurrentLayer, mMapCanvas, true, mWidgetStack );
     if ( panel )
     {
+      panel->setDockMode( true );
+      panel->setMapLayerConfigWidgetContext( mContext );
       connect( panel, &QgsPanelWidget::widgetChanged, this, &QgsLayerStylingWidget::autoApply );
       mWidgetStack->setMainPanel( panel );
     }
   }
 
   // The last widget is always the undo stack.
-  if ( row == mOptionsListWidget->count() - 1 )
+  if ( mCurrentLayer && row == mOptionsListWidget->count() - 1 )
   {
     mWidgetStack->setMainPanel( mUndoWidget );
   }
-  else
+  else if ( mCurrentLayer )
   {
     switch ( mCurrentLayer->type() )
     {
@@ -561,6 +588,12 @@ void QgsLayerStylingWidget::updateCurrentWidgetLayer()
           {
             QgsRasterTransparencyWidget *transwidget = new QgsRasterTransparencyWidget( rlayer, mMapCanvas, mWidgetStack );
             transwidget->setDockMode( true );
+
+            QgsSymbolWidgetContext context;
+            context.setMapCanvas( mMapCanvas );
+            context.setMessageBar( mMessageBar );
+            transwidget->setContext( context );
+
             connect( transwidget, &QgsPanelWidget::widgetChanged, this, &QgsLayerStylingWidget::autoApply );
             mWidgetStack->setMainPanel( transwidget );
             break;
@@ -653,8 +686,14 @@ void QgsLayerStylingWidget::updateCurrentWidgetLayer()
         break;
       }
 
-      case QgsMapLayerType::PluginLayer:
+      case QgsMapLayerType::PointCloudLayer:
       case QgsMapLayerType::AnnotationLayer:
+      case QgsMapLayerType::GroupLayer:
+      {
+        break;
+      }
+
+      case QgsMapLayerType::PluginLayer:
       {
         mStackedWidget->setCurrentIndex( mNotSupportedPage );
         break;
@@ -675,6 +714,59 @@ void QgsLayerStylingWidget::setCurrentPage( QgsLayerStylingWidget::Page page )
       mOptionsListWidget->setCurrentRow( i );
       return;
     }
+  }
+}
+
+void QgsLayerStylingWidget::setAnnotationItem( QgsAnnotationLayer *layer, const QString &itemId )
+{
+  mContext.setAnnotationId( itemId );
+  if ( layer )
+    setLayer( layer );
+
+  if ( QgsMapLayerConfigWidget *configWidget = qobject_cast< QgsMapLayerConfigWidget * >( mWidgetStack->mainPanel() ) )
+  {
+    configWidget->setMapLayerConfigWidgetContext( mContext );
+  }
+}
+
+void QgsLayerStylingWidget::setLayerTreeGroup( QgsLayerTreeGroup *group )
+{
+  mOptionsListWidget->blockSignals( true );
+  mOptionsListWidget->clear();
+  mUserPages.clear();
+
+  for ( const QgsMapLayerConfigWidgetFactory *factory : std::as_const( mPageFactories ) )
+  {
+    if ( factory->supportsStyleDock() && factory->supportsLayerTreeGroup( group ) )
+    {
+      QListWidgetItem *item = new QListWidgetItem( factory->icon(), QString() );
+      item->setToolTip( factory->title() );
+      mOptionsListWidget->addItem( item );
+      int row = mOptionsListWidget->row( item );
+      mUserPages[row] = factory;
+    }
+  }
+
+  mContext.setLayerTreeGroup( group );
+  setLayer( nullptr );
+
+  mOptionsListWidget->setCurrentRow( 0 );
+  mOptionsListWidget->blockSignals( false );
+  updateCurrentWidgetLayer();
+
+  mStackedWidget->setCurrentIndex( 1 );
+
+  if ( QgsMapLayerConfigWidget *configWidget = qobject_cast< QgsMapLayerConfigWidget * >( mWidgetStack->mainPanel() ) )
+  {
+    configWidget->setMapLayerConfigWidgetContext( mContext );
+  }
+}
+
+void QgsLayerStylingWidget::focusDefaultWidget()
+{
+  if ( QgsMapLayerConfigWidget *configWidget = qobject_cast< QgsMapLayerConfigWidget * >( mWidgetStack->mainPanel() ) )
+  {
+    configWidget->focusDefaultWidget();
   }
 }
 
@@ -706,6 +798,12 @@ void QgsLayerStylingWidget::pushUndoItem( const QString &name, bool triggerRepai
   mCurrentLayer->undoStackStyles()->push( new QgsMapLayerStyleCommand( mCurrentLayer, name, rootNode, mLastStyleXml, triggerRepaint ) );
   // Override the last style on the stack
   mLastStyleXml = rootNode.cloneNode();
+}
+
+
+void QgsLayerStylingWidget::emitLayerStyleRenamed()
+{
+  emit layerStyleChanged( mCurrentLayer->styleManager()->currentStyle() );
 }
 
 
@@ -782,10 +880,10 @@ bool QgsLayerStyleManagerWidgetFactory::supportsLayer( QgsMapLayer *layer ) cons
       return true;
 
     case QgsMapLayerType::VectorTileLayer:
-      return false;  // TODO
-
+    case QgsMapLayerType::PointCloudLayer:
     case QgsMapLayerType::PluginLayer:
     case QgsMapLayerType::AnnotationLayer:
+    case QgsMapLayerType::GroupLayer:
       return false;
   }
   return false; // no warnings

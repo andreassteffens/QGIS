@@ -29,71 +29,96 @@ set(WFS_SRCS
 )
 
 if (WITH_GUI)
-  set(WFS_SRCS ${WFS_SRCS}
+  set(WFS_GUI_SRCS
     qgswfsprovidergui.cpp
     qgswfsdataitemguiprovider.cpp
     qgswfssourceselect.cpp
     qgswfsnewconnection.cpp
     qgswfsguiutils.cpp
+    qgswfssubsetstringeditor.cpp
   )
+
+  set(WFS_UIS ${CMAKE_SOURCE_DIR}/src/ui/qgswfssourceselectbase.ui)
 endif()
 
 ########################################################
-# Build
+# Static
+add_library(provider_wfs_a STATIC ${WFS_SRCS})
 
-include_directories (
-  ${CMAKE_SOURCE_DIR}/src/core
-  ${CMAKE_SOURCE_DIR}/src/core/auth
-  ${CMAKE_SOURCE_DIR}/src/core/expression
-  ${CMAKE_SOURCE_DIR}/src/core/geometry
-  ${CMAKE_SOURCE_DIR}/src/core/symbology  # needed by qgsvectorfilewriter.h
-  ${CMAKE_SOURCE_DIR}/src/core/effects    # needed by qgssymbollayer.h
-  ${CMAKE_SOURCE_DIR}/src/core/labeling
-  ${CMAKE_SOURCE_DIR}/src/core/textrenderer
-  ${CMAKE_SOURCE_DIR}/src/core/geocms/geonode
-  ${CMAKE_SOURCE_DIR}/src/core/metadata
-  ${CMAKE_SOURCE_DIR}/src/gui
-  ${CMAKE_SOURCE_DIR}/src/gui/auth
-  ${CMAKE_SOURCE_DIR}/src/gui/codeeditors
-  ${CMAKE_SOURCE_DIR}/external
-  ${CMAKE_SOURCE_DIR}/external/nlohmann
-
-  ${CMAKE_BINARY_DIR}/src/core
-  ${CMAKE_BINARY_DIR}/src/gui
-  ${CMAKE_BINARY_DIR}/src/ui
-)
-include_directories(SYSTEM
-  ${EXPAT_INCLUDE_DIR}
-  ${QCA_INCLUDE_DIR}
-  ${QTKEYCHAIN_INCLUDE_DIR}
-  ${GDAL_INCLUDE_DIR} # needed by qgsvectorfilewriter.h
-  ${SQLITE3_INCLUDE_DIR}
-  ${GDAL_INCLUDE_DIR}
+target_include_directories(provider_wfs_a PUBLIC
+  ${CMAKE_SOURCE_DIR}/src/providers/wfs
 )
 
-if (WITH_GUI)
-  include_directories(SYSTEM
-    ${QSCINTILLA_INCLUDE_DIR}
-  )
-endif()
-
-add_library (wfsprovider MODULE ${WFS_SRCS})
-
-target_link_libraries (wfsprovider
+target_link_libraries(provider_wfs_a
   ${EXPAT_LIBRARY}
   qgis_core
 )
 
+# require c++17
+target_compile_features(provider_wfs_a PRIVATE cxx_std_17)
+
+target_compile_definitions(provider_wfs_a PRIVATE "-DQT_NO_FOREACH")
+
 if (WITH_GUI)
-  target_link_libraries (wfsprovider
+  if (WITH_QT6)
+    QT6_WRAP_UI(WFS_UIS_H ${WFS_UIS})
+  else()
+    QT5_WRAP_UI(WFS_UIS_H ${WFS_UIS})
+  endif()
+
+  add_library(provider_wfs_gui_a STATIC ${WFS_GUI_SRCS} ${WFS_UIS_H})
+
+  target_include_directories(provider_wfs_gui_a PUBLIC
+    ${CMAKE_BINARY_DIR}/src/providers/wfs
+  )
+
+  target_link_libraries(provider_wfs_a
     qgis_gui
   )
-  add_dependencies(wfsprovider ui)
+  target_link_libraries(provider_wfs_gui_a
+    qgis_gui
+  )
+
+  # require c++17
+  target_compile_features(provider_wfs_gui_a PRIVATE cxx_std_17)
+
+  target_compile_definitions(provider_wfs_gui_a PRIVATE "-DQT_NO_FOREACH")
+
+  add_dependencies(provider_wfs_gui_a ui)
+
+  include_directories(SYSTEM
+    ${QSCINTILLA_INCLUDE_DIR}
+    ${CMAKE_BINARY_DIR}/src/ui
+  )
 endif()
 
-########################################################
-# Install
+if (FORCE_STATIC_LIBS)
+  # for (external) mobile apps to be able to pick up provider for linking
+  install (TARGETS provider_wfs_a ARCHIVE DESTINATION ${QGIS_PLUGIN_DIR})
+  if (WITH_GUI)
+    install (TARGETS provider_wfs_gui_a ARCHIVE DESTINATION ${QGIS_PLUGIN_DIR})
+  endif()
+else()
+  add_library(provider_wfs MODULE ${WFS_SRCS} ${WFS_GUI_SRCS})
 
-install(TARGETS wfsprovider
-  RUNTIME DESTINATION ${QGIS_PLUGIN_DIR}
-  LIBRARY DESTINATION ${QGIS_PLUGIN_DIR})
+  # require c++17
+  target_compile_features(provider_wfs PRIVATE cxx_std_17)
+
+  target_compile_definitions(provider_wfs PRIVATE "-DQT_NO_FOREACH")
+
+  target_link_libraries (provider_wfs
+    ${EXPAT_LIBRARY}
+    qgis_core
+  )
+
+  if (WITH_GUI)
+    target_link_libraries (provider_wfs
+      qgis_gui
+    )
+    add_dependencies(provider_wfs ui)
+  endif()
+  
+  install(TARGETS provider_wfs
+    RUNTIME DESTINATION ${QGIS_PLUGIN_DIR}
+    LIBRARY DESTINATION ${QGIS_PLUGIN_DIR})
+endif()

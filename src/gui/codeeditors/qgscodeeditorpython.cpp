@@ -23,6 +23,7 @@
 #include <QWidget>
 #include <QString>
 #include <QFont>
+#include <QUrl>
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QTextStream>
@@ -53,7 +54,7 @@ void QgsCodeEditorPython::initializeLexer()
   setWhitespaceVisibility( QsciScintilla::WsVisibleAfterIndent );
 
   QFont font = lexerFont();
-  QColor defaultColor = lexerColor( QgsCodeEditorColorScheme::ColorRole::Default );
+  const QColor defaultColor = lexerColor( QgsCodeEditorColorScheme::ColorRole::Default );
 
   QsciLexerPython *pyLexer = new QgsQsciLexerPython( this );
 
@@ -92,7 +93,7 @@ void QgsCodeEditorPython::initializeLexer()
 
   QsciAPIs *apis = new QsciAPIs( pyLexer );
 
-  QgsSettings settings;
+  const QgsSettings settings;
 
   if ( mAPISFilesList.isEmpty() )
   {
@@ -159,7 +160,7 @@ void QgsCodeEditorPython::initializeLexer()
   }
   else
   {
-    QString autoCompleteSource = settings.value( QStringLiteral( "pythonConsole/autoCompleteSource" ), QStringLiteral( "fromAPI" ) ).toString();
+    const QString autoCompleteSource = settings.value( QStringLiteral( "pythonConsole/autoCompleteSource" ), QStringLiteral( "fromAPI" ) ).toString();
     if ( autoCompleteSource == QLatin1String( "fromDoc" ) )
       setAutoCompletionSource( AcsDocument );
     else if ( autoCompleteSource == QLatin1String( "fromDocAPI" ) )
@@ -233,6 +234,7 @@ void QgsCodeEditorPython::searchSelectedTextInPyQGISDocs()
   QDesktopServices::openUrl( QUrl( QStringLiteral( "https://qgis.org/pyqgis/%1/search.html?q=%2" ).arg( version, text ) ) );
 }
 
+///@cond PRIVATE
 //
 // QgsQsciLexerPython
 //
@@ -253,3 +255,4 @@ const char *QgsQsciLexerPython::keywords( int set ) const
 
   return QsciLexerPython::keywords( set );
 }
+///@endcond PRIVATE

@@ -26,6 +26,9 @@
 #include "qgssymbollayer.h"
 #include "qgssymbollayerutils.h"
 #include "qgssymbol.h"
+#include "qgsmarkersymbol.h"
+#include "qgslinesymbol.h"
+#include "qgsfillsymbol.h"
 
 #include "qgsgrasseditrenderer.h"
 #include "qgsgrassprovider.h"
@@ -53,7 +56,7 @@ QgsGrassEditRenderer::QgsGrassEditRenderer()
 
   // first/last vertex marker to distinguish vertices from nodes
   QgsMarkerLineSymbolLayer *firstVertexMarkerLine = new QgsMarkerLineSymbolLayer( false );
-  QgsSimpleMarkerSymbolLayer *markerSymbolLayer = new QgsSimpleMarkerSymbolLayer( QgsSimpleMarkerSymbolLayerBase::Cross2, 2 );
+  QgsSimpleMarkerSymbolLayer *markerSymbolLayer = new QgsSimpleMarkerSymbolLayer( Qgis::MarkerShape::Cross2, 2 );
   markerSymbolLayer->setColor( QColor( 255, 0, 0 ) );
   markerSymbolLayer->setStrokeColor( QColor( 255, 0, 0 ) );
   markerSymbolLayer->setStrokeWidth( 0.5 );
@@ -61,10 +64,10 @@ QgsGrassEditRenderer::QgsGrassEditRenderer()
   markerLayers << markerSymbolLayer;
   QgsMarkerSymbol *markerSymbol = new QgsMarkerSymbol( markerLayers );
   firstVertexMarkerLine->setSubSymbol( markerSymbol );
-  firstVertexMarkerLine->setPlacement( QgsTemplatedLineSymbolLayerBase::FirstVertex );
+  firstVertexMarkerLine->setPlacements( Qgis::MarkerLinePlacement::FirstVertex );
   QgsMarkerLineSymbolLayer *lastVertexMarkerLine = static_cast<QgsMarkerLineSymbolLayer *>( firstVertexMarkerLine->clone() );
-  lastVertexMarkerLine->setPlacement( QgsTemplatedLineSymbolLayerBase::LastVertex );
-  Q_FOREACH ( int value, colors.keys() )
+  lastVertexMarkerLine->setPlacements( Qgis::MarkerLinePlacement::LastVertex );
+  for ( int value : colors.keys() )
   {
     QgsSymbol *symbol = QgsSymbol::defaultSymbol( QgsWkbTypes::LineGeometry );
     symbol->setColor( colors.value( value ) );
@@ -91,7 +94,7 @@ QgsGrassEditRenderer::QgsGrassEditRenderer()
 
   categoryList.clear();
 
-  Q_FOREACH ( int value, colors.keys() )
+  for ( int value : colors.keys() )
   {
     QgsSymbol *symbol = QgsSymbol::defaultSymbol( QgsWkbTypes::PointGeometry );
     symbol->setColor( colors.value( value ) );
@@ -228,14 +231,14 @@ QgsFeatureRenderer *QgsGrassEditRenderer::create( QDomElement &element, const Qg
     if ( !elem.isNull() )
     {
       QString rendererType = elem.attribute( QStringLiteral( "type" ) );
-      QgsDebugMsg( "childElem.tagName() = " + childElem.tagName() + " rendererType = " + rendererType );
+      QgsDebugMsgLevel( "childElem.tagName() = " + childElem.tagName() + " rendererType = " + rendererType, 2 );
       QgsRendererAbstractMetadata *meta = QgsApplication::rendererRegistry()->rendererMetadata( rendererType );
       if ( meta )
       {
         QgsFeatureRenderer *subRenderer = meta->createRenderer( elem, context );
         if ( subRenderer )
         {
-          QgsDebugMsg( "renderer created : " + renderer->type() );
+          QgsDebugMsgLevel( "renderer created : " + renderer->type(), 2 );
           if ( childElem.tagName() == QLatin1String( "line" ) )
           {
             renderer->setLineRenderer( subRenderer );

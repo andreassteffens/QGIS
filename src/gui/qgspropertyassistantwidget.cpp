@@ -18,12 +18,15 @@
 
 #include "qgspropertyassistantwidget.h"
 #include "qgsproject.h"
+#include "qgsprojectstylesettings.h"
 #include "qgsmapsettings.h"
 #include "qgsvectorlayer.h"
 #include "qgslayertreelayer.h"
 #include "qgssymbollayerutils.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgsstyle.h"
+#include "qgsmarkersymbol.h"
+#include "qgslinesymbol.h"
 
 QgsPropertyAssistantWidget::QgsPropertyAssistantWidget( QWidget *parent,
     const QgsPropertyDefinition &definition, const QgsProperty &initialState,
@@ -217,8 +220,8 @@ void QgsPropertyAssistantWidget::updatePreview()
                          maxValueSpinBox->value(), 8 );
 
   QgsCurveTransform curve = mCurveEditor->curve();
-  QList< QgsSymbolLegendNode * > nodes = mTransformerWidget->generatePreviews( breaks, mLayerTreeLayer, mSymbol.get(), minValueSpinBox->value(),
-                                         maxValueSpinBox->value(), mTransformCurveCheckBox->isChecked() ? &curve : nullptr );
+  const QList< QgsSymbolLegendNode * > nodes = mTransformerWidget->generatePreviews( breaks, mLayerTreeLayer, mSymbol.get(), minValueSpinBox->value(),
+      maxValueSpinBox->value(), mTransformCurveCheckBox->isChecked() ? &curve : nullptr );
 
   int widthMax = 0;
   int i = 0;
@@ -228,7 +231,7 @@ void QgsPropertyAssistantWidget::updatePreview()
     const QSize minSize( node->minimumIconSize() );
     node->setIconSize( minSize );
     widthMax = std::max( minSize.width(), widthMax );
-    QStandardItem *item = new QStandardItem( node->data( Qt::DecorationRole ).value<QPixmap>(), QString::number( breaks[i] ) );
+    QStandardItem *item = new QStandardItem( node->data( Qt::DecorationRole ).value<QPixmap>(), QLocale().toString( breaks[i] ) );
     item->setEditable( false );
     mPreviewList.appendRow( item );
     delete node;
@@ -238,7 +241,7 @@ void QgsPropertyAssistantWidget::updatePreview()
   // TODO maybe add some space so that icons don't touch
   for ( int i = 0; i < breaks.length(); i++ )
   {
-    QPixmap img( mPreviewList.item( i )->icon().pixmap( mPreviewList.item( i )->icon().actualSize( QSize( 512, 512 ) ) ) );
+    const QPixmap img( mPreviewList.item( i )->icon().pixmap( mPreviewList.item( i )->icon().actualSize( QSize( 512, 512 ) ) ) );
     QPixmap enlarged( widthMax, img.height() );
     // fill transparent and add original image
     enlarged.fill( Qt::transparent );
@@ -268,7 +271,7 @@ bool QgsPropertyAssistantWidget::computeValuesFromExpression( const QString &exp
   if ( !e.prepare( &context ) )
     return false;
 
-  QSet<QString> referencedCols( e.referencedColumns() );
+  const QSet<QString> referencedCols( e.referencedColumns() );
 
   QgsFeatureIterator fit = mLayer->getFeatures(
                              QgsFeatureRequest().setFlags( e.needsGeometry()
@@ -303,18 +306,22 @@ bool QgsPropertyAssistantWidget::computeValuesFromExpression( const QString &exp
 
 bool QgsPropertyAssistantWidget::computeValuesFromField( const QString &fieldName, double &minValue, double &maxValue ) const
 {
-  int fieldIndex = mLayer->fields().lookupField( fieldName );
+  const int fieldIndex = mLayer->fields().lookupField( fieldName );
   if ( fieldIndex < 0 )
   {
     return false;
   }
 
+  QVariant min;
+  QVariant max;
+  mLayer->minimumAndMaximumValue( fieldIndex, min, max );
+
   bool ok = false;
-  double minDouble = mLayer->minimumValue( fieldIndex ).toDouble( &ok );
+  const double minDouble = min.toDouble( &ok );
   if ( !ok )
     return false;
 
-  double maxDouble = mLayer->maximumValue( fieldIndex ).toDouble( &ok );
+  const double maxDouble = max.toDouble( &ok );
   if ( !ok )
     return false;
 
@@ -401,11 +408,11 @@ QList< QgsSymbolLegendNode * > QgsPropertySizeAssistantWidget::generatePreviews(
   {
     if ( mDefinition.standardTemplate() == QgsPropertyDefinition::Size )
     {
-      tempSymbol.reset( QgsMarkerSymbol::createSimple( QgsStringMap() ) );
+      tempSymbol.reset( QgsMarkerSymbol::createSimple( QVariantMap() ) );
     }
     else if ( mDefinition.standardTemplate() == QgsPropertyDefinition::StrokeWidth )
     {
-      tempSymbol.reset( QgsLineSymbol::createSimple( QgsStringMap() ) );
+      tempSymbol.reset( QgsLineSymbol::createSimple( QVariantMap() ) );
     }
     legendSymbol = tempSymbol.get();
   }
@@ -452,7 +459,7 @@ QgsPropertyColorAssistantWidget::QgsPropertyColorAssistantWidget( QWidget *paren
 
   layout()->setContentsMargins( 0, 0, 0, 0 );
 
-  bool supportsAlpha = definition.standardTemplate() == QgsPropertyDefinition::ColorWithAlpha;
+  const bool supportsAlpha = definition.standardTemplate() == QgsPropertyDefinition::ColorWithAlpha;
   mNullColorButton->setAllowOpacity( supportsAlpha );
   mNullColorButton->setShowNoColor( true );
   mNullColorButton->setColorDialogTitle( tr( "Color For Null Values" ) );
@@ -472,10 +479,13 @@ QgsPropertyColorAssistantWidget::QgsPropertyColorAssistantWidget( QWidget *paren
   if ( !mColorRampButton->colorRamp() )
   {
     // set a default ramp
-    QString defaultRampName = QgsProject::instance()->readEntry( QStringLiteral( "DefaultStyles" ), QStringLiteral( "/ColorRamp" ), QString() );
-    std::unique_ptr< QgsColorRamp > defaultRamp( QgsStyle::defaultStyle()->colorRamp( !defaultRampName.isEmpty() ? defaultRampName : QStringLiteral( "Blues" ) ) );
-    if ( defaultRamp )
-      mColorRampButton->setColorRamp( defaultRamp.get() );
+    std::unique_ptr< QgsColorRamp > colorRamp( QgsProject::instance()->styleSettings()->defaultColorRamp() );
+    if ( !colorRamp )
+    {
+      colorRamp.reset( QgsStyle::defaultStyle()->colorRamp( QStringLiteral( "Blues" ) ) );
+    }
+    if ( colorRamp )
+      mColorRampButton->setColorRamp( colorRamp.get() );
   }
 }
 
@@ -498,7 +508,7 @@ QList<QgsSymbolLegendNode *> QgsPropertyColorAssistantWidget::generatePreviews( 
 
   if ( !legendSymbol )
   {
-    tempSymbol.reset( QgsMarkerSymbol::createSimple( QgsStringMap() ) );
+    tempSymbol.reset( QgsMarkerSymbol::createSimple( QVariantMap() ) );
     legendSymbol = tempSymbol.get();
   }
   if ( !legendSymbol )
@@ -529,28 +539,85 @@ QgsPropertyGenericNumericAssistantWidget::QgsPropertyGenericNumericAssistantWidg
 
   nullOutputSpinBox->setShowClearButton( false );
 
-  if ( definition.standardTemplate() == QgsPropertyDefinition::Rotation )
+  switch ( definition.standardTemplate() )
   {
-    // tweak dialog for rotation
-    minOutputSpinBox->setMaximum( 360.0 );
-    minOutputSpinBox->setValue( 0.0 );
-    minOutputSpinBox->setShowClearButton( true );
-    minOutputSpinBox->setClearValue( 0.0 );
-    minOutputSpinBox->setSuffix( tr( " °" ) );
-    maxOutputSpinBox->setMaximum( 360.0 );
-    maxOutputSpinBox->setValue( 360.0 );
-    maxOutputSpinBox->setShowClearButton( true );
-    maxOutputSpinBox->setClearValue( 360.0 );
-    maxOutputSpinBox->setSuffix( tr( " °" ) );
-    exponentSpinBox->hide();
-    mExponentLabel->hide();
-    mLabelMinOutput->setText( tr( "Angle from" ) );
-    mLabelNullOutput->setText( tr( "Angle when NULL" ) );
-  }
-  else
-  {
-    minOutputSpinBox->setShowClearButton( false );
-    maxOutputSpinBox->setShowClearButton( false );
+    case QgsPropertyDefinition::Rotation:
+    {
+      // tweak dialog for rotation
+      minOutputSpinBox->setMaximum( 360.0 );
+      minOutputSpinBox->setValue( 0.0 );
+      minOutputSpinBox->setShowClearButton( true );
+      minOutputSpinBox->setClearValue( 0.0 );
+      minOutputSpinBox->setSuffix( tr( " °" ) );
+      maxOutputSpinBox->setMaximum( 360.0 );
+      maxOutputSpinBox->setValue( 360.0 );
+      maxOutputSpinBox->setShowClearButton( true );
+      maxOutputSpinBox->setClearValue( 360.0 );
+      maxOutputSpinBox->setSuffix( tr( " °" ) );
+      exponentSpinBox->hide();
+      mExponentLabel->hide();
+      mLabelMinOutput->setText( tr( "Angle from" ) );
+      mLabelNullOutput->setText( tr( "Angle when NULL" ) );
+      break;
+    }
+
+    case QgsPropertyDefinition::Opacity:
+    {
+      // tweak dialog for opacity
+      minOutputSpinBox->setMaximum( 100.0 );
+      minOutputSpinBox->setValue( 0.0 );
+      minOutputSpinBox->setShowClearButton( true );
+      minOutputSpinBox->setClearValue( 0.0 );
+      minOutputSpinBox->setSuffix( tr( " %" ) );
+      maxOutputSpinBox->setMaximum( 100.0 );
+      maxOutputSpinBox->setValue( 100.0 );
+      maxOutputSpinBox->setShowClearButton( true );
+      maxOutputSpinBox->setClearValue( 100.0 );
+      maxOutputSpinBox->setSuffix( tr( " %" ) );
+      mLabelMinOutput->setText( tr( "Opacity from" ) );
+      mLabelNullOutput->setText( tr( "Opacity when NULL" ) );
+      break;
+    }
+
+    case QgsPropertyDefinition::DoublePositive:
+    case QgsPropertyDefinition::IntegerPositive:
+      minOutputSpinBox->setMinimum( 0 );
+      maxOutputSpinBox->setMinimum( 0 );
+      minOutputSpinBox->setShowClearButton( false );
+      maxOutputSpinBox->setShowClearButton( false );
+      break;
+
+    case QgsPropertyDefinition::IntegerPositiveGreaterZero:
+      minOutputSpinBox->setMinimum( 1 );
+      maxOutputSpinBox->setMinimum( 1 );
+      minOutputSpinBox->setShowClearButton( false );
+      maxOutputSpinBox->setShowClearButton( false );
+      break;
+
+    case QgsPropertyDefinition::Double0To1:
+      minOutputSpinBox->setMinimum( 0 );
+      maxOutputSpinBox->setMinimum( 0 );
+      minOutputSpinBox->setMaximum( 1 );
+      maxOutputSpinBox->setMaximum( 1 );
+      minOutputSpinBox->setShowClearButton( false );
+      maxOutputSpinBox->setShowClearButton( false );
+      break;
+
+    case QgsPropertyDefinition::Double:
+      minOutputSpinBox->setMinimum( -99999999.000000 );
+      maxOutputSpinBox->setMinimum( -99999999.000000 );
+      minOutputSpinBox->setMaximum( 99999999.000000 );
+      maxOutputSpinBox->setMaximum( 99999999.000000 );
+      minOutputSpinBox->setShowClearButton( false );
+      maxOutputSpinBox->setShowClearButton( false );
+      break;
+
+    default:
+    {
+      minOutputSpinBox->setShowClearButton( false );
+      maxOutputSpinBox->setShowClearButton( false );
+      break;
+    }
   }
 
   if ( const QgsGenericNumericTransformer *transform = dynamic_cast< const QgsGenericNumericTransformer * >( initialState.transformer() ) )

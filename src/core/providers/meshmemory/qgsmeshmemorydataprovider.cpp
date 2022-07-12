@@ -20,7 +20,10 @@
 #include "qgsmeshdataprovidertemporalcapabilities.h"
 #include "qgsmeshlayerutils.h"
 #include "qgstriangularmesh.h"
+#include "qgsapplication.h"
+
 #include <cstring>
+#include <QIcon>
 
 #define TEXT_PROVIDER_KEY QStringLiteral( "mesh_memory" )
 #define TEXT_PROVIDER_DESCRIPTION QStringLiteral( "Mesh memory provider" )
@@ -71,13 +74,6 @@ QString QgsMeshMemoryDataProvider::providerDescription()
   return TEXT_PROVIDER_DESCRIPTION;
 }
 
-QgsMeshMemoryDataProvider *QgsMeshMemoryDataProvider::createProvider( const QString &uri,
-    const ProviderOptions &options,
-    QgsDataProvider::ReadFlags flags )
-{
-  return new QgsMeshMemoryDataProvider( uri, options, flags );
-}
-
 bool QgsMeshMemoryDataProvider::splitMeshSections( const QString &uri )
 {
 #if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
@@ -120,9 +116,9 @@ bool QgsMeshMemoryDataProvider::addMeshVertices( const QString &def )
                           QStringLiteral( "Mesh Memory Provider" ) ) );
       return false;
     }
-    double x = coords.at( 0 ).toDouble();
-    double y = coords.at( 1 ).toDouble();
-    QgsMeshVertex vertex( x, y );
+    const double x = coords.at( 0 ).toDouble();
+    const double y = coords.at( 1 ).toDouble();
+    const QgsMeshVertex vertex( x, y );
     vertices.push_back( vertex );
   }
 
@@ -167,7 +163,7 @@ bool QgsMeshMemoryDataProvider::addMeshFacesOrEdges( const QString &def )
       QgsMeshFace face;
       for ( int j = 0; j < vertices.size(); ++j )
       {
-        int vertex_id = vertices[j].toInt();
+        const int vertex_id = vertices[j].toInt();
         if ( !checkVertexId( vertex_id ) ) return false;
         face.push_back( vertex_id );
       }
@@ -262,9 +258,9 @@ bool QgsMeshMemoryDataProvider::addDatasetGroupMetadata( const QString &def, Qgs
   for ( int i = 0; i < metadataLines.size(); ++i )
   {
 #if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
-    const QStringList keyVal = metadataLines[i].split( ':', QString::SkipEmptyParts );
+    const QStringList keyVal = metadataLines[i].split( QStringLiteral( ": " ), QString::SkipEmptyParts );
 #else
-    const QStringList keyVal = metadataLines[i].split( ':', Qt::SkipEmptyParts );
+    const QStringList keyVal = metadataLines[i].split( QStringLiteral( ": " ), Qt::SkipEmptyParts );
 #endif
     if ( keyVal.size() != 2 )
     {
@@ -314,7 +310,9 @@ bool QgsMeshMemoryDataProvider::addDatasetValues( const QString &def, std::share
       }
       else
       {
-        point.setX( values[0].toDouble() );
+        bool ok;
+        double val = values.at( 0 ).toDouble( &ok );
+        point.setX( ok ? val : std::numeric_limits<double>::quiet_NaN() );
       }
     }
     else
@@ -327,8 +325,11 @@ bool QgsMeshMemoryDataProvider::addDatasetValues( const QString &def, std::share
       }
       else
       {
-        point.setX( values[0].toDouble() );
-        point.setY( values[1].toDouble() );
+        bool ok;
+        double val = values.at( 0 ).toDouble( &ok );
+        point.setX( ok ? val : std::numeric_limits<double>::quiet_NaN() );
+        val = values.at( 1 ).toDouble( &ok );
+        point.setY( ok ? val : std::numeric_limits<double>::quiet_NaN() );
       }
     }
 
@@ -400,6 +401,13 @@ void QgsMeshMemoryDataProvider::addGroupToTemporalCapabilities( int groupIndex, 
 
   if ( group.datasetCount() > 1 ) //non temporal dataset groups (count=1) have no time in the capabilities
   {
+    QString timeReferenceString = group.extraMetadata().value( QStringLiteral( "reference_time" ) );
+    if ( !timeReferenceString.isEmpty() )
+    {
+      timeReferenceString.append( 'Z' );//For now provider doesn't support time zone and return always in local time, force UTC
+      const QDateTime referenceTime = QDateTime::fromString( timeReferenceString, Qt::ISODate );
+      tempCap->addGroupReferenceDateTime( groupIndex, referenceTime );
+    }
     for ( int i = 0; i < group.memoryDatasets.count(); ++i )
       if ( group.memoryDatasets.at( i ) )
         tempCap->addDatasetTime( groupIndex, group.memoryDatasets.at( i )->time );
@@ -541,7 +549,7 @@ QgsMeshDataBlock QgsMeshMemoryDataProvider::datasetValues( QgsMeshDatasetIndex i
   if ( ( index.group() >= 0 ) && ( index.group() < datasetGroupCount() ) )
   {
     const QgsMeshMemoryDatasetGroup group = mDatasetGroups[index.group()];
-    bool isScalar = group.isScalar();
+    const bool isScalar = group.isScalar();
     if ( ( index.dataset() >= 0 ) && ( index.dataset() < group.memoryDatasets.size() ) )
     {
       return group.memoryDatasets[index.dataset()]->datasetValues( isScalar, valueIndex, count );
@@ -623,6 +631,14 @@ bool QgsMeshMemoryDataProvider::persistDatasetGroup( const QString &outputFilePa
   return true; // not implemented/supported
 }
 
+void QgsMeshMemoryDataProvider::close()
+{
+  mVertices.clear();
+  mFaces.clear();
+  mEdges.clear();
+  mDatasetGroups.clear();
+}
+
 QgsRectangle QgsMeshMemoryDataProvider::calculateExtent() const
 {
   QgsRectangle rec;
@@ -638,5 +654,25 @@ QgsRectangle QgsMeshMemoryDataProvider::calculateExtent() const
 }
 
 
+QgsMeshMemoryProviderMetadata::QgsMeshMemoryProviderMetadata()
+  : QgsProviderMetadata( QgsMeshMemoryDataProvider::providerKey(), QgsMeshMemoryDataProvider::providerDescription() )
+{
+
+}
+
+QIcon QgsMeshMemoryProviderMetadata::icon() const
+{
+  return QgsApplication::getThemeIcon( QStringLiteral( "mIconMeshLayer.svg" ) );
+}
+
+QgsDataProvider *QgsMeshMemoryProviderMetadata::createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags )
+{
+  return new QgsMeshMemoryDataProvider( uri, options, flags );
+}
+
+QList<QgsMapLayerType> QgsMeshMemoryProviderMetadata::supportedLayerTypes() const
+{
+  return { QgsMapLayerType::MeshLayer };
+}
 
 ///@endcond

@@ -20,6 +20,7 @@
 #include <QQueue>
 
 #include "qgspostgresprovider.h"
+#include "qgscoordinatetransform.h"
 
 class QgsPostgresProvider;
 class QgsPostgresResult;
@@ -127,6 +128,9 @@ class QgsPostgresFeatureIterator final: public QgsAbstractFeatureIteratorFromSou
 
     QgsCoordinateTransform mTransform;
     QgsRectangle mFilterRect;
+    QgsGeometry mDistanceWithinGeom;
+    std::unique_ptr< QgsGeometryEngine > mDistanceWithinEngine;
+
 };
 
 #endif // QGSPOSTGRESFEATUREITERATOR_H

@@ -19,8 +19,10 @@
 #include "qgswidgetwrapper.h"
 #include "qgis_sip.h"
 #include "qgis_gui.h"
+#include "qgsattributeeditorrelation.h"
 
-class QgsRelationEditorWidget;
+
+class QgsAbstractRelationEditorWidget;
 
 /**
  * \ingroup gui
@@ -34,23 +36,39 @@ class GUI_EXPORT QgsRelationWidgetWrapper : public QgsWidgetWrapper
   public:
 
     //! Constructor for QgsRelationWidgetWrapper
-    explicit QgsRelationWidgetWrapper( QgsVectorLayer *vl, const QgsRelation &relation, QWidget *editor = nullptr, QWidget *parent SIP_TRANSFERTHIS = nullptr );
+    QgsRelationWidgetWrapper(
+      QgsVectorLayer *vl,
+      const QgsRelation &relation,
+      QWidget *editor SIP_CONSTRAINED = nullptr,
+      QWidget *parent SIP_TRANSFERTHIS SIP_CONSTRAINED  = nullptr
+    );
+
+    //! Constructor for QgsRelationWidgetWrapper
+    QgsRelationWidgetWrapper(
+      const QString &relationEditorName,
+      QgsVectorLayer *vl,
+      const QgsRelation &relation,
+      QWidget *editor = nullptr,
+      QWidget *parent SIP_TRANSFERTHIS = nullptr
+    );
 
     /**
      * Defines if a title label should be shown for this widget.
      * Only has an effect after widget() has been called at least once.
      *
      * \since QGIS 2.18
+     * \deprecated since QGIS 3.20 label is handled directly in QgsAttributeForm.
      */
-    bool showLabel() const;
+    Q_DECL_DEPRECATED bool showLabel() const SIP_DEPRECATED;
 
     /**
      * Defines if a title label should be shown for this widget.
      * Only has an effect after widget() has been called at least once.
      *
      * \since QGIS 2.18
+     * \deprecated since QGIS 3.20 label is handled directly in QgsAttributeForm.
      */
-    void setShowLabel( bool showLabel );
+    Q_DECL_DEPRECATED void setShowLabel( bool showLabel ) SIP_DEPRECATED;
 
     /**
      * Determines if the "link feature" button should be shown
@@ -97,14 +115,31 @@ class GUI_EXPORT QgsRelationWidgetWrapper : public QgsWidgetWrapper
     /**
      * Defines the buttons which are shown
      * \since QGIS 3.16
+     * \deprecated since QGIS 3.18 use setWidgetConfig() instead
      */
-    void setVisibleButtons( const QgsAttributeEditorRelation::Buttons &buttons );
+    Q_DECL_DEPRECATED void setVisibleButtons( const QgsAttributeEditorRelation::Buttons &buttons ) SIP_DEPRECATED;
 
     /**
      * Returns the buttons which are shown
      * \since QGIS 3.16
+     * \deprecated since QGIS 3.18 use widgetConfig() instead
      */
-    QgsAttributeEditorRelation::Buttons visibleButtons() const;
+    Q_DECL_DEPRECATED QgsAttributeEditorRelation::Buttons visibleButtons() const SIP_DEPRECATED;
+
+
+    /**
+     * Will set the config of this widget wrapper to the specified config.
+     *
+     * \param config The config for this wrapper
+     * \since QGIS 3.18
+     */
+    void setWidgetConfig( const QVariantMap &config );
+
+    /**
+     * Returns the whole widget config
+     * \since QGIS 3.18
+     */
+    QVariantMap widgetConfig() const;
 
     /**
      * Determines the force suppress form popup status that is configured for this widget
@@ -137,15 +172,17 @@ class GUI_EXPORT QgsRelationWidgetWrapper : public QgsWidgetWrapper
     /**
      * Determines the label of this element
      * \since QGIS 3.16
+     * \deprecated since QGIS 3.20 label is handled directly in QgsAttributeForm.
      */
-    QString label() const;
+    Q_DECL_DEPRECATED QString label() const SIP_DEPRECATED;
 
     /**
      * Sets \a label for this element
      * If it's empty it takes the relation id as label
      * \since QGIS 3.16
+     * \deprecated since QGIS 3.20 label is handled directly in QgsAttributeForm.
      */
-    void setLabel( const QString &label = QString() );
+    Q_DECL_DEPRECATED void setLabel( const QString &label = QString() ) SIP_DEPRECATED;
 
     /**
      * The relation for which this wrapper is created.
@@ -173,8 +210,26 @@ class GUI_EXPORT QgsRelationWidgetWrapper : public QgsWidgetWrapper
     void initWidget( QWidget *editor ) override;
     bool valid() const override;
 
+  signals:
+
+    /**
+     * Emit this signal, whenever the related features changed.
+     * This happens for example when related features are added, removed,
+     * linked or unlinked.
+     *
+     * \since QGIS 3.22
+     */
+    void relatedFeaturesChanged();
+
   public slots:
     void setFeature( const QgsFeature &feature ) override;
+
+    /**
+     * Set multiple feature to edit simultaneously.
+     * \param fids Multiple Id of features to edit
+     * \since QGIS 3.24
+     */
+    void setMultiEditFeatureIds( const QgsFeatureIds &fids );
 
     /**
      * Sets the visibility of the wrapper's widget.
@@ -187,7 +242,8 @@ class GUI_EXPORT QgsRelationWidgetWrapper : public QgsWidgetWrapper
     void aboutToSave() override;
     QgsRelation mRelation;
     QgsRelation mNmRelation;
-    QgsRelationEditorWidget *mWidget = nullptr;
+    QString mRelationEditorId;
+    QgsAbstractRelationEditorWidget *mWidget = nullptr;
 };
 
 #endif // QGSRELATIONWIDGETWRAPPER_H

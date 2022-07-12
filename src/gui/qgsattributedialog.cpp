@@ -79,8 +79,7 @@ void QgsAttributeDialog::accept()
 
     mMessageBar->pushMessage( QString(),
                               error,
-                              Qgis::MessageLevel::Critical,
-                              5 );
+                              Qgis::MessageLevel::Critical );
   }
 }
 

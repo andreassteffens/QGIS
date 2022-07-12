@@ -44,8 +44,8 @@ class QgsWFSSharedData;
  * QgsWFSProvider class purpose:
  *
  * - in constructor, do a GetCapabilities request to determine server-side feature limit,
-     paging capabilities, WFS version, edition capabilities. Do a DescribeFeatureType request
-     to determine fields, geometry name and type.
+ *   paging capabilities, WFS version, edition capabilities. Do a DescribeFeatureType request
+ *   to determine fields, geometry name and type.
  * - in other methods, mostly WFS-T related operations.
  *
  * QgsWFSSharedData class purpose:
@@ -80,7 +80,7 @@ class QgsWFSProvider final: public QgsVectorDataProvider
     QgsFeatureIterator getFeatures( const QgsFeatureRequest &request = QgsFeatureRequest() ) const override;
 
     QgsWkbTypes::Type wkbType() const override;
-    long featureCount() const override;
+    long long featureCount() const override;
 
     QgsFields fields() const override;
 
@@ -97,6 +97,8 @@ class QgsWFSProvider final: public QgsVectorDataProvider
     bool isValid() const override;
     QString name() const override;
     QString description() const override;
+
+    static QString providerKey();
 
     QgsVectorDataProvider::Capabilities capabilities() const override;
 
@@ -121,6 +123,10 @@ class QgsWFSProvider final: public QgsVectorDataProvider
     QString translateMetadataValue( const QString &mdKey, const QVariant &value ) const override;
 
     bool empty() const override;
+
+    std::shared_ptr<QgsWFSSharedData> sharedData() const { return mShared; }
+
+    void handlePostCloneOperations( QgsVectorDataProvider *source ) override;
 
   private slots:
 
@@ -211,8 +217,10 @@ class QgsWfsProviderMetadata final: public QgsProviderMetadata
 {
   public:
     QgsWfsProviderMetadata();
+    QIcon icon() const override;
     QList<QgsDataItemProvider *> dataItemProviders() const override;
     QgsWFSProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
 };
 
 

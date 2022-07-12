@@ -11,7 +11,7 @@
 
 class QgsLayoutObject: QObject, QgsExpressionContextGenerator
 {
-%Docstring
+%Docstring(signature="appended")
 A base class for objects which belong to a layout.
 
 .. versionadded:: 3.0
@@ -165,6 +165,14 @@ A base class for objects which belong to a layout.
       LegendTitle,
       LegendColumnCount,
       //scalebar item
+      ScalebarLeftSegments,
+      ScalebarRightSegments,
+      ScalebarSegmentWidth,
+      ScalebarMinimumWidth,
+      ScalebarMaximumWidth,
+      ScalebarHeight,
+      ScalebarRightSegmentSubdivisions,
+      ScalebarSubdivisionHeight,
       ScalebarFillColor,
       ScalebarFillColor2,
       ScalebarLineColor,
@@ -190,11 +198,11 @@ Returns the layout object property definitions.
     static bool propertyAssociatesWithParentMultiframe( DataDefinedProperty property );
 %Docstring
 Returns ``True`` if the specified ``property`` key is normally associated with the parent
-QgsLayoutMultiFrame object instead of a child QgsLayoutFrame object.
+:py:class:`QgsLayoutMultiFrame` object instead of a child :py:class:`QgsLayoutFrame` object.
 
 While some properties like QgsLayoutObject.DataDefinedProperty.PositionX and QgsLayoutObject.DataDefinedProperty.ItemWidth
-are typically associated with a direct QgsLayoutItem subclass (including QgsLayoutFrame objects), other properties
-are instead associated with a QgsLayoutMultiFrame object (such as QgsLayoutObject.DataDefinedProperty.SourceUrl or QgsLayoutObject.DataDefinedProperty.AttributeTableSourceLayer).
+are typically associated with a direct :py:class:`QgsLayoutItem` subclass (including :py:class:`QgsLayoutFrame` objects), other properties
+are instead associated with a :py:class:`QgsLayoutMultiFrame` object (such as :py:class:`QgsLayoutObject`.DataDefinedProperty.SourceUrl or :py:class:`QgsLayoutObject`.DataDefinedProperty.AttributeTableSourceLayer).
 
 .. versionadded:: 3.18.1
 %End

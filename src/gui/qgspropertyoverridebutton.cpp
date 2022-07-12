@@ -152,17 +152,17 @@ void QgsPropertyOverrideButton::init( int propertyKey, const QgsAbstractProperty
 void QgsPropertyOverrideButton::updateFieldLists()
 {
   mFieldNameList.clear();
-  mFieldTypeList.clear();
+  mFieldDisplayNameList.clear();
+  mFieldIcons.clear();
 
   if ( mVectorLayer )
   {
     // store just a list of fields of unknown type or those that match the expected type
     const QgsFields fields = mVectorLayer->fields();
+    int idx = 0;
     for ( const QgsField &f : fields )
     {
       bool fieldMatch = false;
-      QString fieldType;
-
       switch ( mDataTypes )
       {
         case QgsPropertyDefinition::DataTypeBoolean:
@@ -178,31 +178,13 @@ void QgsPropertyOverrideButton::updateFieldLists()
           break;
       }
 
-      switch ( f.type() )
-      {
-        case QVariant::String:
-          fieldType = tr( "string" );
-          break;
-        case QVariant::Int:
-          fieldType = tr( "integer" );
-          break;
-        case QVariant::LongLong:
-          fieldType = tr( "integer64" );
-          break;
-        case QVariant::Double:
-          fieldType = tr( "double" );
-          break;
-        case QVariant::Bool:
-          fieldType = tr( "boolean" );
-          break;
-        default:
-          fieldType = tr( "unknown type" );
-      }
       if ( fieldMatch )
       {
         mFieldNameList << f.name();
-        mFieldTypeList << fieldType;
+        mFieldDisplayNameList << f.displayNameWithAlias();
+        mFieldIcons << fields.iconForField( idx, true );
       }
+      idx++;
     }
   }
 }
@@ -215,6 +197,8 @@ QgsProperty QgsPropertyOverrideButton::toProperty() const
 void QgsPropertyOverrideButton::setVectorLayer( const QgsVectorLayer *layer )
 {
   mVectorLayer = layer;
+  updateFieldLists();
+  updateGui();
 }
 
 void QgsPropertyOverrideButton::registerCheckedWidget( QWidget *widget, bool natural )
@@ -395,7 +379,8 @@ void QgsPropertyOverrideButton::aboutToShowMenu()
       for ( int j = 0; j < mFieldNameList.count(); ++j )
       {
         QString fldname = mFieldNameList.at( j );
-        QAction *act = mFieldsMenu->addAction( fldname + "    (" + mFieldTypeList.at( j ) + ')' );
+        QAction *act = mFieldsMenu->addAction( mFieldDisplayNameList.at( j ) );
+        act->setIcon( mFieldIcons.at( j ) );
         act->setData( QVariant( fldname ) );
         if ( mFieldName == fldname )
         {
@@ -600,6 +585,7 @@ void QgsPropertyOverrideButton::menuActionTriggered( QAction *action )
     mProperty.setStaticValue( QVariant() );
     mProperty.setTransformer( nullptr );
     mExpressionString.clear();
+    mFieldName.clear();
     updateSiblingWidgets( isActive() );
     updateGui();
     emit changed();
@@ -679,9 +665,12 @@ void QgsPropertyOverrideButton::showExpressionDialog()
   if ( d.exec() == QDialog::Accepted )
   {
     mExpressionString = d.expressionText().trimmed();
+    bool active = mProperty.isActive();
     mProperty.setExpressionString( mExpressionString );
     mProperty.setTransformer( nullptr );
-    setActivePrivate( !mExpressionString.isEmpty() );
+    mProperty.setActive( !mExpressionString.isEmpty() );
+    if ( mProperty.isActive() != active )
+      emit activated( mProperty.isActive() );
     updateSiblingWidgets( isActive() );
     updateGui();
     emit changed();
@@ -715,7 +704,8 @@ void QgsPropertyOverrideButton::showAssistant()
     } );
 
     // if the source layer is removed, we need to dismiss the assistant immediately
-    connect( mVectorLayer, &QObject::destroyed, widget, &QgsPanelWidget::acceptPanel );
+    if ( mVectorLayer )
+      connect( mVectorLayer, &QObject::destroyed, widget, &QgsPanelWidget::acceptPanel );
 
     connect( widget, &QgsPropertyAssistantWidget::panelAccepted, this, [ = ] { updateGui(); } );
 
@@ -946,6 +936,7 @@ void QgsPropertyOverrideButton::setActive( bool active )
   if ( mProperty.isActive() != active )
   {
     mProperty.setActive( active );
+    updateGui();
     emit changed();
     emit activated( mProperty.isActive() );
   }
@@ -958,7 +949,7 @@ void QgsPropertyOverrideButton::registerExpressionContextGenerator( QgsExpressio
 
 void QgsPropertyOverrideButton::registerLinkedWidget( QWidget *widget )
 {
-  for ( const SiblingWidget &sw : qgis::as_const( mSiblingWidgets ) )
+  for ( const SiblingWidget &sw : std::as_const( mSiblingWidgets ) )
   {
     if ( widget == sw.mWidgetPointer.data() && sw.mSiblingType == SiblingLinkedWidget )
       return;

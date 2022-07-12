@@ -85,16 +85,12 @@ class DefineProjection(QgisAlgorithm):
             dsPath = dsPath[:-4]
 
             wkt = crs.toWkt(QgsCoordinateReferenceSystem.WKT1_ESRI)
-            with open(dsPath + '.prj', 'w') as f:
+            with open(dsPath + '.prj', 'wt', encoding='utf-8') as f:
                 f.write(wkt)
 
             qpjFile = dsPath + '.qpj'
             if os.path.exists(qpjFile):
-                if QgsProjUtils.projVersionMajor() < 6:
-                    with open(qpjFile, 'w') as f:
-                        f.write(wkt)
-                else:
-                    os.remove(qpjFile)
+                os.remove(qpjFile)
         else:
             feedback.pushConsoleInfo(self.tr("Data source isn't a Shapefile, skipping .prj/.qpj creation"))
 

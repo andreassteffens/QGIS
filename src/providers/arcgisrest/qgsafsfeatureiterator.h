@@ -17,6 +17,7 @@
 
 #include "qgsfeatureiterator.h"
 #include "qgsafsshareddata.h"
+#include "qgscoordinatetransform.h"
 #include <memory>
 
 class QgsSpatialIndex;
@@ -58,6 +59,8 @@ class QgsAfsFeatureIterator : public QgsAbstractFeatureIteratorFromSource<QgsAfs
 
     QgsCoordinateTransform mTransform;
     QgsRectangle mFilterRect;
+    QgsGeometry mDistanceWithinGeom;
+    std::unique_ptr< QgsGeometryEngine > mDistanceWithinEngine;
 
     QgsFeedback *mInterruptionChecker = nullptr;
     bool mDeferredFeaturesInFilterRectCheck = false;

@@ -32,10 +32,10 @@ QgsGeometryCheckerFixSummaryDialog::QgsGeometryCheckerFixSummaryDialog( const St
 {
   ui.setupUi( this );
 
-  ui.groupBoxFixedErrors->setTitle( tr( "%1 errors were fixed" ).arg( stats.fixedErrors.size() ) );
-  ui.groupBoxNewErrors->setTitle( tr( "%1 new errors were found" ).arg( stats.newErrors.count() ) );
-  ui.groupBoxNotFixed->setTitle( tr( "%1 errors were not fixed" ).arg( stats.failedErrors.count() ) );
-  ui.groupBoxObsoleteErrors->setTitle( tr( "%1 errors are obsolete" ).arg( stats.obsoleteErrors.count() ) );
+  ui.groupBoxFixedErrors->setTitle( tr( "%n error(s) were fixed", nullptr, stats.fixedErrors.size() ) );
+  ui.groupBoxNewErrors->setTitle( tr( "%n new error(s) were found", nullptr, stats.newErrors.count() ) );
+  ui.groupBoxNotFixed->setTitle( tr( "%n error(s) were not fixed", nullptr, stats.failedErrors.count() ) );
+  ui.groupBoxObsoleteErrors->setTitle( tr( "%n error(s) are obsolete", nullptr, stats.obsoleteErrors.count() ) );
 
   for ( QgsGeometryCheckError *error : stats.fixedErrors )
   {
@@ -70,14 +70,14 @@ QgsGeometryCheckerFixSummaryDialog::QgsGeometryCheckerFixSummaryDialog( const St
 
 void QgsGeometryCheckerFixSummaryDialog::addError( QTableWidget *table, QgsGeometryCheckError *error )
 {
-  bool sortingWasEnabled = table->isSortingEnabled();
+  const bool sortingWasEnabled = table->isSortingEnabled();
   if ( sortingWasEnabled )
     table->setSortingEnabled( false );
 
-  int prec = 7 - std::floor( std::max( 0., std::log10( std::max( error->location().x(), error->location().y() ) ) ) );
-  QString posStr = QStringLiteral( "%1, %2" ).arg( error->location().x(), 0, 'f', prec ).arg( error->location().y(), 0, 'f', prec );
+  const int prec = 7 - std::floor( std::max( 0., std::log10( std::max( error->location().x(), error->location().y() ) ) ) );
+  const QString posStr = QStringLiteral( "%1, %2" ).arg( error->location().x(), 0, 'f', prec ).arg( error->location().y(), 0, 'f', prec );
 
-  int row = table->rowCount();
+  const int row = table->rowCount();
   table->insertRow( row );
   table->setItem( row, 0, new QTableWidgetItem( !error->layerId().isEmpty() ? mChecker->featurePools()[error->layerId()]->layer()->name() : "" ) );
   QTableWidgetItem *idItem = new QTableWidgetItem();
@@ -128,7 +128,7 @@ void QgsGeometryCheckerFixSummaryDialog::onTableSelectionChanged( const QItemSel
 
   if ( !newSel.isEmpty() && !newSel.first().indexes().isEmpty() )
   {
-    QModelIndex idx = newSel.first().indexes().first();
+    const QModelIndex idx = newSel.first().indexes().first();
     QgsGeometryCheckError *error = reinterpret_cast<QgsGeometryCheckError *>( model->data( model->index( idx.row(), 0 ), Qt::UserRole ).value<void *>() );
     emit errorSelected( error );
   }

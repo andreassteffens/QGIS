@@ -23,6 +23,8 @@
 #include <QMap>
 #include <QFuture>
 #include <QReadWriteLock>
+#include <QSemaphore>
+#include <QElapsedTimer>
 
 #include "qgis_core.h"
 #include "qgsmaplayer.h"
@@ -71,6 +73,8 @@ class CORE_EXPORT QgsTask : public QObject
     {
       CanCancel = 1 << 1, //!< Task can be canceled
       CancelWithoutPrompt = 1 << 2, //!< Task can be canceled without any users prompts, e.g. when closing a project or QGIS.
+      Hidden = 1 << 3, //!< Hide task from GUI (since QGIS 3.26)
+      Silent = 1 << 4, //!< Don't show task updates (such as completion/failure messages) as operating-system level notifications (since QGIS 3.26)
       AllFlags = CanCancel, //!< Task supports all flags
     };
     Q_DECLARE_FLAGS( Flags, Flag )
@@ -507,10 +511,13 @@ class CORE_EXPORT QgsTaskManager : public QObject
 
     /**
      * Returns the number of active (queued or running) tasks.
+     *
+     * The \a includeHidden argument dictates whether hidden tasks should be shown.
+     *
      * \see activeTasks()
      * \see countActiveTasksChanged()
      */
-    int countActiveTasks() const;
+    int countActiveTasks( bool includeHidden = true ) const;
 
   public slots:
 
@@ -595,7 +602,11 @@ class CORE_EXPORT QgsTaskManager : public QObject
 
     bool mInitialized = false;
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
     mutable QMutex *mTaskMutex;
+#else
+    mutable QRecursiveMutex *mTaskMutex;
+#endif
 
     QMap< long, TaskInfo > mTasks;
     QMap< long, QgsTaskList > mTaskDependencies;

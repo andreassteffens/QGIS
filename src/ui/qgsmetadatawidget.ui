@@ -55,7 +55,7 @@
         <number>0</number>
        </property>
        <item>
-        <widget class="QScrollArea" name="scrollArea">
+        <widget class="QgsScrollArea" name="scrollArea">
          <property name="frameShape">
           <enum>QFrame::NoFrame</enum>
          </property>
@@ -68,7 +68,7 @@
             <x>0</x>
             <y>0</y>
             <width>786</width>
-            <height>721</height>
+            <height>670</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_15">
@@ -656,7 +656,7 @@
         <number>0</number>
        </property>
        <item>
-        <widget class="QScrollArea" name="scrollArea_2">
+        <widget class="QgsScrollArea" name="scrollArea_2">
          <property name="frameShape">
           <enum>QFrame::NoFrame</enum>
          </property>
@@ -1059,7 +1059,7 @@
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_3">
          <item>
-          <widget class="QScrollArea" name="panelDetails">
+          <widget class="QgsScrollArea" name="panelDetails">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
              <horstretch>0</horstretch>
@@ -1486,6 +1486,17 @@
  </widget>
  <customwidgets>
   <customwidget>
+   <class>QgsScrollArea</class>
+   <extends>QScrollArea</extends>
+   <header>qgsscrollarea.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QgsSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>qgsspinbox.h</header>
+  </customwidget>
+  <customwidget>
    <class>QgsCollapsibleGroupBox</class>
    <extends>QGroupBox</extends>
    <header>qgscollapsiblegroupbox.h</header>
@@ -1493,14 +1504,9 @@
   </customwidget>
   <customwidget>
    <class>QgsExtentGroupBox</class>
-   <extends>QGroupBox</extends>
+   <extends>QgsCollapsibleGroupBox</extends>
    <header>qgsextentgroupbox.h</header>
    <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>QgsSpinBox</class>
-   <extends>QSpinBox</extends>
-   <header>qgsspinbox.h</header>
   </customwidget>
   <customwidget>
    <class>QgsDateTimeEdit</class>
@@ -1512,7 +1518,6 @@
   <tabstop>tabWidget</tabstop>
   <tabstop>scrollArea</tabstop>
   <tabstop>lineEditParentId</tabstop>
-  <tabstop>comboEncoding</tabstop>
   <tabstop>lineEditIdentifier</tabstop>
   <tabstop>btnAutoSource</tabstop>
   <tabstop>lineEditTitle</tabstop>
@@ -1521,6 +1526,7 @@
   <tabstop>mCreationDateTimeEdit</tabstop>
   <tabstop>comboLanguage</tabstop>
   <tabstop>textEditAbstract</tabstop>
+  <tabstop>comboEncoding</tabstop>
   <tabstop>btnAutoEncoding</tabstop>
   <tabstop>listDefaultCategories</tabstop>
   <tabstop>btnAddDefaultCategory</tabstop>

@@ -19,16 +19,21 @@
 #include "qgsvectorlayer.h"
 #include "qgsunittypes.h"
 #include "qgssymbollayerutils.h"
+#include "qgslinesymbol.h"
 
 QgsVectorFieldSymbolLayer::QgsVectorFieldSymbolLayer()
 {
   setSubSymbol( new QgsLineSymbol() );
 }
 
+QgsVectorFieldSymbolLayer::~QgsVectorFieldSymbolLayer() = default;
+
 void QgsVectorFieldSymbolLayer::setOutputUnit( QgsUnitTypes::RenderUnit unit )
 {
   QgsMarkerSymbolLayer::setOutputUnit( unit );
   mDistanceUnit = unit;
+  if ( mLineSymbol )
+    mLineSymbol->setOutputUnit( unit );
 }
 
 QgsUnitTypes::RenderUnit QgsVectorFieldSymbolLayer::outputUnit() const
@@ -55,24 +60,24 @@ QgsMapUnitScale QgsVectorFieldSymbolLayer::mapUnitScale() const
   return QgsMapUnitScale();
 }
 
-QgsSymbolLayer *QgsVectorFieldSymbolLayer::create( const QgsStringMap &properties )
+QgsSymbolLayer *QgsVectorFieldSymbolLayer::create( const QVariantMap &properties )
 {
   QgsVectorFieldSymbolLayer *symbolLayer = new QgsVectorFieldSymbolLayer();
   if ( properties.contains( QStringLiteral( "x_attribute" ) ) )
   {
-    symbolLayer->setXAttribute( properties[QStringLiteral( "x_attribute" )] );
+    symbolLayer->setXAttribute( properties[QStringLiteral( "x_attribute" )].toString() );
   }
   if ( properties.contains( QStringLiteral( "y_attribute" ) ) )
   {
-    symbolLayer->setYAttribute( properties[QStringLiteral( "y_attribute" )] );
+    symbolLayer->setYAttribute( properties[QStringLiteral( "y_attribute" )].toString() );
   }
   if ( properties.contains( QStringLiteral( "distance_unit" ) ) )
   {
-    symbolLayer->setDistanceUnit( QgsUnitTypes::decodeRenderUnit( properties[QStringLiteral( "distance_unit" )] ) );
+    symbolLayer->setDistanceUnit( QgsUnitTypes::decodeRenderUnit( properties[QStringLiteral( "distance_unit" )].toString() ) );
   }
   if ( properties.contains( QStringLiteral( "distance_map_unit_scale" ) ) )
   {
-    symbolLayer->setDistanceMapUnitScale( QgsSymbolLayerUtils::decodeMapUnitScale( properties[QStringLiteral( "distance_map_unit_scale" )] ) );
+    symbolLayer->setDistanceMapUnitScale( QgsSymbolLayerUtils::decodeMapUnitScale( properties[QStringLiteral( "distance_map_unit_scale" )].toString() ) );
   }
   if ( properties.contains( QStringLiteral( "scale" ) ) )
   {
@@ -96,35 +101,40 @@ QgsSymbolLayer *QgsVectorFieldSymbolLayer::create( const QgsStringMap &propertie
   }
   if ( properties.contains( QStringLiteral( "size_unit" ) ) )
   {
-    symbolLayer->setSizeUnit( QgsUnitTypes::decodeRenderUnit( properties[QStringLiteral( "size_unit" )] ) );
+    symbolLayer->setSizeUnit( QgsUnitTypes::decodeRenderUnit( properties[QStringLiteral( "size_unit" )].toString() ) );
   }
   if ( properties.contains( QStringLiteral( "size_map_unit_scale" ) ) )
   {
-    symbolLayer->setSizeMapUnitScale( QgsSymbolLayerUtils::decodeMapUnitScale( properties[QStringLiteral( "size_map_unit_scale" )] ) );
+    symbolLayer->setSizeMapUnitScale( QgsSymbolLayerUtils::decodeMapUnitScale( properties[QStringLiteral( "size_map_unit_scale" )].toString() ) );
   }
   if ( properties.contains( QStringLiteral( "offset" ) ) )
   {
-    symbolLayer->setOffset( QgsSymbolLayerUtils::decodePoint( properties[QStringLiteral( "offset" )] ) );
+    symbolLayer->setOffset( QgsSymbolLayerUtils::decodePoint( properties[QStringLiteral( "offset" )].toString() ) );
   }
   if ( properties.contains( QStringLiteral( "offset_unit" ) ) )
   {
-    symbolLayer->setOffsetUnit( QgsUnitTypes::decodeRenderUnit( properties[QStringLiteral( "offset_unit" )] ) );
+    symbolLayer->setOffsetUnit( QgsUnitTypes::decodeRenderUnit( properties[QStringLiteral( "offset_unit" )].toString() ) );
   }
   if ( properties.contains( QStringLiteral( "offset_map_unit_scale" ) ) )
   {
-    symbolLayer->setOffsetMapUnitScale( QgsSymbolLayerUtils::decodeMapUnitScale( properties[QStringLiteral( "offset_map_unit_scale" )] ) );
+    symbolLayer->setOffsetMapUnitScale( QgsSymbolLayerUtils::decodeMapUnitScale( properties[QStringLiteral( "offset_map_unit_scale" )].toString() ) );
   }
   return symbolLayer;
 }
 
 bool QgsVectorFieldSymbolLayer::setSubSymbol( QgsSymbol *symbol )
 {
-  if ( symbol->type() == QgsSymbol::Line )
+  if ( symbol->type() == Qgis::SymbolType::Line )
   {
     mLineSymbol.reset( static_cast<QgsLineSymbol *>( symbol ) );
     return true;
   }
   return false;
+}
+
+QgsSymbol *QgsVectorFieldSymbolLayer::subSymbol()
+{
+  return mLineSymbol.get();
 }
 
 void QgsVectorFieldSymbolLayer::renderPoint( QPointF point, QgsSymbolRenderContext &context )
@@ -136,6 +146,9 @@ void QgsVectorFieldSymbolLayer::renderPoint( QPointF point, QgsSymbolRenderConte
 
   const QgsRenderContext &ctx = context.renderContext();
 
+  const bool prevIsSubsymbol = context.renderContext().flags() & Qgis::RenderContextFlag::RenderingSubSymbol;
+  context.renderContext().setFlag( Qgis::RenderContextFlag::RenderingSubSymbol );
+
   if ( !context.feature() )
   {
     //preview
@@ -143,6 +156,7 @@ void QgsVectorFieldSymbolLayer::renderPoint( QPointF point, QgsSymbolRenderConte
     line << QPointF( 0, 50 );
     line << QPointF( 100, 50 );
     mLineSymbol->renderPolyline( line, nullptr, context.renderContext() );
+    context.renderContext().setFlag( Qgis::RenderContextFlag::RenderingSubSymbol, prevIsSubsymbol );
     return;
   }
 
@@ -201,7 +215,9 @@ void QgsVectorFieldSymbolLayer::renderPoint( QPointF point, QgsSymbolRenderConte
   }
 
   line << destPoint;
+
   mLineSymbol->renderPolyline( line, &f, context.renderContext() );
+  context.renderContext().setFlag( Qgis::RenderContextFlag::RenderingSubSymbol, prevIsSubsymbol );
 }
 
 void QgsVectorFieldSymbolLayer::startRender( QgsSymbolRenderContext &context )
@@ -211,7 +227,7 @@ void QgsVectorFieldSymbolLayer::startRender( QgsSymbolRenderContext &context )
     mLineSymbol->startRender( context.renderContext(), context.fields() );
   }
 
-  QgsFields fields = context.fields();
+  const QgsFields fields = context.fields();
   if ( !fields.isEmpty() )
   {
     mXIndex = fields.lookupField( mXAttribute );
@@ -242,9 +258,9 @@ QgsVectorFieldSymbolLayer *QgsVectorFieldSymbolLayer::clone() const
   return static_cast< QgsVectorFieldSymbolLayer * >( clonedLayer );
 }
 
-QgsStringMap QgsVectorFieldSymbolLayer::properties() const
+QVariantMap QgsVectorFieldSymbolLayer::properties() const
 {
-  QgsStringMap properties;
+  QVariantMap properties;
   properties[QStringLiteral( "x_attribute" )] = mXAttribute;
   properties[QStringLiteral( "y_attribute" )] = mYAttribute;
   properties[QStringLiteral( "distance_unit" )] = QgsUnitTypes::encodeUnit( mDistanceUnit );
@@ -269,7 +285,7 @@ bool QgsVectorFieldSymbolLayer::usesMapUnits() const
          || mSizeUnit == QgsUnitTypes::RenderMapUnits || mSizeUnit == QgsUnitTypes::RenderMetersInMapUnits;
 }
 
-void QgsVectorFieldSymbolLayer::toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap &props ) const
+void QgsVectorFieldSymbolLayer::toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props ) const
 {
   element.appendChild( doc.createComment( QStringLiteral( "VectorField not implemented yet..." ) ) );
   mLineSymbol->toSld( doc, element, props );

@@ -26,7 +26,6 @@ set(QGIS_APP_SRCS
   qgsbookmarkeditordialog.cpp
   qgsclipboard.cpp
   qgscustomization.cpp
-  qgscustomprojectiondialog.cpp
   qgsdatumtransformtablewidget.cpp
   qgsdevtoolspanelwidget.cpp
   qgsdiscoverrelationsdialog.cpp
@@ -44,17 +43,23 @@ set(QGIS_APP_SRCS
   qgsidentifyresultsdialog.cpp
   qgsfeatureaction.cpp
   qgslayercapabilitiesmodel.cpp
+  qgslayernotesmanager.cpp
+  qgslayertreegrouppropertieswidget.cpp
   qgslayertreeviewindicatorprovider.cpp
   qgslayertreeviewembeddedindicator.cpp
   qgslayertreeviewfilterindicator.cpp
+  qgslayertreeviewlowaccuracyindicator.cpp
   qgslayertreeviewmemoryindicator.cpp
   qgslayertreeviewnocrsindicator.cpp
   qgslayertreeviewnonremovableindicator.cpp
+  qgslayertreeviewnotesindicator.cpp
   qgslayertreeviewbadlayerindicator.cpp
   qgslayertreeviewtemporalindicator.cpp
+  qgslayertreeviewofflineindicator.cpp
   qgsmapcanvasdockwidget.cpp
   qgsmapsavedialog.cpp
   qgsprojectlistitemdelegate.cpp
+  qgsprovidersublayersdialog.cpp
   qgspuzzlewidget.cpp
   qgsversionmigration.cpp
   qgssnappinglayertreemodel.cpp
@@ -68,6 +73,7 @@ set(QGIS_APP_SRCS
   qgsrecentprojectsitemsmodel.cpp
   qgsvectorlayerdigitizingproperties.cpp
   qgswelcomepage.cpp
+  qgsdockablewidgethelper.cpp
 
   qgsmaptooladdfeature.cpp
   qgsmaptooladdpart.cpp
@@ -82,6 +88,7 @@ set(QGIS_APP_SRCS
   qgsmaptoolhtmlannotation.cpp
   qgsmaptoolidentifyaction.cpp
   qgsmaptoolmeasureangle.cpp
+  qgsmaptoolmeasurebearing.cpp
   qgsmaptoolmovefeature.cpp
   qgsmaptooloffsetcurve.cpp
   qgsmaptooloffsetpointsymbol.cpp
@@ -90,6 +97,7 @@ set(QGIS_APP_SRCS
   qgsmaptoolreverseline.cpp
   qgsmaptoolrotatefeature.cpp
   qgsmaptoolrotatepointsymbols.cpp
+  qgsmaptoolscalefeature.cpp
   qgsmaptoolselect.cpp
   qgsmaptoolselectionhandler.cpp
   qgsmaptoolselectutils.cpp
@@ -98,6 +106,9 @@ set(QGIS_APP_SRCS
   qgsmaptoolsplitparts.cpp
   qgsmaptoolsvgannotation.cpp
   qgsmaptooltextannotation.cpp
+
+  annotations/qgsannotationitempropertieswidget.cpp
+  annotations/qgsannotationlayerproperties.cpp
 
   decorations/qgsdecorationitem.cpp
   decorations/qgsdecorationtitle.cpp
@@ -114,6 +125,12 @@ set(QGIS_APP_SRCS
   decorations/qgsdecorationscalebardialog.cpp
   decorations/qgsdecorationgrid.cpp
   decorations/qgsdecorationgriddialog.cpp
+
+  pointcloud/qgspointcloudelevationpropertieswidget.cpp
+  pointcloud/qgspointcloudlayerproperties.cpp
+  pointcloud/qgspointcloudlayerstylewidget.cpp
+
+  raster/qgsrasterelevationpropertieswidget.cpp
 
   vectortile/qgsvectortilelayerproperties.cpp
 
@@ -134,6 +151,7 @@ set(QGIS_APP_SRCS
   qgsrastercalcdialog.cpp
   qgsrelationmanagerdialog.cpp
   qgsrelationadddlg.cpp
+  qgsrelationaddpolymorphicdialog.cpp
   qgsselectbyformdialog.cpp
   qgsstatisticalsummarydockwidget.cpp
   qgstextannotationdialog.cpp
@@ -141,38 +159,35 @@ set(QGIS_APP_SRCS
   qgsundowidget.cpp
   qgsmapthemes.cpp
   qgshandlebadlayers.cpp
-  qgsmaptooladdcircularstring.cpp
-  qgsmaptoolcircularstringcurvepoint.cpp
-  qgsmaptoolcircularstringradius.cpp
-  qgsmaptooladdcircle.cpp
-  qgsmaptoolcircle2points.cpp
-  qgsmaptoolcircle3points.cpp
-  qgsmaptoolcircle3tangents.cpp
-  qgsmaptoolcircle2tangentspoint.cpp
-  qgsmaptoolcirclecenterpoint.cpp
-  qgsmaptooladdellipse.cpp
-  qgsmaptoolellipsefoci.cpp
-  qgsmaptoolellipseextent.cpp
-  qgsmaptoolellipsecenterpoint.cpp
-  qgsmaptoolellipsecenter2points.cpp
-  qgsmaptooladdrectangle.cpp
-  qgsmaptooladdregularpolygon.cpp
-  qgsmaptoolrectanglecenter.cpp
-  qgsmaptoolrectangleextent.cpp
-  qgsmaptoolrectangle3points.cpp
-  qgsmaptoolregularpolygon2points.cpp
-  qgsmaptoolregularpolygoncenterpoint.cpp
-  qgsmaptoolregularpolygoncentercorner.cpp
 
   browser/qgsinbuiltdataitemproviders.cpp
 
   devtools/qgsappdevtoolutils.cpp
+  devtools/qgsdevtoolsmodelnode.cpp
   devtools/networklogger/qgsnetworklogger.cpp
   devtools/networklogger/qgsnetworkloggernode.cpp
   devtools/networklogger/qgsnetworkloggerpanelwidget.cpp
   devtools/networklogger/qgsnetworkloggerwidgetfactory.cpp
   devtools/profiler/qgsprofilerpanelwidget.cpp
   devtools/profiler/qgsprofilerwidgetfactory.cpp
+  devtools/querylogger/qgsappquerylogger.cpp
+  devtools/querylogger/qgsdatabasequeryloggernode.cpp
+  devtools/querylogger/qgsqueryloggerpanelwidget.cpp
+  devtools/querylogger/qgsqueryloggerwidgetfactory.cpp
+
+  dwg/qgsdwgimportdialog.cpp
+  dwg/qgsdwgimporter.cpp
+
+  elevation/qgselevationprofileexportsettingswidget.cpp
+  elevation/qgselevationprofileimageexportdialog.cpp
+  elevation/qgselevationprofilelayertreemodel.cpp
+  elevation/qgselevationprofilelayertreeview.cpp
+  elevation/qgselevationprofilepdfexportdialog.cpp
+  elevation/qgselevationprofiletoolidentify.cpp
+  elevation/qgselevationprofiletoolmeasure.cpp
+  elevation/qgselevationprofilewidget.cpp
+  elevation/qgsmaptoolprofilecurve.cpp
+  elevation/qgsmaptoolprofilecurvefromfeature.cpp
 
   georeferencer/qgsvalidateddoublespinbox.cpp
 
@@ -194,11 +209,49 @@ set(QGIS_APP_SRCS
   layout/qgsreportsectionmodel.cpp
   layout/qgsreportsectionwidget.cpp
 
-  locator/qgsinbuiltlocatorfilters.cpp
+  locator/qgsactionlocatorfilter.cpp
+  locator/qgsactivelayerfeatureslocatorfilter.cpp
+  locator/qgsalllayersfeatureslocatorfilter.cpp
+  locator/qgsbookmarklocatorfilter.cpp
+  locator/qgsexpressioncalculatorlocatorfilter.cpp
+  locator/qgsgotolocatorfilter.cpp
+  locator/qgslayertreelocatorfilter.cpp
+  locator/qgslayoutlocatorfilter.cpp
+  locator/qgsnominatimlocatorfilter.cpp
+  locator/qgssettingslocatorfilter.cpp
+
   locator/qgslocatoroptionswidget.cpp
+
+  maptools/qgsappmaptools.cpp
+  maptools/qgsmaptoolsdigitizingtechniquemanager.cpp
+
+  maptools/qgsmaptoolshapecircleabstract.cpp
+  maptools/qgsmaptoolshapecircularstringabstract.cpp
+  maptools/qgsmaptoolshapeellipseabstract.cpp
+  maptools/qgsmaptoolshaperectangleabstract.cpp
+  maptools/qgsmaptoolshaperegularpolygonabstract.cpp
+
+  maptools/qgsmaptoolshapecircle2points.cpp
+  maptools/qgsmaptoolshapecircle2tangentspoint.cpp
+  maptools/qgsmaptoolshapecircle3points.cpp
+  maptools/qgsmaptoolshapecircle3tangents.cpp
+  maptools/qgsmaptoolshapecirclecenterpoint.cpp
+  maptools/qgsmaptoolshapecircularstringradius.cpp
+  maptools/qgsmaptoolshapeellipsecenter2points.cpp
+  maptools/qgsmaptoolshapeellipsecenterpoint.cpp
+  maptools/qgsmaptoolshapeellipseextent.cpp
+  maptools/qgsmaptoolshapeellipsefoci.cpp
+  maptools/qgsmaptoolshaperectangle3points.cpp
+  maptools/qgsmaptoolshaperectanglecenter.cpp
+  maptools/qgsmaptoolshaperectangleextent.cpp
+  maptools/qgsmaptoolshaperegularpolygon2points.cpp
+  maptools/qgsmaptoolshaperegularpolygoncentercorner.cpp
+  maptools/qgsmaptoolshaperegularpolygoncenterpoint.cpp
 
   options/qgsadvancedoptions.cpp
   options/qgscodeeditoroptions.cpp
+  options/qgscustomprojectionoptions.cpp
+  options/qgsgpsdeviceoptions.cpp
   options/qgsoptions.cpp
   options/qgsoptionsutils.cpp
 
@@ -206,8 +259,7 @@ set(QGIS_APP_SRCS
   gps/qgsgpsinformationwidget.cpp
   gps/qgsgpsmarker.cpp
 
-  dwg/qgsdwgimportdialog.cpp
-  dwg/qgsdwgimporter.cpp
+  project/qgsprojectelevationsettingswidget.cpp
 
   pluginmanager/qgspluginmanager.cpp
   pluginmanager/qgspluginmanager_texts.cpp
@@ -215,16 +267,29 @@ set(QGIS_APP_SRCS
   pluginmanager/qgspluginsortfilterproxymodel.cpp
   pluginmanager/qgspluginitemdelegate.cpp
 
-  qgsnewspatialitelayerdialog.cpp
-
   qgssettingstree.cpp
+  qgssettingsregistryapp.cpp
   qgsvariantdelegate.cpp
   qgscrashhandler.cpp
 
   mesh/qgsmeshcalculatordialog.cpp
+  mesh/qgsnewmeshlayerdialog.cpp
+  mesh/qgsmaptooleditmeshframe.cpp
+  mesh/qgsmeshelevationpropertieswidget.cpp
+  mesh/qgsmeshtransformcoordinatesdockwidget.cpp
+  mesh/qgsmeshselectbyexpressiondialog.cpp
+
+  vector/qgsvectorelevationpropertieswidget.cpp
 )
 
-if (WITH_GEOREFERENCER)
+if (WITH_SPATIALITE)
+  set(QGIS_APP_SRCS
+    ${QGIS_APP_SRCS}
+    qgsnewspatialitelayerdialog.cpp
+  )
+endif()
+
+if (HAVE_GEOREFERENCER)
   set(QGIS_APP_SRCS
     ${QGIS_APP_SRCS}
     georeferencer/qgsgcpcanvasitem.cpp
@@ -236,7 +301,6 @@ if (WITH_GEOREFERENCER)
     georeferencer/qgsgeoreftooldeletepoint.cpp
     georeferencer/qgsgeoreftoolmovepoint.cpp
     georeferencer/qgsgeorefvalidators.cpp
-    georeferencer/qgsleastsquares.cpp
     georeferencer/qgsmapcoordsdialog.cpp
     georeferencer/qgsresidualplotitem.cpp
     georeferencer/qgstransformsettingsdialog.cpp
@@ -257,7 +321,6 @@ if (WITH_3D)
     3d/qgs3dapputils.cpp
     3d/qgs3dicongenerator.cpp
     3d/qgs3dmapcanvas.cpp
-    3d/qgs3dmapcanvasdockwidget.cpp
     3d/qgs3dmapconfigwidget.cpp
     3d/qgs3dmaptool.cpp
     3d/qgs3dmaptoolidentify.cpp
@@ -265,11 +328,13 @@ if (WITH_3D)
     3d/qgs3dmeasuredialog.cpp
     3d/qgs3dmodelsourcelineedit.cpp
     3d/qgs3dnavigationwidget.cpp
+    3d/qgs3doptions.cpp
     3d/qgsgoochmaterialwidget.cpp
     3d/qgslightswidget.cpp
     3d/qgsline3dsymbolwidget.cpp
     3d/qgsmaterialwidget.cpp
     3d/qgsmesh3dsymbolwidget.cpp
+    3d/qgsnullmaterialwidget.cpp
     3d/qgspoint3dsymbolwidget.cpp
     3d/qgspolygon3dsymbolwidget.cpp
     3d/qgsphongmaterialwidget.cpp
@@ -284,6 +349,10 @@ if (WITH_3D)
     layout/qgslayout3dmapwidget.cpp
     3d/qgsskyboxrenderingsettingswidget.cpp
     3d/qgsshadowrenderingsettingswidget.cpp
+    3d/qgspointcloud3dsymbolwidget.cpp
+    3d/qgspointcloudlayer3drendererwidget.cpp
+    3d/qgs3dmapcanvaswidget.cpp
+    3d/qgs3dviewsmanagerdialog.cpp
   )
 endif()
 
@@ -346,33 +415,13 @@ set(TEST_RCCS ../../tests/testdata/testdata.qrc)
 if (WIN32)
   set (QGIS_APP_SRCS ${QGIS_APP_SRCS} main.cpp ${TEST_RCCS})
   set (QGIS_APPMAIN_SRCS mainwin.cpp)
-
-  if (MSVC)
-    set (QGIS_APPMAIN_SRCS ${QGIS_APPMAIN_SRCS} ${CMAKE_CURRENT_SOURCE_DIR}/qgis_win32.rc)
-  else()
-    # Icon for windows MINGW
-    # Note: can't include .rc directly to source files
-    # as it's ignored when used MinGW
-
-    if (NOT WINDRES)
-      find_program(WINDRES windres)
-      if (NOT WINDRES AND NOT CMAKE_RC_COMPILER)
-        message(FATAL_ERROR "windres not found - aborting")
-      endif()
-    endif()
-
-    if (WINDRES)
-        #############################################################
-        # application icon
-        # resource compilation for MinGW
-        add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/icon.o
-          COMMAND ${WINDRES} -I${CMAKE_CURRENT_SOURCE_DIR} -i${CMAKE_CURRENT_SOURCE_DIR}/qgis_win32.rc
-          -o ${CMAKE_CURRENT_BINARY_DIR}/icon.o )
-        set(QGIS_APPMAIN_SRCS ${QGIS_APPMAIN_SRCS} ${CMAKE_CURRENT_BINARY_DIR}/icon.o)
-    else()
-        # MXE
-    endif()
+  if (NOT MSVC)
+    enable_language(RC)
+    set(CMAKE_RC_COMPILER_INIT ${CMAKE_GENERATOR_RC})
+    set(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> -O coff -i <SOURCE> -o <OBJECT>")
+    set(QGIS_RC_LIBS -mwindows)
   endif()
+  set (QGIS_APPMAIN_SRCS ${QGIS_APPMAIN_SRCS} ${CMAKE_CURRENT_SOURCE_DIR}/qgis_win32.rc)
 else()
   set (QGIS_APPMAIN_SRCS main.cpp ${TEST_RCCS})
 endif()
@@ -383,7 +432,7 @@ if(PEDANTIC)
     set_source_files_properties(
         qgisappinterface.cpp
         ${CMAKE_BINARY_DIR}/src/app/moc_qgisappinterface.cxx
-    PROPERTIES COMPILE_FLAGS "/wd4996"
+        PROPERTIES COMPILE_FLAGS "/wd4996"
     )
   else()
     set_source_files_properties(
@@ -403,160 +452,15 @@ set_source_files_properties(
   PROPERTIES COMPILE_FLAGS -wd4091)
 endif()
 
-include_directories(
-  ${CMAKE_SOURCE_DIR}/external/libdxfrw
-  ${CMAKE_SOURCE_DIR}/external/nmea
-  ${CMAKE_SOURCE_DIR}/external
-
-  ${CMAKE_SOURCE_DIR}/src/app
-  ${CMAKE_SOURCE_DIR}/src/app/decorations
-  ${CMAKE_SOURCE_DIR}/src/app/devtools/networklogger
-  ${CMAKE_SOURCE_DIR}/src/app/labeling
-  ${CMAKE_SOURCE_DIR}/src/app/layout
-  ${CMAKE_SOURCE_DIR}/src/app/pluginmanager
-  ${CMAKE_SOURCE_DIR}/src/app/gps
-  ${CMAKE_SOURCE_DIR}/src/app/dwg
-  ${CMAKE_SOURCE_DIR}/src/app/mesh
-  ${CMAKE_SOURCE_DIR}/src/app/locator
-  ${CMAKE_SOURCE_DIR}/src/app/vectortile
-  ${CMAKE_SOURCE_DIR}/src/analysis
-  ${CMAKE_SOURCE_DIR}/src/analysis/raster
-  ${CMAKE_SOURCE_DIR}/src/analysis/mesh
-  ${CMAKE_SOURCE_DIR}/src/core
-  ${CMAKE_SOURCE_DIR}/src/core/annotations
-  ${CMAKE_SOURCE_DIR}/src/core/auth
-  ${CMAKE_SOURCE_DIR}/src/core/expression
-  ${CMAKE_SOURCE_DIR}/src/core/gps
-  ${CMAKE_SOURCE_DIR}/src/core/dxf
-  ${CMAKE_SOURCE_DIR}/src/core/geometry
-  ${CMAKE_SOURCE_DIR}/src/core/geocms/geonode
-  ${CMAKE_SOURCE_DIR}/src/core/metadata
-  ${CMAKE_SOURCE_DIR}/src/core/mesh
-  ${CMAKE_SOURCE_DIR}/src/core/numericformats
-  ${CMAKE_SOURCE_DIR}/src/core/labeling
-  ${CMAKE_SOURCE_DIR}/src/core/layertree
-  ${CMAKE_SOURCE_DIR}/src/core/locator
-  ${CMAKE_SOURCE_DIR}/src/core/numericformats
-  ${CMAKE_SOURCE_DIR}/src/core/pal
-  ${CMAKE_SOURCE_DIR}/src/core/providers/memory
-  ${CMAKE_SOURCE_DIR}/src/core/raster
-  ${CMAKE_SOURCE_DIR}/src/core/scalebar
-  ${CMAKE_SOURCE_DIR}/src/core/symbology
-  ${CMAKE_SOURCE_DIR}/src/core/effects
-  ${CMAKE_SOURCE_DIR}/src/core/validity
-  ${CMAKE_SOURCE_DIR}/src/core/vectortile
-  ${CMAKE_SOURCE_DIR}/src/gui
-  ${CMAKE_SOURCE_DIR}/src/gui/attributeformconfig
-  ${CMAKE_SOURCE_DIR}/src/gui/symbology
-  ${CMAKE_SOURCE_DIR}/src/gui/attributetable
-  ${CMAKE_SOURCE_DIR}/src/gui/auth
-  ${CMAKE_SOURCE_DIR}/src/gui/codeeditors
-  ${CMAKE_SOURCE_DIR}/src/gui/devtools
-  ${CMAKE_SOURCE_DIR}/src/gui/labeling
-  ${CMAKE_SOURCE_DIR}/src/gui/mesh
-  ${CMAKE_SOURCE_DIR}/src/gui/numericformats
-  ${CMAKE_SOURCE_DIR}/src/gui/ogr
-  ${CMAKE_SOURCE_DIR}/src/gui/numericformats
-  ${CMAKE_SOURCE_DIR}/src/gui/processing
-  ${CMAKE_SOURCE_DIR}/src/gui/raster
-  ${CMAKE_SOURCE_DIR}/src/gui/editorwidgets
-  ${CMAKE_SOURCE_DIR}/src/gui/editorwidgets/core
-  ${CMAKE_SOURCE_DIR}/src/gui/layertree
-  ${CMAKE_SOURCE_DIR}/src/gui/locator
-  ${CMAKE_SOURCE_DIR}/src/gui/vector
-  ${CMAKE_SOURCE_DIR}/src/gui/vectortile
-  ${CMAKE_SOURCE_DIR}/src/plugins
-  ${CMAKE_SOURCE_DIR}/src/python
-  ${CMAKE_SOURCE_DIR}/src/native
-
-  ${CMAKE_BINARY_DIR}/src/core
-  ${CMAKE_BINARY_DIR}/src/gui
-  ${CMAKE_BINARY_DIR}/src/python
-  ${CMAKE_BINARY_DIR}/src/analysis
-  ${CMAKE_BINARY_DIR}/src/app
-  ${CMAKE_BINARY_DIR}/src/ui
-  ${CMAKE_BINARY_DIR}/src/native
-)
-
-if (WITH_3D)
-  include_directories(
-    ${CMAKE_SOURCE_DIR}/src/app/3d
-    ${CMAKE_SOURCE_DIR}/src/core/3d
-    ${CMAKE_SOURCE_DIR}/src/3d
-    ${CMAKE_SOURCE_DIR}/src/3d/materials
-    ${CMAKE_SOURCE_DIR}/src/3d/mesh
-    ${CMAKE_SOURCE_DIR}/src/3d/symbols
-    ${CMAKE_SOURCE_DIR}/src/3d/terrain
-    ${CMAKE_SOURCE_DIR}/src/3d/chunks
-    ${CMAKE_BINARY_DIR}/src/3d
-  )
-  include_directories(SYSTEM
-    ${QT5_3DEXTRA_INCLUDE_DIR}
-  )
-endif()
-
-include_directories(SYSTEM
-  ${QWT_INCLUDE_DIR}
-  ${QT_QTUITOOLS_INCLUDE_DIR}
-  ${QSCINTILLA_INCLUDE_DIR}
-  ${CMAKE_SOURCE_DIR}/external/qt-unix-signals
-)
-include_directories(
-  ../analysis/processing
-  ../analysis/raster
-  ../analysis/vector/geometry_checker
-  ../core
-  ../core/annotations
-  ../core/auth
-  ../core/gps
-  ../core/dxf
-  ../core/geometry
-  ../core/geocms/geonode
-  ../core/layout
-  ../core/metadata
-  ../core/layertree
-  ../core/processing
-  ../core/providers/memory
-  ../core/raster
-  ../core/mesh
-  ../core/scalebar
-  ../core/symbology
-  ../core/textrenderer
-  ../gui
-  ../gui/symbology
-  ../gui/attributetable
-  ../gui/auth
-  ../gui/effects
-  ../gui/ogr
-  ../gui/raster
-  ../gui/editorwidgets
-  ../gui/editorwidgets/core
-  ../gui/layertree
-  ../gui/layout
-  ../gui/tableeditor
-  ../plugins
-  ../python
-  gps
-  dwg
-  ${CMAKE_SOURCE_DIR}/external/libdxfrw
-  ${CMAKE_SOURCE_DIR}/external/nlohmann
-  ${CMAKE_SOURCE_DIR}/src/native
-
-  ${CMAKE_BINARY_DIR}/src/native
-)
-include_directories(SYSTEM
-  ${PROJ_INCLUDE_DIR}
-  ${GDAL_INCLUDE_DIR}
-  ${SPATIALITE_INCLUDE_DIR}
-  ${SQLITE3_INCLUDE_DIR}
-  ${GEOS_INCLUDE_DIR}
-  ${QWTPOLAR_INCLUDE_DIR}
-  ${QCA_INCLUDE_DIR}
-  ${QTKEYCHAIN_INCLUDE_DIR}
-)
-
 if(HAVE_OPENCL)
     include_directories(SYSTEM ${OpenCL_INCLUDE_DIRS})
+endif()
+
+if (WITH_PDAL)
+  include_directories(SYSTEM ${PDAL_INCLUDE_DIR})
+  if(MSVC)
+    add_definitions(-DWIN32_LEAN_AND_MEAN)
+  endif()
 endif()
 
 if(ENABLE_MODELTEST)
@@ -577,25 +481,70 @@ endif()
 
 #############
 if (ANDROID)
-  add_library(${QGIS_APP_NAME} SHARED ${QGIS_APPMAIN_SRCS})
+  add_library(${QGIS_APP_NAME} ${LIBRARY_TYPE} ${QGIS_APPMAIN_SRCS})
+
+  # require c++17
+  target_compile_features(${QGIS_APP_NAME} PRIVATE cxx_std_17)
 else()
   add_executable(${QGIS_APP_NAME} MACOSX_BUNDLE WIN32 ${QGIS_APPMAIN_SRCS})
+
+  # require c++17
+  target_compile_features(${QGIS_APP_NAME} PRIVATE cxx_std_17)
 endif()
 
 # Putting IMAGE_RCC_SRCS into qgis_app lib is causing problems when the lib is
 # loaded (by plugin for example) in test unit (qgis_layoutpicturetest).
-add_library(qgis_app SHARED ${QGIS_APP_SRCS})
+add_library(qgis_app ${LIBRARY_TYPE} ${QGIS_APP_SRCS})
+
+# require c++17
+target_compile_features(qgis_app PRIVATE cxx_std_17)
+
+target_include_directories(qgis_app PUBLIC
+  ${CMAKE_SOURCE_DIR}/external/nmea
+
+  ${CMAKE_SOURCE_DIR}/src/app
+  ${CMAKE_SOURCE_DIR}/src/app/decorations
+  ${CMAKE_SOURCE_DIR}/src/app/devtools/networklogger
+  ${CMAKE_SOURCE_DIR}/src/app/labeling
+  ${CMAKE_SOURCE_DIR}/src/app/layout
+  ${CMAKE_SOURCE_DIR}/src/app/pluginmanager
+  ${CMAKE_SOURCE_DIR}/src/app/gps
+  ${CMAKE_SOURCE_DIR}/src/app/dwg
+  ${CMAKE_SOURCE_DIR}/src/app/maptools
+  ${CMAKE_SOURCE_DIR}/src/app/mesh
+  ${CMAKE_SOURCE_DIR}/src/app/locator
+  ${CMAKE_SOURCE_DIR}/src/app/pointcloud
+  ${CMAKE_SOURCE_DIR}/src/app/vectortile
+  ${CMAKE_SOURCE_DIR}/src/plugins
+  ${CMAKE_SOURCE_DIR}/src/python
+  ${CMAKE_SOURCE_DIR}/src/native
+
+  ${CMAKE_BINARY_DIR}/src/app
+)
+
+if (WITH_3D)
+  target_include_directories(qgis_app PUBLIC
+    ${CMAKE_SOURCE_DIR}/src/app/3d
+  )
+endif()
+
+target_include_directories(qgis_app SYSTEM PUBLIC
+  ${QT_QTUITOOLS_INCLUDE_DIR}
+  ${QWTPOLAR_INCLUDE_DIR}
+  ${CMAKE_SOURCE_DIR}/external/qt-unix-signals
+)
+
+add_dependencies(qgis_gui ui)
 
 target_link_libraries(qgis_app
   ${QWT_LIBRARY}
   ${QWTPOLAR_LIBRARY}
-  ${Qt5Sql_LIBRARIES}
-  ${Qt5UiTools_LIBRARIES}
+  ${QT_VERSION_BASE}::Sql
+  ${QT_VERSION_BASE}::UiTools
   ${OPTIONAL_QTWEBKIT}
   #should only be needed for win
   ${QT_QTMAIN_LIBRARY}
-  ${QWTPOLAR_LIBRARY}
-  ${GDAL_LIBRARY}
+  ${QGIS_RC_LIBS}
   qgis_core
   qgis_gui
   qgis_analysis
@@ -605,17 +554,20 @@ target_link_libraries(qgis_app
 
 target_compile_definitions(qgis_app PRIVATE "-DQT_NO_FOREACH")
 
+if (WITH_BINDINGS)
+  add_definitions(-DWITH_BINDINGS)
+  target_link_libraries(qgis_app qgispython)
+endif()
+
 if(ENABLE_MODELTEST)
-  target_link_libraries(qgis_app ${Qt5Test_LIBRARIES})
+  target_link_libraries(qgis_app ${QT_VERSION_BASE}::Test)
 endif()
 
 if (WITH_3D)
-  target_link_libraries(qgis_app
-    qgis_3d
-  )
+  target_link_libraries(qgis_app qgis_3d)
 endif()
 
-if (WITH_GEOREFERENCER)
+if (HAVE_GEOREFERENCER)
   include_directories(SYSTEM
     ${GSL_INCLUDE_DIR}
   )
@@ -689,6 +641,10 @@ endif()
 
 if (POSTGRES_FOUND)
   target_link_libraries (qgis_app ${POSTGRES_LIBRARY})
+endif()
+
+if (WITH_PDAL)
+  target_link_libraries(qgis_app ${PDAL_LIBRARIES})
 endif()
 
 if(MSVC)

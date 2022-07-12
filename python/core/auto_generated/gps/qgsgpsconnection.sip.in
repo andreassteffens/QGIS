@@ -17,7 +17,7 @@
 
 class QgsSatelliteInfo
 {
-%Docstring
+%Docstring(signature="appended")
 Encapsulates information relating to a GPS satellite.
 %End
 
@@ -41,7 +41,7 @@ Encapsulates information relating to a GPS satellite.
 
 class QgsGpsInformation
 {
-%Docstring
+%Docstring(signature="appended")
 Encapsulates information relating to a GPS position fix.
 %End
 
@@ -64,6 +64,8 @@ Encapsulates information relating to a GPS position fix.
 
     double elevation;
 
+    double elevation_diff;
+
     double speed;
 
 
@@ -82,6 +84,8 @@ Encapsulates information relating to a GPS position fix.
     //! Vertical accuracy in meters
     double vacc;
 
+    double hvacc;
+
     QDateTime utcDateTime;
 
     QChar fixMode;
@@ -89,6 +93,8 @@ Encapsulates information relating to a GPS position fix.
     int fixType;
 
     int quality;
+
+    Qgis::GpsQualityIndicator qualityIndicator;
 
     int satellitesUsed;
 
@@ -122,7 +128,7 @@ Returns a descriptive string for the signal quality.
 
 class QgsGpsConnection : QObject
 {
-%Docstring
+%Docstring(signature="appended")
 Abstract base class for connection to a GPS device
 %End
 

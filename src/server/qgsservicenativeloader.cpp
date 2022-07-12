@@ -67,7 +67,8 @@ void QgsServiceNativeLoader::loadModules( const QString &modulePath, QgsServiceR
 
   // qDebug() << QString( "Checking %1 for native services modules" ).arg( moduleDir.path() );
 
-  for ( const QFileInfo &fi : moduleDir.entryInfoList() )
+  const auto constFiList( moduleDir.entryInfoList() );
+  for ( const QFileInfo &fi : constFiList )
   {
     QgsServiceModule *module = loadNativeModule( fi.filePath() );
     if ( module )
@@ -132,7 +133,7 @@ QgsServiceModule *QgsServiceNativeLoader::loadNativeModule( const QString &locat
 void QgsServiceNativeLoader::unloadModules()
 {
   ModuleTable::iterator it  = mModules.begin();
-  ModuleTable::iterator end = mModules.end();
+  const ModuleTable::iterator end = mModules.end();
 
   while ( it != end )
   {
@@ -146,7 +147,7 @@ void QgsServiceNativeLoader::unloadModules()
 QgsServiceNativeModuleEntry *QgsServiceNativeLoader::findModuleEntry( const QString &location )
 {
   QgsServiceNativeModuleEntry *entry = nullptr;
-  ModuleTable::iterator item = mModules.find( location );
+  const ModuleTable::iterator item = mModules.find( location );
   if ( item != mModules.end() )
   {
     entry = item->get();

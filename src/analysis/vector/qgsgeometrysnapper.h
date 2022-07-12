@@ -17,14 +17,17 @@
 #ifndef QGS_GEOMETRY_SNAPPER_H
 #define QGS_GEOMETRY_SNAPPER_H
 
-#include <QMutex>
-#include <QFuture>
-#include <QStringList>
 #include "qgsspatialindex.h"
 #include "qgsabstractgeometry.h"
 #include "qgspoint.h"
 #include "qgsgeometry.h"
+#include "qgsgeos.h"
 #include "qgis_analysis.h"
+
+#include <QMutex>
+#include <QFuture>
+#include <QStringList>
+#include <geos_c.h>
 
 class QgsVectorLayer;
 
@@ -102,7 +105,7 @@ class ANALYSIS_EXPORT QgsGeometrySnapper : public QObject
     enum PointFlag { SnappedToRefNode, SnappedToRefSegment, Unsnapped };
 
     QgsFeatureSource *mReferenceSource = nullptr;
-    QgsFeatureList mInputFeatures;
+    QHash<QgsFeatureId, QgsGeometry> mCachedReferenceGeometries;
 
     QgsSpatialIndex mIndex;
     mutable QMutex mIndexMutex;
@@ -207,51 +210,31 @@ class QgsSnapIndex
         SegmentSnapItem( const CoordIdx *_idxFrom, const CoordIdx *_idxTo );
         QgsPoint getSnapPoint( const QgsPoint &p ) const override;
         bool getIntersection( const QgsPoint &p1, const QgsPoint &p2, QgsPoint &inter ) const;
-        bool getProjection( const QgsPoint &p, QgsPoint &pProj );
+        bool getProjection( const QgsPoint &p, QgsPoint &pProj ) const;
+        bool withinDistance( const QgsPoint &p, const double distance );
         const CoordIdx *idxFrom = nullptr;
         const CoordIdx *idxTo = nullptr;
     };
 
-    QgsSnapIndex( const QgsPoint &origin, double cellSize );
+    QgsSnapIndex();
     ~QgsSnapIndex();
 
     QgsSnapIndex( const QgsSnapIndex &rh ) = delete;
     QgsSnapIndex &operator=( const QgsSnapIndex &rh ) = delete;
 
     void addGeometry( const QgsAbstractGeometry *geom );
-    QgsPoint getClosestSnapToPoint( const QgsPoint &p, const QgsPoint &q );
-    SnapItem *getSnapItem( const QgsPoint &pos, double tol, PointSnapItem **pSnapPoint = nullptr, SegmentSnapItem **pSnapSegment = nullptr, bool endPointOnly = false ) const;
+    QgsPoint getClosestSnapToPoint( const QgsPoint &startPoint, const QgsPoint &midPoint );
+    SnapItem *getSnapItem( const QgsPoint &pos, const double tolerance, PointSnapItem **pSnapPoint = nullptr, SegmentSnapItem **pSnapSegment = nullptr, bool endPointOnly = false ) const;
 
   private:
-    typedef QList<SnapItem *> Cell;
-    typedef QPair<QgsPoint, QgsPoint> Segment;
-
-    class GridRow
-    {
-      public:
-        GridRow() = default;
-        ~GridRow();
-        const Cell *getCell( int col ) const;
-        Cell &getCreateCell( int col );
-        QList<SnapItem *> getSnapItems( int colStart, int colEnd ) const;
-
-      private:
-        QList<QgsSnapIndex::Cell> mCells;
-        int mColStartIdx = 0;
-    };
-
-    QgsPoint mOrigin;
-    double mCellSize;
-
     QList<CoordIdx *> mCoordIdxs;
-    QList<GridRow> mGridRows;
-    int mRowsStartIdx;
+    QList<SnapItem *> mSnapItems;
 
     void addPoint( const CoordIdx *idx, bool isEndPoint );
     void addSegment( const CoordIdx *idxFrom, const CoordIdx *idxTo );
-    const Cell *getCell( int col, int row ) const;
-    Cell &getCreateCell( int col, int row );
 
+    GEOSSTRtree *mSTRTree = nullptr;
+    std::vector< geos::unique_ptr > mSTRTreeItems;
 };
 
 ///@endcond

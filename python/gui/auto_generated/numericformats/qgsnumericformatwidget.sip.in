@@ -10,8 +10,8 @@
 
 class QgsNumericFormatWidget : QgsPanelWidget
 {
-%Docstring
-Base class for widgets which allow control over the properties of QgsNumericFormat subclasses
+%Docstring(signature="appended")
+Base class for widgets which allow control over the properties of :py:class:`QgsNumericFormat` subclasses
 
 .. versionadded:: 3.12
 %End
@@ -56,7 +56,7 @@ Emitted whenever the configuration of the numeric format is changed.
 
 class QgsBasicNumericFormatWidget : QgsNumericFormatWidget
 {
-%Docstring
+%Docstring(signature="appended")
 A widget which allow control over the properties of a :py:class:`QgsBasicNumericFormat`.
 
 .. versionadded:: 3.12
@@ -85,7 +85,7 @@ Constructor for QgsBasicNumericFormatWidget, initially showing the specified ``f
 
 class QgsBearingNumericFormatWidget : QgsNumericFormatWidget
 {
-%Docstring
+%Docstring(signature="appended")
 A widget which allow control over the properties of a :py:class:`QgsBearingNumericFormat`.
 
 .. versionadded:: 3.12
@@ -113,7 +113,7 @@ Constructor for QgsBearingNumericFormatWidget, initially showing the specified `
 
 class QgsBearingNumericFormatDialog : QDialog
 {
-%Docstring
+%Docstring(signature="appended")
 A dialog which allow control over the properties of a :py:class:`QgsBearingNumericFormat`.
 
 .. versionadded:: 3.12
@@ -141,11 +141,68 @@ Ownership of the returned object is transferred to the caller
 
 
 
+class QgsGeographicCoordinateNumericFormatWidget : QgsNumericFormatWidget
+{
+%Docstring(signature="appended")
+A widget which allow control over the properties of a :py:class:`QgsGeographicCoordinateNumericFormat`.
+
+.. versionadded:: 3.26
+%End
+
+%TypeHeaderCode
+#include "qgsnumericformatwidget.h"
+%End
+  public:
+
+    QgsGeographicCoordinateNumericFormatWidget( const QgsNumericFormat *format, bool hidePrecisionControl = false, QWidget *parent /TransferThis/ = 0 );
+%Docstring
+Constructor for QgsGeographicCoordinateNumericFormatWidget, initially showing the specified ``format``.
+%End
+    ~QgsGeographicCoordinateNumericFormatWidget();
+
+    virtual void setFormat( QgsNumericFormat *format );
+
+
+    virtual QgsNumericFormat *format() /Factory/;
+
+
+};
+
+
+class QgsGeographicCoordinateNumericFormatDialog : QDialog
+{
+%Docstring(signature="appended")
+A dialog which allow control over the properties of a :py:class:`QgsGeographicCoordinateNumericFormat`.
+
+.. versionadded:: 3.26
+%End
+
+%TypeHeaderCode
+#include "qgsnumericformatwidget.h"
+%End
+  public:
+
+    QgsGeographicCoordinateNumericFormatDialog( const QgsNumericFormat *format, bool hidePrecisionControl = false, QWidget *parent /TransferThis/ = 0 );
+%Docstring
+Constructor for QgsGeographicCoordinateNumericFormatDialog, initially showing the specified ``format``.
+%End
+
+    QgsGeographicCoordinateNumericFormat *format() /Factory/;
+%Docstring
+Returns the format defined by the current settings in the dialog.
+
+Ownership of the returned object is transferred to the caller
+%End
+
+};
+
+
+
 
 
 class QgsCurrencyNumericFormatWidget : QgsNumericFormatWidget
 {
-%Docstring
+%Docstring(signature="appended")
 A widget which allow control over the properties of a :py:class:`QgsCurrencyNumericFormat`.
 
 .. versionadded:: 3.12
@@ -175,7 +232,7 @@ Constructor for QgsCurrencyNumericFormatWidget, initially showing the specified 
 
 class QgsPercentageNumericFormatWidget : QgsNumericFormatWidget
 {
-%Docstring
+%Docstring(signature="appended")
 A widget which allow control over the properties of a :py:class:`QgsPercentageNumericFormat`.
 
 .. versionadded:: 3.12
@@ -206,7 +263,7 @@ Constructor for QgsPercentageNumericFormatWidget, initially showing the specifie
 
 class QgsScientificNumericFormatWidget : QgsNumericFormatWidget
 {
-%Docstring
+%Docstring(signature="appended")
 A widget which allow control over the properties of a :py:class:`QgsScientificNumericFormat`.
 
 .. versionadded:: 3.12
@@ -235,7 +292,7 @@ Constructor for QgsScientificNumericFormatWidget, initially showing the specifie
 
 class QgsFractionNumericFormatWidget : QgsNumericFormatWidget
 {
-%Docstring
+%Docstring(signature="appended")
 A widget which allow control over the properties of a :py:class:`QgsFractionNumericFormat`.
 
 .. versionadded:: 3.14

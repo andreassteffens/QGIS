@@ -35,7 +35,10 @@ class QgsMapLayerConfigWidgetFactory;
 class QgsMetadataWidget;
 
 /**
- * Property sheet for a mesh map layer.
+ * \ingroup gui
+ * \class QgsMeshLayerProperties
+ *
+ * \brief Property sheet for a mesh map layer.
  * Contains information, source and style tabs
  *
  * \since QGIS 3.16 in the GUI API
@@ -49,6 +52,9 @@ class GUI_EXPORT QgsMeshLayerProperties : public QgsOptionsDialogBase, private U
     /**
      * \brief Constructor
      * \param lyr Mesh map layer for which properties will be displayed
+     * \param canvas The map canvas
+     * \param parent The parent widget
+     * \param fl Window flags
      */
     QgsMeshLayerProperties( QgsMapLayer *lyr, QgsMapCanvas *canvas, QWidget *parent = nullptr, Qt::WindowFlags = QgsGuiUtils::ModalDialogFlags );
 
@@ -57,7 +63,7 @@ class GUI_EXPORT QgsMeshLayerProperties : public QgsOptionsDialogBase, private U
      *
      * \since QGIS 3.16
      */
-    void addPropertiesPageFactory( QgsMapLayerConfigWidgetFactory *factory );
+    void addPropertiesPageFactory( const QgsMapLayerConfigWidgetFactory *factory );
 
   protected slots:
     void optionsStackedWidget_CurrentChanged( int index ) override SIP_SKIP ;
@@ -68,8 +74,6 @@ class GUI_EXPORT QgsMeshLayerProperties : public QgsOptionsDialogBase, private U
 
     //!Applies the settings made in the dialog without closing the box
     void apply();
-    //! \brief Slot to update layer display name as original is edited.
-    void updateLayerName( const QString &text );
     //! Synchronizes GUI state with associated mesh layer and trigger repaint
     void syncAndRepaint();
     //! Changes layer coordinate reference system
@@ -86,10 +90,10 @@ class GUI_EXPORT QgsMeshLayerProperties : public QgsOptionsDialogBase, private U
     void aboutToShowStyleMenu();
     //! Reloads temporal properties from the provider
     void reloadTemporalProperties();
+    //! \brief Called when cancel button is pressed
+    void onCancel();
 
     void onTimeReferenceChange();
-
-    void onStaticDatasetCheckBoxChanged();
 
     void urlClicked( const QUrl &url );
     void loadMetadata();
@@ -126,6 +130,8 @@ class GUI_EXPORT QgsMeshLayerProperties : public QgsOptionsDialogBase, private U
     friend class TestQgsMeshLayerPropertiesDialog;
 
     void showHelp();
+
+    QgsCoordinateReferenceSystem mBackupCrs;
 };
 
 

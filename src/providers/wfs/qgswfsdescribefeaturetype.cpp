@@ -29,7 +29,7 @@ bool QgsWFSDescribeFeatureType::requestFeatureType( const QString &WFSVersion,
   QUrlQuery query( url );
   query.addQueryItem( QStringLiteral( "VERSION" ), WFSVersion );
 
-  QString namespaceValue( caps.getNamespaceParameterValue( WFSVersion, typeName ) );
+  const QString namespaceValue( caps.getNamespaceParameterValue( WFSVersion, typeName ) );
 
   if ( WFSVersion.startsWith( QLatin1String( "2.0" ) ) )
   {
@@ -40,6 +40,8 @@ bool QgsWFSDescribeFeatureType::requestFeatureType( const QString &WFSVersion,
     }
   }
 
+  // Always add singular form for broken servers
+  // See: https://github.com/qgis/QGIS/issues/41087
   query.addQueryItem( QStringLiteral( "TYPENAME" ), typeName );
   if ( !namespaceValue.isEmpty() )
   {

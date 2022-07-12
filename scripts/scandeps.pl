@@ -86,7 +86,7 @@ for my $dist (@dists) {
 	system("git checkout debian/control" )==0 or die "git checkout failed: $!";
 
 	$deps .= ",cmake-curses-gui,ccache,expect,libyaml-tiny-perl,flip,python3-autopep8,pandoc";
-	$deps .= ",qt5-default" if $dist =~ /^(buster|bionic|eoan|focal|groovy)$/;
+	$deps .= ",qt5-default" if $dist =~ /^(buster|bionic|focal|groovy)$/;
 
 	my @deps;
 	my %deps;

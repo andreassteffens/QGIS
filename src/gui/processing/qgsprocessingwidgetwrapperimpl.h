@@ -66,6 +66,7 @@ class QgsProcessingMapLayerComboBox;
 class QgsRasterBandComboBox;
 class QgsProcessingLayerOutputDestinationWidget;
 class QgsCheckableComboBox;
+class QgsMapLayerComboBox;
 
 ///@cond PRIVATE
 
@@ -233,6 +234,7 @@ class GUI_EXPORT QgsProcessingStringWidgetWrapper : public QgsAbstractProcessing
   private:
 
     QLineEdit *mLineEdit = nullptr;
+    QComboBox *mComboBox = nullptr;
     QPlainTextEdit *mPlainTextEdit = nullptr;
 
     friend class TestProcessingGui;
@@ -397,6 +399,61 @@ class GUI_EXPORT QgsProcessingDistanceWidgetWrapper : public QgsProcessingNumeri
     friend class TestProcessingGui;
 };
 
+
+class GUI_EXPORT QgsProcessingDurationParameterDefinitionWidget : public QgsProcessingAbstractParameterDefinitionWidget
+{
+    Q_OBJECT
+  public:
+
+    QgsProcessingDurationParameterDefinitionWidget( QgsProcessingContext &context,
+        const QgsProcessingParameterWidgetContext &widgetContext,
+        const QgsProcessingParameterDefinition *definition = nullptr,
+        const QgsProcessingAlgorithm *algorithm = nullptr, QWidget *parent SIP_TRANSFERTHIS = nullptr );
+    QgsProcessingParameterDefinition *createParameter( const QString &name, const QString &description, QgsProcessingParameterDefinition::Flags flags ) const override;
+
+  private:
+
+    QLineEdit *mMinLineEdit = nullptr;
+    QLineEdit *mMaxLineEdit = nullptr;
+    QLineEdit *mDefaultLineEdit = nullptr;
+    QComboBox *mUnitsCombo = nullptr;
+
+};
+
+class GUI_EXPORT QgsProcessingDurationWidgetWrapper : public QgsProcessingNumericWidgetWrapper
+{
+    Q_OBJECT
+
+  public:
+
+    QgsProcessingDurationWidgetWrapper( const QgsProcessingParameterDefinition *parameter = nullptr,
+                                        QgsProcessingGui::WidgetType type = QgsProcessingGui::Standard, QWidget *parent = nullptr );
+
+    // QgsProcessingParameterWidgetFactoryInterface
+    QString parameterType() const override;
+    QgsAbstractProcessingParameterWidgetWrapper *createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type ) override;
+    QgsProcessingAbstractParameterDefinitionWidget *createParameterDefinitionWidget(
+      QgsProcessingContext &context,
+      const QgsProcessingParameterWidgetContext &widgetContext,
+      const QgsProcessingParameterDefinition *definition = nullptr,
+      const QgsProcessingAlgorithm *algorithm = nullptr ) override;
+
+    // QgsProcessingParameterWidgetWrapper interface
+    QWidget *createWidget() override SIP_FACTORY;
+    QLabel *createLabel() override SIP_FACTORY;
+
+  protected:
+
+    QVariant widgetValue() const override;
+    void setWidgetValue( const QVariant &value, QgsProcessingContext &context ) override;
+
+  private:
+
+    QgsUnitTypes::TemporalUnit mBaseUnit = QgsUnitTypes::TemporalMilliseconds;
+    QComboBox *mUnitsCombo = nullptr;
+
+    friend class TestProcessingGui;
+};
 
 class GUI_EXPORT QgsProcessingScaleParameterDefinitionWidget : public QgsProcessingAbstractParameterDefinitionWidget
 {
@@ -662,6 +719,8 @@ class GUI_EXPORT QgsProcessingExpressionWidgetWrapper : public QgsAbstractProces
     // QgsProcessingParameterWidgetWrapper interface
     QWidget *createWidget() override SIP_FACTORY;
     void postInitialize( const QList< QgsAbstractProcessingParameterWidgetWrapper * > &wrappers ) override;
+    void registerProcessingContextGenerator( QgsProcessingContextGenerator *generator ) override;
+
   public slots:
     void setParentLayerWrapperValue( const QgsAbstractProcessingParameterWidgetWrapper *parentWrapper );
   protected:
@@ -1465,7 +1524,6 @@ class GUI_EXPORT QgsProcessingDateTimeWidgetWrapper : public QgsAbstractProcessi
     QVariant widgetValue() const override;
 
     QStringList compatibleParameterTypes() const override;
-
     QStringList compatibleOutputTypes() const override;
     QString modelerExpressionFormatString() const override;
 
@@ -1722,6 +1780,7 @@ class GUI_EXPORT QgsProcessingMapLayerWidgetWrapper : public QgsAbstractProcessi
 
     QStringList compatibleOutputTypes() const override;
     QString modelerExpressionFormatString() const override;
+    QgsProcessingModelChildParameterSource::Source defaultModelSource( const QgsProcessingParameterDefinition *parameter ) const override;
 
   private:
 
@@ -2164,6 +2223,24 @@ class GUI_EXPORT QgsProcessingRasterDestinationWidgetWrapper : public QgsProcess
 
 };
 
+class GUI_EXPORT QgsProcessingPointCloudDestinationWidgetWrapper : public QgsProcessingOutputWidgetWrapper
+{
+    Q_OBJECT
+
+  public:
+
+    QgsProcessingPointCloudDestinationWidgetWrapper( const QgsProcessingParameterDefinition *parameter = nullptr,
+        QgsProcessingGui::WidgetType type = QgsProcessingGui::Standard, QWidget *parent = nullptr );
+
+    // QgsProcessingParameterWidgetFactoryInterface
+    QString parameterType() const override;
+    QgsAbstractProcessingParameterWidgetWrapper *createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type ) override;
+
+  protected:
+    QString modelerExpressionFormatString() const override;
+
+};
+
 class GUI_EXPORT QgsProcessingFileDestinationWidgetWrapper : public QgsProcessingOutputWidgetWrapper
 {
     Q_OBJECT
@@ -2199,6 +2276,74 @@ class GUI_EXPORT QgsProcessingFolderDestinationWidgetWrapper : public QgsProcess
     QString modelerExpressionFormatString() const override;
 
 };
+
+class GUI_EXPORT QgsProcessingPointCloudLayerWidgetWrapper : public QgsProcessingMapLayerWidgetWrapper
+{
+    Q_OBJECT
+
+  public:
+
+    QgsProcessingPointCloudLayerWidgetWrapper( const QgsProcessingParameterDefinition *parameter = nullptr,
+        QgsProcessingGui::WidgetType type = QgsProcessingGui::Standard, QWidget *parent = nullptr );
+
+    // QgsProcessingParameterWidgetFactoryInterface
+    QString parameterType() const override;
+    QgsAbstractProcessingParameterWidgetWrapper *createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type ) override;
+    QgsProcessingAbstractParameterDefinitionWidget *createParameterDefinitionWidget(
+      QgsProcessingContext &context,
+      const QgsProcessingParameterWidgetContext &widgetContext,
+      const QgsProcessingParameterDefinition *definition = nullptr,
+      const QgsProcessingAlgorithm *algorithm = nullptr ) override;
+
+  protected:
+    QStringList compatibleParameterTypes() const override;
+
+    QStringList compatibleOutputTypes() const override;
+
+    QString modelerExpressionFormatString() const override;
+
+};
+
+
+class GUI_EXPORT QgsProcessingAnnotationLayerWidgetWrapper : public QgsAbstractProcessingParameterWidgetWrapper, public QgsProcessingParameterWidgetFactoryInterface
+{
+    Q_OBJECT
+
+  public:
+
+    QgsProcessingAnnotationLayerWidgetWrapper( const QgsProcessingParameterDefinition *parameter = nullptr,
+        QgsProcessingGui::WidgetType type = QgsProcessingGui::Standard, QWidget *parent = nullptr );
+
+    // QgsProcessingParameterWidgetFactoryInterface
+    QString parameterType() const override;
+    QgsAbstractProcessingParameterWidgetWrapper *createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type ) override;
+    QgsProcessingAbstractParameterDefinitionWidget *createParameterDefinitionWidget(
+      QgsProcessingContext &context,
+      const QgsProcessingParameterWidgetContext &widgetContext,
+      const QgsProcessingParameterDefinition *definition = nullptr,
+      const QgsProcessingAlgorithm *algorithm = nullptr ) override;
+    void setWidgetContext( const QgsProcessingParameterWidgetContext &context ) override;
+
+    QWidget *createWidget() override SIP_FACTORY;
+  protected:
+
+    void setWidgetValue( const QVariant &value, QgsProcessingContext &context ) override;
+    QVariant widgetValue() const override;
+
+    QStringList compatibleParameterTypes() const override;
+
+    QStringList compatibleOutputTypes() const override;
+
+    QString modelerExpressionFormatString() const override;
+
+  private:
+
+    QPointer< QgsMapLayerComboBox > mComboBox;
+    int mBlockSignals = 0;
+
+    friend class TestProcessingGui;
+};
+
 
 ///@endcond PRIVATE
 

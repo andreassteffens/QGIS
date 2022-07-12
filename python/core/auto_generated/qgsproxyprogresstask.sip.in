@@ -9,11 +9,12 @@
 
 
 
+
 class QgsProxyProgressTask : QgsTask
 {
-%Docstring
+%Docstring(signature="appended")
 
-A QgsTask shell which proxies progress reports.
+A :py:class:`QgsTask` shell which proxies progress reports.
 
 Simple task shell which runs until finalized and reports progress only.
 This is usually used to expose a blocking operation's progress via
@@ -27,7 +28,7 @@ task manager.
 %End
   public:
 
-    QgsProxyProgressTask( const QString &description );
+    QgsProxyProgressTask( const QString &description, bool canCancel = false );
 %Docstring
 Constructor for QgsProxyProgressTask, with the specified ``description``.
 %End
@@ -50,11 +51,23 @@ Sets the ``progress`` (from 0 to 100) for the proxied operation.
 This method is safe to call from the main thread.
 %End
 
+    virtual void cancel();
+
+
+  signals:
+
+    void canceled();
+%Docstring
+Emitted when the task is canceled.
+
+.. versionadded:: 3.26
+%End
+
 };
 
 class QgsScopedProxyProgressTask
 {
-%Docstring
+%Docstring(signature="appended")
 
 Scoped :py:class:`QgsScopedProxyProgressTask`, which automatically adds the proxy task
 to the application task manager on construction and finalizes the task

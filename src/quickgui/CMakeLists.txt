@@ -1,80 +1,22 @@
 ############################################################
 # sources
 set(QGIS_QUICK_GUI_MOC_HDRS
-  attributes/qgsquickattributeformmodel.h
-  attributes/qgsquickattributeformmodelbase.h
-  attributes/qgsquickattributemodel.h
-  attributes/qgsquicksubmodel.h
-
-  qgsquickfeaturelayerpair.h
   qgsquickcoordinatetransformer.h
-  qgsquickfeaturehighlight.h
-  qgsquickidentifykit.h
   qgsquickmapcanvasmap.h
   qgsquickmapsettings.h
   qgsquickmaptransform.h
-  qgsquickmessagelogmodel.h
-  qgsquickpositionkit.h
-  qgsquickscalebarkit.h
-  qgsquicksimulatedpositionsource.h
-  qgsquickutils.h
-  qgsquickfeatureslistmodel.h
-)
-
-set(QGIS_QUICK_GUI_HDRS
-  qgsquickhighlightsgnode.h
 )
 
 set(QGIS_QUICK_GUI_SRC
-  attributes/qgsquickattributeformmodel.cpp
-  attributes/qgsquickattributeformmodelbase.cpp
-  attributes/qgsquickattributemodel.cpp
-  attributes/qgsquicksubmodel.cpp
-
-  qgsquickfeaturelayerpair.cpp
   qgsquickcoordinatetransformer.cpp
-  qgsquickfeaturehighlight.cpp
-  qgsquickhighlightsgnode.cpp
-  qgsquickidentifykit.cpp
   qgsquickmapcanvasmap.cpp
   qgsquickmapsettings.cpp
   qgsquickmaptransform.cpp
-  qgsquickmessagelogmodel.cpp
-  qgsquickpositionkit.cpp
-  qgsquickscalebarkit.cpp
-  qgsquicksimulatedpositionsource.cpp
-  qgsquickutils.cpp
-  qgsquickfeatureslistmodel.cpp
 )
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}/attributes
   ${CMAKE_CURRENT_BINARY_DIR}
-
-  ${CMAKE_SOURCE_DIR}/src/core
-  ${CMAKE_SOURCE_DIR}/src/core/annotations
-  ${CMAKE_SOURCE_DIR}/src/core/auth
-  ${CMAKE_SOURCE_DIR}/src/core/composer
-  ${CMAKE_SOURCE_DIR}/src/core/fieldformatter
-  ${CMAKE_SOURCE_DIR}/src/core/geometry
-  ${CMAKE_SOURCE_DIR}/src/core/labeling
-  ${CMAKE_SOURCE_DIR}/src/core/layertree
-  ${CMAKE_SOURCE_DIR}/src/core/layout
-  ${CMAKE_SOURCE_DIR}/src/core/locator
-  ${CMAKE_SOURCE_DIR}/src/core/metadata
-  ${CMAKE_SOURCE_DIR}/src/core/providers/memory
-  ${CMAKE_SOURCE_DIR}/src/core/raster
-  ${CMAKE_SOURCE_DIR}/src/core/scalebar
-  ${CMAKE_SOURCE_DIR}/src/core/symbology
-  ${CMAKE_SOURCE_DIR}/src/core/textrenderer
-  ${CMAKE_SOURCE_DIR}/src/core/effects
-  ${CMAKE_SOURCE_DIR}/src/core/metadata
-  ${CMAKE_SOURCE_DIR}/src/core/expression
-  ${CMAKE_SOURCE_DIR}/external
-  ${CMAKE_SOURCE_DIR}/external/nlohmann
-
-  ${CMAKE_BINARY_DIR}/src/core
 )
 
 include_directories(SYSTEM
@@ -90,11 +32,14 @@ include_directories(SYSTEM
   ${QTKEYCHAIN_INCLUDE_DIR}
 )
 
-set(QGIS_QUICK_GUI_IMAGE_RCCS ./images/images.qrc)
-
 ############################################################
 # qgis_quick shared library
-QT5_WRAP_CPP(QGIS_QUICK_GUI_MOC_SRCS ${QGIS_QUICK_GUI_MOC_HDRS})
+if (WITH_QT6)
+  QT6_WRAP_CPP(QGIS_QUICK_GUI_MOC_SRCS ${QGIS_QUICK_GUI_MOC_HDRS})
+else()
+  QT5_WRAP_CPP(QGIS_QUICK_GUI_MOC_SRCS ${QGIS_QUICK_GUI_MOC_HDRS})
+endif()
+
 if(MSVC)
   set_source_files_properties(${QGIS_QUICK_GUI_MOC_SRCS} PROPERTIES COMPILE_FLAGS "/wd4512 /wd4996" )
 else()
@@ -102,14 +47,26 @@ else()
 endif()
 
 add_library(qgis_quick ${LIBRARY_TYPE}
-    ${QGIS_QUICK_GUI_IMAGE_RCCS}
     ${QGIS_QUICK_GUI_SRC}
     ${QGIS_QUICK_GUI_MOC_HDRS}
     ${QGIS_QUICK_GUI_MOC_SRCS}
     ${QGIS_QUICK_GUI_HDRS})
-target_link_libraries(qgis_quick Qt5::Quick Qt5::Qml Qt5::Xml Qt5::Concurrent Qt5::Positioning qgis_core)
+
+# require c++17
+target_compile_features(qgis_quick PRIVATE cxx_std_17)
+
+if (WITH_QT6)
+  target_link_libraries(qgis_quick Qt6::Quick Qt6::Qml Qt6::Xml Qt6::Concurrent Qt6::Positioning qgis_core)
+else()
+  target_link_libraries(qgis_quick Qt5::Quick Qt5::Qml Qt5::Xml Qt5::Concurrent Qt5::Positioning qgis_core)
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Android")
-  target_link_libraries(qgis_quick Qt5::AndroidExtras)
+  if (WITH_QT6)
+    target_link_libraries(qgis_quick Qt6::AndroidExtras)
+  else()
+    target_link_libraries(qgis_quick Qt5::AndroidExtras)
+  endif()
 endif()
 target_compile_definitions(qgis_quick PRIVATE "-DQT_NO_FOREACH")
 
@@ -120,7 +77,7 @@ GENERATE_EXPORT_HEADER(
 )
 
 # Installation
-if(NOT APPLE)
+if(NOT APPLE OR NOT QGIS_MACAPP_FRAMEWORK)
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/qgis_quick.h ${QGIS_QUICK_GUI_HDRS} ${QGIS_QUICK_GUI_MOC_HDRS} DESTINATION ${QGIS_INCLUDE_DIR})
 else()
   set_target_properties(qgis_quick PROPERTIES
@@ -138,7 +95,7 @@ else()
   add_custom_command(TARGET qgis_quick
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy qgis_quick.h
-            "${QGIS_OUTPUT_DIRECTORY}/${QGIS_LIB_SUBDIR}/qgis_core.framework/Headers"
+            "${QGIS_OUTPUT_DIRECTORY}/${QGIS_LIB_SUBDIR}/qgis_quick.framework/Headers"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     DEPENDS qgis_quick.h
   )

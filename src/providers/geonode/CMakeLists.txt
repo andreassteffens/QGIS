@@ -17,51 +17,37 @@ endif()
 # Build
 
 include_directories(
-  ${CMAKE_SOURCE_DIR}/src/core
-  ${CMAKE_SOURCE_DIR}/src/core/raster
-  ${CMAKE_SOURCE_DIR}/src/core/auth
-  ${CMAKE_SOURCE_DIR}/src/core/geocms/geonode
-  ${CMAKE_SOURCE_DIR}/src/core/geometry
-  ${CMAKE_SOURCE_DIR}/src/core/metadata
-  ${CMAKE_SOURCE_DIR}/src/core/symbology
-  ${CMAKE_SOURCE_DIR}/src/core/effects
-  ${CMAKE_SOURCE_DIR}/src/core/expression
-  ${CMAKE_SOURCE_DIR}/src/gui
-  ${CMAKE_SOURCE_DIR}/src/gui/auth
-  ${CMAKE_SOURCE_DIR}/external
-  ${CMAKE_SOURCE_DIR}/external/nlohmann
 
-  ${CMAKE_BINARY_DIR}/src/core
-  ${CMAKE_BINARY_DIR}/src/gui
   ${CMAKE_BINARY_DIR}/src/ui
 )
-include_directories(SYSTEM
-)
 
-add_library(geonodeprovider MODULE ${GEONODE_SRCS})
+add_library(provider_geonode MODULE ${GEONODE_SRCS})
 
-target_link_libraries(geonodeprovider
+# require c++17
+target_compile_features(provider_geonode PRIVATE cxx_std_17)
+
+target_link_libraries(provider_geonode
   qgis_core
 )
 
 if (WITH_GUI)
-  target_link_libraries (geonodeprovider
+  target_link_libraries (provider_geonode
     qgis_gui
   )
-  add_dependencies(geonodeprovider ui)
+  add_dependencies(provider_geonode ui)
 endif()
 
-target_compile_definitions(geonodeprovider PRIVATE "-DQT_NO_FOREACH")
+target_compile_definitions(provider_geonode PRIVATE "-DQT_NO_FOREACH")
 
 # clang-tidy
 if(CLANG_TIDY_EXE)
   set_target_properties(
-    geonodeprovider PROPERTIES
+    provider_geonode PROPERTIES
     CXX_CLANG_TIDY "${DO_CLANG_TIDY}"
   )
 endif()
 
-install (TARGETS geonodeprovider
+install (TARGETS provider_geonode
   RUNTIME DESTINATION ${QGIS_PLUGIN_DIR}
   LIBRARY DESTINATION ${QGIS_PLUGIN_DIR})
 

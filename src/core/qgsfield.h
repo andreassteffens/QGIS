@@ -62,6 +62,7 @@ class CORE_EXPORT QgsField
     Q_PROPERTY( QgsDefaultValue defaultValueDefinition READ defaultValueDefinition WRITE setDefaultValueDefinition )
     Q_PROPERTY( QgsFieldConstraints constraints READ constraints WRITE setConstraints )
     Q_PROPERTY( ConfigurationFlags configurationFlags READ configurationFlags WRITE setConfigurationFlags )
+    Q_PROPERTY( bool isReadOnly READ isReadOnly WRITE setReadOnly )
 
 
   public:
@@ -75,25 +76,16 @@ class CORE_EXPORT QgsField
        * \note Flags are expressed in the negative forms so that default flags is None.
        * \since QGIS 3.16
        */
-#if QT_VERSION < QT_VERSION_CHECK(5, 12, 0)
-    enum ConfigurationFlag
-#else
     enum class ConfigurationFlag : int
-#endif
     {
       None = 0, //!< No flag is defined
       NotSearchable = 1 << 1, //!< Defines if the field is searchable (used in the locator search for instance)
-      HideFromWms = 1 << 2, //!< Fields is available if layer is served as WMS from QGIS server
-      HideFromWfs = 1 << 3, //!< Fields is available if layer is served as WFS from QGIS server
+      HideFromWms = 1 << 2, //!< Field is not available if layer is served as WMS from QGIS server
+      HideFromWfs = 1 << 3, //!< Field is not available if layer is served as WFS from QGIS server
     };
     Q_ENUM( ConfigurationFlag )
     Q_DECLARE_FLAGS( ConfigurationFlags, ConfigurationFlag )
-#if QT_VERSION < QT_VERSION_CHECK(5, 12, 0)
-    // https://bugreports.qt.io/browse/QTBUG-47652
-    Q_ENUM( ConfigurationFlags )
-#else
     Q_FLAG( ConfigurationFlags )
-#endif
 #endif
 
     /**
@@ -331,7 +323,7 @@ class CORE_EXPORT QgsField
     QString displayString( const QVariant &v ) const;
 
     /**
-     * Returns the reabable and translated value of the configuration flag
+     * Returns the readable and translated value of the configuration flag
      * \since QGIS 3.16
      */
     static QString readableConfigurationFlag( QgsField::ConfigurationFlag flag ) SIP_SKIP;
@@ -354,7 +346,7 @@ class CORE_EXPORT QgsField
      *
      * \param v  The value to convert
      *
-     * \returns   TRUE if the conversion was successful
+     * \throws ValueError if the value could not be converted to a compatible format
      */
     bool convertCompatible( QVariant &v ) const;
     % MethodCode
@@ -433,6 +425,20 @@ class CORE_EXPORT QgsField
      * \returns the value
      */
     QgsEditorWidgetSetup editorWidgetSetup() const;
+
+    /**
+     * Make field read-only if \a readOnly is set to true. This is the case for
+     * providers which support generated fields for instance.
+     * \since QGIS 3.18
+     */
+    void setReadOnly( bool readOnly );
+
+    /**
+     * Returns TRUE if this field is a read-only field. This is the case for
+     * providers which support generated fields for instance.
+     * \since QGIS 3.18
+     */
+    bool isReadOnly() const;
 
 #ifdef SIP_RUN
     SIP_PYOBJECT __repr__();

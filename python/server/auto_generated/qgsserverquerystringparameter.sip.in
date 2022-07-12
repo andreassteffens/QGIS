@@ -15,8 +15,8 @@
 
 class QgsServerQueryStringParameter
 {
-%Docstring
-The QgsServerQueryStringParameter class holds the information regarding
+%Docstring(signature="appended")
+The :py:class:`QgsServerQueryStringParameter` class holds the information regarding
 a query string input parameter and its validation.
 
 The class is extendable through custom validators (C++ only) and/or by

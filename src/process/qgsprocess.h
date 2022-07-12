@@ -24,6 +24,7 @@
 
 #include "qgsprocessingfeedback.h"
 #include "qgsunittypes.h"
+#include "qgsprocessingcontext.h"
 #include <QElapsedTimer>
 
 class QgsApplication;
@@ -84,6 +85,7 @@ class QgsProcessingExec
                  const QString &ellipsoid,
                  QgsUnitTypes::DistanceUnit distanceUnit,
                  QgsUnitTypes::AreaUnit areaUnit,
+                 QgsProcessingContext::LogLevel logLevel,
                  bool useJson,
                  const QString &projectPath = QString() );
 
@@ -92,6 +94,7 @@ class QgsProcessingExec
     void addProviderInformation( QVariantMap &json, QgsProcessingProvider *provider );
 
 
+    bool mSkipPython = false;
 #ifdef WITH_BINDINGS
     std::unique_ptr< QgsPythonUtils > mPythonUtils;
     std::unique_ptr<QgsPythonUtils> loadPythonSupport();

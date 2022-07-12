@@ -29,6 +29,9 @@
 #include "qgspainteffect.h"
 #include "qgssymbollayerreference.h"
 #include "qgsstringutils.h"
+#include "qgsmarkersymbol.h"
+#include "qgsfillsymbol.h"
+#include "qgspropertycollection.h"
 
 #include <QSharedData>
 #include <QPainter>
@@ -125,6 +128,7 @@ class QgsTextBackgroundSettingsPrivate : public QSharedData
       , joinStyle( other.joinStyle )
       , paintEffect( other.paintEffect ? other.paintEffect->clone() : nullptr )
       , markerSymbol( other.markerSymbol ? other.markerSymbol->clone() : nullptr )
+      , fillSymbol( other.fillSymbol ? other.fillSymbol->clone() : nullptr )
     {
     }
 
@@ -153,6 +157,7 @@ class QgsTextBackgroundSettingsPrivate : public QSharedData
     Qt::PenJoinStyle joinStyle = Qt::BevelJoin;
     std::unique_ptr< QgsPaintEffect > paintEffect;
     std::unique_ptr< QgsMarkerSymbol > markerSymbol;
+    std::unique_ptr< QgsFillSymbol > fillSymbol;
 
   private:
     QgsTextBackgroundSettingsPrivate &operator=( const QgsTextBackgroundSettingsPrivate & ) = delete;
@@ -262,7 +267,10 @@ class QgsTextSettingsPrivate : public QSharedData
       : QSharedData( other )
       , isValid( other.isValid )
       , textFont( other.textFont )
+      , families( other.families )
       , textNamedStyle( other.textNamedStyle )
+      , forcedBold( other.forcedBold )
+      , forcedItalic( other.forcedItalic )
       , fontSizeUnits( other.fontSizeUnits )
       , fontSizeMapUnitScale( other.fontSizeMapUnitScale )
       , fontSize( other.fontSize )
@@ -280,7 +288,10 @@ class QgsTextSettingsPrivate : public QSharedData
 
     bool isValid = false;
     QFont textFont;
+    QStringList families;
     QString textNamedStyle;
+    bool forcedBold = false;
+    bool forcedItalic = false;
     QgsUnitTypes::RenderUnit fontSizeUnits = QgsUnitTypes::RenderPoints;
     QgsMapUnitScale fontSizeMapUnitScale;
     double fontSize = 10 ; //may differ from size in textFont due to units (e.g., size in map units)
@@ -291,7 +302,7 @@ class QgsTextSettingsPrivate : public QSharedData
     QgsTextFormat::TextOrientation orientation = QgsTextFormat::HorizontalOrientation;
     QColor previewBackgroundColor = Qt::white;
     bool allowHtmlFormatting = false;
-    QgsStringUtils::Capitalization capitalization = QgsStringUtils::MixedCase;
+    Qgis::Capitalization capitalization = Qgis::Capitalization::MixedCase;
 
     //! Property collection for data defined settings
     QgsPropertyCollection mDataDefinedProperties;

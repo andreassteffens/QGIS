@@ -28,6 +28,10 @@
 #include "qgspainteffectregistry.h"
 #include "qgsproperty.h"
 #include "qgsstyleentityvisitor.h"
+#include "qgsembeddedsymbolrenderer.h"
+#include "qgslinesymbol.h"
+#include "qgsfillsymbol.h"
+#include "qgsmarkersymbol.h"
 
 #include <QSet>
 
@@ -74,7 +78,7 @@ void QgsRuleBasedRenderer::Rule::initFilter()
   else
   {
     mElseRule = false;
-    mFilter = qgis::make_unique< QgsExpression >( mFilterExp );
+    mFilter = std::make_unique< QgsExpression >( mFilterExp );
   }
 }
 
@@ -346,7 +350,7 @@ QDomElement QgsRuleBasedRenderer::Rule::save( QDomDocument &doc, QgsSymbolMap &s
   return ruleElem;
 }
 
-void QgsRuleBasedRenderer::Rule::toSld( QDomDocument &doc, QDomElement &element, QgsStringMap props ) const
+void QgsRuleBasedRenderer::Rule::toSld( QDomDocument &doc, QDomElement &element, QVariantMap props ) const
 {
   // do not convert this rule if there are no symbols
   QgsRenderContext context;
@@ -355,9 +359,11 @@ void QgsRuleBasedRenderer::Rule::toSld( QDomDocument &doc, QDomElement &element,
 
   if ( !mFilterExp.isEmpty() )
   {
-    if ( !props.value( QStringLiteral( "filter" ), QString() ).isEmpty() )
-      props[ QStringLiteral( "filter" )] += QLatin1String( " AND " );
-    props[ QStringLiteral( "filter" )] += mFilterExp;
+    QString filter = props.value( QStringLiteral( "filter" ), QString() ).toString();
+    if ( !filter.isEmpty() )
+      filter += QLatin1String( " AND " );
+    filter += mFilterExp;
+    props[ QStringLiteral( "filter" )] = filter;
   }
 
   QgsSymbolLayerUtils::mergeScaleDependencies( mMaximumScale, mMinimumScale, props );
@@ -391,9 +397,9 @@ void QgsRuleBasedRenderer::Rule::toSld( QDomDocument &doc, QDomElement &element,
       ruleElem.appendChild( descrElem );
     }
 
-    if ( !props.value( QStringLiteral( "filter" ), QString() ).isEmpty() )
+    if ( !props.value( QStringLiteral( "filter" ), QString() ).toString().isEmpty() )
     {
-      QgsSymbolLayerUtils::createFunctionElement( doc, ruleElem, props.value( QStringLiteral( "filter" ), QString() ) );
+      QgsSymbolLayerUtils::createFunctionElement( doc, ruleElem, props.value( QStringLiteral( "filter" ), QString() ).toString() );
     }
 
     QgsSymbolLayerUtils::applyScaleDependency( doc, ruleElem, props );
@@ -579,7 +585,7 @@ QgsRuleBasedRenderer::Rule::RenderResult QgsRuleBasedRenderer::Rule::renderFeatu
     }
   }
 
-  bool willrendersomething = false;
+  bool matchedAChild = false;
 
   // process children
   const auto constMChildren = mChildren;
@@ -588,23 +594,25 @@ QgsRuleBasedRenderer::Rule::RenderResult QgsRuleBasedRenderer::Rule::renderFeatu
     // Don't process else rules yet
     if ( !rule->isElse() )
     {
-      RenderResult res = rule->renderFeature( featToRender, context, renderQueue );
-      // consider inactive items as "rendered" so the else rule will ignore them
-      willrendersomething |= ( res == Rendered || res == Inactive );
+      const RenderResult res = rule->renderFeature( featToRender, context, renderQueue );
+      // consider inactive items as "matched" so the else rule will ignore them
+      matchedAChild |= ( res == Rendered || res == Inactive );
       rendered |= ( res == Rendered );
     }
   }
 
   // If none of the rules passed then we jump into the else rules and process them.
-  if ( !willrendersomething )
+  if ( !matchedAChild )
   {
     const auto constMElseRules = mElseRules;
     for ( Rule *rule : constMElseRules )
     {
-      rendered |= rule->renderFeature( featToRender, context, renderQueue ) == Rendered;
+      const RenderResult res = rule->renderFeature( featToRender, context, renderQueue );
+      matchedAChild |= ( res == Rendered || res == Inactive );
+      rendered |= res == Rendered;
     }
   }
-  if ( !mIsActive || ( mSymbol && !rendered ) )
+  if ( !mIsActive || ( mSymbol && !rendered ) || ( matchedAChild && !rendered ) )
     return Inactive;
   else if ( rendered )
     return Rendered;
@@ -993,7 +1001,7 @@ void QgsRuleBasedRenderer::stopRender( QgsRenderContext &context )
     {
       //QgsDebugMsg(QString("level %1").arg(level.zIndex));
       // go through all jobs at the level
-      for ( const RenderJob *job : qgis::as_const( level.jobs ) )
+      for ( const RenderJob *job : std::as_const( level.jobs ) )
       {
         context.expressionContext().setFeature( job->ftr.feat );
         //QgsDebugMsg(QString("job fid %1").arg(job->f->id()));
@@ -1059,7 +1067,7 @@ QgsRuleBasedRenderer *QgsRuleBasedRenderer::clone() const
   return r;
 }
 
-void QgsRuleBasedRenderer::toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap &props ) const
+void QgsRuleBasedRenderer::toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props ) const
 {
   mRootRule->toSld( doc, element, props );
 }
@@ -1074,8 +1082,6 @@ QDomElement QgsRuleBasedRenderer::save( QDomDocument &doc, const QgsReadWriteCon
 {
   QDomElement rendererElem = doc.createElement( RENDERER_TAG_NAME );
   rendererElem.setAttribute( QStringLiteral( "type" ), QStringLiteral( "RuleRenderer" ) );
-  rendererElem.setAttribute( QStringLiteral( "symbollevels" ), ( mUsingSymbolLevels ? QStringLiteral( "1" ) : QStringLiteral( "0" ) ) );
-  rendererElem.setAttribute( QStringLiteral( "forceraster" ), ( mForceRaster ? QStringLiteral( "1" ) : QStringLiteral( "0" ) ) );
 
   QgsSymbolMap symbols;
 
@@ -1086,16 +1092,7 @@ QDomElement QgsRuleBasedRenderer::save( QDomDocument &doc, const QgsReadWriteCon
   QDomElement symbolsElem = QgsSymbolLayerUtils::saveSymbols( symbols, QStringLiteral( "symbols" ), doc, context );
   rendererElem.appendChild( symbolsElem );
 
-  if ( mPaintEffect && !QgsPaintEffectRegistry::isDefaultStack( mPaintEffect ) )
-    mPaintEffect->saveProperties( doc, rendererElem );
-
-  if ( !mOrderBy.isEmpty() )
-  {
-    QDomElement orderBy = doc.createElement( QStringLiteral( "orderby" ) );
-    mOrderBy.save( orderBy );
-    rendererElem.appendChild( orderBy );
-  }
-  rendererElem.setAttribute( QStringLiteral( "enableorderby" ), ( mOrderByEnabled ? QStringLiteral( "1" ) : QStringLiteral( "0" ) ) );
+  saveRendererData( doc, rendererElem, context );
 
   return rendererElem;
 }
@@ -1116,6 +1113,87 @@ void QgsRuleBasedRenderer::checkLegendSymbolItem( const QString &key, bool state
   Rule *rule = mRootRule->findRuleByKey( key );
   if ( rule )
     rule->setActive( state );
+}
+
+QString QgsRuleBasedRenderer::legendKeyToExpression( const QString &key, QgsVectorLayer *, bool &ok ) const
+{
+  ok = false;
+  Rule *rule = mRootRule->findRuleByKey( key );
+  if ( !rule )
+    return QString();
+
+  std::function<QString( Rule *rule )> ruleToExpression;
+  ruleToExpression = [&ruleToExpression]( Rule * rule ) -> QString
+  {
+    if ( rule->isElse() && rule->parent() )
+    {
+      // gather the expressions for all other rules on this level and invert them
+
+      QStringList otherRules;
+      const QList<QgsRuleBasedRenderer::Rule *> siblings = rule->parent()->children();
+      for ( Rule *sibling : siblings )
+      {
+        if ( sibling == rule )
+          continue;
+
+        const QString siblingExpression = ruleToExpression( sibling );
+        if ( siblingExpression.isEmpty() )
+          return QStringLiteral( "FALSE" ); // nothing will match this rule
+
+        otherRules.append( siblingExpression );
+      }
+
+      if ( otherRules.empty() )
+        return QStringLiteral( "TRUE" ); // all features will match the else rule
+      else
+        return (
+                 otherRules.size() > 1
+                 ?  QStringLiteral( "NOT ((%1))" ).arg( otherRules.join( QLatin1String( ") OR (" ) ) )
+                 : QStringLiteral( "NOT (%1)" ).arg( otherRules.at( 0 ) )
+               );
+    }
+    else
+    {
+      QStringList ruleParts;
+      if ( !rule->filterExpression().isEmpty() )
+        ruleParts.append( rule->filterExpression() );
+
+      if ( !qgsDoubleNear( rule->minimumScale(), 0.0 ) )
+        ruleParts.append( QStringLiteral( "@map_scale <= %1" ).arg( rule->minimumScale() ) );
+
+      if ( !qgsDoubleNear( rule->maximumScale(), 0.0 ) )
+        ruleParts.append( QStringLiteral( "@map_scale >= %1" ).arg( rule->maximumScale() ) );
+
+      if ( !ruleParts.empty() )
+      {
+        return (
+                 ruleParts.size() > 1
+                 ?  QStringLiteral( "(%1)" ).arg( ruleParts.join( QLatin1String( ") AND (" ) ) )
+                 : ruleParts.at( 0 )
+               );
+      }
+      else
+      {
+        return QString();
+      }
+    }
+  };
+
+  QStringList parts;
+  while ( rule )
+  {
+    const QString ruleFilter = ruleToExpression( rule );
+    if ( !ruleFilter.isEmpty() )
+      parts.append( ruleFilter );
+
+    rule = rule->parent();
+  }
+
+  ok = true;
+  return parts.empty() ? QStringLiteral( "TRUE" )
+         : ( parts.size() > 1
+             ?  QStringLiteral( "(%1)" ).arg( parts.join( QLatin1String( ") AND (" ) ) )
+             : parts.at( 0 ) );
 }
 
 void QgsRuleBasedRenderer::setLegendSymbolItem( const QString &key, QgsSymbol *symbol )
@@ -1207,7 +1285,9 @@ void QgsRuleBasedRenderer::refineRuleCategories( QgsRuleBasedRenderer::Rule *ini
   {
     QString value;
     // not quoting numbers saves a type cast
-    if ( cat.value().type() == QVariant::Int )
+    if ( cat.value().isNull() )
+      value = "NULL";
+    else if ( cat.value().type() == QVariant::Int )
       value = cat.value().toString();
     else if ( cat.value().type() == QVariant::Double )
       // we loose precision here - so we may miss some categories :-(
@@ -1215,8 +1295,9 @@ void QgsRuleBasedRenderer::refineRuleCategories( QgsRuleBasedRenderer::Rule *ini
       value = QString::number( cat.value().toDouble(), 'f', 4 );
     else
       value = QgsExpression::quotedString( cat.value().toString() );
-    QString filter = QStringLiteral( "%1 = %2" ).arg( attr, value );
-    QString label = filter;
+    const QString filter = QStringLiteral( "%1 %2 %3" ).arg( attr, cat.value().isNull() ? QStringLiteral( "IS" ) : QStringLiteral( "=" ), value );
+    const QString label = !cat.label().isEmpty() ? cat.label() :
+                          cat.value().isValid() ? value : QString();
     initialRule->appendChild( new Rule( cat.symbol()->clone(), 0, 0, filter, label ) );
   }
 }
@@ -1248,7 +1329,7 @@ void QgsRuleBasedRenderer::refineRuleRanges( QgsRuleBasedRenderer::Rule *initial
                      QString::number( rng.lowerValue(), 'f', 4 ),
                      QString::number( rng.upperValue(), 'f', 4 ) );
     firstRange = false;
-    QString label =  rng.label().isEmpty() ? filter : rng.label();
+    QString label = rng.label().isEmpty() ? filter : rng.label();
     initialRule->appendChild( new Rule( rng.symbol()->clone(), 0, 0, filter, label ) );
   }
 }
@@ -1305,7 +1386,7 @@ bool QgsRuleBasedRenderer::accept( QgsStyleEntityVisitorInterface *visitor ) con
   return mRootRule->accept( visitor );
 }
 
-QgsRuleBasedRenderer *QgsRuleBasedRenderer::convertFromRenderer( const QgsFeatureRenderer *renderer )
+QgsRuleBasedRenderer *QgsRuleBasedRenderer::convertFromRenderer( const QgsFeatureRenderer *renderer, QgsVectorLayer *layer )
 {
   std::unique_ptr< QgsRuleBasedRenderer > r;
   if ( renderer->type() == QLatin1String( "RuleRenderer" ) )
@@ -1319,7 +1400,7 @@ QgsRuleBasedRenderer *QgsRuleBasedRenderer::convertFromRenderer( const QgsFeatur
       return nullptr;
 
     std::unique_ptr< QgsSymbol > origSymbol( singleSymbolRenderer->symbol()->clone() );
-    r = qgis::make_unique< QgsRuleBasedRenderer >( origSymbol.release() );
+    r = std::make_unique< QgsRuleBasedRenderer >( origSymbol.release() );
   }
   else if ( renderer->type() == QLatin1String( "categorizedSymbol" ) )
   {
@@ -1329,22 +1410,30 @@ QgsRuleBasedRenderer *QgsRuleBasedRenderer::convertFromRenderer( const QgsFeatur
 
     QString attr = categorizedRenderer->classAttribute();
     // categorizedAttr could be either an attribute name or an expression.
-    // the only way to differentiate is to test it as an expression...
-    QgsExpression testExpr( attr );
-    if ( testExpr.hasParserError() || ( testExpr.isField() && !attr.startsWith( '\"' ) ) )
+    bool isField = false;
+    if ( layer )
+    {
+      isField = QgsExpression::expressionToLayerFieldIndex( attr, layer ) != -1;
+    }
+    else
+    {
+      QgsExpression testExpr( attr );
+      isField = testExpr.hasParserError() || testExpr.isField();
+    }
+    if ( isField && !attr.contains( '\"' ) )
     {
       //not an expression, so need to quote column name
       attr = QgsExpression::quotedColumnRef( attr );
     }
 
-    std::unique_ptr< QgsRuleBasedRenderer::Rule > rootrule = qgis::make_unique< QgsRuleBasedRenderer::Rule >( nullptr );
+    std::unique_ptr< QgsRuleBasedRenderer::Rule > rootrule = std::make_unique< QgsRuleBasedRenderer::Rule >( nullptr );
 
     QString expression;
     QString value;
     QgsRendererCategory category;
     for ( const QgsRendererCategory &category : categorizedRenderer->categories() )
     {
-      std::unique_ptr< QgsRuleBasedRenderer::Rule > rule = qgis::make_unique< QgsRuleBasedRenderer::Rule >( nullptr );
+      std::unique_ptr< QgsRuleBasedRenderer::Rule > rule = std::make_unique< QgsRuleBasedRenderer::Rule >( nullptr );
 
       rule->setLabel( category.label() );
 
@@ -1409,7 +1498,7 @@ QgsRuleBasedRenderer *QgsRuleBasedRenderer::convertFromRenderer( const QgsFeatur
       rootrule->appendChild( rule.release() );
     }
 
-    r = qgis::make_unique< QgsRuleBasedRenderer >( rootrule.release() );
+    r = std::make_unique< QgsRuleBasedRenderer >( rootrule.release() );
   }
   else if ( renderer->type() == QLatin1String( "graduatedSymbol" ) )
   {
@@ -1420,26 +1509,35 @@ QgsRuleBasedRenderer *QgsRuleBasedRenderer::convertFromRenderer( const QgsFeatur
     QString attr = graduatedRenderer->classAttribute();
     // categorizedAttr could be either an attribute name or an expression.
     // the only way to differentiate is to test it as an expression...
-    QgsExpression testExpr( attr );
-    if ( testExpr.hasParserError() || ( testExpr.isField() && !attr.startsWith( '\"' ) ) )
+    bool isField = false;
+    if ( layer )
+    {
+      isField = QgsExpression::expressionToLayerFieldIndex( attr, layer ) != -1;
+    }
+    else
+    {
+      QgsExpression testExpr( attr );
+      isField = testExpr.hasParserError() || testExpr.isField();
+    }
+    if ( isField  && !attr.contains( '\"' ) )
     {
       //not an expression, so need to quote column name
       attr = QgsExpression::quotedColumnRef( attr );
     }
-    else if ( !testExpr.isField() )
+    else if ( !isField )
     {
       //otherwise wrap expression in brackets
       attr = QStringLiteral( "(%1)" ).arg( attr );
     }
 
-    std::unique_ptr< QgsRuleBasedRenderer::Rule > rootrule = qgis::make_unique< QgsRuleBasedRenderer::Rule >( nullptr );
+    std::unique_ptr< QgsRuleBasedRenderer::Rule > rootrule = std::make_unique< QgsRuleBasedRenderer::Rule >( nullptr );
 
     QString expression;
     QgsRendererRange range;
     for ( int i = 0; i < graduatedRenderer->ranges().size(); ++i )
     {
       range = graduatedRenderer->ranges().value( i );
-      std::unique_ptr< QgsRuleBasedRenderer::Rule > rule = qgis::make_unique< QgsRuleBasedRenderer::Rule >( nullptr );
+      std::unique_ptr< QgsRuleBasedRenderer::Rule > rule = std::make_unique< QgsRuleBasedRenderer::Rule >( nullptr );
       rule->setLabel( range.label() );
       if ( i == 0 )//The lower boundary of the first range is included, while it is excluded for the others
       {
@@ -1463,25 +1561,58 @@ QgsRuleBasedRenderer *QgsRuleBasedRenderer::convertFromRenderer( const QgsFeatur
       rootrule->appendChild( rule.release() );
     }
 
-    r = qgis::make_unique< QgsRuleBasedRenderer >( rootrule.release() );
+    r = std::make_unique< QgsRuleBasedRenderer >( rootrule.release() );
   }
   else if ( renderer->type() == QLatin1String( "pointDisplacement" ) || renderer->type() == QLatin1String( "pointCluster" ) )
   {
-    const QgsPointDistanceRenderer *pointDistanceRenderer = dynamic_cast<const QgsPointDistanceRenderer *>( renderer );
-    if ( pointDistanceRenderer )
+    if ( const QgsPointDistanceRenderer *pointDistanceRenderer = dynamic_cast<const QgsPointDistanceRenderer *>( renderer ) )
       return convertFromRenderer( pointDistanceRenderer->embeddedRenderer() );
   }
   else if ( renderer->type() == QLatin1String( "invertedPolygonRenderer" ) )
   {
-    const QgsInvertedPolygonRenderer *invertedPolygonRenderer = dynamic_cast<const QgsInvertedPolygonRenderer *>( renderer );
-    if ( invertedPolygonRenderer )
+    if ( const QgsInvertedPolygonRenderer *invertedPolygonRenderer = dynamic_cast<const QgsInvertedPolygonRenderer *>( renderer ) )
       r.reset( convertFromRenderer( invertedPolygonRenderer->embeddedRenderer() ) );
+  }
+  else if ( renderer->type() == QLatin1String( "mergedFeatureRenderer" ) )
+  {
+    if ( const QgsMergedFeatureRenderer *mergedRenderer = dynamic_cast<const QgsMergedFeatureRenderer *>( renderer ) )
+      r.reset( convertFromRenderer( mergedRenderer->embeddedRenderer() ) );
+  }
+  else if ( renderer->type() == QLatin1String( "embeddedSymbol" ) && layer )
+  {
+    const QgsEmbeddedSymbolRenderer *embeddedRenderer = dynamic_cast<const QgsEmbeddedSymbolRenderer *>( renderer );
+
+    std::unique_ptr< QgsRuleBasedRenderer::Rule > rootrule = std::make_unique< QgsRuleBasedRenderer::Rule >( nullptr );
+
+    QgsFeatureRequest req;
+    req.setFlags( QgsFeatureRequest::EmbeddedSymbols | QgsFeatureRequest::NoGeometry );
+    req.setNoAttributes();
+    QgsFeatureIterator it = layer->getFeatures( req );
+    QgsFeature feature;
+    while ( it.nextFeature( feature ) && rootrule->children().size() < 500 )
+    {
+      if ( feature.embeddedSymbol() )
+      {
+        std::unique_ptr< QgsRuleBasedRenderer::Rule > rule = std::make_unique< QgsRuleBasedRenderer::Rule >( nullptr );
+        rule->setFilterExpression( QStringLiteral( "$id=%1" ).arg( feature.id() ) );
+        rule->setLabel( QString::number( feature.id() ) );
+        rule->setSymbol( feature.embeddedSymbol()->clone() );
+        rootrule->appendChild( rule.release() );
+      }
+    }
+
+    std::unique_ptr< QgsRuleBasedRenderer::Rule > rule = std::make_unique< QgsRuleBasedRenderer::Rule >( nullptr );
+    rule->setFilterExpression( QStringLiteral( "ELSE" ) );
+    rule->setLabel( QObject::tr( "All other features" ) );
+    rule->setSymbol( embeddedRenderer->defaultSymbol()->clone() );
+    rootrule->appendChild( rule.release() );
+
+    r = std::make_unique< QgsRuleBasedRenderer >( rootrule.release() );
   }
 
   if ( r )
   {
-    r->setOrderBy( renderer->orderBy() );
-    r->setOrderByEnabled( renderer->orderByEnabled() );
+    renderer->copyRendererData( r.get() );
   }
 
   return r.release();
@@ -1492,7 +1623,7 @@ void QgsRuleBasedRenderer::convertToDataDefinedSymbology( QgsSymbol *symbol, con
   QString sizeExpression;
   switch ( symbol->type() )
   {
-    case QgsSymbol::Marker:
+    case Qgis::SymbolType::Marker:
       for ( int j = 0; j < symbol->symbolLayerCount(); ++j )
       {
         QgsMarkerSymbolLayer *msl = static_cast<QgsMarkerSymbolLayer *>( symbol->symbolLayer( j ) );
@@ -1507,7 +1638,7 @@ void QgsRuleBasedRenderer::convertToDataDefinedSymbology( QgsSymbol *symbol, con
         }
       }
       break;
-    case QgsSymbol::Line:
+    case Qgis::SymbolType::Line:
       if ( ! sizeScaleField.isEmpty() )
       {
         for ( int j = 0; j < symbol->symbolLayerCount(); ++j )

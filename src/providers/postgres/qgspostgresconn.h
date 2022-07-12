@@ -127,7 +127,7 @@ struct QgsPostgresLayerProperty
   {
     QString typeString;
     const auto constTypes = types;
-    for ( QgsWkbTypes::Type type : constTypes )
+    for ( const QgsWkbTypes::Type type : constTypes )
     {
       if ( !typeString.isEmpty() )
         typeString += '|';
@@ -135,7 +135,7 @@ struct QgsPostgresLayerProperty
     }
     QString sridString;
     const auto constSrids = srids;
-    for ( int srid : constSrids )
+    for ( const int srid : constSrids )
     {
       if ( !sridString.isEmpty() )
         sridString += '|';
@@ -200,6 +200,12 @@ class QgsPoolPostgresConn
     class QgsPostgresConn *get() const { return mPgConn; }
 };
 
+#include "qgsconfig.h"
+constexpr int sPostgresConQueryLogFilePrefixLength = CMAKE_SOURCE_DIR[sizeof( CMAKE_SOURCE_DIR ) - 1] == '/' ? sizeof( CMAKE_SOURCE_DIR ) + 1 : sizeof( CMAKE_SOURCE_DIR );
+#define LoggedPQexecNR(_class, query) PQexecNR( query, _class, QString(QString( __FILE__ ).mid( sPostgresConQueryLogFilePrefixLength ) + ':' + QString::number( __LINE__ ) + " (" + __FUNCTION__ + ")") )
+#define LoggedPQexec(_class, query) PQexec( query, true, true, _class, QString(QString( __FILE__ ).mid( sPostgresConQueryLogFilePrefixLength ) + ':' + QString::number( __LINE__ ) + " (" + __FUNCTION__ + ")") )
+#define LoggedPQexecNoLogError(_class, query ) PQexec( query, false, true, _class, QString(QString( __FILE__ ).mid( sPostgresConQueryLogFilePrefixLength ) + ':' + QString::number( __LINE__ ) + " (" + __FUNCTION__ + ")") )
+
 class QgsPostgresConn : public QObject
 {
     Q_OBJECT
@@ -211,6 +217,10 @@ class QgsPostgresConn : public QObject
      *        An assertion guards against such programmatic error.
      */
     static QgsPostgresConn *connectDb( const QString &connInfo, bool readOnly, bool shared = true, bool transaction = false );
+
+
+    QgsPostgresConn( const QString &conninfo, bool readOnly, bool shared, bool transaction );
+    ~QgsPostgresConn() override;
 
     void ref();
     void unref();
@@ -243,7 +253,7 @@ class QgsPostgresConn : public QObject
     int pgVersion() const { return mPostgresqlVersion; }
 
     //! run a query and free result buffer
-    bool PQexecNR( const QString &query );
+    bool PQexecNR( const QString &query, const QString &originatorClass = QString(), const QString &queryOrigin = QString() );
 
     //! cursor handling
     bool openCursor( const QString &cursorName, const QString &declare );
@@ -260,13 +270,13 @@ class QgsPostgresConn : public QObject
     //
 
     // run a query and check for errors, thread-safe
-    PGresult *PQexec( const QString &query, bool logError = true, bool retry = true ) const;
+    PGresult *PQexec( const QString &query, bool logError = true, bool retry = true, const QString &originatorClass = QString(), const QString &queryOrigin = QString() ) const;
     int PQCancel();
     void PQfinish();
     QString PQerrorMessage() const;
     int PQstatus() const;
-    PGresult *PQprepare( const QString &stmtName, const QString &query, int nParams, const Oid *paramTypes );
-    PGresult *PQexecPrepared( const QString &stmtName, const QStringList &params );
+    PGresult *PQprepare( const QString &stmtName, const QString &query, int nParams, const Oid *paramTypes, const QString &originatorClass = QString(), const QString &queryOrigin = QString() );
+    PGresult *PQexecPrepared( const QString &stmtName, const QStringList &params, const QString &originatorClass = QString(), const QString &queryOrigin = QString() );
 
     /**
      * PQsendQuery is used for asynchronous queries (with PQgetResult)
@@ -403,8 +413,6 @@ class QgsPostgresConn : public QObject
     void unlock() { mLock.unlock(); }
 
   private:
-    QgsPostgresConn( const QString &conninfo, bool readOnly, bool shared, bool transaction );
-    ~QgsPostgresConn() override;
 
     int mRef;
     int mOpenCursors;
@@ -476,7 +484,11 @@ class QgsPostgresConn : public QObject
 
     bool mTransaction;
 
-    mutable QMutex mLock;
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
+    mutable QMutex mLock { QMutex::Recursive };
+#else
+    mutable QRecursiveMutex mLock;
+#endif
 };
 
 // clazy:excludeall=qstring-allocations

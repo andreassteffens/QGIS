@@ -15,6 +15,7 @@ email                : matthias@opengis.ch
 
 #include <QButtonGroup>
 #include <QToolButton>
+#include <QPropertyAnimation>
 
 #include "qgsgeometryvalidationdock.h"
 #include "qgsgeometryvalidationmodel.h"
@@ -49,16 +50,13 @@ QgsGeometryValidationDock::QgsGeometryValidationDock( const QString &title, QgsM
   connect( mZoomToProblemButton, &QToolButton::clicked, this, &QgsGeometryValidationDock::zoomToProblem );
   connect( mZoomToFeatureButton, &QToolButton::clicked, this, &QgsGeometryValidationDock::zoomToFeature );
   connect( mMapCanvas, &QgsMapCanvas::currentLayerChanged, this, &QgsGeometryValidationDock::onCurrentLayerChanged );
-  connect( mMapCanvas, &QgsMapCanvas::currentLayerChanged, this, &QgsGeometryValidationDock::updateLayerTransform );
-  connect( mMapCanvas, &QgsMapCanvas::destinationCrsChanged, this, &QgsGeometryValidationDock::updateLayerTransform );
-  connect( mMapCanvas, &QgsMapCanvas::transformContextChanged, this, &QgsGeometryValidationDock::updateLayerTransform );
 
   mFeatureRubberband = new QgsRubberBand( mMapCanvas );
   mErrorRubberband = new QgsRubberBand( mMapCanvas );
   mErrorLocationRubberband = new QgsRubberBand( mMapCanvas );
   mGeometryErrorContextMenu = new QMenu( this );
 
-  double scaleFactor = mMapCanvas->fontMetrics().xHeight() * .4;
+  const double scaleFactor = mMapCanvas->fontMetrics().xHeight() * .4;
 
   mFeatureRubberband->setWidth( scaleFactor );
   mFeatureRubberband->setStrokeColor( QColor( 100, 255, 100, 100 ) );
@@ -74,7 +72,7 @@ QgsGeometryValidationDock::QgsGeometryValidationDock( const QString &title, QgsM
   mProblemDetailWidget->setVisible( false );
 
   // Some problem resolutions are unstable, show all of them only if the user opted in
-  bool showUnreliableResolutionMethods = QgsSettings().value( QStringLiteral( "geometry_validation/enable_problem_resolution" ) ).toString().compare( QLatin1String( "true" ), Qt::CaseInsensitive ) == 0;
+  const bool showUnreliableResolutionMethods = QgsSettings().value( QStringLiteral( "geometry_validation/enable_problem_resolution" ) ).toString().compare( QLatin1String( "true" ), Qt::CaseInsensitive ) == 0;
   mResolutionWidget->setVisible( showUnreliableResolutionMethods );
 }
 
@@ -118,8 +116,8 @@ void QgsGeometryValidationDock::zoomToProblem()
   if ( !currentIndex().isValid() )
     return;
 
-  QgsRectangle problemExtent = currentIndex().data( QgsGeometryValidationModel::ProblemExtentRole ).value<QgsRectangle>();
-  QgsRectangle mapExtent = mLayerTransform.transform( problemExtent );
+  const QgsRectangle problemExtent = currentIndex().data( QgsGeometryValidationModel::ProblemExtentRole ).value<QgsRectangle>();
+  QgsRectangle mapExtent = layerTransform().transform( problemExtent );
   mMapCanvas->zoomToFeatureExtent( mapExtent );
 }
 
@@ -129,20 +127,22 @@ void QgsGeometryValidationDock::zoomToFeature()
   if ( !currentIndex().isValid() )
     return;
 
-  QgsRectangle featureExtent = currentIndex().data( QgsGeometryValidationModel::FeatureExtentRole ).value<QgsRectangle>();
+  const QgsRectangle featureExtent = currentIndex().data( QgsGeometryValidationModel::FeatureExtentRole ).value<QgsRectangle>();
   if ( !featureExtent.isEmpty() )
   {
-    QgsRectangle mapExtent = mLayerTransform.transform( featureExtent );
+    QgsRectangle mapExtent = layerTransform().transform( featureExtent );
     mMapCanvas->zoomToFeatureExtent( mapExtent );
   }
 }
 
-void QgsGeometryValidationDock::updateLayerTransform()
+QgsCoordinateTransform QgsGeometryValidationDock::layerTransform() const
 {
   if ( !mMapCanvas->currentLayer() )
-    return;
+    return QgsCoordinateTransform();
 
-  mLayerTransform = QgsCoordinateTransform( mMapCanvas->currentLayer()->crs(), mMapCanvas->mapSettings().destinationCrs(), mMapCanvas->mapSettings().transformContext() );
+  return QgsCoordinateTransform( mMapCanvas->currentLayer()->crs(),
+                                 mMapCanvas->mapSettings().destinationCrs(),
+                                 mMapCanvas->mapSettings().transformContext() );
 }
 
 void QgsGeometryValidationDock::onDataChanged( const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles )
@@ -165,9 +165,9 @@ void QgsGeometryValidationDock::onRowsInserted()
 
 void QgsGeometryValidationDock::showErrorContextMenu( const QPoint &pos )
 {
-  bool showUnreliableResolutionMethods = QgsSettings().value( QStringLiteral( "geometry_validation/enable_problem_resolution" ) ).toString().compare( QLatin1String( "true" ), Qt::CaseInsensitive ) == 0;
+  const bool showUnreliableResolutionMethods = QgsSettings().value( QStringLiteral( "geometry_validation/enable_problem_resolution" ) ).toString().compare( QLatin1String( "true" ), Qt::CaseInsensitive ) == 0;
 
-  QModelIndex index = mErrorListView->indexAt( pos );
+  const QModelIndex index = mErrorListView->indexAt( pos );
   QgsGeometryCheckError *error = index.data( QgsGeometryValidationModel::GeometryCheckErrorRole ).value<QgsGeometryCheckError *>();
   if ( error )
   {
@@ -180,7 +180,7 @@ void QgsGeometryValidationDock::showErrorContextMenu( const QPoint &pos )
       {
         QAction *action = new QAction( resolutionMethod.name(), mGeometryErrorContextMenu );
         action->setToolTip( resolutionMethod.description() );
-        int fixId = resolutionMethod.id();
+        const int fixId = resolutionMethod.id();
         connect( action, &QAction::triggered, this, [ fixId, error, this ]()
         {
           mGeometryValidationService->fixError( error, fixId );
@@ -264,7 +264,7 @@ void QgsGeometryValidationDock::onCurrentErrorChanged( const QModelIndex &curren
         resolveLabel->setToolTip( resolutionMethod.description() );
         resolveLabel->setWordWrap( true );
         layout->addWidget( resolveLabel, resolutionIndex, 1 );
-        int fixId = resolutionMethod.id();
+        const int fixId = resolutionMethod.id();
         connect( resolveBtn, &QToolButton::clicked, this, [fixId, error, this]()
         {
           mGeometryValidationService->fixError( error, fixId );
@@ -278,7 +278,7 @@ void QgsGeometryValidationDock::onCurrentErrorChanged( const QModelIndex &curren
     }
   }
 
-  bool hasContextRectangle = !current.data( QgsGeometryValidationModel::FeatureExtentRole ).isNull();
+  const bool hasContextRectangle = !current.data( QgsGeometryValidationModel::FeatureExtentRole ).isNull();
   mZoomToFeatureButton->setEnabled( hasContextRectangle );
 }
 
@@ -327,7 +327,7 @@ void QgsGeometryValidationDock::onLayerEditingStatusChanged()
 {
   if ( mCurrentLayer && mCurrentLayer->isSpatial() && mCurrentLayer->isEditable() )
   {
-    const QList<QgsGeometryCheckFactory *> topologyCheckFactories = QgsAnalysis::instance()->geometryCheckRegistry()->geometryCheckFactories( mCurrentLayer, QgsGeometryCheck::LayerCheck, QgsGeometryCheck::Flag::AvailableInValidation );
+    const QList<QgsGeometryCheckFactory *> topologyCheckFactories = QgsAnalysis::geometryCheckRegistry()->geometryCheckFactories( mCurrentLayer, QgsGeometryCheck::LayerCheck, QgsGeometryCheck::Flag::AvailableInValidation );
     const QStringList activeChecks = mCurrentLayer->geometryOptions()->geometryChecks();
     for ( const QgsGeometryCheckFactory *factory : topologyCheckFactories )
     {
@@ -348,9 +348,9 @@ void QgsGeometryValidationDock::showHighlight( const QModelIndex &current )
   QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( mMapCanvas->currentLayer() );
   if ( vlayer )
   {
-    QgsGeometry featureGeometry = current.data( QgsGeometryValidationModel::FeatureGeometryRole ).value<QgsGeometry>();
-    QgsGeometry errorGeometry = current.data( QgsGeometryValidationModel::ErrorGeometryRole ).value<QgsGeometry>();
-    QgsPointXY locationGeometry = current.data( QgsGeometryValidationModel::ErrorLocationGeometryRole ).value<QgsPointXY>();
+    const QgsGeometry featureGeometry = current.data( QgsGeometryValidationModel::FeatureGeometryRole ).value<QgsGeometry>();
+    const QgsGeometry errorGeometry = current.data( QgsGeometryValidationModel::ErrorGeometryRole ).value<QgsGeometry>();
+    const QgsPointXY locationGeometry = current.data( QgsGeometryValidationModel::ErrorLocationGeometryRole ).value<QgsPointXY>();
 
     mFeatureRubberband->setToGeometry( featureGeometry );
 
@@ -384,6 +384,7 @@ void QgsGeometryValidationDock::showHighlight( const QModelIndex &current )
     errorAnimation->setDuration( 2000 );
     errorAnimation->start();
 
-    mErrorLocationRubberband->setToGeometry( QgsGeometry( qgis::make_unique<QgsPoint>( locationGeometry ) ) );
+    mErrorLocationRubberband->setToGeometry( QgsGeometry( std::make_unique<QgsPoint>( locationGeometry ) ) );
   }
 }
+

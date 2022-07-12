@@ -13,12 +13,12 @@
 
 class QgsProjectionSelectionTreeWidget : QWidget
 {
-%Docstring
+%Docstring(signature="appended")
 A widget for selecting a coordinate reference system from a tree.
 
 This widget implements a tree view of projections, as seen in the
-QgsProjectionSelectionDialog dialog. In most cases it is more
-suitable to use the compact QgsProjectionSelectionWidget widget.
+:py:class:`QgsProjectionSelectionDialog` dialog. In most cases it is more
+suitable to use the compact :py:class:`QgsProjectionSelectionWidget` widget.
 
 .. seealso:: :py:class:`QgsProjectionSelectionDialog`
 
@@ -60,7 +60,7 @@ option is selected, calling :py:func:`~QgsProjectionSelectionTreeWidget.crs` wil
 
     void setShowBoundsMap( bool show );
 %Docstring
-Sets whether to show the bounnds preview map.
+Sets whether to show the bounds preview map.
 
 .. seealso:: :py:func:`showBoundsMap`
 
@@ -147,9 +147,12 @@ by the given Coordinate Reference Systems.
    This function's behavior is undefined if it is called after the widget is shown.
 %End
 
-    void pushProjectionToFront();
+ void pushProjectionToFront() /Deprecated/;
 %Docstring
 Marks the current selected projection for push to front of recent projections list.
+
+.. deprecated::
+   Has no effect since QGIS 3.20
 %End
 
   signals:
@@ -171,6 +174,13 @@ Notifies others that the widget is now fully initialized, including deferred sel
 Emitted when a projection is double clicked in the list.
 
 .. versionadded:: 2.14
+%End
+
+    void hasValidSelectionChanged( bool isValid );
+%Docstring
+Emitted when the selection in the tree is changed from a valid selection to an invalid selection, or vice-versa.
+
+.. versionadded:: 3.18
 %End
 
   protected:

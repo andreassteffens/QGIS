@@ -12,7 +12,7 @@
 
 class QgsAuxiliaryLayer : QgsVectorLayer
 {
-%Docstring
+%Docstring(signature="appended")
 
 
 Class allowing to manage the auxiliary storage for a vector layer.
@@ -29,7 +29,7 @@ expression). But setting this up on an existing layer requires either to
 add new columns to the source layer, while it is not always possible or
 desirable.
 
-This QgsAuxiliaryLayer provides the solution to this limitation. Actually
+This :py:class:`QgsAuxiliaryLayer` provides the solution to this limitation. Actually
 it's an editable join to the original vector layer with some
 synchronisation mechanisms activated such as "Upsert On Edit" or "Delete
 Cascade". Thus, auxiliary fields are editable even if the
@@ -60,6 +60,7 @@ Constructor
     QString str = QStringLiteral( "<QgsAuxiliaryLayer: '%1'>" ).arg( sipCpp->name() );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
+
 
     QgsAuxiliaryLayer *clone( QgsVectorLayer *layer ) const /Factory/;
 %Docstring
@@ -170,26 +171,42 @@ Returns the property definition for the underlying field index.
 :param index: The index of the field
 %End
 
-    static int createProperty( QgsPalLayerSettings::Property property, QgsVectorLayer *vlayer );
+    static int createProperty( QgsPalLayerSettings::Property property, QgsVectorLayer *vlayer, bool overwriteExisting = true );
 %Docstring
 Creates if necessary a new auxiliary field for a PAL property and
 activates this property in settings.
 
 :param property: The property to create
 :param vlayer: The vector layer
+:param overwriteExisting: since QGIS 3.22, controls whether an existing property should be completely overwritten or upgraded to a coalesce("new aux field", 'existing' || 'property' || 'expression') type property
 
 :return: The index of the auxiliary field or -1
 %End
 
-    static int createProperty( QgsDiagramLayerSettings::Property property, QgsVectorLayer *vlayer );
+    static int createProperty( QgsDiagramLayerSettings::Property property, QgsVectorLayer *vlayer, bool overwriteExisting = true );
 %Docstring
 Creates if necessary a new auxiliary field for a diagram's property and
 activates this property in settings.
 
 :param property: The property to create
 :param vlayer: The vector layer
+:param overwriteExisting: since QGIS 3.22, controls whether an existing property should be completely overwritten or upgraded to a coalesce("new aux field", 'existing' || 'property' || 'expression') type property
 
 :return: The index of the auxiliary field or -1
+%End
+
+    static int createProperty( QgsCallout::Property property, QgsVectorLayer *vlayer, bool overwriteExisting = true );
+%Docstring
+Creates if necessary a new auxiliary field for a callout's property and
+activates this property in settings.
+
+:param property: The property to create
+:param vlayer: The vector layer
+:param overwriteExisting: since QGIS 3.22, controls whether an existing property should be completely overwritten or upgraded to a coalesce("new aux field", 'existing' || 'property' || 'expression') type property
+
+:return: The index of the auxiliary field or -1
+
+.. versionadded:: 3.20
 %End
 
     static QgsField createAuxiliaryField( const QgsPropertyDefinition &definition );
@@ -226,7 +243,7 @@ Returns the property definition from an auxiliary field.
 
 class QgsAuxiliaryStorage
 {
-%Docstring
+%Docstring(signature="appended")
 
 
 Class providing some utility methods to manage auxiliary storage.

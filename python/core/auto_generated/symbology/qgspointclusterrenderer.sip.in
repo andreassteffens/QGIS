@@ -11,7 +11,7 @@
 
 class QgsPointClusterRenderer: QgsPointDistanceRenderer
 {
-%Docstring
+%Docstring(signature="appended")
 A renderer that automatically clusters points with the same geographic position.
 
 .. versionadded:: 3.0
@@ -68,7 +68,7 @@ Creates a QgsPointClusterRenderer from an existing renderer.
   private:
     QgsPointClusterRenderer( const QgsPointClusterRenderer & );
     QgsPointClusterRenderer &operator=( const QgsPointClusterRenderer & );
-    virtual void drawGroup( QPointF centerPoint, QgsRenderContext &context, const QgsPointDistanceRenderer::ClusteredGroup &group );
+    virtual void drawGroup( QPointF centerPoint, QgsRenderContext &context, const QgsPointDistanceRenderer::ClusteredGroup &group ) const;
 
 };
 

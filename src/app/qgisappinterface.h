@@ -71,6 +71,7 @@ class APP_EXPORT QgisAppInterface : public QgisInterface
     QgsRasterLayer *addRasterLayer( const QString &url, const QString &baseName, const QString &providerKey ) override;
     QgsMeshLayer *addMeshLayer( const QString &url, const QString &baseName, const QString &providerKey ) override;
     QgsVectorTileLayer *addVectorTileLayer( const QString &url, const QString &baseName ) override;
+    QgsPointCloudLayer *addPointCloudLayer( const QString &url, const QString &baseName, const QString &providerKey ) override;
     bool addProject( const QString &projectName ) override;
     bool newProject( bool promptToSaveFlag = false ) override;
     void reloadConnections( ) override;
@@ -130,13 +131,15 @@ class APP_EXPORT QgisAppInterface : public QgisInterface
     void removePluginVectorMenu( const QString &name, QAction *action ) override;
     void addPluginToWebMenu( const QString &name, QAction *action ) override;
     void removePluginWebMenu( const QString &name, QAction *action ) override;
+    void addPluginToMeshMenu( const QString &name, QAction *action ) override;
+    void removePluginMeshMenu( const QString &name, QAction *action ) override;
     void insertAddLayerAction( QAction *action ) override;
     void removeAddLayerAction( QAction *action ) override;
     void addDockWidget( Qt::DockWidgetArea area, QDockWidget *dockwidget ) override;
     void addTabifiedDockWidget( Qt::DockWidgetArea area, QDockWidget *dockwidget, const QStringList &tabifyWith = QStringList(), bool raiseTab = false ) override;
     void removeDockWidget( QDockWidget *dockwidget ) override;
     QgsAdvancedDigitizingDockWidget *cadDockWidget() override;
-    void showLayerProperties( QgsMapLayer *l ) override;
+    void showLayerProperties( QgsMapLayer *l, const QString &page = QString() ) override;
     QDialog *showAttributeTable( QgsVectorLayer *l, const QString &filterExpression = QString() ) override;
     void addWindow( QAction *action ) override;
     void removeWindow( QAction *action ) override;
@@ -231,6 +234,7 @@ class APP_EXPORT QgisAppInterface : public QgisInterface
     QAction *actionMeasureArea() override;
     QAction *actionZoomFullExtent() override;
     QAction *actionZoomToLayer() override;
+    QAction *actionZoomToLayers() override;
     QAction *actionZoomToSelected() override;
     QAction *actionZoomLast() override;
     QAction *actionZoomNext() override;
@@ -246,6 +250,7 @@ class APP_EXPORT QgisAppInterface : public QgisInterface
     QAction *actionAddWmsLayer() override;
     QAction *actionAddXyzLayer() override;
     QAction *actionAddVectorTileLayer() override;
+    QAction *actionAddPointCloudLayer() override;
     QAction *actionAddAfsLayer() override;
     QAction *actionAddAmsLayer() override;
     QAction *actionCopyLayerStyle() override;
@@ -285,22 +290,6 @@ class APP_EXPORT QgisAppInterface : public QgisInterface
     QAction *actionQgisHomePage() override;
     QAction *actionCheckQgisVersion() override;
     QAction *actionAbout() override;
-    QAction *actionCircle2Points() override;
-    QAction *actionCircle3Points() override;
-    QAction *actionCircle3Tangents() override;
-    QAction *actionCircle2TangentsPoint() override;
-    QAction *actionCircleCenterPoint() override;
-    QAction *actionEllipseCenter2Points() override;
-    QAction *actionEllipseCenterPoint() override;
-    QAction *actionEllipseExtent() override;
-    QAction *actionEllipseFoci() override;
-    QAction *actionRectangleCenterPoint() override;
-    QAction *actionRectangleExtent() override;
-    QAction *actionRectangle3PointsDistance() override;
-    QAction *actionRectangle3PointsProjected() override;
-    QAction *actionRegularPolygon2Points() override;
-    QAction *actionRegularPolygonCenterPoint() override;
-    QAction *actionRegularPolygonCenterCorner() override;
 
     bool openFeatureForm( QgsVectorLayer *l, QgsFeature &f, bool updateFeatureOnly = false, bool showModal = true ) override;
     QgsAttributeDialog *getFeatureForm( QgsVectorLayer *layer, QgsFeature &feature ) override;
@@ -318,6 +307,7 @@ class APP_EXPORT QgisAppInterface : public QgisInterface
     QgsBrowserGuiModel *browserModel() override;
     QgsLayerTreeRegistryBridge::InsertionPoint layerTreeInsertionPoint() override;
     void setGpsPanelConnection( QgsGpsConnection *connection ) override;
+    QList<QgsMapDecoration *> activeDecorations() override;
 
   private slots:
 

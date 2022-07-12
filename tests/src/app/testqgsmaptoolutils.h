@@ -54,21 +54,21 @@ class TestQgsMapToolAdvancedDigitizingUtils
     QgsFeatureId newFeatureId( QSet<QgsFeatureId> oldFids = QSet<QgsFeatureId>() )
     {
       QSet<QgsFeatureId> newFids = existingFeatureIds();
-      QSet<QgsFeatureId> diffFids = newFids.subtract( oldFids );
+      const QSet<QgsFeatureId> diffFids = newFids.subtract( oldFids );
       Q_ASSERT( diffFids.count() == 1 );
       return *diffFids.constBegin();
     }
 
     QPoint mapToScreen( double mapX, double mapY )
     {
-      QgsPointXY pt = mMapTool->canvas()->mapSettings().mapToPixel().transform( mapX, mapY );
+      const QgsPointXY pt = mMapTool->canvas()->mapSettings().mapToPixel().transform( mapX, mapY );
       return QPoint( std::round( pt.x() ), std::round( pt.y() ) );
     }
 
     void mouseMove( double mapX, double mapY )
     {
       QgsMapMouseEvent e( mMapTool->canvas(), QEvent::MouseMove, mapToScreen( mapX, mapY ) );
-      mMapTool->cadCanvasMoveEvent( &e );
+      mMapTool->canvasMoveEvent( &e );
     }
 
     void mousePress( double mapX, double mapY, Qt::MouseButton button, Qt::KeyboardModifiers stateKey = Qt::KeyboardModifiers(), bool snap = false )
@@ -78,7 +78,7 @@ class TestQgsMapToolAdvancedDigitizingUtils
       if ( snap )
         e1.snapPoint();
 
-      mMapTool->cadCanvasPressEvent( &e1 );
+      mMapTool->canvasPressEvent( &e1 );
     }
 
     void mouseRelease( double mapX, double mapY, Qt::MouseButton button, Qt::KeyboardModifiers stateKey = Qt::KeyboardModifiers(), bool snap = false )
@@ -88,7 +88,7 @@ class TestQgsMapToolAdvancedDigitizingUtils
       if ( snap )
         e2.snapPoint();
 
-      mMapTool->cadCanvasReleaseEvent( &e2 );
+      mMapTool->canvasReleaseEvent( &e2 );
     }
 
     void mouseClick( double mapX, double mapY, Qt::MouseButton button, Qt::KeyboardModifiers stateKey = Qt::KeyboardModifiers(), bool snap = false )
@@ -97,12 +97,27 @@ class TestQgsMapToolAdvancedDigitizingUtils
       mouseRelease( mapX, mapY, button, stateKey, snap );
     }
 
-    void keyClick( int key, Qt::KeyboardModifiers stateKey = Qt::KeyboardModifiers() )
+    void mouseDoubleClick( double mapX, double mapY, Qt::MouseButton button, Qt::KeyboardModifiers stateKey = Qt::KeyboardModifiers(), bool snap = false )
     {
-      QKeyEvent e1( QEvent::KeyPress, key, stateKey );
+      // this is how Qt passes the events: 1. mouse press, 2. mouse release, 3. mouse double-click, 4. mouse release
+
+      mouseClick( mapX, mapY, button, stateKey, snap );
+
+      QgsMapMouseEvent e( mMapTool->canvas(), QEvent::MouseButtonDblClick, mapToScreen( mapX, mapY ), button, button, stateKey );
+      if ( snap )
+        e.snapPoint();
+      mMapTool->canvasDoubleClickEvent( &e );
+
+      mouseRelease( mapX, mapY, button, stateKey );
+    }
+
+
+    void keyClick( int key, Qt::KeyboardModifiers stateKey = Qt::KeyboardModifiers(), bool autoRepeat = false )
+    {
+      QKeyEvent e1( QEvent::KeyPress, key, stateKey, QString(), autoRepeat );
       mMapTool->keyPressEvent( &e1 );
 
-      QKeyEvent e2( QEvent::KeyRelease, key, stateKey );
+      QKeyEvent e2( QEvent::KeyRelease, key, stateKey, QString(), autoRepeat );
       mMapTool->keyReleaseEvent( &e2 );
     }
 
@@ -140,14 +155,14 @@ class TestQgsMapToolUtils
     QgsFeatureId newFeatureId( QSet<QgsFeatureId> oldFids = QSet<QgsFeatureId>() )
     {
       QSet<QgsFeatureId> newFids = existingFeatureIds();
-      QSet<QgsFeatureId> diffFids = newFids.subtract( oldFids );
+      const QSet<QgsFeatureId> diffFids = newFids.subtract( oldFids );
       Q_ASSERT( diffFids.count() == 1 );
       return *diffFids.constBegin();
     }
 
     QPoint mapToScreen( double mapX, double mapY )
     {
-      QgsPointXY pt = mMapTool->canvas()->mapSettings().mapToPixel().transform( mapX, mapY );
+      const QgsPointXY pt = mMapTool->canvas()->mapSettings().mapToPixel().transform( mapX, mapY );
       return QPoint( std::round( pt.x() ), std::round( pt.y() ) );
     }
 
@@ -165,6 +180,16 @@ class TestQgsMapToolUtils
         e1.snapPoint();
 
       mMapTool->canvasPressEvent( &e1 );
+    }
+
+    void mouseDoubleClick( double mapX, double mapY, Qt::MouseButton button, Qt::KeyboardModifiers stateKey = Qt::KeyboardModifiers(), bool snap = false )
+    {
+      QgsMapMouseEvent e1( mMapTool->canvas(), QEvent::MouseButtonPress, mapToScreen( mapX, mapY ), button, button, stateKey );
+
+      if ( snap )
+        e1.snapPoint();
+
+      mMapTool->canvasDoubleClickEvent( &e1 );
     }
 
     void mouseRelease( double mapX, double mapY, Qt::MouseButton button, Qt::KeyboardModifiers stateKey = Qt::KeyboardModifiers(), bool snap = false )

@@ -19,15 +19,15 @@ typedef QVector< QVector< QVector< QgsPoint > > > QgsCoordinateSequence;
 
 class QgsAbstractGeometry
 {
-%Docstring
+%Docstring(signature="appended")
 Abstract base class for all geometries
 
 .. note::
 
-   QgsAbstractGeometry objects are inherently Cartesian/planar geometries. They have no concept of geodesy, and none
-   of the methods or properties exposed from the QgsAbstractGeometry API (or QgsGeometry API) utilize
+   :py:class:`QgsAbstractGeometry` objects are inherently Cartesian/planar geometries. They have no concept of geodesy, and none
+   of the methods or properties exposed from the :py:class:`QgsAbstractGeometry` API (or :py:class:`QgsGeometry` API) utilize
    geodesic calculations. Accordingly, properties like :py:func:`~length` and :py:func:`~area` and spatial operations like :py:func:`~centroid`
-   are always calculated using strictly Cartesian mathematics. In contrast, the QgsDistanceArea class exposes
+   are always calculated using strictly Cartesian mathematics. In contrast, the :py:class:`QgsDistanceArea` class exposes
    methods for working with geodesic calculations and spatial operations on geometries,
    and should be used whenever calculations which account for the curvature of the Earth (or any other celestial body)
    are required.
@@ -104,6 +104,13 @@ Constructor for QgsAbstractGeometry.
 Clones the geometry by performing a deep copy
 %End
 
+    virtual int compareTo( const QgsAbstractGeometry *other ) const;
+%Docstring
+Comparator for sorting of geometry.
+
+.. versionadded:: 3.20
+%End
+
     virtual void clear() = 0;
 %Docstring
 Clears the geometry, ie reset it to a null geometry
@@ -170,6 +177,17 @@ For instance, a polygon geometry will have a boundary consisting of the linestri
 :return: boundary for geometry. May be ``None`` for some geometry types.
 
 .. versionadded:: 3.0
+%End
+
+    virtual void normalize() = 0;
+%Docstring
+Reorganizes the geometry into a normalized form (or "canonical" form).
+
+Polygon rings will be rearranged so that their starting vertex is the lower left and ring orientation follows the
+right hand rule, collections are ordered by geometry type, and other normalization techniques are applied. The
+resultant geometry will be geometrically equivalent to the original geometry.
+
+.. versionadded:: 3.20
 %End
 
 
@@ -300,7 +318,7 @@ Returns a KML representation of the geometry.
 
 
 
-    virtual void transform( const QgsCoordinateTransform &ct, QgsCoordinateTransform::TransformDirection d = QgsCoordinateTransform::ForwardTransform, bool transformZ = false ) throw( QgsCsException ) = 0;
+    virtual void transform( const QgsCoordinateTransform &ct, Qgis::TransformDirection d = Qgis::TransformDirection::Forward, bool transformZ = false ) throw( QgsCsException ) = 0;
 %Docstring
 Transforms the geometry using a coordinate transform
 
@@ -453,7 +471,7 @@ Returns the planar, 2-dimensional length of the geometry.
 
    QgsAbstractGeometry objects are inherently Cartesian/planar geometries, and the length
    returned by this method is calculated using strictly Cartesian mathematics. In contrast,
-   the QgsDistanceArea class exposes methods for calculating the lengths of geometries using
+   the :py:class:`QgsDistanceArea` class exposes methods for calculating the lengths of geometries using
    geodesic calculations which account for the curvature of the Earth (or any other
    celestial body).
 
@@ -470,7 +488,7 @@ Returns the planar, 2-dimensional perimeter of the geometry.
 
    QgsAbstractGeometry objects are inherently Cartesian/planar geometries, and the perimeter
    returned by this method is calculated using strictly Cartesian mathematics. In contrast,
-   the QgsDistanceArea class exposes methods for calculating the perimeters of geometries using
+   the :py:class:`QgsDistanceArea` class exposes methods for calculating the perimeters of geometries using
    geodesic calculations which account for the curvature of the Earth (or any other
    celestial body).
 
@@ -487,7 +505,7 @@ Returns the planar, 2-dimensional area of the geometry.
 
    QgsAbstractGeometry objects are inherently Cartesian/planar geometries, and the area
    returned by this method is calculated using strictly Cartesian mathematics. In contrast,
-   the QgsDistanceArea class exposes methods for calculating the areas of geometries using
+   the :py:class:`QgsDistanceArea` class exposes methods for calculating the areas of geometries using
    geodesic calculations which account for the curvature of the Earth (or any other
    celestial body).
 
@@ -523,6 +541,16 @@ Returns ``True`` if the geometry is empty
 Returns ``True`` if the geometry contains curved segments
 %End
 
+    virtual bool boundingBoxIntersects( const QgsRectangle &rectangle ) const /HoldGIL/;
+%Docstring
+Returns ``True`` if the bounding box of this geometry intersects with a ``rectangle``.
+
+Since this test only considers the bounding box of the geometry, is is very fast to
+calculate and handles invalid geometries.
+
+.. versionadded:: 3.20
+%End
+
     virtual QgsAbstractGeometry *segmentize( double tolerance = M_PI / 180., SegmentationToleranceType toleranceType = MaximumAngle ) const /Factory/;
 %Docstring
 Returns a version of the geometry without curves. Caller takes ownership of
@@ -535,7 +563,7 @@ the returned geometry.
     virtual QgsAbstractGeometry *toCurveType() const = 0 /Factory/;
 %Docstring
 Returns the geometry converted to the more generic curve type.
-E.g. :py:class:`QgsLineString` -> :py:class:`QgsCompoundCurve`, :py:class:`QgsPolygon` -> QgsCurvePolygon,
+E.g. :py:class:`QgsLineString` -> :py:class:`QgsCompoundCurve`, :py:class:`QgsPolygon` -> :py:class:`QgsCurvePolygon`,
 :py:class:`QgsMultiLineString` -> :py:class:`QgsMultiCurve`, :py:class:`QgsMultiPolygon` -> :py:class:`QgsMultiSurface`
 
 :return: the converted geometry. Caller takes ownership
@@ -693,18 +721,55 @@ Converts the geometry to a specified type.
 .. versionadded:: 2.14
 %End
 
-    virtual bool isValid( QString &error /Out/, int flags = 0 ) const = 0;
+    virtual const QgsAbstractGeometry *simplifiedTypeRef() const /HoldGIL/;
+%Docstring
+Returns a reference to the simplest lossless representation of this geometry,
+e.g. if the geometry is a multipart geometry type with a single member geometry,
+a reference to that part will be returned.
+
+This method employs the following logic:
+
+- For multipart geometries containing a single part only a direct reference to that part will be returned.
+- For compound curve geometries containing a single curve only a direct reference to that curve will be returned.
+
+This method returns a reference only, and does not involve any geometry cloning.
+
+.. note::
+
+   Ownership of the returned geometry is NOT transferred, and remains with the original
+   geometry object. Callers must take care to ensure that the original geometry object
+   exists for the lifespan of the returned object.
+
+.. versionadded:: 3.20
+%End
+
+    virtual bool isValid( QString &error /Out/, Qgis::GeometryValidityFlags flags = Qgis::GeometryValidityFlags() ) const = 0;
 %Docstring
 Checks validity of the geometry, and returns ``True`` if the geometry is valid.
 
 :param flags: indicates optional flags which control the type of validity checking performed
-              (corresponding to QgsGeometry.ValidityFlags).
+              (corresponding to Qgis.GeometryValidityFlags).
 
 :return: - ``True`` if geometry is valid
          - error: will be set to the validity error message
 
 
 .. versionadded:: 3.8
+%End
+
+    virtual bool transform( QgsAbstractGeometryTransformer *transformer, QgsFeedback *feedback = 0 ) = 0;
+%Docstring
+Transforms the vertices from the geometry in place, using the specified geometry ``transformer``
+object.
+
+Depending on the ``transformer`` used, this may result in an invalid geometry.
+
+The optional ``feedback`` argument can be used to cancel the transformation before it completes.
+If this is done, the geometry will be left in a semi-transformed state.
+
+:return: ``True`` if the geometry was successfully transformed.
+
+.. versionadded:: 3.18
 %End
 
 
@@ -767,6 +832,8 @@ Example
        for v in geometry.vertices():
            print(v.x(), v.y())
 
+
+
 .. seealso:: :py:func:`parts`
 
 .. versionadded:: 3.0
@@ -783,6 +850,28 @@ To create it, the geometry is default constructed and then the WKB is changed.
 %End
 
   protected:
+
+    int sortIndex() const;
+%Docstring
+Returns the sort index for the geometry, used in the :py:func:`~QgsAbstractGeometry.compareTo` method to compare
+geometries of different types.
+
+.. versionadded:: 3.20
+%End
+
+    virtual int compareToSameClass( const QgsAbstractGeometry *other ) const = 0;
+%Docstring
+Compares to an ``other`` geometry of the same class, and returns a integer
+for sorting of the two geometries.
+
+.. note::
+
+   The actual logic for the sorting is an internal detail only and is subject to change
+   between QGIS versions. The result should only be used for direct comparison of geometries
+   and not stored for later use.
+
+.. versionadded:: 3.20
+%End
 
     virtual bool hasChildGeometries() const;
 %Docstring
@@ -849,71 +938,11 @@ Clears any cached parameters associated with the geometry, e.g., bounding boxes
 };
 
 
-struct QgsVertexId
-{
-
-  enum VertexType
-  {
-    SegmentVertex,
-    CurveVertex,
-  };
-
-  explicit QgsVertexId( int _part = -1, int _ring = -1, int _vertex = -1, VertexType _type = SegmentVertex ) /HoldGIL/;
-%Docstring
-Constructor for QgsVertexId.
-%End
-
-  bool isValid() const  /HoldGIL/;
-%Docstring
-Returns ``True`` if the vertex id is valid
-%End
-
-  bool operator==( QgsVertexId other ) const /HoldGIL/;
-  bool operator!=( QgsVertexId other ) const /HoldGIL/;
-
-  bool partEqual( QgsVertexId o ) const /HoldGIL/;
-%Docstring
-Returns ``True`` if this vertex ID belongs to the same part as another vertex ID.
-%End
-
-  bool ringEqual( QgsVertexId o ) const /HoldGIL/;
-%Docstring
-Returns ``True`` if this vertex ID belongs to the same ring as another vertex ID (i.e. the part
-and ring number are equal).
-%End
-
-  bool vertexEqual( QgsVertexId o ) const /HoldGIL/;
-%Docstring
-Returns ``True`` if this vertex ID corresponds to the same vertex as another vertex ID (i.e. the part,
-ring number and vertex number are equal).
-%End
-
-  bool isValid( const QgsAbstractGeometry *geom ) const /HoldGIL/;
-%Docstring
-Returns ``True`` if this vertex ID is valid for the specified ``geom``.
-%End
-
-  int part;
-
-  int ring;
-
-  int vertex;
-
-  VertexType type;
-
-  SIP_PYOBJECT __repr__();
-%MethodCode
-  QString str = QStringLiteral( "<QgsVertexId: %1,%2,%3%4>" ).arg( sipCpp->part ).arg( sipCpp->ring ).arg( sipCpp->vertex ).arg( sipCpp->type == QgsVertexId::CurveVertex ? QStringLiteral( " CurveVertex" ) : QString() );
-  sipRes = PyUnicode_FromString( str.toUtf8().data() );
-%End
-
-};
-
 
 
 class QgsVertexIterator
 {
-%Docstring
+%Docstring(signature="appended")
 Java-style iterator for traversal of vertices of a geometry
 
 .. versionadded:: 3.0
@@ -960,7 +989,7 @@ Returns next vertex of the geometry (undefined behavior if :py:func:`~QgsVertexI
 
 class QgsGeometryPartIterator
 {
-%Docstring
+%Docstring(signature="appended")
 Java-style iterator for traversal of parts of a geometry
 
 .. versionadded:: 3.6
@@ -1008,7 +1037,7 @@ Returns next part of the geometry (undefined behavior if :py:func:`~QgsGeometryP
 
 class QgsGeometryConstPartIterator
 {
-%Docstring
+%Docstring(signature="appended")
 Java-style iterator for const traversal of parts of a geometry
 
 .. versionadded:: 3.6

@@ -279,6 +279,7 @@ class CORE_EXPORT QgsLayoutItemAttributeTable: public QgsLayoutTable
     bool getTableContents( QgsLayoutTableContents &contents ) override;
 
     QgsConditionalStyle conditionalCellStyle( int row, int column ) const override;
+    QgsTextFormat textFormatForCell( int row, int column ) const override;
     QgsExpressionContextScope *scopeForCell( int row, int column ) const override SIP_FACTORY;
 
     QgsExpressionContext createExpressionContext() const override;
@@ -357,6 +358,7 @@ class CORE_EXPORT QgsLayoutItemAttributeTable: public QgsLayoutTable
 
     QList< QList< QgsConditionalStyle > > mConditionalStyles;
     QList< QgsFeature > mFeatures;
+    QMap<QString, QVariant> mLayerCache;
 
     struct Cell
     {
@@ -393,7 +395,7 @@ class CORE_EXPORT QgsLayoutItemAttributeTable: public QgsLayoutTable
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
 
     /**
-     * Returns the list of visible columns filtered by the access control filter rules.
+     * Returns the list of visible columns filtered by feature filter provider.
      */
     QgsLayoutTableColumns filteredColumns( );
 #endif

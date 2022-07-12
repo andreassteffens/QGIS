@@ -16,35 +16,70 @@
  ***************************************************************************/
 
 #include "qgsmssqltablemodel.h"
+#include "qgsmssqlconnection.h"
 #include "qgsapplication.h"
-#include "qgsdataitem.h"
 #include "qgslogger.h"
 #include "qgsdatasourceuri.h"
+#include "qgsiconutils.h"
 
-QgsMssqlTableModel::QgsMssqlTableModel()
+QgsMssqlTableModel::QgsMssqlTableModel( QObject *parent )
+  : QgsAbstractDbTableModel( parent )
 {
-  QStringList headerLabels;
-  headerLabels << tr( "Schema" );
-  headerLabels << tr( "Table" );
-  headerLabels << tr( "Type" );
-  headerLabels << tr( "Geometry column" );
-  headerLabels << tr( "SRID" );
-  headerLabels << tr( "Primary key column" );
-  headerLabels << tr( "Select at id" );
-  headerLabels << tr( "Sql" );
-  setHorizontalHeaderLabels( headerLabels );
+  mColumns  << tr( "Schema" )
+            << tr( "Table" )
+            << tr( "Type" )
+            << tr( "Geometry column" )
+            << tr( "SRID" )
+            << tr( "Primary key column" )
+            << tr( "Select at id" )
+            << tr( "SQL" )
+            << tr( "View" );
+  setHorizontalHeaderLabels( mColumns );
+}
+
+QStringList QgsMssqlTableModel::columns() const
+{
+  return mColumns;
+}
+
+int QgsMssqlTableModel::defaultSearchColumn() const
+{
+  return static_cast<int>( DbtmTable );
+}
+
+bool QgsMssqlTableModel::searchableColumn( int column ) const
+{
+  Columns col = static_cast<Columns>( column );
+  switch ( col )
+  {
+    case DbtmSchema:
+    case DbtmTable:
+    case DbtmGeomCol:
+    case DbtmType:
+    case DbtmSrid:
+    case DbtmSql:
+      return true;
+
+    case DbtmPkCol:
+    case DbtmSelectAtId:
+    case DbtmView:
+      return false;
+  }
+
+  BUILTIN_UNREACHABLE
 }
 
 void QgsMssqlTableModel::addTableEntry( const QgsMssqlLayerProperty &layerProperty )
 {
-  QgsDebugMsg( QStringLiteral( "%1.%2.%3 type=%4 srid=%5 pk=%6 sql=%7" )
+  QgsDebugMsg( QStringLiteral( "%1.%2.%3 type=%4 srid=%5 pk=%6 sql=%7 view=%8" )
                .arg( layerProperty.schemaName,
                      layerProperty.tableName,
                      layerProperty.geometryColName,
                      layerProperty.type,
                      layerProperty.srid,
                      layerProperty.pkCols.join( ',' ),
-                     layerProperty.sql ) );
+                     layerProperty.sql,
+                     layerProperty.isView ? "yes" : "no" ) );
 
   // is there already a root item with the given scheme Name?
   QStandardItem *schemaItem = nullptr;
@@ -76,7 +111,7 @@ void QgsMssqlTableModel::addTableEntry( const QgsMssqlLayerProperty &layerProper
   QStandardItem *schemaNameItem = new QStandardItem( layerProperty.schemaName );
   schemaNameItem->setFlags( Qt::ItemIsEnabled | Qt::ItemIsSelectable );
 
-  QStandardItem *typeItem = new QStandardItem( iconForWkbType( wkbType ),
+  QStandardItem *typeItem = new QStandardItem( QgsIconUtils::iconForWkbType( wkbType ),
       needToDetect
       ? tr( "Detecting…" )
       : QgsWkbTypes::displayString( wkbType ) );
@@ -117,6 +152,9 @@ void QgsMssqlTableModel::addTableEntry( const QgsMssqlLayerProperty &layerProper
 
   QStandardItem *sqlItem = new QStandardItem( layerProperty.sql );
 
+  QStandardItem *isViewItem = new QStandardItem( layerProperty.isView ? tr( "yes" ) : tr( "no" ) );
+  isViewItem->setData( layerProperty.isView, Qt::UserRole + 1 );
+
   childItemList << schemaNameItem;
   childItemList << tableItem;
   childItemList << typeItem;
@@ -125,6 +163,7 @@ void QgsMssqlTableModel::addTableEntry( const QgsMssqlLayerProperty &layerProper
   childItemList << pkItem;
   childItemList << selItem;
   childItemList << sqlItem;
+  childItemList << isViewItem;
 
   bool detailsFromThread = needToDetect ||
                            ( wkbType != QgsWkbTypes::NoGeometry && layerProperty.srid.isEmpty() );
@@ -211,8 +250,13 @@ void QgsMssqlTableModel::setSql( const QModelIndex &index, const QString &sql )
 
 void QgsMssqlTableModel::setGeometryTypesForTable( QgsMssqlLayerProperty layerProperty )
 {
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
   QStringList typeList = layerProperty.type.split( ',', QString::SkipEmptyParts );
   QStringList sridList = layerProperty.srid.split( ',', QString::SkipEmptyParts );
+#else
+  QStringList typeList = layerProperty.type.split( ',', Qt::SkipEmptyParts );
+  QStringList sridList = layerProperty.srid.split( ',', Qt::SkipEmptyParts );
+#endif
   Q_ASSERT( typeList.size() == sridList.size() );
 
   //find schema item and table item
@@ -236,9 +280,9 @@ void QgsMssqlTableModel::setGeometryTypesForTable( QgsMssqlLayerProperty layerPr
     }
 
     QList<QStandardItem *> row;
-    row.reserve( DbtmColumns );
+    row.reserve( columnCount() );
 
-    for ( int j = 0; j < DbtmColumns; j++ )
+    for ( int j = 0; j < columnCount(); j++ )
     {
       row << itemFromIndex( currentChildIndex.sibling( i, j ) );
     }
@@ -266,8 +310,8 @@ void QgsMssqlTableModel::setGeometryTypesForTable( QgsMssqlLayerProperty layerPr
         // update existing row
         QgsWkbTypes::Type wkbType = QgsMssqlTableModel::wkbTypeFromMssql( typeList.at( 0 ) );
 
-        row[ DbtmType ]->setIcon( iconForWkbType( wkbType ) );
-        row[ DbtmType ]->setText( QgsWkbTypes::displayString( wkbType ) );
+        row[ DbtmType ]->setIcon( QgsIconUtils::iconForWkbType( wkbType ) );
+        row[ DbtmType ]->setText( QgsWkbTypes::translatedDisplayString( wkbType ) );
         row[ DbtmType ]->setData( false, Qt::UserRole + 1 );
         row[ DbtmType ]->setData( wkbType, Qt::UserRole + 2 );
 
@@ -277,7 +321,7 @@ void QgsMssqlTableModel::setGeometryTypesForTable( QgsMssqlLayerProperty layerPr
         if ( layerProperty.pkCols.size() < 2 )
           flags |= Qt::ItemIsSelectable;
 
-        for ( QStandardItem *item : qgis::as_const( row ) )
+        for ( QStandardItem *item : std::as_const( row ) )
         {
           item->setFlags( item->flags() | flags );
         }
@@ -291,24 +335,6 @@ void QgsMssqlTableModel::setGeometryTypesForTable( QgsMssqlLayerProperty layerPr
       }
     }
   }
-}
-
-QIcon QgsMssqlTableModel::iconForWkbType( QgsWkbTypes::Type type )
-{
-  switch ( QgsWkbTypes::geometryType( type ) )
-  {
-    case QgsWkbTypes::PointGeometry:
-      return QgsApplication::getThemeIcon( QStringLiteral( "/mIconPointLayer.svg" ) );
-    case QgsWkbTypes::LineGeometry:
-      return QgsApplication::getThemeIcon( QStringLiteral( "/mIconLineLayer.svg" ) );
-    case QgsWkbTypes::PolygonGeometry:
-      return QgsApplication::getThemeIcon( QStringLiteral( "/mIconPolygonLayer.svg" ) );
-    case QgsWkbTypes::NullGeometry:
-      return QgsApplication::getThemeIcon( QStringLiteral( "/mIconTableLayer.svg" ) );
-    case QgsWkbTypes::UnknownGeometry:
-      break;
-  }
-  return QgsApplication::getThemeIcon( QStringLiteral( "/mIconLayer.png" ) );
 }
 
 bool QgsMssqlTableModel::setData( const QModelIndex &idx, const QVariant &value, int role )
@@ -329,7 +355,7 @@ bool QgsMssqlTableModel::setData( const QModelIndex &idx, const QVariant &value,
     if ( ok && !pkCols.isEmpty() )
       ok = pkCols.contains( idx.sibling( idx.row(), DbtmPkCol ).data().toString() );
 
-    for ( int i = 0; i < DbtmColumns; i++ )
+    for ( int i = 0; i < columnCount(); i++ )
     {
       QStandardItem *item = itemFromIndex( idx.sibling( idx.row(), i ) );
       if ( ok )
@@ -388,6 +414,16 @@ QString QgsMssqlTableModel::layerURI( const QModelIndex &index, const QString &c
 
   uri.setParam( QStringLiteral( "disableInvalidGeometryHandling" ), disableInvalidGeometryHandling ? QStringLiteral( "1" ) : QStringLiteral( "0" ) );
 
+  if ( QgsMssqlConnection::geometryColumnsOnly( mConnectionName ) )
+  {
+    uri.setParam( QStringLiteral( "extentInGeometryColumns" ), QgsMssqlConnection::extentInGeometryColumns( mConnectionName ) ? QStringLiteral( "1" ) : QStringLiteral( "0" ) );
+  }
+
+  QStandardItem *isViewItem = itemFromIndex( index.sibling( index.row(), DbtmView ) );
+
+  if ( isViewItem->data( Qt::UserRole + 1 ).toBool() )
+    uri.setParam( QStringLiteral( "primaryKeyInGeometryColumns" ), QgsMssqlConnection::primaryKeyInGeometryColumns( mConnectionName ) ? QStringLiteral( "1" ) : QStringLiteral( "0" ) );
+
   return uri.uri();
 }
 
@@ -395,4 +431,9 @@ QgsWkbTypes::Type QgsMssqlTableModel::wkbTypeFromMssql( QString type )
 {
   type = type.toUpper();
   return QgsWkbTypes::parseType( type );
+}
+
+void QgsMssqlTableModel::setConnectionName( const QString &connectionName )
+{
+  mConnectionName = connectionName;
 }

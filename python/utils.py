@@ -25,8 +25,10 @@ __copyright__ = '(C) 2009, Martin Dobias'
 QGIS utilities module
 
 """
+from typing import List, Dict, Optional
 
-from qgis.PyQt.QtCore import QCoreApplication, QLocale, QThread, qDebug
+from qgis.PyQt.QtCore import QCoreApplication, QLocale, QThread, qDebug, QUrl
+from qgis.PyQt.QtGui import QDesktopServices
 from qgis.PyQt.QtWidgets import QPushButton, QApplication
 from qgis.core import Qgis, QgsMessageLog, qgsfunction, QgsMessageOutput
 from qgis.gui import QgsMessageBar
@@ -263,31 +265,118 @@ def findPlugins(path):
         yield (pluginName, cp)
 
 
-def metadataParser():
+def metadataParser() -> dict:
     """Used by other modules to access the local parser object"""
     return plugins_metadata_parser
 
 
-def updateAvailablePlugins():
+def updateAvailablePlugins(sort_by_dependencies=False):
     """ Go through the plugin_paths list and find out what plugins are available. """
     # merge the lists
     plugins = []
     metadata_parser = {}
+    plugin_name_map = {}
     for pluginpath in plugin_paths:
-        for pluginName, parser in findPlugins(pluginpath):
+        for plugin_id, parser in findPlugins(pluginpath):
             if parser is None:
                 continue
-            if pluginName not in plugins:
-                plugins.append(pluginName)
-                metadata_parser[pluginName] = parser
+            if plugin_id not in plugins:
+                plugins.append(plugin_id)
+                metadata_parser[plugin_id] = parser
+                plugin_name_map[parser.get('general', 'name')] = plugin_id
 
-    global available_plugins
-    available_plugins = plugins
     global plugins_metadata_parser
     plugins_metadata_parser = metadata_parser
 
+    global available_plugins
+    available_plugins = _sortAvailablePlugins(plugins, plugin_name_map) if sort_by_dependencies else plugins
 
-def pluginMetadata(packageName, fct):
+
+def _sortAvailablePlugins(plugins: List[str], plugin_name_map: Dict[str, str]) -> List[str]:
+    """Place dependent plugins after their dependencies
+
+    1. Make a copy of plugins list to modify it.
+    2. Get a plugin dependencies dict.
+    3. Iterate plugins and leave the real work to _move_plugin()
+
+    :param list plugins: List of available plugin ids
+    :param dict plugin_name_map: Map of plugin_names and plugin_ids, because
+                                 get_plugin_deps() only returns plugin names
+    :return: List of plugins sorted by dependencies.
+    """
+    sorted_plugins = plugins.copy()
+    visited_plugins = []
+
+    deps = {}
+    for plugin in plugins:
+        deps[plugin] = [plugin_name_map.get(dep, '') for dep in get_plugin_deps(plugin)]
+
+    for plugin in plugins:
+        _move_plugin(plugin, deps, visited_plugins, sorted_plugins)
+
+    return sorted_plugins
+
+
+def _move_plugin(plugin: str, deps: Dict[str, List[str]], visited: List[str], sorted_plugins: List[str]):
+    """Use recursion to move a plugin after its dependencies in a list of
+    sorted plugins.
+
+    Notes:
+    This function modifies both visited and sorted_plugins lists.
+    This function will not get trapped in circular dependencies. We avoid a
+    maximum recursion error by calling return when revisiting a plugin.
+    Therefore, if a plugin A depends on B and B depends on A, the order will
+    work in one direction (e.g., A depends on B), but the other direction won't
+    be satisfied. After all, a circular plugin dependency should not exist.
+
+    :param str plugin: Id of the plugin that should be moved in sorted_plugins.
+    :param dict deps: Dictionary of plugin dependencies.
+    :param list visited: List of plugins already visited.
+    :param list sorted_plugins: List of plugins to be modified and sorted.
+    """
+    if plugin in visited:
+        return
+    elif plugin not in deps or not deps[plugin]:
+        visited.append(plugin)  # Plugin with no dependencies
+    else:
+        visited.append(plugin)
+
+        # First move dependencies
+        for dep in deps[plugin]:
+            _move_plugin(dep, deps, visited, sorted_plugins)
+
+        # Remove current plugin from sorted
+        # list to get dependency indices
+        max_index = sorted_plugins.index(plugin)
+        sorted_plugins.pop(max_index)
+
+        for dep in deps[plugin]:
+            idx = sorted_plugins.index(dep) + 1 if dep in sorted_plugins else -1
+            max_index = max(idx, max_index)
+
+        # Finally, insert after dependencies
+        sorted_plugins.insert(max_index, plugin)
+
+
+def get_plugin_deps(plugin_id: str) -> Dict[str, Optional[str]]:
+    result = {}
+    try:
+        parser = plugins_metadata_parser[plugin_id]
+        plugin_deps = parser.get('general', 'plugin_dependencies')
+    except (configparser.NoOptionError, configparser.NoSectionError, KeyError):
+        return result
+
+    for dep in plugin_deps.split(','):
+        if dep.find('==') > 0:
+            name, version_required = dep.split('==')
+        else:
+            name = dep
+            version_required = None
+        result[name] = version_required
+    return result
+
+
+def pluginMetadata(packageName: str, fct: str) -> str:
     """ fetch metadata from a plugin - use values from metadata.txt """
     try:
         return plugins_metadata_parser[packageName].get('general', fct)
@@ -295,7 +384,7 @@ def pluginMetadata(packageName, fct):
         return "__error__"
 
 
-def loadPlugin(packageName):
+def loadPlugin(packageName: str) -> bool:
     """ load plugin's package """
 
     try:
@@ -317,7 +406,7 @@ def loadPlugin(packageName):
         return False
 
 
-def _startPlugin(packageName):
+def _startPlugin(packageName: str) -> bool:
     """ initializes a plugin, but does not load GUI """
     global plugins, active_plugins, iface, plugin_times
 
@@ -341,13 +430,13 @@ def _startPlugin(packageName):
     return True
 
 
-def _addToActivePlugins(packageName, duration):
+def _addToActivePlugins(packageName: str, duration: int):
     """ Adds a plugin to the list of active plugins """
     active_plugins.append(packageName)
     plugin_times[packageName] = "{0:02f}s".format(duration)
 
 
-def startPlugin(packageName):
+def startPlugin(packageName: str) -> bool:
     """ initialize the plugin """
     global plugins, active_plugins, iface, plugin_times
     start = time.process_time()
@@ -370,7 +459,7 @@ def startPlugin(packageName):
     return True
 
 
-def startProcessingPlugin(packageName):
+def startProcessingPlugin(packageName: str) -> bool:
     """ initialize only the Processing components of a plugin """
     global plugins, active_plugins, iface, plugin_times
     start = time.process_time()
@@ -401,7 +490,7 @@ def startProcessingPlugin(packageName):
     return True
 
 
-def canUninstallPlugin(packageName):
+def canUninstallPlugin(packageName: str) -> bool:
     """ confirm that the plugin can be uninstalled """
     global plugins, active_plugins
 
@@ -421,7 +510,7 @@ def canUninstallPlugin(packageName):
         return True
 
 
-def unloadPlugin(packageName):
+def unloadPlugin(packageName: str) -> bool:
     """ unload and delete plugin! """
     global plugins, active_plugins
 
@@ -442,7 +531,7 @@ def unloadPlugin(packageName):
         return False
 
 
-def _unloadPluginModules(packageName):
+def _unloadPluginModules(packageName: str):
     """ unload plugin package with all its modules (files) """
     global _plugin_modules
     mods = _plugin_modules[packageName]
@@ -479,7 +568,7 @@ def _unloadPluginModules(packageName):
     del _plugin_modules[packageName]
 
 
-def isPluginLoaded(packageName):
+def isPluginLoaded(packageName: str) -> bool:
     """ find out whether a plugin is active (i.e. has been started) """
     global plugins, active_plugins
 
@@ -488,19 +577,25 @@ def isPluginLoaded(packageName):
     return (packageName in active_plugins)
 
 
-def reloadPlugin(packageName):
+def reloadPlugin(packageName: str) -> bool:
     """ unload and start again a plugin """
     global active_plugins
     if packageName not in active_plugins:
-        return  # it's not active
+        return False  # it's not active
 
     unloadPlugin(packageName)
     loadPlugin(packageName)
-    startPlugin(packageName)
+    started = startPlugin(packageName)
+    return started
 
 
-def showPluginHelp(packageName=None, filename="index", section=""):
-    """ show a help in the user's html browser. The help file should be named index-ll_CC.html or index-ll.html"""
+def showPluginHelp(packageName: str = None, filename: str = "index", section: str = ""):
+    """Open help in the user's html browser. The help file should be named index-ll_CC.html or index-ll.html or index.html.
+
+    :param str packageName: name of package folder, if None it's using the current file package. Defaults to None. Optional.
+    :param str filename: name of file to open. It can be a path like 'doc/index' for example. Defaults to 'index'.
+    :param str section: URL path to open. Defaults to empty string.
+    """
     try:
         source = ""
         if packageName is None:
@@ -526,10 +621,10 @@ def showPluginHelp(packageName=None, filename="index", section=""):
         url = "file://" + helpfile
         if section != "":
             url = url + "#" + section
-        iface.openURL(url, False)
+        QDesktopServices.openUrl(QUrl.fromLocalFile(url))
 
 
-def pluginDirectory(packageName):
+def pluginDirectory(packageName: str) -> str:
     """ return directory where the plugin resides. Plugin must be loaded already """
     return os.path.dirname(sys.modules[packageName].__file__)
 
@@ -616,7 +711,7 @@ def initServerInterface(pointer):
     serverIface = wrapinstance(pointer, QgsServerInterface)
 
 
-def startServerPlugin(packageName):
+def startServerPlugin(packageName: str):
     """ initialize the plugin """
     global server_plugins, server_active_plugins, serverIface
 
@@ -792,7 +887,7 @@ def _import(name, globals={}, locals={}, fromlist=[], level=None):
 
     mod = _builtin_import(name, globals, locals, fromlist, level)
 
-    if mod and '__file__' in mod.__dict__:
+    if mod and getattr(mod, '__file__', None):
         module_name = mod.__name__ if fromlist else name
         package_name = module_name.split('.')[0]
         # check whether the module belongs to one of our plugins
@@ -817,30 +912,63 @@ if not os.environ.get('QGIS_NO_OVERRIDE_IMPORT'):
         __builtin__.__import__ = _import
 
 
-def run_script_from_file(filepath):
+def processing_algorithm_from_script(filepath: str):
     """
-    Runs a Python script from a given file. Supports loading processing scripts.
-    :param filepath: The .py file to load.
+    Tries to import a Python processing algorithm from given file, and returns an instance
+    of the algorithm
     """
     import sys
     import inspect
     from qgis.processing import alg
     try:
         from qgis.core import QgsApplication, QgsProcessingAlgorithm, QgsProcessingFeatureBasedAlgorithm
-        from qgis.processing import execAlgorithmDialog
         _locals = {}
-        exec(open(filepath.replace("\\\\", "/").encode(sys.getfilesystemencoding())).read(), _locals)
-        alginstance = None
+        with open(filepath.replace("\\\\", "/").encode(sys.getfilesystemencoding())) as input_file:
+            exec(input_file.read(), _locals)
+        alg_instance = None
         try:
-            alginstance = alg.instances.pop().createInstance()
+            alg_instance = alg.instances.pop().createInstance()
         except IndexError:
             for name, attr in _locals.items():
                 if inspect.isclass(attr) and issubclass(attr, (QgsProcessingAlgorithm, QgsProcessingFeatureBasedAlgorithm)) and attr.__name__ not in ("QgsProcessingAlgorithm", "QgsProcessingFeatureBasedAlgorithm"):
-                    alginstance = attr()
+                    alg_instance = attr()
                     break
-        if alginstance:
-            alginstance.setProvider(QgsApplication.processingRegistry().providerById("script"))
-            alginstance.initAlgorithm()
-            execAlgorithmDialog(alginstance)
+        if alg_instance:
+            script_provider = QgsApplication.processingRegistry().providerById("script")
+            alg_instance.setProvider(script_provider)
+            alg_instance.initAlgorithm()
+            return alg_instance
     except ImportError:
         pass
+
+    return None
+
+
+def import_script_algorithm(filepath: str) -> Optional[str]:
+    """
+    Imports a script algorithm from given file to the processing script provider, and returns the
+    ID of the imported algorithm
+    """
+    alg_instance = processing_algorithm_from_script(filepath)
+    if alg_instance:
+        from qgis.core import QgsApplication
+        script_provider = QgsApplication.processingRegistry().providerById("script")
+        script_provider.add_algorithm_class(type(alg_instance))
+        return alg_instance.id()
+
+    return None
+
+
+def run_script_from_file(filepath: str):
+    """
+    Runs a Python script from a given file. Supports loading processing scripts.
+    :param filepath: The .py file to load.
+    """
+    try:
+        from qgis.processing import execAlgorithmDialog
+    except ImportError:
+        return
+
+    alg_instance = processing_algorithm_from_script(filepath)
+    if alg_instance:
+        execAlgorithmDialog(alg_instance)

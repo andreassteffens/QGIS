@@ -29,16 +29,20 @@
 #include "qgsexpressioncontextutils.h"
 #include "qgsgui.h"
 #include "qgscolordialog.h"
+#include "qgsfillsymbol.h"
+#include "qgslinesymbol.h"
+#include "qgsmarkersymbol.h"
 
 #include <QMenu>
 #include <QClipboard>
 #include <QDrag>
+#include <QBuffer>
 
 QgsSymbolButton::QgsSymbolButton( QWidget *parent, const QString &dialogTitle )
   : QToolButton( parent )
   , mDialogTitle( dialogTitle.isEmpty() ? tr( "Symbol Settings" ) : dialogTitle )
 {
-  mSymbol.reset( QgsFillSymbol::createSimple( QgsStringMap() ) );
+  mSymbol.reset( QgsFillSymbol::createSimple( QVariantMap() ) );
 
   setAcceptDrops( true );
   connect( this, &QAbstractButton::clicked, this, &QgsSymbolButton::showSettingsDialog );
@@ -50,10 +54,12 @@ QgsSymbolButton::QgsSymbolButton( QWidget *parent, const QString &dialogTitle )
   setPopupMode( QToolButton::MenuButtonPopup );
 
   //make sure height of button looks good under different platforms
-  QSize size = QToolButton::minimumSizeHint();
-  int fontHeight = static_cast< int >( Qgis::UI_SCALE_FACTOR * fontMetrics().height() * 1.4 );
+  const QSize size = QToolButton::minimumSizeHint();
+  const int fontHeight = static_cast< int >( Qgis::UI_SCALE_FACTOR * fontMetrics().height() * 1.4 );
   mSizeHint = QSize( size.width(), std::max( size.height(), fontHeight ) );
 }
+
+QgsSymbolButton::~QgsSymbolButton() = default;
 
 QSize QgsSymbolButton::minimumSizeHint() const
 {
@@ -66,25 +72,25 @@ QSize QgsSymbolButton::sizeHint() const
   return mSizeHint;
 }
 
-void QgsSymbolButton::setSymbolType( QgsSymbol::SymbolType type )
+void QgsSymbolButton::setSymbolType( Qgis::SymbolType type )
 {
   if ( type != mType )
   {
     switch ( type )
     {
-      case QgsSymbol::Marker:
-        mSymbol.reset( QgsMarkerSymbol::createSimple( QgsStringMap() ) );
+      case Qgis::SymbolType::Marker:
+        mSymbol.reset( QgsMarkerSymbol::createSimple( QVariantMap() ) );
         break;
 
-      case QgsSymbol::Line:
-        mSymbol.reset( QgsLineSymbol::createSimple( QgsStringMap() ) );
+      case Qgis::SymbolType::Line:
+        mSymbol.reset( QgsLineSymbol::createSimple( QVariantMap() ) );
         break;
 
-      case QgsSymbol::Fill:
-        mSymbol.reset( QgsFillSymbol::createSimple( QgsStringMap() ) );
+      case Qgis::SymbolType::Fill:
+        mSymbol.reset( QgsFillSymbol::createSimple( QVariantMap() ) );
         break;
 
-      case QgsSymbol::Hybrid:
+      case Qgis::SymbolType::Hybrid:
         break;
     }
   }
@@ -101,7 +107,29 @@ void QgsSymbolButton::showSettingsDialog()
   {
     context.appendScopes( QgsExpressionContextUtils::globalProjectLayerScopes( mLayer.data() ) );
   }
-  QgsSymbol *newSymbol = mSymbol->clone();
+
+  QgsSymbol *newSymbol = nullptr;
+  if ( mSymbol )
+  {
+    newSymbol = mSymbol->clone();
+  }
+  else
+  {
+    switch ( mType )
+    {
+      case Qgis::SymbolType::Marker:
+        newSymbol = QgsSymbol::defaultSymbol( QgsWkbTypes::PointGeometry );
+        break;
+      case Qgis::SymbolType::Line:
+        newSymbol = QgsSymbol::defaultSymbol( QgsWkbTypes::LineGeometry );
+        break;
+      case Qgis::SymbolType::Fill:
+        newSymbol = QgsSymbol::defaultSymbol( QgsWkbTypes::PolygonGeometry );
+        break;
+      case Qgis::SymbolType::Hybrid:
+        break;
+    }
+  }
 
   QgsSymbolWidgetContext symbolContext;
   symbolContext.setExpressionContext( &context );
@@ -196,6 +224,9 @@ void QgsSymbolButton::setSymbol( QgsSymbol *symbol )
 
 void QgsSymbolButton::setColor( const QColor &color )
 {
+  if ( !mSymbol )
+    return;
+
   QColor opaque = color;
   opaque.setAlphaF( 1.0 );
 
@@ -357,6 +388,58 @@ void QgsSymbolButton::dropEvent( QDropEvent *e )
   updatePreview();
 }
 
+void QgsSymbolButton::wheelEvent( QWheelEvent *event )
+{
+  if ( isEnabled() && mSymbol )
+  {
+    bool symbolChanged = false;
+    const double increment = ( ( event->modifiers() & Qt::ControlModifier ) ? 0.1 : 1 ) *
+                             ( event->angleDelta().y() > 0 ? 1 : -1 );
+    switch ( mSymbol->type() )
+    {
+      case Qgis::SymbolType::Marker:
+      {
+        QgsMarkerSymbol *marker = qgis::down_cast<QgsMarkerSymbol *>( mSymbol.get() );
+        if ( marker )
+        {
+          const double size = std::max( 0.0, marker->size() + increment );
+          marker->setSize( size );
+          symbolChanged = true;
+        }
+        break;
+      }
+
+      case Qgis::SymbolType::Line:
+      {
+        QgsLineSymbol *line = qgis::down_cast<QgsLineSymbol *>( mSymbol.get() );
+        if ( line )
+        {
+          const double width = std::max( 0.0, line->width() + increment );
+          line->setWidth( width );
+          symbolChanged = true;
+        }
+        break;
+      }
+
+      case Qgis::SymbolType::Fill:
+      case Qgis::SymbolType::Hybrid:
+        break;
+    }
+
+    if ( symbolChanged )
+    {
+      updatePreview();
+      emit changed();
+    }
+
+    event->accept();
+  }
+  else
+  {
+    QToolButton::wheelEvent( event );
+  }
+}
+
 void QgsSymbolButton::prepareMenu()
 {
   //we need to tear down and rebuild this menu every time it is shown. Otherwise the space allocated to any
@@ -370,8 +453,10 @@ void QgsSymbolButton::prepareMenu()
   connect( configureAction, &QAction::triggered, this, &QgsSymbolButton::showSettingsDialog );
 
   QAction *copySymbolAction = new QAction( tr( "Copy Symbol" ), this );
+  copySymbolAction->setEnabled( !isNull() );
   mMenu->addAction( copySymbolAction );
   connect( copySymbolAction, &QAction::triggered, this, &QgsSymbolButton::copySymbol );
+
   QAction *pasteSymbolAction = new QAction( tr( "Paste Symbol" ), this );
   //enable or disable paste action based on current clipboard contents. We always show the paste
   //action, even if it's disabled, to give hint to the user that pasting symbols is possible
@@ -388,73 +473,84 @@ void QgsSymbolButton::prepareMenu()
   mMenu->addAction( pasteSymbolAction );
   connect( pasteSymbolAction, &QAction::triggered, this, &QgsSymbolButton::pasteSymbol );
 
-  mMenu->addSeparator();
-
-  QgsColorWheel *colorWheel = new QgsColorWheel( mMenu );
-  colorWheel->setColor( mSymbol->color() );
-  QgsColorWidgetAction *colorAction = new QgsColorWidgetAction( colorWheel, mMenu, mMenu );
-  colorAction->setDismissOnColorSelection( false );
-  connect( colorAction, &QgsColorWidgetAction::colorChanged, this, &QgsSymbolButton::setColor );
-  mMenu->addAction( colorAction );
-
-  QgsColorRampWidget *alphaRamp = new QgsColorRampWidget( mMenu, QgsColorWidget::Alpha, QgsColorRampWidget::Horizontal );
-  QColor alphaColor = mSymbol->color();
-  alphaColor.setAlphaF( mSymbol->opacity() );
-  alphaRamp->setColor( alphaColor );
-  QgsColorWidgetAction *alphaAction = new QgsColorWidgetAction( alphaRamp, mMenu, mMenu );
-  alphaAction->setDismissOnColorSelection( false );
-  connect( alphaAction, &QgsColorWidgetAction::colorChanged, this, [ = ]( const QColor & color )
+  if ( mShowNull )
   {
-    double opacity = color.alphaF();
-    mSymbol->setOpacity( opacity );
-    updatePreview();
-    emit changed();
-  } );
-  connect( colorAction, &QgsColorWidgetAction::colorChanged, alphaRamp, [alphaRamp]( const QColor & color ) { alphaRamp->setColor( color, false ); }
-         );
-  mMenu->addAction( alphaAction );
+    QAction *nullAction = new QAction( tr( "Clear Current Symbol" ), this );
+    nullAction->setEnabled( !isNull() );
+    mMenu->addAction( nullAction );
+    connect( nullAction, &QAction::triggered, this, &QgsSymbolButton::setToNull );
+  }
 
-  //get schemes with ShowInColorButtonMenu flag set
-  QList< QgsColorScheme * > schemeList = QgsApplication::colorSchemeRegistry()->schemes( QgsColorScheme::ShowInColorButtonMenu );
-  QList< QgsColorScheme * >::iterator it = schemeList.begin();
-  for ( ; it != schemeList.end(); ++it )
+  if ( mSymbol )
   {
-    QgsColorSwatchGridAction *colorAction = new QgsColorSwatchGridAction( *it, mMenu, QStringLiteral( "symbology" ), this );
-    colorAction->setBaseColor( mSymbol->color() );
+    mMenu->addSeparator();
+
+    QgsColorWheel *colorWheel = new QgsColorWheel( mMenu );
+    colorWheel->setColor( mSymbol->color() );
+    QgsColorWidgetAction *colorAction = new QgsColorWidgetAction( colorWheel, mMenu, mMenu );
+    colorAction->setDismissOnColorSelection( false );
+    connect( colorAction, &QgsColorWidgetAction::colorChanged, this, &QgsSymbolButton::setColor );
     mMenu->addAction( colorAction );
-    connect( colorAction, &QgsColorSwatchGridAction::colorChanged, this, &QgsSymbolButton::setColor );
-    connect( colorAction, &QgsColorSwatchGridAction::colorChanged, this, &QgsSymbolButton::addRecentColor );
+
+    QgsColorRampWidget *alphaRamp = new QgsColorRampWidget( mMenu, QgsColorWidget::Alpha, QgsColorRampWidget::Horizontal );
+    QColor alphaColor = mSymbol->color();
+    alphaColor.setAlphaF( mSymbol->opacity() );
+    alphaRamp->setColor( alphaColor );
+    QgsColorWidgetAction *alphaAction = new QgsColorWidgetAction( alphaRamp, mMenu, mMenu );
+    alphaAction->setDismissOnColorSelection( false );
+    connect( alphaAction, &QgsColorWidgetAction::colorChanged, this, [ = ]( const QColor & color )
+    {
+      const double opacity = color.alphaF();
+      mSymbol->setOpacity( opacity );
+      updatePreview();
+      emit changed();
+    } );
+    connect( colorAction, &QgsColorWidgetAction::colorChanged, alphaRamp, [alphaRamp]( const QColor & color ) { alphaRamp->setColor( color, false ); }
+           );
+    mMenu->addAction( alphaAction );
+
+    //get schemes with ShowInColorButtonMenu flag set
+    QList< QgsColorScheme * > schemeList = QgsApplication::colorSchemeRegistry()->schemes( QgsColorScheme::ShowInColorButtonMenu );
+    QList< QgsColorScheme * >::iterator it = schemeList.begin();
+    for ( ; it != schemeList.end(); ++it )
+    {
+      QgsColorSwatchGridAction *colorAction = new QgsColorSwatchGridAction( *it, mMenu, QStringLiteral( "symbology" ), this );
+      colorAction->setBaseColor( mSymbol->color() );
+      mMenu->addAction( colorAction );
+      connect( colorAction, &QgsColorSwatchGridAction::colorChanged, this, &QgsSymbolButton::setColor );
+      connect( colorAction, &QgsColorSwatchGridAction::colorChanged, this, &QgsSymbolButton::addRecentColor );
+    }
+
+    mMenu->addSeparator();
+
+    QAction *copyColorAction = new QAction( tr( "Copy Color" ), this );
+    mMenu->addAction( copyColorAction );
+    connect( copyColorAction, &QAction::triggered, this, &QgsSymbolButton::copyColor );
+
+    QAction *pasteColorAction = new QAction( tr( "Paste Color" ), this );
+    //enable or disable paste action based on current clipboard contents. We always show the paste
+    //action, even if it's disabled, to give hint to the user that pasting colors is possible
+    QColor clipColor;
+    bool hasAlpha = false;
+    if ( colorFromMimeData( QApplication::clipboard()->mimeData(), clipColor, hasAlpha ) )
+    {
+      pasteColorAction->setIcon( createColorIcon( clipColor ) );
+    }
+    else
+    {
+      pasteColorAction->setEnabled( false );
+    }
+    mMenu->addAction( pasteColorAction );
+    connect( pasteColorAction, &QAction::triggered, this, &QgsSymbolButton::pasteColor );
+
+    QAction *pickColorAction = new QAction( tr( "Pick Color" ), this );
+    mMenu->addAction( pickColorAction );
+    connect( pickColorAction, &QAction::triggered, this, &QgsSymbolButton::activatePicker );
+
+    QAction *chooseColorAction = new QAction( tr( "Choose Color…" ), this );
+    mMenu->addAction( chooseColorAction );
+    connect( chooseColorAction, &QAction::triggered, this, &QgsSymbolButton::showColorDialog );
   }
-
-  mMenu->addSeparator();
-
-  QAction *copyColorAction = new QAction( tr( "Copy Color" ), this );
-  mMenu->addAction( copyColorAction );
-  connect( copyColorAction, &QAction::triggered, this, &QgsSymbolButton::copyColor );
-
-  QAction *pasteColorAction = new QAction( tr( "Paste Color" ), this );
-  //enable or disable paste action based on current clipboard contents. We always show the paste
-  //action, even if it's disabled, to give hint to the user that pasting colors is possible
-  QColor clipColor;
-  bool hasAlpha = false;
-  if ( colorFromMimeData( QApplication::clipboard()->mimeData(), clipColor, hasAlpha ) )
-  {
-    pasteColorAction->setIcon( createColorIcon( clipColor ) );
-  }
-  else
-  {
-    pasteColorAction->setEnabled( false );
-  }
-  mMenu->addAction( pasteColorAction );
-  connect( pasteColorAction, &QAction::triggered, this, &QgsSymbolButton::pasteColor );
-
-  QAction *pickColorAction = new QAction( tr( "Pick Color" ), this );
-  mMenu->addAction( pickColorAction );
-  connect( pickColorAction, &QAction::triggered, this, &QgsSymbolButton::activatePicker );
-
-  QAction *chooseColorAction = new QAction( tr( "Choose Color…" ), this );
-  mMenu->addAction( chooseColorAction );
-  connect( chooseColorAction, &QAction::triggered, this, &QgsSymbolButton::showColorDialog );
 }
 
 void QgsSymbolButton::addRecentColor( const QColor &color )
@@ -498,16 +594,6 @@ void QgsSymbolButton::resizeEvent( QResizeEvent *event )
 
 void QgsSymbolButton::updatePreview( const QColor &color, QgsSymbol *tempSymbol )
 {
-  std::unique_ptr< QgsSymbol > previewSymbol;
-
-  if ( tempSymbol )
-    previewSymbol.reset( tempSymbol->clone() );
-  else
-    previewSymbol.reset( mSymbol->clone() );
-
-  if ( color.isValid() )
-    previewSymbol->setColor( color );
-
   QSize currentIconSize;
   //icon size is button size with a small margin
   if ( menu() )
@@ -517,8 +603,8 @@ void QgsSymbolButton::updatePreview( const QColor &color, QgsSymbol *tempSymbol 
       //calculate size of push button part of widget (ie, without the menu dropdown button part)
       QStyleOptionToolButton opt;
       initStyleOption( &opt );
-      QRect buttonSize = QApplication::style()->subControlRect( QStyle::CC_ToolButton, &opt, QStyle::SC_ToolButton,
-                         this );
+      const QRect buttonSize = QApplication::style()->subControlRect( QStyle::CC_ToolButton, &opt, QStyle::SC_ToolButton,
+                               this );
       //make sure height of icon looks good under different platforms
 #ifdef Q_OS_WIN
       mIconSize = QSize( buttonSize.width() - 10, height() - 6 );
@@ -543,22 +629,38 @@ void QgsSymbolButton::updatePreview( const QColor &color, QgsSymbol *tempSymbol 
     return;
   }
 
+  std::unique_ptr< QgsSymbol > previewSymbol;
+
+  if ( tempSymbol )
+  {
+    previewSymbol.reset( tempSymbol->clone() );
+  }
+  else if ( mSymbol )
+  {
+    previewSymbol.reset( mSymbol->clone() );
+  }
+  else
+  {
+    setIconSize( currentIconSize );
+    setIcon( QIcon() );
+    setToolTip( QString( ) );
+    return;
+  }
+
+  if ( color.isValid() )
+    previewSymbol->setColor( color );
+
   //create an icon pixmap
-  QIcon icon = QgsSymbolLayerUtils::symbolPreviewIcon( previewSymbol.get(), currentIconSize );
+  const QIcon icon = QgsSymbolLayerUtils::symbolPreviewIcon( previewSymbol.get(), currentIconSize );
   setIconSize( currentIconSize );
   setIcon( icon );
 
   // set tooltip
   // create very large preview image
+  const int width = static_cast< int >( Qgis::UI_SCALE_FACTOR * fontMetrics().horizontalAdvance( 'X' ) * 23 );
+  const int height = static_cast< int >( width / 1.61803398875 ); // golden ratio
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 11, 0)
-  int width = static_cast< int >( Qgis::UI_SCALE_FACTOR * fontMetrics().width( 'X' ) * 23 );
-#else
-  int width = static_cast< int >( Qgis::UI_SCALE_FACTOR * fontMetrics().horizontalAdvance( 'X' ) * 23 );
-#endif
-  int height = static_cast< int >( width / 1.61803398875 ); // golden ratio
-
-  QPixmap pm = QgsSymbolLayerUtils::symbolPreviewPixmap( previewSymbol.get(), QSize( width, height ), height / 20 );
+  const QPixmap pm = QgsSymbolLayerUtils::symbolPreviewPixmap( previewSymbol.get(), QSize( width, height ), height / 20 );
   QByteArray data;
   QBuffer buffer( &data );
   pm.save( &buffer, "PNG", 100 );
@@ -568,7 +670,7 @@ void QgsSymbolButton::updatePreview( const QColor &color, QgsSymbol *tempSymbol 
 bool QgsSymbolButton::colorFromMimeData( const QMimeData *mimeData, QColor &resultColor, bool &hasAlpha )
 {
   hasAlpha = false;
-  QColor mimeColor = QgsSymbolLayerUtils::colorFromMimeData( mimeData, hasAlpha );
+  const QColor mimeColor = QgsSymbolLayerUtils::colorFromMimeData( mimeData, hasAlpha );
 
   if ( mimeColor.isValid() )
   {
@@ -623,10 +725,13 @@ void QgsSymbolButton::stopPicking( QPoint eventPos, bool samplingColor )
 
 void QgsSymbolButton::showColorDialog()
 {
+  if ( !mSymbol )
+    return;
+
   QgsPanelWidget *panel = QgsPanelWidget::findParentPanel( this );
   if ( panel && panel->dockMode() )
   {
-    QColor currentColor = mSymbol->color();
+    const QColor currentColor = mSymbol->color();
     QgsCompoundColorWidget *colorWidget = new QgsCompoundColorWidget( panel, currentColor, QgsCompoundColorWidget::LayoutVertical );
     colorWidget->setPanelTitle( tr( "Symbol Color" ) );
     colorWidget->setAllowOpacity( true );
@@ -673,4 +778,24 @@ QString QgsSymbolButton::dialogTitle() const
 QgsSymbol *QgsSymbolButton::symbol()
 {
   return mSymbol.get();
+}
+
+void QgsSymbolButton::setShowNull( bool showNull )
+{
+  mShowNull = showNull;
+}
+
+bool QgsSymbolButton::showNull() const
+{
+  return mShowNull;
+}
+
+bool QgsSymbolButton::isNull() const
+{
+  return !mSymbol;
+}
+
+void QgsSymbolButton::setToNull()
+{
+  setSymbol( nullptr );
 }

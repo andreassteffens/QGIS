@@ -27,6 +27,8 @@
 #include <QMessageBox>
 #include <QScrollBar>
 #include <QToolButton>
+#include <QCheckBox>
+#include <QTextStream>
 
 #include <nlohmann/json.hpp>
 
@@ -77,7 +79,7 @@ QgsNetworkLoggerTreeView::QgsNetworkLoggerTreeView( QgsNetworkLogger *logger, QW
           break;
       }
 
-      mLogger->removeRows( rowsToTrim );
+      mLogger->removeRequestRows( rowsToTrim );
     }
 
     if ( mAutoScroll )
@@ -100,6 +102,11 @@ void QgsNetworkLoggerTreeView::setShowSuccessful( bool show )
 void QgsNetworkLoggerTreeView::setShowTimeouts( bool show )
 {
   mProxyModel->setShowTimeouts( show );
+}
+
+void QgsNetworkLoggerTreeView::setShowCached( bool show )
+{
+  mProxyModel->setShowCached( show );
 }
 
 void QgsNetworkLoggerTreeView::itemExpanded( const QModelIndex &index )
@@ -169,11 +176,13 @@ QgsNetworkLoggerPanelWidget::QgsNetworkLoggerPanelWidget( QgsNetworkLogger *logg
 
   mActionShowTimeouts->setChecked( true );
   mActionShowSuccessful->setChecked( true );
+  mActionShowCached->setChecked( true );
   mActionRecord->setChecked( mLogger->isLogging() );
 
   connect( mFilterLineEdit, &QgsFilterLineEdit::textChanged, mTreeView, &QgsNetworkLoggerTreeView::setFilterString );
   connect( mActionShowTimeouts, &QAction::toggled, mTreeView, &QgsNetworkLoggerTreeView::setShowTimeouts );
   connect( mActionShowSuccessful, &QAction::toggled, mTreeView, &QgsNetworkLoggerTreeView::setShowSuccessful );
+  connect( mActionShowCached, &QAction::toggled, mTreeView, &QgsNetworkLoggerTreeView::setShowCached );
   connect( mActionClear, &QAction::triggered, mLogger, &QgsNetworkLogger::clear );
   connect( mActionRecord, &QAction::toggled, this, [ = ]( bool enabled )
   {
@@ -186,7 +195,7 @@ QgsNetworkLoggerPanelWidget::QgsNetworkLoggerPanelWidget( QgsNetworkLogger *logg
                                tr( "Security warning: network logs may contain sensitive data including usernames or passwords. Treat this log as confidential and be careful who you share it with. Continue?" ), QMessageBox::Yes | QMessageBox::No ) == QMessageBox::No )
       return;
 
-    QString saveFilePath = QFileDialog::getSaveFileName( this, tr( "Save Network Log" ), QDir::homePath(), tr( "Log files" ) + " (*.json)" );
+    const QString saveFilePath = QFileDialog::getSaveFileName( this, tr( "Save Network Log" ), QDir::homePath(), tr( "Log files" ) + " (*.json)" );
     if ( saveFilePath.isEmpty() )
     {
       return;
@@ -217,4 +226,17 @@ QgsNetworkLoggerPanelWidget::QgsNetworkLoggerPanelWidget( QgsNetworkLogger *logg
 
   settingsMenu->addAction( mActionShowSuccessful );
   settingsMenu->addAction( mActionShowTimeouts );
+  settingsMenu->addAction( mActionShowCached );
+
+  mToolbar->addSeparator();
+  QCheckBox *disableCacheCheck = new QCheckBox( tr( "Disable cache" ) );
+  connect( disableCacheCheck, &QCheckBox::toggled, this, [ = ]( bool checked )
+  {
+    // note -- we deliberately do NOT store this as a permanent setting in QSettings
+    // as it is designed to be a temporary debugging tool only and we don't want
+    // users to accidentally leave this enabled and cause unnecessary server load...
+    QgsNetworkAccessManager::instance()->setCacheDisabled( checked );
+  } );
+
+  mToolbar->addWidget( disableCacheCheck );
 }

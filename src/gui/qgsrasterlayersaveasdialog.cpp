@@ -32,9 +32,11 @@
 #include "qgsmessagelog.h"
 #include "qgsgui.h"
 #include "qgsdoublevalidator.h"
+#include "qgsdatums.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QRegularExpression>
 
 QgsRasterLayerSaveAsDialog::QgsRasterLayerSaveAsDialog( QgsRasterLayer *rasterLayer,
     QgsRasterDataProvider *sourceProvider, const QgsRectangle &currentExtent,
@@ -49,7 +51,7 @@ QgsRasterLayerSaveAsDialog::QgsRasterLayerSaveAsDialog( QgsRasterLayer *rasterLa
   , mResolutionState( OriginalResolution )
 {
   setupUi( this );
-  QgsGui::instance()->enableAutoGeometryRestore( this );
+  QgsGui::enableAutoGeometryRestore( this );
   connect( mRawModeRadioButton, &QRadioButton::toggled, this, &QgsRasterLayerSaveAsDialog::mRawModeRadioButton_toggled );
   connect( mFormatComboBox, &QComboBox::currentTextChanged, this, &QgsRasterLayerSaveAsDialog::mFormatComboBox_currentIndexChanged );
   connect( mResolutionRadioButton, &QRadioButton::toggled, this, &QgsRasterLayerSaveAsDialog::mResolutionRadioButton_toggled );
@@ -138,6 +140,19 @@ QgsRasterLayerSaveAsDialog::QgsRasterLayerSaveAsDialog( QgsRasterLayer *rasterLa
   //mTilesGroupBox->setSaveCheckedState( true );
   // don't restore nodata, it needs user input
   // pyramids are not necessarily built every time
+
+  try
+  {
+    const QgsDatumEnsemble ensemble = mLayerCrs.datumEnsemble();
+    if ( ensemble.isValid() )
+    {
+      mCrsSelector->setSourceEnsemble( ensemble.name() );
+    }
+  }
+  catch ( QgsNotSupportedException & )
+  {
+  }
+  mCrsSelector->setShowAccuracyWarnings( true );
 
   mCrsSelector->setLayerCrs( mLayerCrs );
   //default to layer CRS - see https://github.com/qgis/QGIS/issues/22211 for discussion
@@ -402,7 +417,7 @@ QString QgsRasterLayerSaveAsDialog::outputFileName() const
 
     // ensure the user never omits the extension from the file name
     QFileInfo fi( fileName );
-    if ( !fileName.isEmpty() && fi.suffix().isEmpty() )
+    if ( !fileName.isEmpty() && fi.suffix().isEmpty() && !defaultExt.isEmpty() )
     {
       fileName += '.' + defaultExt;
     }
@@ -527,7 +542,7 @@ void QgsRasterLayerSaveAsDialog::setResolution( double xRes, double yRes, const 
 
     QgsPointXY center = outputRectangle().center();
     QgsCoordinateTransform ct( srcCrs, outputCrs(), QgsProject::instance() );
-    QgsPointXY srsCenter = ct.transform( center, QgsCoordinateTransform::ReverseTransform );
+    QgsPointXY srsCenter = ct.transform( center, Qgis::TransformDirection::Reverse );
 
     QgsRectangle srcExtent( srsCenter.x() - xRes / 2, srsCenter.y() - yRes / 2, srsCenter.x() + xRes / 2, srsCenter.y() + yRes / 2 );
 
@@ -701,8 +716,8 @@ void QgsRasterLayerSaveAsDialog::addNoDataRow( double min, double max )
     QString valueString;
     switch ( mRasterLayer->dataProvider()->sourceDataType( 1 ) )
     {
-      case Qgis::Float32:
-      case Qgis::Float64:
+      case Qgis::DataType::Float32:
+      case Qgis::DataType::Float64:
         lineEdit->setValidator( new QgsDoubleValidator( nullptr ) );
         if ( !std::isnan( value ) )
         {
@@ -823,15 +838,12 @@ void QgsRasterLayerSaveAsDialog::populatePyramidsLevels()
       if ( ! mPyramidsOptionsWidget->overviewList().isEmpty() )
         myPyramidList = mDataProvider->buildPyramidList( mPyramidsOptionsWidget->overviewList() );
     }
-    QList<QgsRasterPyramid>::iterator myRasterPyramidIterator;
-    for ( myRasterPyramidIterator = myPyramidList.begin();
-          myRasterPyramidIterator != myPyramidList.end();
-          ++myRasterPyramidIterator )
+    for ( const QgsRasterPyramid &pyramid : std::as_const( myPyramidList ) )
     {
-      if ( ! mPyramidsUseExistingCheckBox->isChecked() ||  myRasterPyramidIterator->exists )
+      if ( ! mPyramidsUseExistingCheckBox->isChecked() || pyramid.getExists() )
       {
-        text += QString::number( myRasterPyramidIterator->xDim ) + QStringLiteral( "x" ) +
-                QString::number( myRasterPyramidIterator->yDim ) + ' ';
+        text += QString::number( pyramid.getXDim() ) + QStringLiteral( "x" ) +
+                QString::number( pyramid.getYDim() ) + ' ';
       }
     }
   }

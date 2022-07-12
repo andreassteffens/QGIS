@@ -34,6 +34,7 @@
 #include <QMenu>
 #include <QAction>
 #include <QFileDialog>
+#include <QUrl>
 
 ///@cond PRIVATE
 
@@ -146,6 +147,10 @@ QgsProcessingMapLayerComboBox::QgsProcessingMapLayerComboBox( const QgsProcessin
   {
     filters = QgsMapLayerProxyModel::MeshLayer;
   }
+  else if ( mParameter->type() == QgsProcessingParameterPointCloudLayer::typeName() )
+  {
+    filters = QgsMapLayerProxyModel::PointCloudLayer;
+  }
   else if ( mParameter->type() == QgsProcessingParameterMapLayer::typeName() )
   {
     QList<int> dataTypes;
@@ -163,6 +168,8 @@ QgsProcessingMapLayerComboBox::QgsProcessingMapLayerComboBox( const QgsProcessin
       filters |= QgsMapLayerProxyModel::RasterLayer;
     if ( dataTypes.contains( QgsProcessing::TypeMesh ) )
       filters |= QgsMapLayerProxyModel::MeshLayer;
+    if ( dataTypes.contains( QgsProcessing::TypePointCloud ) )
+      filters |= QgsMapLayerProxyModel::PointCloudLayer;
     if ( !filters )
       filters = QgsMapLayerProxyModel::All;
   }
@@ -366,6 +373,7 @@ QVariant QgsProcessingMapLayerComboBox::value() const
 void QgsProcessingMapLayerComboBox::setWidgetContext( const QgsProcessingParameterWidgetContext &context )
 {
   mBrowserModel = context.browserModel();
+  mCombo->setProject( context.project() );
 }
 
 void QgsProcessingMapLayerComboBox::setEditable( bool editable )
@@ -509,7 +517,7 @@ QString QgsProcessingMapLayerComboBox::compatibleUriFromMimeData( const QMimeDat
   if ( !data->text().isEmpty() && !rawPaths.contains( data->text() ) )
     rawPaths.append( data->text() );
 
-  for ( const QString &path : qgis::as_const( rawPaths ) )
+  for ( const QString &path : std::as_const( rawPaths ) )
   {
     QFileInfo file( path );
     if ( file.isFile() )

@@ -22,6 +22,7 @@
 #include "qgis_sip.h"
 #include "ui_qgssinglebandgrayrendererwidgetbase.h"
 #include "qgis_gui.h"
+#include "qgscolorramplegendnodesettings.h"
 
 class QgsRasterMinMaxWidget;
 
@@ -49,7 +50,11 @@ class GUI_EXPORT QgsSingleBandGrayRendererWidget: public QgsRasterRendererWidget
     QString max( int index = 0 ) override { Q_UNUSED( index ) return mMaxLineEdit->text(); }
     void setMin( const QString &value, int index = 0 ) override;
     void setMax( const QString &value, int index = 0 ) override;
-    int selectedBand( int index = 0 ) override { Q_UNUSED( index ) return mGrayBandComboBox->currentIndex() + 1; }
+    int selectedBand( int index = 0 ) override { Q_UNUSED( index ) return mGrayBandComboBox->currentBand(); }
+
+    QgsContrastEnhancement::ContrastEnhancementAlgorithm contrastEnhancementAlgorithm() const override;
+    void setContrastEnhancementAlgorithm( QgsContrastEnhancement::ContrastEnhancementAlgorithm algorithm ) override;
+
     void doComputations() override;
     QgsRasterMinMaxWidget *minMaxWidget() override { return mMinMaxWidget; }
 
@@ -61,10 +66,12 @@ class GUI_EXPORT QgsSingleBandGrayRendererWidget: public QgsRasterRendererWidget
     void bandChanged();
     void mMinLineEdit_textChanged( const QString & );
     void mMaxLineEdit_textChanged( const QString & );
+    void showLegendSettings();
 
   private:
     QgsRasterMinMaxWidget *mMinMaxWidget = nullptr;
     bool mDisableMinMaxWidgetRefresh;
+    QgsColorRampLegendNodeSettings mLegendSettings;
 
     void minMaxModified();
 };

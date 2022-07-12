@@ -24,6 +24,7 @@
 
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QPushButton>
 
 QgsXyzSourceSelect::QgsXyzSourceSelect( QWidget *parent, Qt::WindowFlags fl, QgsProviderRegistry::WidgetMode theWidgetMode )
   : QgsAbstractDataSourceWidget( parent, fl, theWidgetMode )
@@ -71,8 +72,8 @@ void QgsXyzSourceSelect::btnEdit_clicked()
 
 void QgsXyzSourceSelect::btnDelete_clicked()
 {
-  QString msg = tr( "Are you sure you want to remove the %1 connection and all associated settings?" )
-                .arg( cmbConnections->currentText() );
+  const QString msg = tr( "Are you sure you want to remove the %1 connection and all associated settings?" )
+                      .arg( cmbConnections->currentText() );
   if ( QMessageBox::Yes != QMessageBox::question( this, tr( "Confirm Delete" ), msg, QMessageBox::Yes | QMessageBox::No ) )
     return;
 
@@ -90,8 +91,8 @@ void QgsXyzSourceSelect::btnSave_clicked()
 
 void QgsXyzSourceSelect::btnLoad_clicked()
 {
-  QString fileName = QFileDialog::getOpenFileName( this, tr( "Load Connections" ), QDir::homePath(),
-                     tr( "XML files (*.xml *.XML)" ) );
+  const QString fileName = QFileDialog::getOpenFileName( this, tr( "Load Connections" ), QDir::homePath(),
+                           tr( "XML files (*.xml *.XML)" ) );
   if ( fileName.isEmpty() )
   {
     return;
@@ -124,7 +125,7 @@ void QgsXyzSourceSelect::populateConnectionList()
 
 void QgsXyzSourceSelect::setConnectionListPosition()
 {
-  QString toSelect = QgsXyzConnectionUtils::selectedConnection();
+  const QString toSelect = QgsXyzConnectionUtils::selectedConnection();
 
   cmbConnections->setCurrentIndex( cmbConnections->findText( toSelect ) );
 

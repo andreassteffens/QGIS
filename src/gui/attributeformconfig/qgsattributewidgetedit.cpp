@@ -15,6 +15,7 @@
 
 #include "qgsattributewidgetedit.h"
 #include "qgsattributesformproperties.h"
+#include "qgsrelationwidgetregistry.h"
 
 
 QgsAttributeWidgetEdit::QgsAttributeWidgetEdit( QTreeWidgetItem *item, QWidget *parent )
@@ -29,6 +30,7 @@ QgsAttributeWidgetEdit::QgsAttributeWidgetEdit( QTreeWidgetItem *item, QWidget *
   // common configs
   mShowLabelCheckBox->setChecked( itemData.showLabel() );
 
+  mFormLabelFormatWidget->setLabelStyle( itemData.labelStyle() );
 
   switch ( itemData.type() )
   {
@@ -40,12 +42,13 @@ QgsAttributeWidgetEdit::QgsAttributeWidgetEdit( QTreeWidgetItem *item, QWidget *
       mSpecificEditWidget = editWidget;
       layout->addWidget( mSpecificEditWidget );
       mWidgetSpecificConfigGroupBox->setLayout( layout );
-      mWidgetSpecificConfigGroupBox->setTitle( editWidget->title() );
+      mWidgetSpecificConfigGroupBox->setTitle( QgsAttributeWidgetRelationEditWidget::title() );
 
     }
     break;
 
     case QgsAttributesFormProperties::DnDTreeItemData::Field:
+    case QgsAttributesFormProperties::DnDTreeItemData::Action:
     case QgsAttributesFormProperties::DnDTreeItemData::Container:
     case QgsAttributesFormProperties::DnDTreeItemData::QmlWidget:
     case QgsAttributesFormProperties::DnDTreeItemData::HtmlWidget:
@@ -53,6 +56,7 @@ QgsAttributeWidgetEdit::QgsAttributeWidgetEdit( QTreeWidgetItem *item, QWidget *
       mWidgetSpecificConfigGroupBox->hide();
       break;
   }
+
 }
 
 void QgsAttributeWidgetEdit::updateItemData()
@@ -61,6 +65,7 @@ void QgsAttributeWidgetEdit::updateItemData()
 
   // common configs
   itemData.setShowLabel( mShowLabelCheckBox->isChecked() );
+  itemData.setLabelStyle( mFormLabelFormatWidget->labelStyle() );
 
   // specific configs
   switch ( itemData.type() )
@@ -75,6 +80,7 @@ void QgsAttributeWidgetEdit::updateItemData()
     }
     break;
 
+    case QgsAttributesFormProperties::DnDTreeItemData::Action:
     case QgsAttributesFormProperties::DnDTreeItemData::Field:
     case QgsAttributesFormProperties::DnDTreeItemData::Container:
     case QgsAttributesFormProperties::DnDTreeItemData::QmlWidget:
@@ -92,22 +98,25 @@ QgsAttributeWidgetRelationEditWidget::QgsAttributeWidgetRelationEditWidget( QWid
   : QWidget( parent )
 {
   setupUi( this );
+
+  QMapIterator<QString, QgsAbstractRelationEditorWidgetFactory *> it( QgsGui::relationWidgetRegistry()->factories() );
+
+  while ( it.hasNext() )
+  {
+    it.next();
+    mWidgetTypeComboBox->addItem( it.value()->name(), it.key() );
+  }
+
+  connect( mRelationCardinalityCombo, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsAttributeWidgetRelationEditWidget::relationCardinalityComboCurrentIndexChanged );
 }
 
 void QgsAttributeWidgetRelationEditWidget::setRelationEditorConfiguration( const QgsAttributesFormProperties::RelationEditorConfiguration &config, const QString &relationId )
 {
-  mRelationShowLinkCheckBox->setChecked( config.buttons.testFlag( QgsAttributeEditorRelation::Button::Link ) );
-  mRelationShowUnlinkCheckBox->setChecked( config.buttons.testFlag( QgsAttributeEditorRelation::Button::Unlink ) );
-  mRelationShowAddChildCheckBox->setChecked( config.buttons.testFlag( QgsAttributeEditorRelation::Button::AddChildFeature ) );
-  mRelationShowDuplicateChildFeatureCheckBox->setChecked( config.buttons.testFlag( QgsAttributeEditorRelation::Button::DuplicateChildFeature ) );
-  mRelationShowZoomToFeatureCheckBox->setChecked( config.buttons.testFlag( QgsAttributeEditorRelation::Button::ZoomToChildFeature ) );
-  mRelationDeleteChildFeatureCheckBox->setChecked( config.buttons.testFlag( QgsAttributeEditorRelation::Button::DeleteChildFeature ) );
-  mRelationShowSaveChildEditsCheckBox->setChecked( config.buttons.testFlag( QgsAttributeEditorRelation::Button::SaveChildEdits ) );
-
   //load the combo mRelationCardinalityCombo
+  mRelationCardinalityCombo->clear();
   setCardinalityCombo( tr( "Many to one relation" ) );
 
-  QgsRelation relation = QgsProject::instance()->relationManager()->relation( relationId );
+  const QgsRelation relation = QgsProject::instance()->relationManager()->relation( relationId );
   const QList<QgsRelation> relations = QgsProject::instance()->relationManager()->referencingRelations( relation.referencingLayer() );
   if ( !relation.fieldPairs().isEmpty() )
   {
@@ -122,6 +131,30 @@ void QgsAttributeWidgetRelationEditWidget::setRelationEditorConfiguration( const
     }
   }
 
+  const int widgetTypeIdx = mWidgetTypeComboBox->findData( config.mRelationWidgetType );
+  mWidgetTypeComboBox->setCurrentIndex( widgetTypeIdx >= 0
+                                        ? widgetTypeIdx
+                                        : mWidgetTypeComboBox->findData( QgsGui::relationWidgetRegistry()->defaultWidgetType() ) );
+
+  const QString widgetType = mWidgetTypeComboBox->currentData().toString();
+  mConfigWidget = QgsGui::relationWidgetRegistry()->createConfigWidget( widgetType, relation, this );
+  mConfigWidget->setConfig( config.mRelationWidgetConfig );
+  mWidgetTypePlaceholderLayout->addWidget( mConfigWidget );
+
+  disconnect( mWidgetTypeComboBoxConnection );
+
+  mWidgetTypeComboBoxConnection = connect( mWidgetTypeComboBox, &QComboBox::currentTextChanged, this, [ = ]()
+  {
+    const QString widgetId = mWidgetTypeComboBox->currentData().toString();
+
+    mWidgetTypePlaceholderLayout->removeWidget( mConfigWidget );
+    mConfigWidget->deleteLater();
+    mConfigWidget = QgsGui::relationWidgetRegistry()->createConfigWidget( widgetId, relation, this );
+    mConfigWidget->setConfig( config.mRelationWidgetConfig );
+    mWidgetTypePlaceholderLayout->addWidget( mConfigWidget );
+    update();
+  } );
+
   mRelationCardinalityCombo->setToolTip( tr( "For a many to many (N:M) relation, the direct link has to be selected. The in-between table will be hidden." ) );
   setNmRelationId( config.nmRelationId );
 
@@ -133,19 +166,24 @@ void QgsAttributeWidgetRelationEditWidget::setRelationEditorConfiguration( const
 QgsAttributesFormProperties::RelationEditorConfiguration QgsAttributeWidgetRelationEditWidget::relationEditorConfiguration() const
 {
   QgsAttributesFormProperties::RelationEditorConfiguration relEdCfg;
-  QgsAttributeEditorRelation::Buttons buttons;
-  buttons.setFlag( QgsAttributeEditorRelation::Button::Link, mRelationShowLinkCheckBox->isChecked() );
-  buttons.setFlag( QgsAttributeEditorRelation::Button::Unlink, mRelationShowUnlinkCheckBox->isChecked() );
-  buttons.setFlag( QgsAttributeEditorRelation::Button::AddChildFeature, mRelationShowAddChildCheckBox->isChecked() );
-  buttons.setFlag( QgsAttributeEditorRelation::Button::DuplicateChildFeature, mRelationShowDuplicateChildFeatureCheckBox->isChecked() );
-  buttons.setFlag( QgsAttributeEditorRelation::Button::ZoomToChildFeature, mRelationShowZoomToFeatureCheckBox->isChecked() );
-  buttons.setFlag( QgsAttributeEditorRelation::Button::DeleteChildFeature, mRelationDeleteChildFeatureCheckBox->isChecked() );
-  buttons.setFlag( QgsAttributeEditorRelation::Button::SaveChildEdits, mRelationShowSaveChildEditsCheckBox->isChecked() );
-  relEdCfg.buttons = buttons;
+  relEdCfg.mRelationWidgetType = mWidgetTypeComboBox->currentData().toString();
+  relEdCfg.mRelationWidgetConfig = mConfigWidget->config();
   relEdCfg.nmRelationId = mRelationCardinalityCombo->currentData();
   relEdCfg.forceSuppressFormPopup = mRelationForceSuppressFormPopupCheckBox->isChecked();
   relEdCfg.label = mRelationLabelEdit->text();
   return relEdCfg;
+}
+
+void QgsAttributeWidgetRelationEditWidget::relationCardinalityComboCurrentIndexChanged( int index )
+{
+  if ( index < 0 )
+    return;
+
+  if ( !mConfigWidget )
+    return;
+
+  const QgsRelation nmRelation = QgsProject::instance()->relationManager()->relation( mRelationCardinalityCombo->currentData().toString() );
+  mConfigWidget->setNmRelation( nmRelation );
 }
 
 void QgsAttributeWidgetRelationEditWidget::setCardinalityCombo( const QString &cardinalityComboItem, const QVariant &auserData )
@@ -155,7 +193,7 @@ void QgsAttributeWidgetRelationEditWidget::setCardinalityCombo( const QString &c
 
 void QgsAttributeWidgetRelationEditWidget::setNmRelationId( const QVariant &auserData )
 {
-  int idx = mRelationCardinalityCombo->findData( auserData );
+  const int idx = mRelationCardinalityCombo->findData( auserData );
 
   if ( idx != -1 )
     mRelationCardinalityCombo->setCurrentIndex( idx );

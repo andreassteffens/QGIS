@@ -13,12 +13,16 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "qgswfsprovidergui.h"
+
+#include "qgsquerybuilder.h"
 #include "qgswfsprovider.h"
 #include "qgswfsdataitemguiprovider.h"
 #include "qgswfssourceselect.h"
 #include "qgssourceselectprovider.h"
 #include "qgsproviderguimetadata.h"
-
+#include "qgssubsetstringeditorprovider.h"
+#include "qgswfssubsetstringeditor.h"
 
 //! Provider for WFS layers source select
 class QgsWfsSourceSelectProvider : public QgsSourceSelectProvider
@@ -35,32 +39,70 @@ class QgsWfsSourceSelectProvider : public QgsSourceSelectProvider
     }
 };
 
-
-class QgsWfsProviderGuiMetadata: public QgsProviderGuiMetadata
+//! Provider for dedicated subset string editor for WFS layers
+class QgsWfsSubsetStringEditorProvider: public QgsSubsetStringEditorProvider
 {
   public:
-    QgsWfsProviderGuiMetadata()
-      : QgsProviderGuiMetadata( QgsWFSProvider::WFS_PROVIDER_KEY )
+
+    QString providerKey() const override { return QgsWFSProvider::WFS_PROVIDER_KEY; }
+
+    bool canHandleLayer( QgsVectorLayer *layer ) const override
     {
+      QgsDataProvider *provider = layer->dataProvider();
+      return static_cast< bool >( dynamic_cast<QgsWFSProvider *>( provider ) );
     }
 
-    QList<QgsSourceSelectProvider *> sourceSelectProviders() override
+    QgsSubsetStringEditorInterface *createDialog( QgsVectorLayer *layer, QWidget *parent, Qt::WindowFlags fl ) override
     {
-      QList<QgsSourceSelectProvider *> providers;
-      providers << new QgsWfsSourceSelectProvider;
-      return providers;
-    }
+      QgsDataProvider *provider = layer->dataProvider();
+      QgsWFSProvider *wfsProvider = dynamic_cast<QgsWFSProvider *>( provider );
+      if ( !wfsProvider )
+        return nullptr;
 
-    QList<QgsDataItemGuiProvider *> dataItemGuiProviders() override
-    {
-      return QList<QgsDataItemGuiProvider *>()
-             << new QgsWfsDataItemGuiProvider;
-    }
+      // If we have an existing full SQL request, open the SQL editor
+      // Otherwise use the standard expression builder.
+      const QString subsetString = wfsProvider->subsetString();
+      if ( subsetString.startsWith( QLatin1String( "SELECT " ), Qt::CaseInsensitive ) ||
+           subsetString.startsWith( QLatin1String( "SELECT\t" ), Qt::CaseInsensitive ) ||
+           subsetString.startsWith( QLatin1String( "SELECT\r" ), Qt::CaseInsensitive ) ||
+           subsetString.startsWith( QLatin1String( "SELECT\n" ), Qt::CaseInsensitive ) )
+      {
+        return QgsWfsSubsetStringEditor::create( layer, wfsProvider, parent, fl );
+      }
 
+      return new QgsQueryBuilder( layer, parent, fl );
+    }
 };
 
 
+QgsWfsProviderGuiMetadata::QgsWfsProviderGuiMetadata()
+  : QgsProviderGuiMetadata( QgsWFSProvider::WFS_PROVIDER_KEY )
+{
+}
+
+QList<QgsSourceSelectProvider *> QgsWfsProviderGuiMetadata::sourceSelectProviders()
+{
+  QList<QgsSourceSelectProvider *> providers;
+  providers << new QgsWfsSourceSelectProvider;
+  return providers;
+}
+
+QList<QgsDataItemGuiProvider *> QgsWfsProviderGuiMetadata::dataItemGuiProviders()
+{
+  return QList<QgsDataItemGuiProvider *>()
+         << new QgsWfsDataItemGuiProvider;
+}
+
+QList<QgsSubsetStringEditorProvider *> QgsWfsProviderGuiMetadata::subsetStringEditorProviders()
+{
+  return QList<QgsSubsetStringEditorProvider *>()
+         << new QgsWfsSubsetStringEditorProvider;
+}
+
+
+#ifndef HAVE_STATIC_PROVIDERS
 QGISEXTERN QgsProviderGuiMetadata *providerGuiMetadataFactory()
 {
   return new QgsWfsProviderGuiMetadata();
 }
+#endif

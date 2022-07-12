@@ -46,12 +46,18 @@
 #include "qgseditorwidgetfactory.h"
 #include "qgseditorwidgetregistry.h"
 #include "qgsrelationmanager.h"
+#include "qgsattributeeditorrelation.h"
+
 
 class QgsAttributesDnDTree;
 class QgsAttributeFormContainerEdit;
 class QgsAttributeTypeDialog;
 class QgsAttributeWidgetEdit;
 
+/**
+ * \ingroup gui
+ * \class QgsAttributesFormProperties
+ */
 class GUI_EXPORT QgsAttributesFormProperties : public QWidget, public QgsExpressionContextGenerator, private Ui_QgsAttributesFormProperties
 {
     Q_OBJECT
@@ -62,12 +68,15 @@ class GUI_EXPORT QgsAttributesFormProperties : public QWidget, public QgsExpress
     {
       DnDTreeRole = Qt::UserRole,
       FieldConfigRole,
-      FieldNameRole
+      FieldNameRole,
     };
 
     struct RelationEditorConfiguration
     {
-      QgsAttributeEditorRelation::Buttons buttons = QgsAttributeEditorRelation::Button::AllButtons;
+      operator QVariant();
+
+      QString mRelationWidgetType;
+      QVariantMap mRelationWidgetConfig;
       QVariant nmRelationId;
       bool forceSuppressFormPopup = false;
       QString label;
@@ -83,6 +92,10 @@ class GUI_EXPORT QgsAttributesFormProperties : public QWidget, public QgsExpress
       QString htmlCode;
     };
 
+    /**
+     * \ingroup gui
+     * \class DnDTreeItemData
+     */
     class DnDTreeItemData : public QTreeWidgetItem
     {
       public:
@@ -93,7 +106,8 @@ class GUI_EXPORT QgsAttributesFormProperties : public QWidget, public QgsExpress
           Container, //!< Container for the form
           QmlWidget,
           HtmlWidget,
-          WidgetType //!< In the widget tree, the type of widget
+          WidgetType, //!< In the widget tree, the type of widget
+          Action //!< Layer action
         };
 
         //do we need that
@@ -123,11 +137,71 @@ class GUI_EXPORT QgsAttributesFormProperties : public QWidget, public QgsExpress
         bool showAsGroupBox() const;
         void setShowAsGroupBox( bool showAsGroupBox );
 
+        /**
+         * For group box containers  returns if this group box is collapsed.
+         *
+         * \returns TRUE if the group box is collapsed, FALSE otherwise.
+         * \see collapsed()
+         * \see setCollapsed()
+         * \since QGIS 3.26
+         */
+        bool collapsed() const { return mCollapsed; };
+
+        /**
+         * For group box containers  sets if this group box is \a collapsed.
+         *
+         * \see collapsed()
+         * \see setCollapsed()
+         * \since QGIS 3.26
+         */
+        void setCollapsed( bool collapsed ) { mCollapsed = collapsed; };
+
+        /**
+         * Returns the label style.
+         * \see setLabelStyle()
+         * \since QGIS 3.26
+         */
+        const QgsAttributeEditorElement::LabelStyle labelStyle() const;
+
+        /**
+         * Sets the label style to \a labelStyle.
+         * \see labelStyle()
+         * \since QGIS 3.26
+         */
+        void setLabelStyle( const QgsAttributeEditorElement::LabelStyle &labelStyle );
+
         bool showLabel() const;
         void setShowLabel( bool showLabel );
 
         QgsOptionalExpression visibilityExpression() const;
+
+        /**
+         * Sets the optional \a visibilityExpression that dynamically controls the visibility status of a container.
+         *
+         * \see visibilityExpression()
+         * \since QGIS 3.26
+         */
         void setVisibilityExpression( const QgsOptionalExpression &visibilityExpression );
+
+        /**
+         * Returns the optional expression that dynamically controls the collapsed status of a group box container.
+         *
+         * \see collapsed()
+         * \see setCollapsed()
+         * \see setCollapsedExpression()
+         * \since QGIS 3.26
+         */
+        QgsOptionalExpression collapsedExpression() const;
+
+        /**
+         * Sets the optional \a collapsedExpression that dynamically controls the collapsed status of a group box container.
+         *
+         * \see collapsed()
+         * \see setCollapsed()
+         * \see collapsedExpression()
+         * \since QGIS 3.26
+         */
+        void setCollapsedExpression( const QgsOptionalExpression &collapsedExpression );
 
         RelationEditorConfiguration relationEditorConfiguration() const;
         void setRelationEditorConfiguration( RelationEditorConfiguration relationEditorConfiguration );
@@ -153,6 +227,9 @@ class GUI_EXPORT QgsAttributesFormProperties : public QWidget, public QgsExpress
         QmlElementEditorConfiguration mQmlElementEditorConfiguration;
         HtmlElementEditorConfiguration mHtmlElementEditorConfiguration;
         QColor mBackgroundColor;
+        bool mCollapsed = false;
+        QgsOptionalExpression mCollapsedExpression;
+        QgsAttributeEditorElement::LabelStyle mLabelStyle;
     };
 
 
@@ -164,9 +241,10 @@ class GUI_EXPORT QgsAttributesFormProperties : public QWidget, public QgsExpress
       FieldConfig() = default;
       FieldConfig( QgsVectorLayer *layer, int idx );
 
-      bool mEditable =  true ;
-      bool mEditableEnabled =  true ;
-      bool mLabelOnTop =  false ;
+      bool mEditable = true;
+      bool mEditableEnabled = true;
+      bool mLabelOnTop = false;
+      bool mReuseLastValues = false;
       QgsFieldConstraints mFieldConstraints;
       QPushButton *mButton = nullptr;
       QString mEditorWidgetType;
@@ -233,12 +311,12 @@ class GUI_EXPORT QgsAttributesFormProperties : public QWidget, public QgsExpress
 
     void loadInfoWidget( const QString &infoText );
 
+    QTreeWidgetItem *loadAttributeEditorTreeItem( QgsAttributeEditorElement *widgetDef, QTreeWidgetItem *parent, QgsAttributesDnDTree *tree );
+
     QgsEditFormConfig::PythonInitCodeSource mInitCodeSource = QgsEditFormConfig::CodeSourceNone;
     QString mInitFunction;
     QString mInitFilePath;
     QString mInitCode;
-
-    QTreeWidgetItem *loadAttributeEditorTreeItem( QgsAttributeEditorElement *widgetDef, QTreeWidgetItem *parent, QgsAttributesDnDTree *tree );
 
   private slots:
     void addTabOrGroupButton();
@@ -254,14 +332,16 @@ QDataStream &operator>> ( QDataStream &stream, QgsAttributesFormProperties::DnDT
 
 
 /**
- * This class overrides mime type handling to be able to work with
+ * \ingroup gui
+ * \class QgsAttributesDnDTree
+ *
+ * \brief This class overrides mime type handling to be able to work with
  * the drag and drop attribute editor.
  *
  * The mime type is application/x-qgsattributetablefield
  *
  * Graphical representation for the attribute editor drag and drop editor
  */
-
 class GUI_EXPORT QgsAttributesDnDTree : public QTreeWidget
 {
     Q_OBJECT
@@ -298,8 +378,12 @@ class GUI_EXPORT QgsAttributesDnDTree : public QTreeWidget
     // QTreeWidget interface
   protected:
     QStringList mimeTypes() const override;
-    QMimeData *mimeData( const QList<QTreeWidgetItem *> items ) const override;
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    QMimeData *mimeData( const QList<QTreeWidgetItem *> items ) const override;
+#else
+    QMimeData *mimeData( const QList<QTreeWidgetItem *> &items ) const override;
+#endif
 
   private slots:
     void onItemDoubleClicked( QTreeWidgetItem *item, int column );
@@ -310,6 +394,7 @@ class GUI_EXPORT QgsAttributesDnDTree : public QTreeWidget
 };
 
 
+Q_DECLARE_METATYPE( QgsAttributesFormProperties::RelationEditorConfiguration )
 Q_DECLARE_METATYPE( QgsAttributesFormProperties::FieldConfig )
 Q_DECLARE_METATYPE( QgsAttributesFormProperties::DnDTreeItemData )
 

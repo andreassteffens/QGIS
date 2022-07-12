@@ -14,7 +14,7 @@
 
 class QgsProcessingUtils
 {
-%Docstring
+%Docstring(signature="appended")
 Utility functions for use with processing classes.
 
 .. versionadded:: 3.0
@@ -37,6 +37,12 @@ value.
 
 .. seealso:: :py:func:`compatibleMeshLayers`
 
+.. seealso:: :py:func:`compatiblePluginLayers`
+
+.. seealso:: :py:func:`compatiblePointCloudLayers`
+
+.. seealso:: :py:func:`compatibleAnnotationLayers`
+
 .. seealso:: :py:func:`compatibleLayers`
 %End
 
@@ -47,7 +53,7 @@ value.
 Returns a list of vector layers from a ``project`` which are compatible with the processing
 framework.
 
-The ``sourceTypes`` list should be filled with a list of QgsProcessing.SourceType values.
+The ``sourceTypes`` list should be filled with a list of :py:class:`QgsProcessing`.SourceType values.
 If the ``sourceTypes`` list is non-empty then the layers will be sorted so that only
 layers with the specified source type included in the list will be returned. Leaving the ``sourceTypes``
 list empty will cause all vector layers, regardless of their geometry type, to be returned.
@@ -58,6 +64,12 @@ value.
 .. seealso:: :py:func:`compatibleRasterLayers`
 
 .. seealso:: :py:func:`compatibleMeshLayers`
+
+.. seealso:: :py:func:`compatiblePluginLayers`
+
+.. seealso:: :py:func:`compatiblePointCloudLayers`
+
+.. seealso:: :py:func:`compatibleAnnotationLayers`
 
 .. seealso:: :py:func:`compatibleLayers`
 %End
@@ -74,9 +86,84 @@ value.
 
 .. seealso:: :py:func:`compatibleVectorLayers`
 
+.. seealso:: :py:func:`compatiblePluginLayers`
+
+.. seealso:: :py:func:`compatiblePointCloudLayers`
+
+.. seealso:: :py:func:`compatibleAnnotationLayers`
+
 .. seealso:: :py:func:`compatibleLayers`
 
 .. versionadded:: 3.6
+%End
+
+    static QList<QgsPluginLayer *> compatiblePluginLayers( QgsProject *project, bool sort = true );
+%Docstring
+Returns a list of plugin layers from a ``project`` which are compatible with the processing
+framework.
+
+If the ``sort`` argument is ``True`` then the layers will be sorted by their :py:func:`QgsMapLayer.name()`
+value.
+
+.. seealso:: :py:func:`compatibleRasterLayers`
+
+.. seealso:: :py:func:`compatibleVectorLayers`
+
+.. seealso:: :py:func:`compatibleMeshLayers`
+
+.. seealso:: :py:func:`compatiblePointCloudLayers`
+
+.. seealso:: :py:func:`compatibleAnnotationLayers`
+
+.. seealso:: :py:func:`compatibleLayers`
+
+.. versionadded:: 3.22
+%End
+
+    static QList<QgsPointCloudLayer *> compatiblePointCloudLayers( QgsProject *project, bool sort = true );
+%Docstring
+Returns a list of point cloud layers from a ``project`` which are compatible with the processing
+framework.
+
+If the ``sort`` argument is ``True`` then the layers will be sorted by their :py:func:`QgsMapLayer.name()`
+value.
+
+.. seealso:: :py:func:`compatibleRasterLayers`
+
+.. seealso:: :py:func:`compatibleVectorLayers`
+
+.. seealso:: :py:func:`compatibleMeshLayers`
+
+.. seealso:: :py:func:`compatiblePluginLayers`
+
+.. seealso:: :py:func:`compatibleAnnotationLayers`
+
+.. seealso:: :py:func:`compatibleLayers`
+
+.. versionadded:: 3.22
+%End
+
+    static QList<QgsAnnotationLayer *> compatibleAnnotationLayers( QgsProject *project, bool sort = true );
+%Docstring
+Returns a list of annotation layers from a ``project`` which are compatible with the processing
+framework.
+
+If the ``sort`` argument is ``True`` then the layers will be sorted by their :py:func:`QgsMapLayer.name()`
+value.
+
+.. seealso:: :py:func:`compatibleRasterLayers`
+
+.. seealso:: :py:func:`compatibleVectorLayers`
+
+.. seealso:: :py:func:`compatibleMeshLayers`
+
+.. seealso:: :py:func:`compatiblePluginLayers`
+
+.. seealso:: :py:func:`compatiblePointCloudLayers`
+
+.. seealso:: :py:func:`compatibleLayers`
+
+.. versionadded:: 3.22
 %End
 
     static QList< QgsMapLayer * > compatibleLayers( QgsProject *project, bool sort = true );
@@ -120,6 +207,8 @@ Decodes a provider key and layer ``uri`` from an encoded string, for use with
       Vector,
       Raster,
       Mesh,
+      PointCloud,
+      Annotation,
     };
 
     static QgsMapLayer *mapLayerFromString( const QString &string, QgsProcessingContext &context, bool allowLoadingNewLayers = true, QgsProcessingUtils::LayerHint typeHint = QgsProcessingUtils::LayerHint::UnknownType );
@@ -224,7 +313,7 @@ Combines the extent of several map ``layers``. If specified, the target ``crs``
 will be used to transform the layer's extent to the desired output reference system.
 
 .. deprecated::
-   Use version with QgsProcessingContext argument instead
+   Use version with :py:class:`QgsProcessingContext` argument instead
 %End
 
     static QVariant generateIteratingDestination( const QVariant &input, const QVariant &id, QgsProcessingContext &context );
@@ -367,6 +456,8 @@ a fallback value of "gpkg".
 
 .. seealso:: :py:func:`defaultRasterExtension`
 
+.. seealso:: :py:func:`defaultPointCloudExtension`
+
 .. versionadded:: 3.10
 %End
 
@@ -380,15 +471,39 @@ a fallback value of "tif".
 
 .. seealso:: :py:func:`defaultVectorExtension`
 
+.. seealso:: :py:func:`defaultPointCloudExtension`
+
 .. versionadded:: 3.10
+%End
+
+    static QString defaultPointCloudExtension();
+%Docstring
+Returns the default point cloud extension to use, in the absence of all other constraints (e.g.
+provider based support for extensions).
+
+This method returns a fallback value of "las".
+
+.. seealso:: :py:func:`defaultVectorExtension`
+
+.. seealso:: :py:func:`defaultRasterExtension`
+
+.. versionadded:: 3.24
+%End
+
+    static QVariantMap removePointerValuesFromMap( const QVariantMap &map );
+%Docstring
+Removes any raw pointer values from an input ``map``, replacing them with
+appropriate string values where possible.
+
+.. versionadded:: 3.26
 %End
 
 };
 
 class QgsProcessingFeatureSource : QgsFeatureSource
 {
-%Docstring
-QgsFeatureSource subclass which proxies methods to an underlying :py:class:`QgsFeatureSource`, modifying
+%Docstring(signature="appended")
+:py:class:`QgsFeatureSource` subclass which proxies methods to an underlying :py:class:`QgsFeatureSource`, modifying
 results according to the settings in a :py:class:`QgsProcessingContext`.
 
 .. versionadded:: 3.0
@@ -439,7 +554,7 @@ iterator, eg by restricting the returned attributes or geometry.
 
     virtual QgsWkbTypes::Type wkbType() const;
 
-    virtual long featureCount() const;
+    virtual long long featureCount() const;
 
     virtual QString sourceName() const;
 

@@ -19,7 +19,7 @@
 #include "qgslinestring.h"
 #include "qgsmapcanvas.h"
 #include "qgsproject.h"
-#include "qgsvectordataprovider.h"
+#include "qgscurvepolygon.h"
 #include "qgsvectorlayer.h"
 #include "qgisapp.h"
 #include "qgsmapmouseevent.h"
@@ -33,107 +33,101 @@ QgsMapToolAddRing::QgsMapToolAddRing( QgsMapCanvas *canvas )
   connect( QgisApp::instance(), &QgisApp::projectRead, this, &QgsMapToolAddRing::stopCapturing );
 }
 
+QgsMapToolCapture::Capabilities QgsMapToolAddRing::capabilities() const
+{
+  return QgsMapToolCapture::SupportsCurves | QgsMapToolCapture::ValidateGeometries;
+}
+
+bool QgsMapToolAddRing::supportsTechnique( Qgis::CaptureTechnique technique ) const
+{
+  switch ( technique )
+  {
+    case Qgis::CaptureTechnique::StraightSegments:
+    case Qgis::CaptureTechnique::Streaming:
+    case Qgis::CaptureTechnique::CircularString:
+    case Qgis::CaptureTechnique::Shape:
+      return true;
+  }
+  return false;
+}
+
 void QgsMapToolAddRing::cadCanvasReleaseEvent( QgsMapMouseEvent *e )
 {
-
   emit messageDiscarded();
 
-  //check if we operate on a vector layer
-  QgsVectorLayer *vlayer = currentVectorLayer();
+  getCheckLayer();
 
+  QgsMapToolCapture::cadCanvasReleaseEvent( e );
+}
+
+
+void QgsMapToolAddRing::polygonCaptured( const QgsCurvePolygon *polygon )
+{
+  QgsVectorLayer *vlayer = getCheckLayer();
   if ( !vlayer )
+    return;
+
+  vlayer->beginEditCommand( tr( "Ring added" ) );
+  const Qgis::GeometryOperationResult addRingReturnCode = vlayer->addRing( polygon->exteriorRing()->clone() );
+  QString errorMessage;
+  switch ( addRingReturnCode )
+  {
+    case Qgis::GeometryOperationResult::Success:
+      break;
+    case Qgis::GeometryOperationResult::InvalidInputGeometryType:
+      errorMessage = tr( "a problem with geometry type occurred" );
+      break;
+    case Qgis::GeometryOperationResult::AddRingNotClosed:
+      errorMessage = tr( "the inserted ring is not closed" );
+      break;
+    case Qgis::GeometryOperationResult::AddRingNotValid:
+      errorMessage = tr( "the inserted ring is not a valid geometry" );
+      break;
+    case Qgis::GeometryOperationResult::AddRingCrossesExistingRings:
+      errorMessage = tr( "the inserted ring crosses existing rings" );
+      break;
+    case Qgis::GeometryOperationResult::AddRingNotInExistingFeature:
+      errorMessage = tr( "the inserted ring is not contained in a feature" );
+      break;
+    case Qgis::GeometryOperationResult::SplitCannotSplitPoint:
+    case Qgis::GeometryOperationResult::InvalidBaseGeometry:
+    case Qgis::GeometryOperationResult::NothingHappened:
+    case Qgis::GeometryOperationResult::SelectionIsEmpty:
+    case Qgis::GeometryOperationResult::SelectionIsGreaterThanOne:
+    case Qgis::GeometryOperationResult::GeometryEngineError:
+    case Qgis::GeometryOperationResult::LayerNotEditable:
+    case Qgis::GeometryOperationResult::AddPartSelectedGeometryNotFound:
+    case Qgis::GeometryOperationResult::AddPartNotMultiGeometry:
+      errorMessage = tr( "an unknown error occurred (%1)" ).arg( qgsEnumValueToKey( addRingReturnCode ) );
+      break;
+  }
+
+  if ( addRingReturnCode != Qgis::GeometryOperationResult::Success )
+  {
+    emit messageEmitted( tr( "Could not add ring: %1." ).arg( errorMessage ), Qgis::MessageLevel::Critical );
+    vlayer->destroyEditCommand();
+  }
+  else
+  {
+    vlayer->endEditCommand();
+  }
+}
+
+QgsVectorLayer *QgsMapToolAddRing::getCheckLayer()
+{
+  //check if we operate on a vector layer
+  QgsVectorLayer *layer = currentVectorLayer();
+  if ( !layer )
   {
     notifyNotVectorLayer();
-    return;
+    return nullptr;
   }
 
-  if ( !vlayer->isEditable() )
+  if ( !layer->isEditable() )
   {
     notifyNotEditableLayer();
-    return;
+    return nullptr;
   }
 
-  //add point to list and to rubber band
-  if ( e->button() == Qt::LeftButton )
-  {
-    int error = addVertex( e->mapPoint(), e->mapPointMatch() );
-    if ( error == 1 )
-    {
-      //current layer is not a vector layer
-      return;
-    }
-    else if ( error == 2 )
-    {
-      //problem with coordinate transformation
-      emit messageEmitted( tr( "Cannot transform the point to the layers coordinate system." ), Qgis::Warning );
-      return;
-    }
-
-    startCapturing();
-  }
-  else if ( e->button() == Qt::RightButton )
-  {
-    if ( !isCapturing() )
-      return;
-
-    deleteTempRubberBand();
-
-    closePolygon();
-
-    vlayer->beginEditCommand( tr( "Ring added" ) );
-
-    //does compoundcurve contain circular strings?
-    //does provider support circular strings?
-    bool hasCurvedSegments = captureCurve()->hasCurvedSegments();
-    bool providerSupportsCurvedSegments = vlayer->dataProvider()->capabilities() & QgsVectorDataProvider::CircularGeometries;
-
-    QgsCurve *curveToAdd = nullptr;
-    if ( hasCurvedSegments && providerSupportsCurvedSegments )
-    {
-      curveToAdd = captureCurve()->clone();
-    }
-    else
-    {
-      curveToAdd = captureCurve()->curveToLine();
-    }
-
-    int addRingReturnCode = vlayer->addRing( curveToAdd );
-    if ( addRingReturnCode != 0 )
-    {
-      QString errorMessage;
-      //todo: open message box to communicate errors
-      if ( addRingReturnCode == 1 )
-      {
-        errorMessage = tr( "a problem with geometry type occurred" );
-      }
-      else if ( addRingReturnCode == 2 )
-      {
-        errorMessage = tr( "the inserted ring is not closed" );
-      }
-      else if ( addRingReturnCode == 3 )
-      {
-        errorMessage = tr( "the inserted ring is not a valid geometry" );
-      }
-      else if ( addRingReturnCode == 4 )
-      {
-        errorMessage = tr( "the inserted ring crosses existing rings" );
-      }
-      else if ( addRingReturnCode == 5 )
-      {
-        errorMessage = tr( "the inserted ring is not contained in a feature" );
-      }
-      else
-      {
-        errorMessage = tr( "an unknown error occurred" );
-      }
-      emit messageEmitted( tr( "Could not add ring since %1." ).arg( errorMessage ), Qgis::Critical );
-      vlayer->destroyEditCommand();
-    }
-    else
-    {
-      vlayer->endEditCommand();
-    }
-
-    stopCapturing();
-  }
+  return layer;
 }

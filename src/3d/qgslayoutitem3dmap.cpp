@@ -62,7 +62,7 @@ void QgsLayoutItem3DMap::assignFreeId()
 
   int maxId = -1;
   bool used = false;
-  for ( QgsLayoutItem3DMap *map : qgis::as_const( mapsList ) )
+  for ( QgsLayoutItem3DMap *map : std::as_const( mapsList ) )
   {
     if ( map == this )
       continue;
@@ -132,6 +132,19 @@ void QgsLayoutItem3DMap::draw( QgsLayoutItemRenderContext &context )
   {
     painter->drawText( r, Qt::AlignCenter, tr( "Loading" ) );
     painter->restore();
+    if ( mSettings->rendererUsage() != Qgis::RendererUsage::View )
+    {
+      mSettings->setRendererUsage( Qgis::RendererUsage::View );
+      mEngine.reset(); //we need to rebuild the scene to force the render again
+    }
+  }
+  else
+  {
+    if ( mSettings->rendererUsage() != Qgis::RendererUsage::Export )
+    {
+      mSettings->setRendererUsage( Qgis::RendererUsage::Export );
+      mEngine.reset(); //we need to rebuild the scene to force the render again
+    }
   }
 
   QSizeF sizePixels = mLayout->renderContext().measurementConverter().convert( sizeWithUnits(), QgsUnitTypes::LayoutPixels ).toQSizeF();

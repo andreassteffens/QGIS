@@ -19,12 +19,15 @@
 #include <QMessageBox>
 #include <QSqlDatabase>
 #include <QSqlError>
-#include <QRegExpValidator>
+#include <QRegularExpression>
+#include <QRegularExpressionValidator>
+#include <QMenu>
 
 #include "qgsmssqlnewconnection.h"
 #include "qgsmssqlprovider.h"
 #include "qgssettings.h"
 #include "qgsmssqlconnection.h"
+#include "qgsmssqldatabase.h"
 #include "qgsgui.h"
 
 QgsMssqlNewConnection::QgsMssqlNewConnection( QWidget *parent, const QString &connName, Qt::WindowFlags fl )
@@ -44,6 +47,12 @@ QgsMssqlNewConnection::QgsMssqlNewConnection( QWidget *parent, const QString &co
   connect( txtService, &QLineEdit::textChanged, this, &QgsMssqlNewConnection::updateOkButtonState );
   connect( txtHost, &QLineEdit::textChanged, this, &QgsMssqlNewConnection::updateOkButtonState );
   connect( listDatabase, &QListWidget::currentItemChanged, this, &QgsMssqlNewConnection::updateOkButtonState );
+  connect( listDatabase, &QListWidget::currentItemChanged, this, &QgsMssqlNewConnection::onCurrentDataBaseChange );
+  connect( groupBoxGeometryColumns,  &QGroupBox::toggled, this, &QgsMssqlNewConnection::onCurrentDataBaseChange );
+  connect( cb_allowGeometrylessTables,  &QCheckBox::clicked, this, &QgsMssqlNewConnection::onCurrentDataBaseChange );
+
+  connect( checkBoxExtentFromGeometryColumns, &QCheckBox::toggled, this, &QgsMssqlNewConnection::onExtentFromGeometryToggled );
+  connect( checkBoxPKFromGeometryColumns, &QCheckBox::toggled, this, &QgsMssqlNewConnection::onPrimaryKeyFromGeometryToggled );
 
   lblWarning->hide();
 
@@ -51,14 +60,21 @@ QgsMssqlNewConnection::QgsMssqlNewConnection( QWidget *parent, const QString &co
   {
     // populate the dialog with the information stored for the connection
     // populate the fields with the stored setting parameters
-    QgsSettings settings;
+    const QgsSettings settings;
 
-    QString key = "/MSSQL/connections/" + connName;
+    const QString key = "/MSSQL/connections/" + connName;
     txtService->setText( settings.value( key + "/service" ).toString() );
     txtHost->setText( settings.value( key + "/host" ).toString() );
     listDatabase->addItem( settings.value( key + "/database" ).toString() );
+    groupBoxSchemasFilter->setChecked( settings.value( key + "/schemasFiltering" ).toBool() );
+    const QVariant schemasVariant = settings.value( key + "/excludedSchemas" );
+    if ( schemasVariant.isValid() && schemasVariant.type() == QVariant::Map )
+      mSchemaSettings = schemasVariant.toMap();
+
     listDatabase->setCurrentRow( 0 );
-    cb_geometryColumns->setChecked( QgsMssqlConnection::geometryColumnsOnly( connName ) );
+    groupBoxGeometryColumns->setChecked( QgsMssqlConnection::geometryColumnsOnly( connName ) );
+    whileBlocking( checkBoxExtentFromGeometryColumns )->setChecked( QgsMssqlConnection::extentInGeometryColumns( connName ) );
+    whileBlocking( checkBoxPKFromGeometryColumns )->setChecked( QgsMssqlConnection::primaryKeyInGeometryColumns( connName ) );
     cb_allowGeometrylessTables->setChecked( QgsMssqlConnection::allowGeometrylessTables( connName ) );
     cb_useEstimatedMetadata->setChecked( QgsMssqlConnection::useEstimatedMetadata( connName ) );
     mCheckNoInvalidGeometryHandling->setChecked( QgsMssqlConnection::isInvalidGeometryHandlingDisabled( connName ) );
@@ -78,9 +94,33 @@ QgsMssqlNewConnection::QgsMssqlNewConnection( QWidget *parent, const QString &co
 
     txtName->setText( connName );
   }
-  txtName->setValidator( new QRegExpValidator( QRegExp( "[^\\/]+" ), txtName ) );
+  txtName->setValidator( new QRegularExpressionValidator( QRegularExpression( QStringLiteral( "[^\\/]+" ) ), txtName ) );
   cb_trustedConnection_clicked();
+
+  schemaView->setModel( &mSchemaModel );
+  schemaView->setContextMenuPolicy( Qt::CustomContextMenu );
+
+  connect( schemaView, &QWidget::customContextMenuRequested, this, [this]( const QPoint & p )
+  {
+    QMenu menu;
+    menu.addAction( tr( "Check All" ), this, [this]
+    {
+      mSchemaModel.checkAll();
+    } );
+
+    menu.addAction( tr( "Uncheck All" ), this, [this]
+    {
+      mSchemaModel.unCheckAll();
+    } );
+
+    menu.exec( this->schemaView->viewport()->mapToGlobal( p ) );
+  }
+         );
+  onCurrentDataBaseChange();
+
+  groupBoxSchemasFilter->setCollapsed( !groupBoxSchemasFilter->isChecked() );
 }
+
 //! Autoconnected SLOTS
 void QgsMssqlNewConnection::accept()
 {
@@ -123,7 +163,19 @@ void QgsMssqlNewConnection::accept()
   settings.setValue( baseKey + "/password", chkStorePassword->isChecked() ? txtPassword->text() : QString() );
   settings.setValue( baseKey + "/saveUsername", chkStoreUsername->isChecked() ? "true" : "false" );
   settings.setValue( baseKey + "/savePassword", chkStorePassword->isChecked() ? "true" : "false" );
-  QgsMssqlConnection::setGeometryColumnsOnly( connName, cb_geometryColumns->isChecked() );
+
+  if ( groupBoxSchemasFilter->isChecked() )
+  {
+    if ( !mSchemaModel.dataBaseName().isEmpty() )
+      mSchemaSettings.insert( mSchemaModel.dataBaseName(), mSchemaModel.uncheckedSchemas() );
+    settings.setValue( baseKey + "/excludedSchemas", mSchemaSettings );
+  }
+
+  settings.setValue( baseKey + "/schemasFiltering", groupBoxSchemasFilter->isChecked() );
+
+  QgsMssqlConnection::setGeometryColumnsOnly( connName, groupBoxGeometryColumns->isChecked() );
+  QgsMssqlConnection::setExtentInGeometryColumns( connName, checkBoxExtentFromGeometryColumns->isChecked() && testExtentInGeometryColumns() );
+  QgsMssqlConnection::setPrimaryKeyInGeometryColumns( connName, checkBoxPKFromGeometryColumns->isChecked() && testPrimaryKeyInGeometryColumns() );
   QgsMssqlConnection::setAllowGeometrylessTables( connName, cb_allowGeometrylessTables->isChecked() );
   QgsMssqlConnection::setUseEstimatedMetadata( connName, cb_useEstimatedMetadata->isChecked() );
   QgsMssqlConnection::setInvalidGeometryHandlingDisabled( connName, mCheckNoInvalidGeometryHandling->isChecked() );
@@ -172,38 +224,16 @@ bool QgsMssqlNewConnection::testConnection( const QString &testDatabase )
     return false;
   }
 
-  QString database;
-  QListWidgetItem *item = listDatabase->currentItem();
-  if ( !testDatabase.isEmpty() )
-  {
-    database = testDatabase;
-  }
-  else if ( item && item->text() != QLatin1String( "(from service)" ) )
-  {
-    database = item->text();
-  }
+  std::shared_ptr<QgsMssqlDatabase> db = getDatabase( testDatabase );
 
-  QSqlDatabase db = QgsMssqlConnection::getDatabase( txtService->text().trimmed(),
-                    txtHost->text().trimmed(),
-                    database,
-                    txtUsername->text().trimmed(),
-                    txtPassword->text().trimmed() );
-
-  if ( db.isOpen() )
-    db.close();
-
-  if ( !db.open() )
+  if ( !db->isValid() )
   {
     bar->clearWidgets();
-    bar->pushWarning( tr( "Error opening connection" ), db.lastError().text() );
+    bar->pushWarning( tr( "Error opening connection" ), db->errorText() );
     return false;
   }
   else
   {
-    if ( database.isEmpty() )
-    {
-      database = txtService->text();
-    }
     bar->clearWidgets();
   }
 
@@ -213,17 +243,17 @@ bool QgsMssqlNewConnection::testConnection( const QString &testDatabase )
 void QgsMssqlNewConnection::listDatabases()
 {
   testConnection( QStringLiteral( "master" ) );
+  QString currentDataBase;
+  if ( listDatabase->currentItem() )
+    currentDataBase = listDatabase->currentItem()->text();
   listDatabase->clear();
-  QString queryStr = QStringLiteral( "SELECT name FROM master..sysdatabases WHERE name NOT IN ('master', 'tempdb', 'model', 'msdb')" );
+  const QString queryStr = QStringLiteral( "SELECT name FROM master..sysdatabases WHERE name NOT IN ('master', 'tempdb', 'model', 'msdb')" );
 
-  QSqlDatabase db = QgsMssqlConnection::getDatabase( txtService->text().trimmed(),
-                    txtHost->text().trimmed(),
-                    QStringLiteral( "master" ),
-                    txtUsername->text().trimmed(),
-                    txtPassword->text().trimmed() );
-  if ( db.open() )
+  std::shared_ptr<QgsMssqlDatabase> db = getDatabase( QStringLiteral( "master" ) );
+
+  if ( db->isValid() )
   {
-    QSqlQuery query = QSqlQuery( db );
+    QSqlQuery query = QSqlQuery( db->db() );
     query.setForwardOnly( true );
     ( void )query.exec( queryStr );
 
@@ -236,13 +266,22 @@ void QgsMssqlNewConnection::listDatabases()
     {
       while ( query.next() )
       {
-        QString name = query.value( 0 ).toString();
+        const QString name = query.value( 0 ).toString();
         listDatabase->addItem( name );
       }
       listDatabase->setCurrentRow( 0 );
     }
-    db.close();
   }
+
+  for ( int i = 0; i < listDatabase->count(); ++i )
+  {
+    if ( listDatabase->item( i )->text() == currentDataBase )
+    {
+      listDatabase->setCurrentRow( i );
+      break;
+    }
+  }
+  onCurrentDataBaseChange();
 }
 
 void QgsMssqlNewConnection::showHelp()
@@ -250,9 +289,206 @@ void QgsMssqlNewConnection::showHelp()
   QgsHelp::openHelp( QStringLiteral( "managing_data_source/opening_data.html#connecting-to-mssql-spatial" ) );
 }
 
+std::shared_ptr<QgsMssqlDatabase> QgsMssqlNewConnection::getDatabase( const QString &name ) const
+{
+  QString database;
+  QListWidgetItem *item = listDatabase->currentItem();
+  if ( !name.isEmpty() )
+  {
+    database = name;
+  }
+  else if ( item && item->text() != QLatin1String( "(from service)" ) )
+  {
+    database = item->text();
+  }
+
+  return QgsMssqlDatabase::connectDb( txtService->text().trimmed(),
+                                      txtHost->text().trimmed(),
+                                      database,
+                                      txtUsername->text().trimmed(),
+                                      txtPassword->text().trimmed() );
+}
+
+
 void QgsMssqlNewConnection::updateOkButtonState()
 {
   QListWidgetItem *item = listDatabase->currentItem();
-  bool disabled = txtName->text().isEmpty() || ( txtService->text().isEmpty() && txtHost->text().isEmpty() ) || !item;
+  const bool disabled = txtName->text().isEmpty() || ( txtService->text().isEmpty() && txtHost->text().isEmpty() ) || !item;
   buttonBox->button( QDialogButtonBox::Ok )->setDisabled( disabled );
+}
+
+void QgsMssqlNewConnection::onCurrentDataBaseChange()
+{
+  //First store the schema settings for the previous dataBase
+  if ( !mSchemaModel.dataBaseName().isEmpty() )
+    mSchemaSettings.insert( mSchemaModel.dataBaseName(), mSchemaModel.uncheckedSchemas() );
+
+  QString databaseName;
+  if ( listDatabase->currentItem() )
+    databaseName = listDatabase->currentItem()->text();
+
+  std::shared_ptr<QgsMssqlDatabase> db = getDatabase();
+
+  QStringList schemasList = QgsMssqlConnection::schemas( db, nullptr );
+  int i = 0;
+  while ( i < schemasList.count() )
+  {
+    if ( QgsMssqlConnection::isSystemSchema( schemasList.at( i ) ) )
+      schemasList.removeAt( i );
+    else
+      ++i;
+  }
+
+  mSchemaModel.setSettings( databaseName, schemasList, QgsMssqlConnection::excludedSchemasList( txtName->text(), databaseName ) );
+}
+
+void QgsMssqlNewConnection::onExtentFromGeometryToggled( bool checked )
+{
+  if ( !checked )
+  {
+    bar->clearWidgets();
+    return;
+  }
+
+  if ( !testExtentInGeometryColumns() )
+    bar->pushWarning( tr( "Use extent from geometry_columns table" ), tr( "Extent columns (qgis_xmin, qgis_ymin, qgis_xmax, qgis_ymax) not found." ) );
+  else
+    bar->pushInfo( tr( "Use extent from geometry_columns table" ), tr( "Extent columns found." ) );
+}
+
+void QgsMssqlNewConnection::onPrimaryKeyFromGeometryToggled( bool checked )
+{
+  if ( !checked )
+  {
+    bar->clearWidgets();
+    return;
+  }
+
+  if ( !testPrimaryKeyInGeometryColumns() )
+    bar->pushWarning( tr( "Use primary key(s) from geometry_columns table" ), tr( "Primary key column (qgs_pkey) not found." ) );
+  else
+    bar->pushInfo( tr( "Use primary key(s) from geometry_columns table" ), tr( "Primary key column found." ) );
+}
+
+
+bool QgsMssqlNewConnection::testExtentInGeometryColumns() const
+{
+  std::shared_ptr<QgsMssqlDatabase> db = getDatabase();
+  if ( !db->isValid() )
+    return false;
+
+  const QString queryStr = QStringLiteral( "SELECT qgis_xmin,qgis_xmax,qgis_ymin,qgis_ymax FROM geometry_columns" );
+  QSqlQuery query = QSqlQuery( db->db() );
+  const bool test = query.exec( queryStr );
+
+  return test;
+}
+
+bool QgsMssqlNewConnection::testPrimaryKeyInGeometryColumns() const
+{
+  std::shared_ptr<QgsMssqlDatabase> db = getDatabase();
+  if ( !db->isValid() )
+    return false;
+
+  const QString queryStr = QStringLiteral( "SELECT qgis_pkey FROM geometry_columns" );
+  QSqlQuery query = QSqlQuery( db->db() );
+  const bool test = query.exec( queryStr );
+
+  return test;
+}
+
+QgsMssqlNewConnection::SchemaModel::SchemaModel( QObject *parent ): QAbstractListModel( parent )
+{}
+
+int QgsMssqlNewConnection::SchemaModel::rowCount( const QModelIndex &parent ) const
+{
+  Q_UNUSED( parent )
+  return mSchemas.count();
+}
+
+QVariant QgsMssqlNewConnection::SchemaModel::data( const QModelIndex &index, int role ) const
+{
+  if ( !index.isValid() || index.row() >= mSchemas.count() )
+    return QVariant();
+
+
+  switch ( role )
+  {
+    case Qt::CheckStateRole:
+      if ( mExcludedSchemas.contains( mSchemas.at( index.row() ) ) )
+        return Qt::CheckState::Unchecked;
+      else
+        return Qt::CheckState::Checked;
+      break;
+    case Qt::DisplayRole:
+      return mSchemas.at( index.row() );
+      break;
+    default:
+      return QVariant();
+  }
+
+  return QVariant();
+}
+
+bool QgsMssqlNewConnection::SchemaModel::setData( const QModelIndex &index, const QVariant &value, int role )
+{
+  if ( !index.isValid() || index.row() >= mSchemas.count() )
+    return false;
+
+  switch ( role )
+  {
+    case Qt::CheckStateRole:
+      if ( value == Qt::Checked && mExcludedSchemas.contains( mSchemas.at( index.row() ) ) )
+        mExcludedSchemas.removeOne( mSchemas.at( index.row() ) );
+      else if ( value == Qt::Unchecked && !mExcludedSchemas.contains( mSchemas.at( index.row() ) ) )
+        mExcludedSchemas.append( mSchemas.at( index.row() ) );
+      return true;
+      break;
+    default:
+      return false;
+  }
+
+  return false;
+}
+
+Qt::ItemFlags QgsMssqlNewConnection::SchemaModel::flags( const QModelIndex &index ) const
+{
+  return QAbstractListModel::flags( index ) | Qt::ItemFlag::ItemIsUserCheckable;
+}
+
+QStringList QgsMssqlNewConnection::SchemaModel::uncheckedSchemas() const
+{
+  return mExcludedSchemas;
+}
+
+
+QString QgsMssqlNewConnection::SchemaModel::dataBaseName() const
+{
+  return mDataBaseName;
+}
+
+void QgsMssqlNewConnection::SchemaModel::setDataBaseName( const QString &dataBaseName )
+{
+  mDataBaseName = dataBaseName;
+}
+
+void QgsMssqlNewConnection::SchemaModel::setSettings( const QString &database, const QStringList &schemas, const QStringList &excludedSchemas )
+{
+  beginResetModel();
+  mDataBaseName = database;
+  mSchemas = schemas;
+  mExcludedSchemas = excludedSchemas;
+  endResetModel();
+}
+
+void QgsMssqlNewConnection::SchemaModel::checkAll()
+{
+  mExcludedSchemas.clear();
+  emit dataChanged( index( 0, 0, QModelIndex() ), index( mSchemas.count() - 1, 0, QModelIndex() ) );
+}
+
+void QgsMssqlNewConnection::SchemaModel::unCheckAll()
+{
+  mExcludedSchemas = mSchemas;
+  emit dataChanged( index( 0, 0, QModelIndex() ), index( mSchemas.count() - 1, 0, QModelIndex() ) );
 }

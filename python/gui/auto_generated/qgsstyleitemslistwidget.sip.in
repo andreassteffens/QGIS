@@ -14,8 +14,8 @@
 
 class QgsStyleItemsListWidget : QWidget
 {
-%Docstring
-A reusable widget for showing a filtered list of entities from a QgsStyle database.
+%Docstring(signature="appended")
+A reusable widget for showing a filtered list of entities from a :py:class:`QgsStyle` database.
 
 .. versionadded:: 3.10
 %End
@@ -46,7 +46,7 @@ Sets the ``type`` of style entity to show in the widget.
 %End
 
 
-    void setSymbolType( QgsSymbol::SymbolType type );
+    void setSymbolType( Qgis::SymbolType type );
 %Docstring
 Sets the ``type`` of symbols to show in the widget.
 
@@ -55,7 +55,7 @@ Sets the ``type`` of symbols to show in the widget.
 
     void setLayerType( QgsWkbTypes::GeometryType type );
 %Docstring
-Sets the layer ``type`` to show in the widget. Set ``type`` to QgsWkbTypes.UnknownGeometry if no
+Sets the layer ``type`` to show in the widget. Set ``type`` to :py:class:`QgsWkbTypes`.UnknownGeometry if no
 layer type filter is desired.
 
 This setting only applies to label settings and 3d style entities.
@@ -94,6 +94,17 @@ Emitted when the selected item is changed in the widget.
 
 :param name: Newly selected item name
 :param type: Newly selected item type
+%End
+
+    void selectionChangedWithStylePath( const QString &name, QgsStyle::StyleEntity type, const QString &stylePath );
+%Docstring
+Emitted when the selected item is changed in the widget.
+
+:param name: Newly selected item name
+:param type: Newly selected item type
+:param stylePath: file path to associated style database
+
+.. versionadded:: 3.26
 %End
 
     void saveEntity();

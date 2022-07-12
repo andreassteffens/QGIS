@@ -11,8 +11,12 @@
 #include "frmts/mdal_binary_dat.hpp"
 #include "frmts/mdal_selafin.hpp"
 #include "frmts/mdal_esri_tin.hpp"
-#include "frmts/mdal_ply.hpp"
+#include "frmts/mdal_dynamic_driver.hpp"
 #include "mdal_utils.hpp"
+
+#ifdef BUILD_PLY
+#include "frmts/mdal_ply.hpp"
+#endif
 
 #ifdef HAVE_HDF5
 #include "frmts/mdal_xmdf.hpp"
@@ -22,6 +26,7 @@
 
 #ifdef HAVE_GDAL
 #include "frmts/mdal_gdal_grib.hpp"
+#include "frmts/mdal_h2i.hpp"
 #endif
 
 #ifdef HAVE_NETCDF
@@ -162,13 +167,25 @@ void MDAL::DriverManager::loadDatasets( Mesh *mesh, const std::string &datasetFi
   MDAL::Log::error( MDAL_Status::Err_UnknownFormat, "No driver was able to load requested file: " + datasetFile );
 }
 
-void MDAL::DriverManager::save( MDAL::Mesh *mesh, const std::string &uri, const std::string &driverName ) const
+void  MDAL::DriverManager::save( Mesh *mesh, const std::string &uri ) const
 {
-  auto selectedDriver = driver( driverName );
+  std::string driverName;
+  std::string meshName;
+  std::string fileName;
+
+  MDAL::parseDriverAndMeshFromUri( uri, driverName, fileName, meshName );
+
+  std::shared_ptr<MDAL::Driver> selectedDriver = driver( driverName );
+
+  if ( !selectedDriver )
+  {
+    MDAL::Log::error( MDAL_Status::Err_MissingDriver, "Could not find driver with name: " + driverName );
+    return;
+  }
 
   std::unique_ptr<Driver> drv( selectedDriver->create() );
 
-  drv->save( uri, mesh );
+  drv->save( fileName, meshName, mesh );
 }
 
 size_t MDAL::DriverManager::driversCount() const
@@ -205,7 +222,10 @@ MDAL::DriverManager::DriverManager()
   mDrivers.push_back( std::make_shared<MDAL::DriverXmsTin>() );
   mDrivers.push_back( std::make_shared<MDAL::DriverSelafin>() );
   mDrivers.push_back( std::make_shared<MDAL::DriverEsriTin>() );
+
+#ifdef BUILD_PLY
   mDrivers.push_back( std::make_shared<MDAL::DriverPly>() );
+#endif
 
 #ifdef HAVE_HDF5
   mDrivers.push_back( std::make_shared<MDAL::DriverFlo2D>() );
@@ -228,6 +248,7 @@ MDAL::DriverManager::DriverManager()
 
 #ifdef HAVE_GDAL
   mDrivers.push_back( std::make_shared<MDAL::DriverGdalGrib>() );
+  mDrivers.push_back( std::make_shared<MDAL::DriverH2i>() );
 #endif
 
   // DATASET DRIVERS
@@ -240,5 +261,24 @@ MDAL::DriverManager::DriverManager()
 #if defined HAVE_HDF5 && defined HAVE_XML
   mDrivers.push_back( std::make_shared<MDAL::DriverXdmf>() );
 #endif
+
+  loadDynamicDrivers();
+}
+
+void MDAL::DriverManager::loadDynamicDrivers()
+{
+  std::string dirPath = MDAL::getEnvVar( "MDAL_DRIVER_PATH" );
+  if ( dirPath.empty() )
+    return;
+  dirPath += '/';
+  std::vector<std::string> libList = MDAL::Library::libraryFilesInDir( dirPath );
+  for ( const std::string &libFile : libList )
+  {
+    std::shared_ptr<MDAL::Driver> driver( MDAL::DriverDynamic::create( dirPath + libFile ) );
+
+    if ( driver )
+      mDrivers.push_back( driver );
+  }
+
 }
 

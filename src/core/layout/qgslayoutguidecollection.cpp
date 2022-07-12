@@ -384,7 +384,8 @@ bool QgsLayoutGuideCollection::removeRows( int row, int count, const QModelIndex
 
 void QgsLayoutGuideCollection::addGuide( QgsLayoutGuide *guide )
 {
-  guide->setLayout( mLayout );
+  if ( guide->layout() != mLayout )
+    guide->setLayout( mLayout );
 
   if ( !mBlockUndoCommands )
     mLayout->undoStack()->beginCommand( mPageCollection, tr( "Create Guide" ) );
@@ -443,7 +444,7 @@ void QgsLayoutGuideCollection::applyGuidesToAllOtherPages( int sourcePage )
   }
 
   // remaining guides belong to source page - clone them to other pages
-  for ( QgsLayoutGuide *guide : qgis::as_const( mGuides ) )
+  for ( QgsLayoutGuide *guide : std::as_const( mGuides ) )
   {
     for ( int p = 0; p < mPageCollection->pageCount(); ++p )
     {

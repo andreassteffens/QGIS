@@ -102,7 +102,7 @@ class QgsGrassModuleOptions
     //! Flag names
     virtual QStringList flagNames() { return QStringList() ; }
 
-    QStringList errors() { return mErrors; }
+    QStringList errors() const { return mErrors; }
 
   protected:
     //! Pointer to the QGIS interface object
@@ -148,7 +148,7 @@ class QgsGrassModuleStandardOptions: public QWidget, public QgsGrassModuleOption
       QgsGrassTools *tools, QgsGrassModule *module,
       QgisInterface *iface,
       QString xname, QDomElement confDocElem,
-      bool direct, QWidget *parent = nullptr, Qt::WindowFlags f = nullptr );
+      bool direct, QWidget *parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags() );
 
     //! Gets module options as list of arguments for QProcess
     QStringList arguments() override;

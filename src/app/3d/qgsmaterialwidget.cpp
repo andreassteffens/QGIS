@@ -23,7 +23,7 @@
 
 QgsMaterialWidget::QgsMaterialWidget( QWidget *parent )
   : QWidget( parent )
-  , mCurrentSettings( qgis::make_unique< QgsPhongMaterialSettings >() )
+  , mCurrentSettings( std::make_unique< QgsPhongMaterialSettings >() )
   , mTechnique( QgsMaterialSettingsRenderingTechnique::Triangles )
 {
   setupUi( this );
@@ -75,16 +75,23 @@ void QgsMaterialWidget::setTechnique( QgsMaterialSettingsRenderingTechnique tech
   materialTypeChanged();
 }
 
-void QgsMaterialWidget::setSettings( const QgsAbstractMaterialSettings *settings, QgsVectorLayer * )
+void QgsMaterialWidget::setSettings( const QgsAbstractMaterialSettings *settings, QgsVectorLayer *layer )
 {
   mMaterialTypeComboBox->setCurrentIndex( mMaterialTypeComboBox->findData( settings->type() ) );
   mCurrentSettings.reset( settings->clone() );
+  mLayer = layer;
   updateMaterialWidget();
 }
 
 QgsAbstractMaterialSettings *QgsMaterialWidget::settings()
 {
   return mCurrentSettings->clone();
+}
+
+void QgsMaterialWidget::setType( const QString &type )
+{
+  mMaterialTypeComboBox->setCurrentIndex( mMaterialTypeComboBox->findData( type ) );
+  materialTypeChanged();
 }
 
 void QgsMaterialWidget::materialTypeChanged()
@@ -141,7 +148,7 @@ void QgsMaterialWidget::updateMaterialWidget()
   {
     if ( QgsMaterialSettingsWidget *w = am->createWidget() )
     {
-      w->setSettings( mCurrentSettings.get(), nullptr );
+      w->setSettings( mCurrentSettings.get(), mLayer );
       w->setTechnique( mTechnique );
       mStackedWidget->addWidget( w );
       mStackedWidget->setCurrentWidget( w );

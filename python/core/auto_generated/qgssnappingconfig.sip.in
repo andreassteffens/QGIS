@@ -9,9 +9,11 @@
 
 
 
+
+
 class QgsSnappingConfig
 {
-%Docstring
+%Docstring(signature="appended")
 This is a container for configuration of the snapping of the project
 
 .. versionadded:: 3.0
@@ -25,31 +27,12 @@ This is a container for configuration of the snapping of the project
 
   public:
 
-    enum SnappingMode
-    {
-      ActiveLayer,
-      AllLayers,
-      AdvancedConfiguration,
-    };
-
     enum SnappingType
     {
       Vertex,
       VertexAndSegment,
       Segment,
     };
-
-    enum SnappingTypes
-    {
-      NoSnapFlag,
-      VertexFlag,
-      SegmentFlag,
-      AreaFlag,
-      CentroidFlag,
-      MiddleOfSegmentFlag,
-    };
-    typedef QFlags<QgsSnappingConfig::SnappingTypes> SnappingTypeFlag;
-
 
     enum ScaleDependencyMode
     {
@@ -58,18 +41,48 @@ This is a container for configuration of the snapping of the project
       PerLayer
     };
 
-    static const QString snappingTypeFlagToString( SnappingTypeFlag type );
+    static QString snappingTypeToString( Qgis::SnappingType type );
 %Docstring
 Convenient method to returns the translated name of the enum type
-QgsSnappingConfig.SnappingTypeFlag
+Qgis.SnappingTypes.
+
+.. versionadded:: 3.26
+%End
+
+ static QString snappingTypeFlagToString( Qgis::SnappingType type ) /Deprecated/;
+%Docstring
+Convenient method to return the translated name of the enum type
+Qgis.SnappingTypes.
 
 .. versionadded:: 3.12
+
+.. deprecated:: QGIS 3.26
+   use Qgis.snappingTypeToString instead
 %End
 
 
+    static QIcon snappingTypeToIcon( Qgis::SnappingType type );
+%Docstring
+Convenient method to return an icon corresponding to the enum type
+Qgis.SnappingTypes.
+
+.. versionadded:: 3.20
+%End
+
+ static QIcon snappingTypeFlagToIcon( Qgis::SnappingType type ) /Deprecated/;
+%Docstring
+Convenient method to return an icon corresponding to the enum type
+Qgis.SnappingTypes.
+
+.. deprecated:: QGIS 3.26
+   use Qgis.snappingTypeToString instead
+
+.. versionadded:: 3.20
+%End
+
     class IndividualLayerSettings
 {
-%Docstring
+%Docstring(signature="appended")
 This is a container of advanced configuration (per layer) of the snapping of the project
 
 .. versionadded:: 3.0
@@ -90,10 +103,10 @@ IndividualLayerSettings
 :param units:
 
 .. deprecated:: QGIS 3.12
-   use the method with SnappingTypeFlag instead.
+   use the method with Qgis.SnappingTypes instead.
 %End
 
-        IndividualLayerSettings( bool enabled, SnappingTypeFlag type, double tolerance, QgsTolerance::UnitType units, double minScale = 0.0, double maxScale = 0.0 );
+        IndividualLayerSettings( bool enabled, Qgis::SnappingTypes type, double tolerance, QgsTolerance::UnitType units, double minScale = 0.0, double maxScale = 0.0 );
 %Docstring
 IndividualLayerSettings
 
@@ -127,7 +140,7 @@ Returns if snapping is enabled
 enables the snapping
 %End
 
-        QgsSnappingConfig::SnappingTypeFlag typeFlag() const;
+        Qgis::SnappingTypes typeFlag() const;
 %Docstring
 Returns the flags type (vertices | segments | area | centroid | middle)
 
@@ -142,7 +155,7 @@ Returns the flags type (vertices | segments | area | centroid | middle)
    use typeFlag instead.
 %End
 
- void setType( QgsSnappingConfig::SnappingType type ) /Deprecated/;
+ void setType( SnappingType type ) /Deprecated/;
 %Docstring
 define the type of snapping
 
@@ -150,7 +163,7 @@ define the type of snapping
    use setTypeFlag instead.
 %End
 
-        void setTypeFlag( QgsSnappingConfig::SnappingTypeFlag type );
+        void setTypeFlag( Qgis::SnappingTypes type );
 %Docstring
 define the type of snapping
 
@@ -233,17 +246,17 @@ Returns if snapping is enabled
 enables the snapping
 %End
 
-    SnappingMode mode() const;
+    Qgis::SnappingMode mode() const;
 %Docstring
 Returns the mode (all layers, active layer, per layer settings)
 %End
 
-    void setMode( SnappingMode mode );
+    void setMode( Qgis::SnappingMode mode );
 %Docstring
 define the mode of snapping
 %End
 
-    QgsSnappingConfig::SnappingTypeFlag typeFlag() const;
+    Qgis::SnappingTypes typeFlag() const;
 %Docstring
 Returns the flags type (vertices | segments | area | centroid | middle)
 
@@ -266,7 +279,7 @@ define the type of snapping
    use setTypeFlag instead.
 %End
 
-    void setTypeFlag( QgsSnappingConfig::SnappingTypeFlag type );
+    void setTypeFlag( Qgis::SnappingTypes type );
 %Docstring
 define the type of snapping
 
@@ -475,8 +488,6 @@ The project from which the snapped layers should be retrieved
 %End
 
 };
-QFlags<QgsSnappingConfig::SnappingTypes> operator|(QgsSnappingConfig::SnappingTypes f1, QFlags<QgsSnappingConfig::SnappingTypes> f2);
-
 
 /************************************************************************
  * This file has been generated automatically from                      *

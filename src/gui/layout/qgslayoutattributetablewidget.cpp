@@ -182,7 +182,7 @@ QgsExpressionContext QgsLayoutAttributeTableWidget::createExpressionContext() co
   else if ( mTable )
     context = mTable->createExpressionContext();
 
-  std::unique_ptr< QgsExpressionContextScope > cellScope = qgis::make_unique< QgsExpressionContextScope >();
+  std::unique_ptr< QgsExpressionContextScope > cellScope = std::make_unique< QgsExpressionContextScope >();
   cellScope->setVariable( QStringLiteral( "row_number" ), 1, true );
   cellScope->setVariable( QStringLiteral( "column_number" ), 1, true );
   context.appendScope( cellScope.release() );
@@ -428,10 +428,16 @@ void QgsLayoutAttributeTableWidget::updateGuiElements()
       //layer has no geometry, so uncheck & disable controls which require geometry
       mShowOnlyVisibleFeaturesCheckBox->setChecked( false );
       mShowOnlyVisibleFeaturesCheckBox->setEnabled( false );
+      mComposerMapComboBox->setEnabled( false );
+      mComposerMapLabel->setEnabled( false );
+      mIntersectAtlasCheckBox->setEnabled( false );
     }
     else
     {
       mShowOnlyVisibleFeaturesCheckBox->setEnabled( true );
+      mComposerMapComboBox->setEnabled( mShowOnlyVisibleFeaturesCheckBox->isChecked() );
+      mComposerMapLabel->setEnabled( mShowOnlyVisibleFeaturesCheckBox->isChecked() );
+      mIntersectAtlasCheckBox->setEnabled( mSourceComboBox->findData( QgsLayoutItemAttributeTable::AtlasFeature ) != -1  && mTable->layout()->reportContext().layer() && mTable->layout()->reportContext().layer()->geometryType() != QgsWkbTypes::NullGeometry );
     }
   }
 
@@ -504,7 +510,7 @@ void QgsLayoutAttributeTableWidget::atlasToggled()
 {
   // display/hide atlas options in source combobox depending on atlas status
   // if there's no atlas but there IS a coverageLayer, it's a report export and we should enable the controls
-  bool atlasEnabled = ( layoutAtlas() && layoutAtlas()->enabled() ) || ( !layoutAtlas() && coverageLayer() );
+  const bool atlasEnabled = ( layoutAtlas() && layoutAtlas()->enabled() ) || ( !layoutAtlas() && coverageLayer() );
 
 
   toggleAtlasSpecificControls( atlasEnabled );
@@ -574,7 +580,7 @@ void QgsLayoutAttributeTableWidget::toggleAtlasSpecificControls( const bool atla
     //add relations for coverage layer
     updateRelationsCombo();
     mRelationsComboBox->setEnabled( true );
-    mIntersectAtlasCheckBox->setEnabled( true );
+    mIntersectAtlasCheckBox->setEnabled( mTable->layout()->reportContext().layer() && mTable->layout()->reportContext().layer()->geometryType() != QgsWkbTypes::NullGeometry );
   }
 }
 
@@ -624,7 +630,7 @@ void QgsLayoutAttributeTableWidget::mShowOnlyVisibleFeaturesCheckBox_stateChange
   }
 
   mTable->beginCommand( tr( "Toggle Visible Features Only" ) );
-  bool showOnlyVisibleFeatures = ( state == Qt::Checked );
+  const bool showOnlyVisibleFeatures = ( state == Qt::Checked );
   mTable->setDisplayOnlyVisibleFeatures( showOnlyVisibleFeatures );
   mTable->update();
   mTable->endCommand();
@@ -679,7 +685,7 @@ void QgsLayoutAttributeTableWidget::mIntersectAtlasCheckBox_stateChanged( int st
   }
 
   mTable->beginCommand( tr( "Toggle Table Atlas Filter" ) );
-  bool filterToAtlas = ( state == Qt::Checked );
+  const bool filterToAtlas = ( state == Qt::Checked );
   mTable->setFilterToAtlasFeature( filterToAtlas );
   mTable->update();
   mTable->endCommand();
@@ -729,12 +735,12 @@ void QgsLayoutAttributeTableWidget::mFeatureFilterButton_clicked()
     return;
   }
 
-  QgsExpressionContext context = mTable->createExpressionContext();
+  const QgsExpressionContext context = mTable->createExpressionContext();
   QgsExpressionBuilderDialog exprDlg( mTable->sourceLayer(), mFeatureFilterEdit->text(), this, QStringLiteral( "generic" ), context );
   exprDlg.setWindowTitle( tr( "Expression Based Filter" ) );
   if ( exprDlg.exec() == QDialog::Accepted )
   {
-    QString expression = exprDlg.expressionText();
+    const QString expression = exprDlg.expressionText();
     if ( !expression.isEmpty() )
     {
       mFeatureFilterEdit->setText( expression );
@@ -808,10 +814,16 @@ void QgsLayoutAttributeTableWidget::changeLayer( QgsMapLayer *layer )
     //layer has no geometry, so uncheck & disable controls which require geometry
     mShowOnlyVisibleFeaturesCheckBox->setChecked( false );
     mShowOnlyVisibleFeaturesCheckBox->setEnabled( false );
+    mComposerMapComboBox->setEnabled( false );
+    mComposerMapLabel->setEnabled( false );
+    mIntersectAtlasCheckBox->setEnabled( false );
   }
   else
   {
     mShowOnlyVisibleFeaturesCheckBox->setEnabled( true );
+    mComposerMapComboBox->setEnabled( mShowOnlyVisibleFeaturesCheckBox->isChecked() );
+    mComposerMapLabel->setEnabled( mShowOnlyVisibleFeaturesCheckBox->isChecked() );
+    mIntersectAtlasCheckBox->setEnabled( mSourceComboBox->findData( QgsLayoutItemAttributeTable::AtlasFeature ) != -1  && mTable->layout()->reportContext().layer() && mTable->layout()->reportContext().layer()->geometryType() != QgsWkbTypes::NullGeometry );
   }
 }
 
@@ -965,9 +977,12 @@ void QgsLayoutAttributeTableWidget::toggleSourceControls()
       mRelationLabel->setVisible( false );
       mMaximumRowsSpinBox->setEnabled( true );
       mMaxNumFeaturesLabel->setEnabled( true );
-      mShowOnlyVisibleFeaturesCheckBox->setEnabled( true );
-      mComposerMapComboBox->setEnabled( mTable->displayOnlyVisibleFeatures() );
-      mComposerMapLabel->setEnabled( mTable->displayOnlyVisibleFeatures() );
+      mShowOnlyVisibleFeaturesCheckBox->setEnabled( mTable->vectorLayer() && mTable->vectorLayer()->geometryType() != QgsWkbTypes::NullGeometry );
+      mShowOnlyVisibleFeaturesCheckBox->setChecked( mTable->vectorLayer() && mTable->vectorLayer()->geometryType() != QgsWkbTypes::NullGeometry && mTable->displayOnlyVisibleFeatures() );
+      mComposerMapComboBox->setEnabled( mShowOnlyVisibleFeaturesCheckBox->isChecked() );
+      mComposerMapLabel->setEnabled( mShowOnlyVisibleFeaturesCheckBox->isChecked() );
+      mIntersectAtlasCheckBox->setEnabled( mTable->vectorLayer() && mTable->vectorLayer()->geometryType() != QgsWkbTypes::NullGeometry
+                                           && mSourceComboBox->findData( QgsLayoutItemAttributeTable::AtlasFeature ) != -1 && mTable->layout()->reportContext().layer() && mTable->layout()->reportContext().layer()->geometryType() != QgsWkbTypes::NullGeometry );
       break;
     case QgsLayoutItemAttributeTable::AtlasFeature:
       mLayerComboBox->setEnabled( false );
@@ -979,9 +994,11 @@ void QgsLayoutAttributeTableWidget::toggleSourceControls()
       mRelationLabel->setVisible( false );
       mMaximumRowsSpinBox->setEnabled( false );
       mMaxNumFeaturesLabel->setEnabled( false );
-      mShowOnlyVisibleFeaturesCheckBox->setEnabled( false );
-      mComposerMapComboBox->setEnabled( false );
-      mComposerMapLabel->setEnabled( false );
+      mShowOnlyVisibleFeaturesCheckBox->setEnabled( mTable->sourceLayer() && mTable->sourceLayer()->geometryType() != QgsWkbTypes::NullGeometry );
+      mShowOnlyVisibleFeaturesCheckBox->setChecked( mTable->sourceLayer() && mTable->sourceLayer()->geometryType() != QgsWkbTypes::NullGeometry && mTable->displayOnlyVisibleFeatures() );
+      mComposerMapComboBox->setEnabled( mShowOnlyVisibleFeaturesCheckBox->isChecked() );
+      mComposerMapLabel->setEnabled( mShowOnlyVisibleFeaturesCheckBox->isChecked() );
+      mIntersectAtlasCheckBox->setEnabled( false );
       break;
     case QgsLayoutItemAttributeTable::RelationChildren:
       mLayerComboBox->setEnabled( false );
@@ -993,9 +1010,11 @@ void QgsLayoutAttributeTableWidget::toggleSourceControls()
       mRelationLabel->setVisible( true );
       mMaximumRowsSpinBox->setEnabled( true );
       mMaxNumFeaturesLabel->setEnabled( true );
+      //it's missing the check for null geometry of the referencing layer
       mShowOnlyVisibleFeaturesCheckBox->setEnabled( true );
-      mComposerMapComboBox->setEnabled( true );
-      mComposerMapLabel->setEnabled( true );
+      mComposerMapComboBox->setEnabled( mShowOnlyVisibleFeaturesCheckBox->isChecked() );
+      mComposerMapLabel->setEnabled( mShowOnlyVisibleFeaturesCheckBox->isChecked() );
+      mIntersectAtlasCheckBox->setEnabled( mSourceComboBox->findData( QgsLayoutItemAttributeTable::AtlasFeature ) != -1 && mTable->layout()->reportContext().layer() && mTable->layout()->reportContext().layer()->geometryType() != QgsWkbTypes::NullGeometry );
       break;
   }
 }

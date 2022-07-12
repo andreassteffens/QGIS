@@ -17,14 +17,15 @@
 #include "qgsmapcanvas.h"
 #include "qgsvectorlayer.h"
 #include "qgsexpressioncontextutils.h"
+#include "qgsvectorlayertemporalproperties.h"
 
 long QgsMapCanvasUtils::zoomToMatchingFeatures( QgsMapCanvas *canvas, QgsVectorLayer *layer, const QString &filter )
 {
-  QgsExpressionContext context( QgsExpressionContextUtils::globalProjectLayerScopes( layer ) );
+  const QgsExpressionContext context( QgsExpressionContextUtils::globalProjectLayerScopes( layer ) );
 
-  QgsFeatureRequest request = QgsFeatureRequest().setFilterExpression( filter )
-                              .setExpressionContext( context )
-                              .setNoAttributes();
+  const QgsFeatureRequest request = QgsFeatureRequest().setFilterExpression( filter )
+                                    .setExpressionContext( context )
+                                    .setNoAttributes();
 
   QgsFeatureIterator features = layer->getFeatures( request );
 
@@ -34,11 +35,11 @@ long QgsMapCanvasUtils::zoomToMatchingFeatures( QgsMapCanvas *canvas, QgsVectorL
   int featureCount = 0;
   while ( features.nextFeature( feat ) )
   {
-    QgsGeometry geom = feat.geometry();
+    const QgsGeometry geom = feat.geometry();
     if ( geom.isNull() || geom.constGet()->isEmpty() )
       continue;
 
-    QgsRectangle r = canvas->mapSettings().layerExtentToOutputExtent( layer, geom.boundingBox() );
+    const QgsRectangle r = canvas->mapSettings().layerExtentToOutputExtent( layer, geom.boundingBox() );
     bbox.combineExtentWith( r );
     featureCount++;
   }
@@ -53,11 +54,11 @@ long QgsMapCanvasUtils::zoomToMatchingFeatures( QgsMapCanvas *canvas, QgsVectorL
 
 long QgsMapCanvasUtils::flashMatchingFeatures( QgsMapCanvas *canvas, QgsVectorLayer *layer, const QString &filter )
 {
-  QgsExpressionContext context( QgsExpressionContextUtils::globalProjectLayerScopes( layer ) );
+  const QgsExpressionContext context( QgsExpressionContextUtils::globalProjectLayerScopes( layer ) );
 
-  QgsFeatureRequest request = QgsFeatureRequest().setFilterExpression( filter )
-                              .setExpressionContext( context )
-                              .setNoAttributes();
+  const QgsFeatureRequest request = QgsFeatureRequest().setFilterExpression( filter )
+                                    .setExpressionContext( context )
+                                    .setNoAttributes();
 
   QgsFeatureIterator features = layer->getFeatures( request );
   QgsFeature feat;
@@ -73,4 +74,21 @@ long QgsMapCanvasUtils::flashMatchingFeatures( QgsMapCanvas *canvas, QgsVectorLa
     canvas->flashGeometries( geoms, layer->crs() );
   }
   return geoms.size();
+}
+
+QString QgsMapCanvasUtils::filterForLayer( QgsMapCanvas *canvas, QgsVectorLayer *layer )
+{
+  if ( canvas->mapSettings().isTemporal() )
+  {
+    if ( !layer->temporalProperties()->isVisibleInTemporalRange( canvas->temporalRange() ) )
+      return QStringLiteral( "FALSE" );
+
+    QgsVectorLayerTemporalContext temporalContext;
+    temporalContext.setLayer( layer );
+    return qobject_cast< const QgsVectorLayerTemporalProperties * >( layer->temporalProperties() )->createFilterString( temporalContext, canvas->temporalRange() );
+  }
+  else
+  {
+    return QString();
+  }
 }

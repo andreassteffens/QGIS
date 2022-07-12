@@ -22,6 +22,7 @@
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+#include "qgsdistancearea.h"
 
 ///@cond PRIVATE
 
@@ -62,13 +63,15 @@ class QgsAggregateAlgorithm : public QgsProcessingAlgorithm
 
     QgsFields mFields;
     QList< QgsExpression > mExpressions;
+    QList< int > mAttributesRequireLastFeature;
     QgsDistanceArea mDa;
 
     struct Group
     {
       QgsFeatureSink *sink = nullptr;
       QgsMapLayer *layer = nullptr;
-      QgsFeature feature;
+      QgsFeature firstFeature;
+      QgsFeature lastFeature;
     };
 
 };

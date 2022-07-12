@@ -21,10 +21,12 @@
 #define QGSDOUBLEVALIDATOR_H
 
 #include <limits>
-#include <QRegExpValidator>
+#include <QRegularExpressionValidator>
 #include <QLocale>
 #include "qgis_gui.h"
 #include "qgis_sip.h"
+
+class QRegularExpression;
 
 /**
  * \ingroup gui
@@ -51,6 +53,8 @@ class GUI_EXPORT QgsDoubleValidator : public QRegularExpressionValidator
      *
      * \param bottom the minimal range limit accepted by the validator
      * \param top the maximal range limit accepted by the validator
+     * \param parent parent object
+     * \param expression custom regular expression
      */
     QgsDoubleValidator( const QRegularExpression &expression, double bottom, double top, QObject *parent );
 
@@ -59,6 +63,7 @@ class GUI_EXPORT QgsDoubleValidator : public QRegularExpressionValidator
      *
      * \param bottom the minimal range limit accepted by the validator
      * \param top the maximal range limit accepted by the validator
+     * \param parent parent object
      */
     QgsDoubleValidator( double bottom, double top, QObject *parent );
 
@@ -81,6 +86,14 @@ class GUI_EXPORT QgsDoubleValidator : public QRegularExpressionValidator
      */
     QgsDoubleValidator( int decimal, QObject *parent );
 
+    /**
+     * Sets the number of decimals accepted by the validator to \a maxDecimals.
+     * \warning setting decimals overrides any custom regular expression that was previously set
+     * \since QGIS 3.22
+     */
+    void setMaxDecimals( int maxDecimals );
+
+
     QValidator::State validate( QString &input, int & ) const override SIP_SKIP;
 
     /**
@@ -91,14 +104,14 @@ class GUI_EXPORT QgsDoubleValidator : public QRegularExpressionValidator
 
     /**
      * Converts \a input string to double value.
-     * It used locale interpretation first
+     * It uses locale interpretation first
      * and C locale interpretation as fallback
      */
     static double toDouble( const QString &input, bool *ok ) SIP_SKIP;
 
     /**
      * Converts \a input string to double value.
-     * It used locale interpretation first
+     * It uses locale interpretation first
      * and C locale interpretation as fallback
      */
     static double toDouble( const QString &input );

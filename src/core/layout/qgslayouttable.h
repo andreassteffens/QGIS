@@ -489,7 +489,12 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
     void setColumns( const QgsLayoutTableColumns &columns );
 
     /**
-     * Returns a reference to the list of QgsLayoutTableSortColumns shown in the table
+     * Returns a reference to the list of QgsLayoutTableSortColumns shown in the table.
+     *
+     *
+     * \warning It is expected that the QgsLayoutTableColumn::attribute() values in the columns
+     * are valid QGIS expression values, and that column references are correctly escaped accordingly.
+     *
      * \see setSortColumns()
      * \since QGIS 3.14
      */
@@ -498,6 +503,10 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
     /**
      * Replaces the sorting columns in the table with a specified list of QgsLayoutTableSortColumns.
      * \param sortColumns list of QgsLayoutTableColumns used to sort the table.
+     *
+     * \warning It is expected that the QgsLayoutTableColumn::attribute() values in \a sortColumns
+     * are valid QGIS expression values, and that column references are correctly escaped accordingly.
+     *
      * \see sortColumns()
      * \since QGIS 3.14
      */
@@ -770,10 +779,6 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
 
     //! Initializes cell style map
     void initStyles();
-
-    bool textRequiresWrapping( QgsRenderContext &context, const QString &text, double columnWidth, const QgsTextFormat &format ) const;
-
-    QStringList wrappedText( QgsRenderContext &context, const QString &value, double columnWidth, const QgsTextFormat &format ) const;
 
     /**
      * Returns the calculated background color for a row and column combination.

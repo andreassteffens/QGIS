@@ -11,7 +11,7 @@
 
 class QgsFeedback : QObject
 {
-%Docstring
+%Docstring(signature="appended")
 Base class for feedback objects to be used for cancellation of something running in a worker thread.
 
 The class may be used as is or it may be subclassed for extended functionality
@@ -24,7 +24,7 @@ When :py:func:`~cancel` is called, the internal code has two options to check fo
 
 The class is meant to be created and destroyed in the main thread.
 
-For map rendering, the object may be created in constructor of a QgsMapLayerRenderer
+For map rendering, the object may be created in constructor of a :py:class:`QgsMapLayerRenderer`
 subclass and available with :py:func:`QgsMapLayerRenderer.feedback()` method. When a map rendering job
 gets canceled, the :py:func:`~cancel` method is called on the feedback object of all layers.
 
@@ -40,7 +40,7 @@ gets canceled, the :py:func:`~cancel` method is called on the feedback object of
 Construct a feedback object
 %End
 
-    bool isCanceled() const;
+    bool isCanceled() const /HoldGIL/;
 %Docstring
 Tells whether the operation has been canceled already
 %End
@@ -57,7 +57,7 @@ argument is in percentage and valid values range from 0-100.
 .. versionadded:: 3.0
 %End
 
-    double progress() const;
+    double progress() const /HoldGIL/;
 %Docstring
 Returns the current progress reported by the feedback object. Depending on how the
 feedback object is used progress reporting may not be supported. The returned value
@@ -68,6 +68,31 @@ is in percentage and ranges from 0-100.
 .. seealso:: :py:func:`progressChanged`
 
 .. versionadded:: 3.0
+%End
+
+    unsigned long long processedCount() const /HoldGIL/;
+%Docstring
+Returns the current processed objects count reported by the feedback object. Depending on how the
+feedback object is used processed count reporting may not be supported. The returned value
+is an unsigned long integer and starts from 0.
+
+.. seealso:: :py:func:`setProcessedCount`
+
+.. seealso:: :py:func:`processedCountChanged`
+
+.. versionadded:: 3.24
+%End
+
+    void setProcessedCount( unsigned long long processedCount );
+%Docstring
+Sets the current processed objects count for the feedback object. The ``processedCount``
+argument is an unsigned long integer and starts from 0.
+
+.. seealso:: :py:func:`processedCount`
+
+.. seealso:: :py:func:`processedCountChanged`
+
+.. versionadded:: 3.24
 %End
 
   public slots:
@@ -96,7 +121,21 @@ argument is in percentage and ranges from 0-100.
 .. versionadded:: 3.0
 %End
 
+    void processedCountChanged( unsigned long long processedCount );
+%Docstring
+Emitted when the feedback object reports a change in the number of processed objects.
+Depending on how the feedback object is used processed count reporting may not be supported. The ``processedCount``
+argument is an unsigned long integer and starts from 0.
+
+.. seealso:: :py:func:`setProgress`
+
+.. seealso:: :py:func:`progress`
+
+.. versionadded:: 3.24
+%End
+
 };
+
 
 /************************************************************************
  * This file has been generated automatically from                      *

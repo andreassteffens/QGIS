@@ -114,6 +114,12 @@ QgsLocatorWidget::QgsLocatorWidget( QWidget *parent )
   } );
   connect( mMenu, &QMenu::aboutToShow, this, &QgsLocatorWidget::configMenuAboutToShow );
 
+  mModelBridge->setTransformContext( QgsProject::instance()->transformContext() );
+  connect( QgsProject::instance(), &QgsProject::transformContextChanged,
+           this, [ = ]
+  {
+    mModelBridge->setTransformContext( QgsProject::instance()->transformContext() );
+  } );
 }
 
 QgsLocator *QgsLocatorWidget::locator()
@@ -126,7 +132,7 @@ void QgsLocatorWidget::setMapCanvas( QgsMapCanvas *canvas )
   if ( mMapCanvas == canvas )
     return;
 
-  for ( const QMetaObject::Connection &conn : qgis::as_const( mCanvasConnections ) )
+  for ( const QMetaObject::Connection &conn : std::as_const( mCanvasConnections ) )
   {
     disconnect( conn );
   }
@@ -372,8 +378,15 @@ QgsLocatorResultsView::QgsLocatorResultsView( QWidget *parent )
 
 void QgsLocatorResultsView::recalculateSize()
 {
+  QStyleOptionViewItem optView;
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+  optView.init( this );
+#else
+  optView.initFrom( this );
+#endif
+
   // try to show about 20 rows
-  int rowSize = 20 * itemDelegate()->sizeHint( viewOptions(), model()->index( 0, 0 ) ).height();
+  int rowSize = 20 * itemDelegate()->sizeHint( optView, model()->index( 0, 0 ) ).height();
 
   // try to take up a sensible portion of window width (about half)
   int width = std::max( 300, window()->size().width() / 2 );

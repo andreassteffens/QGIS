@@ -19,6 +19,7 @@
 
 #include "gpsdata.h"
 #include "qgsgpxprovider.h"
+#include "qgscoordinatetransform.h"
 
 class QgsGPXProvider;
 
@@ -34,8 +35,8 @@ class QgsGPXFeatureSource final: public QgsAbstractFeatureSource
   private:
     QString mFileName;
     QgsGPXProvider::DataType mFeatureType;
-    QgsGpsData *data = nullptr;
-    QVector<int> indexToAttr;
+    QgsGpsData *mData = nullptr;
+    QVector<int> mIndexToAttr;
     QgsFields mFields;
     QgsCoordinateReferenceSystem mCrs;
 
@@ -84,6 +85,8 @@ class QgsGPXFeatureIterator final: public QgsAbstractFeatureIteratorFromSource<Q
 
     QgsCoordinateTransform mTransform;
     QgsRectangle mFilterRect;
+    QgsGeometry mDistanceWithinGeom;
+    std::unique_ptr< QgsGeometryEngine > mDistanceWithinEngine;
 };
 
 #endif // QGSGPXFEATUREITERATOR_H

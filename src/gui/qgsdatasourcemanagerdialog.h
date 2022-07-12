@@ -77,10 +77,14 @@ class GUI_EXPORT QgsDataSourceManagerDialog : public QgsOptionsDialogBase, priva
 
     // TODO: use this with an internal source select dialog instead of forwarding the whole raster selection to app
 
-    /**
-     * A raster layer was added: for signal forwarding to QgisApp
-     */
+    //! A raster layer was added: for signal forwarding to QgisApp
     void rasterLayerAdded( QString const &uri, QString const &baseName, QString const &providerKey );
+
+    /**
+     * One or more raster layer were added: for signal forwarding to QgisApp
+     * \since QGIS 3.20
+     */
+    void rasterLayersAdded( const QStringList &layersList );
     //! A vector layer was added: for signal forwarding to QgisApp
     void vectorLayerAdded( const QString &vectorLayerPath, const QString &baseName, const QString &providerKey );
     //! One or more vector layer were added: for signal forwarding to QgisApp
@@ -103,10 +107,15 @@ class GUI_EXPORT QgsDataSourceManagerDialog : public QgsOptionsDialogBase, priva
     void showEvent( QShowEvent *event ) override;
 
   signals:
+
+    /**
+     * Emitted when a one or more layer were selected for addition: for signal forwarding to QgisApp
+     * \since QGIS 3.20
+     */
+    void addRasterLayers( const QStringList &layersList );
     //! Emitted when a raster layer was selected for addition: for signal forwarding to QgisApp
     void addRasterLayer( const QString &uri, const QString &baseName, const QString &providerKey );
-    //! Emitted when the user wants to select a raster layer: for signal forwarding to QgisApp
-    void addRasterLayer();
+
     //! Emitted when a vector layer was selected for addition: for signal forwarding to QgisApp
     void addVectorLayer( const QString &vectorLayerPath, const QString &baseName, const QString &providerKey );
 
@@ -121,6 +130,12 @@ class GUI_EXPORT QgsDataSourceManagerDialog : public QgsOptionsDialogBase, priva
      * \since QGIS 3.14
      */
     void addVectorTileLayer( const QString &uri, const QString &baseName );
+
+    /**
+     * Emitted when a point cloud layer was selected for addition: for signal forwarding to QgisApp
+     * \since QGIS 3.18
+     */
+    void addPointCloudLayer( const QString &pointCloudLayerPath, const QString &baseName, const QString &providerKey );
 
     //! Replace the selected layer by a vector layer defined by uri, layer name, data source uri
     void replaceSelectedVectorLayer( const QString &oldId, const QString &uri, const QString &layerName, const QString &provider );
@@ -161,6 +176,7 @@ class GUI_EXPORT QgsDataSourceManagerDialog : public QgsOptionsDialogBase, priva
     // Map canvas
     QgsMapCanvas *mMapCanvas = nullptr;
     QgsMessageBar *mMessageBar = nullptr;
+    QgsBrowserGuiModel *mBrowserModel = nullptr;
 
 };
 

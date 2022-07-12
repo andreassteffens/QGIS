@@ -86,7 +86,7 @@ int main( int argc, char *argv[] )
 #endif  // _MSC_VER
 #endif  // Q_OS_WIN
 
-  QgsApplication app( argc, argv, false );
+  QgsApplication app( argc, argv, false, QString(), QStringLiteral( "qgis_process" ) );
   QString myPrefixPath;
   if ( myPrefixPath.isEmpty() )
   {
@@ -110,7 +110,7 @@ int main( int argc, char *argv[] )
 
   // Build a local QCoreApplication from arguments. This way, arguments are correctly parsed from their native locale
   // It will use QString::fromLocal8Bit( argv ) under Unix and GetCommandLine() under Windows.
-  QStringList args = QCoreApplication::arguments();
+  const QStringList args = QCoreApplication::arguments();
 
   QgsProcessingExec exec;
   int res = 0;
@@ -119,5 +119,5 @@ int main( int argc, char *argv[] )
     res = exec.run( args );
     QCoreApplication::exit( res );
   } );
-  return app.exec();
+  return QgsApplication::exec();
 }

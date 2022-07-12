@@ -27,6 +27,8 @@
 #include "qgsmeshrenderersettings.h"
 #include "qgsmeshtimesettings.h"
 #include "qgsmeshsimplificationsettings.h"
+#include "qgscoordinatetransform.h"
+#include "qgsabstractprofilesource.h"
 
 class QgsMapLayerRenderer;
 struct QgsMeshLayerRendererCache;
@@ -37,6 +39,8 @@ struct QgsMesh;
 class QgsMesh3dAveragingMethod;
 class QgsMeshLayerTemporalProperties;
 class QgsMeshDatasetGroupStore;
+class QgsMeshEditor;
+class QgsMeshLayerElevationProperties;
 
 /**
  * \ingroup core
@@ -91,7 +95,7 @@ class QgsMeshDatasetGroupStore;
  *
  * \since QGIS 3.2
  */
-class CORE_EXPORT QgsMeshLayer : public QgsMapLayer
+class CORE_EXPORT QgsMeshLayer : public QgsMapLayer, public QgsAbstractProfileSource
 {
     Q_OBJECT
   public:
@@ -110,7 +114,16 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer
         : transformContext( transformContext )
       {}
 
+      /**
+       * Coordinate transform context
+       */
       QgsCoordinateTransformContext transformContext;
+
+      /**
+       * Set to TRUE if the default layer style should be loaded.
+       * \since QGIS 3.22
+       */
+      bool loadDefaultStyle = true;
 
       /**
        * Controls whether the layer is allowed to have an invalid/unknown CRS.
@@ -164,6 +177,7 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer
     QgsMeshLayer *clone() const override SIP_FACTORY;
     QgsRectangle extent() const override;
     QgsMapLayerRenderer *createMapRenderer( QgsRenderContext &rendererContext ) override SIP_FACTORY;
+    QgsAbstractProfileGenerator *createProfileGenerator( const QgsProfileRequest &request ) override SIP_FACTORY;
     bool readSymbology( const QDomNode &node, QString &errorMessage,
                         QgsReadWriteContext &context, QgsMapLayer::StyleCategories categories = QgsMapLayer::AllStyleCategories ) override;
     bool writeSymbology( QDomNode &node, QDomDocument &doc, QString &errorMessage,
@@ -175,9 +189,13 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer
     bool readXml( const QDomNode &layer_node, QgsReadWriteContext &context ) override;
     bool writeXml( QDomNode &layer_node, QDomDocument &doc, const QgsReadWriteContext &context ) const override;
     QgsMapLayerTemporalProperties *temporalProperties() override;
+    QgsMapLayerElevationProperties *elevationProperties() override;
     void reload() override;
     QStringList subLayers() const override;
     QString htmlMetadata() const override;
+    bool isEditable() const override;
+    bool supportsEditing() const override;
+    QString loadDefaultStyle( bool &resultFlag SIP_OUT ) FINAL;
 
     //! Returns the provider type for this layer
     QString providerType() const;
@@ -242,6 +260,26 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer
      * \note Not available in Python bindings
      */
     QgsTriangularMesh *triangularMesh( double minimumTriangleSize = 0 ) const SIP_SKIP;
+
+    /**
+     * Returns the count of levels of detail of the mesh simplification
+     *
+     * \note Not available in Python bindings
+     * \since QGIS 3.18
+     */
+    int triangularMeshLevelOfDetailCount() const SIP_SKIP;
+
+    /**
+     * Returns triangular corresponding to the index of level of details.
+     * If \a lodIndex is greater than the count of levels of detail, returns the last one (with lesser triangles)
+     * If \a lodIndex is lesser or equal to 0, returns the original triangular mesh
+     *
+     * \param lodIndex the level od detail index
+     *
+     * \note Not available in Python bindings
+     * \since QGIS 3.18
+     */
+    QgsTriangularMesh *triangularMeshByLodIndex( int lodIndex ) const SIP_SKIP;
 
     /**
      * Gets native mesh and updates (creates if it doesn't exist) the base triangular mesh
@@ -315,7 +353,7 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer
     int extraDatasetGroupCount() const;
 
     /**
-     * Returns the list of indexes of dataset groups count handled by the layer
+     * Returns the list of indexes of dataset groups handled by the layer
      *
      * \note indexes are used to distinguish all the dataset groups handled by the layer (from dataprovider, extra dataset group,...)
      * In the layer scope, those indexes can be different from the data provider indexes.
@@ -415,7 +453,7 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer
      * returns invalid block for DataOnFaces and DataOnVertices.
      *
      * \param index index of the dataset
-     * \param valueIndex index of the value
+     * \param faceIndex index of the face
      * \param count number of values to return
      *
      * \note indexes are used to distinguish all the dataset groups handled by the layer (from dataprovider, extra dataset group,...)
@@ -438,7 +476,7 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer
      * Returns whether the faces are active for particular dataset
      *
      * \param index index of the dataset
-     * \param valueIndex index of the value
+     * \param faceIndex index of the face
      * \param count number of values to return
      *
      * \note indexes are used to distinguish all the dataset groups handled by the layer (from dataprovider, extra dataset group,...)
@@ -519,6 +557,7 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer
       * If the temporal properties is not active, returns invalid dataset index. This method is used for rendering mesh layer.
       *
       * \param timeRange the time range
+      * \param datasetGroupIndex the index of the dataset group
       * \returns dataset index
       *
       * \note the returned dataset index depends on the matching method, see setTemporalMatchingMethod()
@@ -535,6 +574,7 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer
       * Dataset index is valid even the temporal properties is inactive. This method is used for calculation on mesh layer.
       *
       * \param relativeTime the relative from the mesh layer reference time
+      * \param datasetGroupIndex the index of the dataset group
       * \returns dataset index
       *
       * \note the returned dataset index depends on the matching method, see setTemporalMatchingMethod()
@@ -545,6 +585,22 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer
       * \since QGIS 3.16
       */
     QgsMeshDatasetIndex datasetIndexAtRelativeTime( const QgsInterval &relativeTime, int datasetGroupIndex ) const;
+
+    /**
+      * Returns a list of dataset indexes from datasets group that are in a interval time from the layer reference time.
+      * Dataset index is valid even the temporal properties is inactive. This method is used for calculation on mesh layer.
+      *
+      * \param startRelativeTime the start time of the relative interval from the reference time.
+      * \param endRelativeTime the end time of the relative interval from the reference time.
+      * \param datasetGroupIndex the index of the dataset group
+      * \returns dataset index
+      *
+      * \note indexes are used to distinguish all the dataset groups handled by the layer (from dataprovider, extra dataset group,...)
+      * In the layer scope, those indexes are different from the data provider indexes.
+      *
+      * \since QGIS 3.22
+      */
+    QList<QgsMeshDatasetIndex> datasetIndexInRelativeTimeInterval( const QgsInterval &startRelativeTime, const QgsInterval &endRelativeTime, int datasetGroupIndex ) const;
 
     /**
       * Returns dataset index from active scalar group depending on the time range.
@@ -646,6 +702,26 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer
     QgsPointXY snapOnElement( QgsMesh::ElementType elementType, const QgsPointXY &point, double searchRadius );
 
     /**
+     * Returns a list of vertex indexes that meet the condition defined by \a expression with the context \a expressionContext
+     *
+     * To express the relation with a vertex, the expression can be defined with function returning value
+     * linked to the current vertex, like " $vertex_z ", "$vertex_as_point"
+     *
+     * \since QGIS 3.22
+     */
+    QList<int> selectVerticesByExpression( QgsExpression expression );
+
+    /**
+     * Returns a list of faces indexes that meet the condition defined by \a expression with the context \a expressionContext
+     *
+     * To express the relation with a face, the expression can be defined with function returning value
+     * linked to the current face, like " $face_area "
+     *
+     * \since QGIS 3.22
+     */
+    QList<int> selectFacesByExpression( QgsExpression expression );
+
+    /**
       * Returns the root items of the dataset group tree item
       *
       * \return the root item
@@ -696,6 +772,99 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer
      * \since QGIS 3.16
      */
     qint64 datasetRelativeTimeInMilliseconds( const QgsMeshDatasetIndex &index );
+
+    /**
+    * Starts edition of the mesh frame. Coordinate \a transform used to initialize the triangular mesh if needed.
+    * This operation will disconnect the mesh layer from the data provider anf removes all existing dataset group
+    *
+    * \since QGIS 3.22
+    */
+    bool startFrameEditing( const QgsCoordinateTransform &transform );
+
+    /**
+    * Commits edition of the mesh frame,
+    * Rebuilds the triangular mesh and its spatial index with \a transform,
+    * Continue editing with the same mesh editor if \a continueEditing is True
+    *
+    * \return TRUE if the commit succeeds
+    * \since QGIS 3.22
+    */
+    bool commitFrameEditing( const QgsCoordinateTransform &transform, bool continueEditing = true );
+
+    /**
+    * Rolls Back edition of the mesh frame.
+    * Reload mesh from file, rebuilds the triangular mesh and its spatial index with \a transform,
+    * Continue editing with the same mesh editor if \a continueEditing is TRUE
+    *
+    * \return TRUE if the rollback succeeds
+    * \since QGIS 3.22
+    */
+    bool rollBackFrameEditing( const QgsCoordinateTransform &transform, bool continueEditing = true );
+
+    /**
+    * Stops edition of the mesh, re-indexes the faces and vertices,
+    * rebuilds the triangular mesh and its spatial index with \a transform,
+    * clean the undostack
+    *
+    * \since QGIS 3.22
+    */
+    void stopFrameEditing( const QgsCoordinateTransform &transform );
+
+    /**
+    * Re-indexes the faces and vertices, and renumber the indexes if \a renumber is TRUE.
+    * rebuilds the triangular mesh and its spatial index with \a transform,
+    * clean the undostack
+    *
+    * Returns FALSE if the operation fails
+    *
+    * \since QGIS 3.22
+    */
+    bool reindex( const QgsCoordinateTransform &transform, bool renumber );
+
+    /**
+    * Returns a pointer to the mesh editor own by the mesh layer
+    *
+    * \since QGIS 3.22
+    */
+    QgsMeshEditor *meshEditor();
+
+    /**
+    * Returns whether the mesh frame has been modified since the last save
+    *
+    * \since QGIS 3.22
+    */
+    bool isModified() const override;
+
+    /**
+     *  Returns whether the mesh contains at mesh elements of given type
+     *  \since QGIS 3.22
+     */
+    bool contains( const QgsMesh::ElementType &type ) const;
+
+    /**
+    * Returns the vertices count of the mesh frame
+    *
+    * \note during mesh editing, some vertices can be void and are not included in this returned value
+    *
+    *  \since QGIS 3.22
+    */
+    int meshVertexCount() const;
+
+    /**
+    * Returns the faces count of the mesh frame
+    *
+    * \note during mesh editing, some faces can be void and are not included in this returned value
+    *
+    * \since QGIS 3.22
+    */
+    int meshFaceCount() const;
+
+    /**
+    * Returns the edges count of the mesh frame
+    *
+    * \since QGIS 3.22
+    */
+    int meshEdgeCount() const;
 
   public slots:
 
@@ -750,7 +919,6 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer
 
     void fillNativeMesh();
     void assignDefaultStyleToDatasetGroup( int groupIndex );
-    void setDefaultRendererSettings( const QList<int> &groupIndexes );
     void createSimplifiedMeshes();
     int levelsOfDetailsIndex( double partOfMeshInView ) const;
 
@@ -761,10 +929,14 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer
 
   private slots:
     void onDatasetGroupsAdded( const QList<int> &datasetGroupIndexes );
+    void onMeshEdited();
 
   private:
     //! Pointer to data provider derived from the abastract base class QgsMeshDataProvider
     QgsMeshDataProvider *mDataProvider = nullptr;
+
+    //! List of extra dataset uri associated with this layer
+    QStringList mExtraDatasetUri;
 
     std::unique_ptr<QgsMeshDatasetGroupStore> mDatasetGroupStore;
 
@@ -786,10 +958,16 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer
     //! Simplify mesh configuration
     QgsMeshSimplificationSettings mSimplificationSettings;
 
-    QgsMeshLayerTemporalProperties *mTemporalProperties;
+    QgsMeshLayerTemporalProperties *mTemporalProperties = nullptr;
+    QgsMeshLayerElevationProperties *mElevationProperties = nullptr;
+
+    //! Temporal unit used by the provider
+    QgsUnitTypes::TemporalUnit mTemporalUnit = QgsUnitTypes::TemporalHours;
 
     int mStaticScalarDatasetIndex = 0;
     int mStaticVectorDatasetIndex = 0;
+
+    QgsMeshEditor *mMeshEditor = nullptr;
 
     int closestEdge( const QgsPointXY &point, double searchRadius, QgsPointXY &projectedPoint ) const;
 
@@ -803,6 +981,9 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer
     QgsPointXY snapOnFace( const QgsPointXY &point, double searchRadius );
 
     void updateActiveDatasetGroups();
+
+    void setDataSourcePrivate( const QString &dataSource, const QString &baseName, const QString &provider,
+                               const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags ) override;
 };
 
 #endif //QGSMESHLAYER_H

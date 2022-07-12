@@ -86,7 +86,7 @@ void QgsLayoutViewToolAddItem::layoutReleaseEvent( QgsLayoutViewMouseEvent *even
   }
   mDrawing = false;
 
-  QRectF rect = mRubberBand ? mRubberBand->finish( event->snappedPoint(), event->modifiers() ) : QRectF();
+  const QRectF rect = mRubberBand ? mRubberBand->finish( event->snappedPoint(), event->modifiers() ) : QRectF();
 
   QString undoText;
   if ( QgsLayoutItemAbstractGuiMetadata *metadata = QgsGui::layoutItemGuiRegistry()->itemMetadata( mItemMetadataId ) )
@@ -107,7 +107,7 @@ void QgsLayoutViewToolAddItem::layoutReleaseEvent( QgsLayoutViewMouseEvent *even
   }
 
   // click? or click-and-drag?
-  bool clickOnly = !isClickAndDrag( mMousePressStartPos, event->pos() );
+  const bool clickOnly = !isClickAndDrag( mMousePressStartPos, event->pos() );
   if ( clickOnly && mRubberBand )
   {
     QgsLayoutItemPropertiesDialog dlg( view() );
@@ -146,7 +146,7 @@ void QgsLayoutViewToolAddItem::layoutReleaseEvent( QgsLayoutViewMouseEvent *even
     settings.setEnumValue( QStringLiteral( "LayoutDesigner/lastSizeUnit" ), item->sizeWithUnits().units() );
   }
 
-  QgsGui::layoutItemGuiRegistry()->newItemAddedToLayout( mItemMetadataId, item );
+  QgsGui::layoutItemGuiRegistry()->newItemAddedToLayout( mItemMetadataId, item, mCustomProperties );
 
   // it's possible (in certain circumstances, e.g. when adding frame items) that this item
   // has already been added to the layout
@@ -156,6 +156,12 @@ void QgsLayoutViewToolAddItem::layoutReleaseEvent( QgsLayoutViewMouseEvent *even
 
   layout()->undoStack()->endMacro();
   emit createdItem();
+}
+
+void QgsLayoutViewToolAddItem::activate()
+{
+  QgsLayoutViewTool::activate();
+  mCustomProperties.clear();
 }
 
 void QgsLayoutViewToolAddItem::deactivate()
@@ -168,6 +174,16 @@ void QgsLayoutViewToolAddItem::deactivate()
     mDrawing = false;
   }
   QgsLayoutViewTool::deactivate();
+}
+
+QVariantMap QgsLayoutViewToolAddItem::customProperties() const
+{
+  return mCustomProperties;
+}
+
+void QgsLayoutViewToolAddItem::setCustomProperties( const QVariantMap &customProperties )
+{
+  mCustomProperties = customProperties;
 }
 
 int QgsLayoutViewToolAddItem::itemMetadataId() const

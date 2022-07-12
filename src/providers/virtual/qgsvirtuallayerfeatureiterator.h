@@ -21,6 +21,7 @@ email                : hugo dot mercier at oslandia dot com
 #include "qgsvirtuallayerprovider.h"
 #include "qgsfeatureiterator.h"
 #include "qgsgeometryengine.h"
+#include "qgscoordinatetransform.h"
 
 #include <memory>
 #include <QPointer>
@@ -74,7 +75,8 @@ class QgsVirtualLayerFeatureIterator final: public QgsAbstractFeatureIteratorFro
     QgsFeatureId mFid = 0;
     QgsCoordinateTransform mTransform;
     QgsRectangle mFilterRect;
-
+    QgsGeometry mDistanceWithinGeom;
+    std::unique_ptr< QgsGeometryEngine > mDistanceWithinEngine;
     std::unique_ptr< QgsGeometryEngine > mRectEngine;
 };
 

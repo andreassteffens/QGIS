@@ -31,6 +31,7 @@
 
 #include <QJsonDocument>
 #include <QJsonArray>
+#include <QTextCodec>
 #include <nlohmann/json.hpp>
 
 QgsJsonExporter::QgsJsonExporter( QgsVectorLayer *vectorLayer, int precision )
@@ -124,7 +125,7 @@ ordered_json QgsJsonExporter::exportFeatureToJsonObject( const QgsFeature &featu
       try
       {
         QgsGeometry transformed = geom;
-        if ( mTransformGeometries && transformed.transform( mTransform ) == 0 )
+        if ( mTransformGeometries && transformed.transform( mTransform ) == Qgis::GeometryOperationResult::Success )
           geom = transformed;
       }
       catch ( QgsCsException &cse )
@@ -236,7 +237,7 @@ ordered_json QgsJsonExporter::exportFeatureToJsonObject( const QgsFeature &featu
     if ( mLayer && mIncludeRelatedAttributes )
     {
       QList< QgsRelation > relations = QgsProject::instance()->relationManager()->referencedRelations( mLayer.data() );
-      for ( const auto &relation : qgis::as_const( relations ) )
+      for ( const auto &relation : std::as_const( relations ) )
       {
         QgsFeatureRequest req = relation.getRelatedFeaturesRequest( feature );
         req.setFlags( QgsFeatureRequest::NoGeometry );
@@ -282,7 +283,7 @@ ordered_json QgsJsonExporter::exportFeaturesToJsonObject( const QgsFeatureList &
     { "type", "FeatureCollection" },
     { "features", json::array() }
   };
-  for ( const QgsFeature &feature : qgis::as_const( features ) )
+  for ( const QgsFeature &feature : std::as_const( features ) )
   {
     data["features"].push_back( exportFeatureToJsonObject( feature ) );
   }
@@ -496,6 +497,19 @@ ordered_json QgsJsonUtils::jsonFromVariant( const QVariant &val )
 
 QVariant QgsJsonUtils::parseJson( const std::string &jsonString )
 {
+  QString error;
+  const QVariant res = parseJson( jsonString, error );
+
+  if ( !error.isEmpty() )
+  {
+    QgsLogger::warning( QStringLiteral( "Cannot parse json (%1): %2" ).arg( error,
+                        QString::fromStdString( jsonString ) ) );
+  }
+  return res;
+}
+
+QVariant QgsJsonUtils::parseJson( const std::string &jsonString, QString &error )
+{
   // tracks whether entire json string is a primitive
   bool isPrimitive = true;
 
@@ -505,6 +519,7 @@ QVariant QgsJsonUtils::parseJson( const std::string &jsonString )
       {
         isPrimitive = false;
         QVariantList results;
+        results.reserve( jObj.size() );
         for ( const auto &item : jObj )
         {
           results.push_back( _parser( item ) );
@@ -562,6 +577,7 @@ QVariant QgsJsonUtils::parseJson( const std::string &jsonString )
     }
   };
 
+  error.clear();
   try
   {
     const json j = json::parse( jsonString );
@@ -569,8 +585,7 @@ QVariant QgsJsonUtils::parseJson( const std::string &jsonString )
   }
   catch ( json::parse_error &ex )
   {
-    QgsLogger::warning( QStringLiteral( "Cannot parse json (%1): %2" ).arg( QString::fromStdString( ex.what() ),
-                        QString::fromStdString( jsonString ) ) );
+    error = QString::fromStdString( ex.what() );
   }
   return QVariant();
 }

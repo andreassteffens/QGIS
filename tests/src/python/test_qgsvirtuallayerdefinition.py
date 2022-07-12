@@ -80,13 +80,21 @@ class TestQgsVirtualLayerDefinition(unittest.TestCase):
         f.append(QgsField("f", QVariant.Double))
         f.append(QgsField("s", QVariant.String))
         d.setFields(f)
+
         f2 = QgsVirtualLayerDefinition.fromUrl(d.toUrl()).fields()
         self.assertEqual(f[0].name(), f2[0].name())
-        self.assertEqual(f[0].type(), f2[0].type())
+        self.assertEqual(f2[0].type(), QVariant.LongLong)
         self.assertEqual(f[1].name(), f2[1].name())
         self.assertEqual(f[1].type(), f2[1].type())
         self.assertEqual(f[2].name(), f2[2].name())
         self.assertEqual(f[2].type(), f2[2].type())
+
+        # Issue https://github.com/qgis/QGIS/issues/44130
+        url = QUrl(r"?layer_ref=Reprojet%C3%A9_e888ce1e_17a9_46f4_b8c3_254eef3f2931:input1&query=SELECT%20*%20FROM%20input1")
+        f3 = QgsVirtualLayerDefinition.fromUrl(url)
+        self.assertEqual(f3.query(), 'SELECT * FROM input1')
+        source_layer = f3.sourceLayers()[0]
+        self.assertEqual(source_layer.reference(), 'Reprojeté_e888ce1e_17a9_46f4_b8c3_254eef3f2931')
 
 
 if __name__ == '__main__':

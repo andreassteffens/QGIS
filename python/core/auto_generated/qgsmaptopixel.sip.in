@@ -9,9 +9,10 @@
 
 
 
+
 class QgsMapToPixel
 {
-%Docstring
+%Docstring(signature="appended")
 Perform transforms between map coordinates and device coordinates.
 
 This class can convert device coordinates to map coordinates and vice versa.
@@ -21,6 +22,13 @@ This class can convert device coordinates to map coordinates and vice versa.
 #include "qgsmaptopixel.h"
 %End
   public:
+
+    QgsMapToPixel();
+%Docstring
+Constructor for an invalid QgsMapToPixel.
+
+A manual call to :py:func:`~QgsMapToPixel.setParameters` is required to initialize the object.
+%End
 
     QgsMapToPixel( double mapUnitsPerPixel, double centerX, double centerY, int widthPixels, int heightPixels, double rotation );
 %Docstring
@@ -56,39 +64,43 @@ Returns a new QgsMapToPixel created using a specified ``scale`` and distance uni
 .. versionadded:: 3.0
 %End
 
-    QgsMapToPixel();
+    bool isValid() const;
 %Docstring
-Constructor
+Returns ``True`` if the object is valid (i.e. it has parameters set), or ``False`` if the object is default constructed
+with no parameters set.
 
-Use setParameters to fill
+.. versionadded:: 3.22
 %End
 
     QgsPointXY transform( const QgsPointXY &p ) const;
 %Docstring
-Transform the point from map (world) coordinates to device coordinates
+Transforms a point ``p`` from map (world) coordinates to device coordinates.
 
 :param p: Point to transform
 
-:return: QgsPointXY in device coordinates
+:return: :py:class:`QgsPointXY` in device coordinates
 %End
 
     void transform( QgsPointXY *p ) const;
+%Docstring
+Transforms a point ``p`` from map (world) coordinates to device coordinates in place.
+%End
 
     QgsPointXY transform( qreal x, qreal y ) const;
 %Docstring
-Transform the point specified by x,y from map (world)
-coordinates to device coordinates
+Transforms the point specified by x,y from map (world) coordinates to device coordinates.
 
-:param x: x coordinate o point to transform
+:param x: x coordinate of point to transform
 :param y: y coordinate of point to transform
 
-:return: QgsPointXY in device coordinates
+:return: :py:class:`QgsPointXY` in device coordinates
 %End
 
     void transformInPlace( double &x, double &y ) const;
 %Docstring
-Transform device coordinates to map coordinates. Modifies the
-given coordinates in place. Intended as a fast way to do the
+Transforms device coordinates to map coordinates.
+
+This method modifies the given coordinates in place. It is intended as a fast way to do the
 transform.
 %End
 
@@ -96,26 +108,26 @@ transform.
 
     QgsPointXY toMapCoordinates( int x, int y ) const;
 %Docstring
-Transform device coordinates to map (world) coordinates
+Transforms device coordinates to map (world) coordinates.
 %End
 
     QgsPointXY toMapCoordinates( double x, double y ) const /PyName=toMapCoordinatesF/;
 %Docstring
-Transform device coordinates to map (world) coordinates
+Transforms device coordinates to map (world) coordinates.
 %End
 
     QgsPointXY toMapCoordinates( QPoint p ) const;
 %Docstring
-Transform device coordinates to map (world) coordinates
+Transforms device coordinates to map (world) coordinates.
 
 :param p: Point to be converted to map cooordinates
 
-:return: QgsPointXY in map coorndiates
+:return: :py:class:`QgsPointXY` in map coorndiates
 %End
 
  QgsPointXY toMapPoint( double x, double y ) const /Deprecated/;
 %Docstring
-Transform device coordinates to map (world) coordinates
+Transforms device coordinates to map (world) coordinates.
 
 .. deprecated:: QGIS 3.4
    use toMapCoordinates instead
@@ -123,20 +135,29 @@ Transform device coordinates to map (world) coordinates
 
     void setMapUnitsPerPixel( double mapUnitsPerPixel );
 %Docstring
-Set map units per pixel
+Sets the map units per pixel.
+
+Calling this method will automatically set the object as valid.
 
 :param mapUnitsPerPixel: Map units per pixel
+
+.. seealso:: :py:func:`mapUnitsPerPixel`
 %End
 
     double mapUnitsPerPixel() const;
 %Docstring
-Returns current map units per pixel
+Returns the current map units per pixel.
+
+.. seealso:: :py:func:`setMapUnitsPerPixel`
 %End
 
     int mapWidth() const;
 %Docstring
-Returns current map width in pixels
-The information is only known if setRotation was used
+Returns the current map width in pixels.
+
+The information is only known if setRotation was used.
+
+.. seealso:: :py:func:`mapHeight`
 
 .. versionadded:: 2.8
 %End
@@ -145,30 +166,40 @@ The information is only known if setRotation was used
 %Docstring
 Returns current map height in pixels
 
+.. seealso:: :py:func:`mapWidth`
+
 .. versionadded:: 2.8
 %End
 
     void setMapRotation( double degrees, double cx, double cy );
 %Docstring
-Set map rotation in degrees (clockwise)
+Sets map rotation in ``degrees`` (clockwise).
+
+Calling this method will automatically set the object as valid.
 
 :param degrees: clockwise rotation in degrees
 :param cx: X ordinate of map center in geographical units
 :param cy: Y ordinate of map center in geographical units
+
+.. seealso:: :py:func:`mapRotation`
 
 .. versionadded:: 2.8
 %End
 
     double mapRotation() const;
 %Docstring
-Returns current map rotation in degrees (clockwise)
+Returns the current map rotation in degrees (clockwise).
+
+.. seealso:: :py:func:`setMapRotation`
 
 .. versionadded:: 2.8
 %End
 
     void setParameters( double mapUnitsPerPixel, double centerX, double centerY, int widthPixels, int heightPixels, double rotation );
 %Docstring
-Set parameters for use in transforming coordinates
+Sets parameters for use in transforming coordinates.
+
+Calling this method will automatically set the object as valid.
 
 :param mapUnitsPerPixel: Map units per pixel
 :param centerX: X coordinate of map center, in geographical units
@@ -177,15 +208,23 @@ Set parameters for use in transforming coordinates
 :param heightPixels: Output height, in pixels
 :param rotation: clockwise rotation in degrees
 
+.. note::
+
+   if the specified parameters result in an invalid transform then no changes will be applied to the object
+
 .. versionadded:: 2.8
 %End
 
+
     QString showParameters() const;
 %Docstring
-String representation of the parameters used in the transform
+Returns a string representation of the parameters used in the transform.
 %End
 
     QTransform transform() const;
+%Docstring
+Returns a QTransform encapsulating the map to pixel conversion.
+%End
 
     double xCenter() const;
 %Docstring
@@ -204,6 +243,10 @@ Returns the center y-coordinate for the transform.
 
 .. versionadded:: 3.0
 %End
+
+    bool operator==( const QgsMapToPixel &other ) const;
+
+    bool operator!=( const QgsMapToPixel &other ) const;
 
 };
 

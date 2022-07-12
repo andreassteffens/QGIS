@@ -19,36 +19,33 @@
 ///@cond PRIVATE
 
 #include "qgsogrdbconnection.h"
-#include "qgsogrdataitems.h"
 #include "qgsvectorlayer.h"
 #include "qgsquerybuilder.h"
 #include "qgssettings.h"
 #include "qgsproject.h"
 #include "qgsgui.h"
+#include "qgsogrproviderutils.h"
+#include "qgsprovidermetadata.h"
+#include "qgsprovidersublayerdetails.h"
+#include "qgsogrdbtablemodel.h"
+
 
 #include <QMessageBox>
 
 QgsOgrDbSourceSelect::QgsOgrDbSourceSelect( const QString &theSettingsKey, const QString &theName,
     const QString &theExtensions, QWidget *parent, Qt::WindowFlags fl, QgsProviderRegistry::WidgetMode theWidgetMode )
-  : QgsAbstractDataSourceWidget( parent, fl, theWidgetMode )
+  : QgsAbstractDbSourceSelect( parent, fl, theWidgetMode )
   , mOgrDriverName( theSettingsKey )
   , mName( theName )
   , mExtension( theExtensions )
 {
-  setupUi( this );
-  QgsGui::instance()->enableAutoGeometryRestore( this );
+  QgsGui::enableAutoGeometryRestore( this );
 
   connect( btnConnect, &QPushButton::clicked, this, &QgsOgrDbSourceSelect::btnConnect_clicked );
   connect( btnNew, &QPushButton::clicked, this, &QgsOgrDbSourceSelect::btnNew_clicked );
   connect( btnDelete, &QPushButton::clicked, this, &QgsOgrDbSourceSelect::btnDelete_clicked );
-  connect( mSearchGroupBox, &QGroupBox::toggled, this, &QgsOgrDbSourceSelect::mSearchGroupBox_toggled );
-  connect( mSearchTableEdit, &QLineEdit::textChanged, this, &QgsOgrDbSourceSelect::mSearchTableEdit_textChanged );
-  connect( mSearchColumnComboBox, &QComboBox::currentTextChanged, this, &QgsOgrDbSourceSelect::mSearchColumnComboBox_currentIndexChanged );
-  connect( mSearchModeComboBox, &QComboBox::currentTextChanged, this, &QgsOgrDbSourceSelect::mSearchModeComboBox_currentIndexChanged );
   connect( cbxAllowGeometrylessTables, &QCheckBox::stateChanged, this, &QgsOgrDbSourceSelect::cbxAllowGeometrylessTables_stateChanged );
   connect( cmbConnections, static_cast<void ( QComboBox::* )( int )>( &QComboBox::activated ), this, &QgsOgrDbSourceSelect::cmbConnections_activated );
-  connect( mTablesTreeView, &QTreeView::clicked, this, &QgsOgrDbSourceSelect::mTablesTreeView_clicked );
-  connect( mTablesTreeView, &QTreeView::doubleClicked, this, &QgsOgrDbSourceSelect::mTablesTreeView_doubleClicked );
   setupButtons( buttonBox );
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsOgrDbSourceSelect::showHelp );
 
@@ -60,51 +57,17 @@ QgsOgrDbSourceSelect::QgsOgrDbSourceSelect( const QString &theSettingsKey, const
   btnSave->hide();
   btnLoad->hide();
 
-  mBuildQueryButton = new QPushButton( tr( "&Set Filter" ) );
-  connect( mBuildQueryButton, &QAbstractButton::clicked, this, &QgsOgrDbSourceSelect::buildQuery );
-  mBuildQueryButton->setEnabled( false );
-
   if ( widgetMode() != QgsProviderRegistry::WidgetMode::None )
   {
     mHoldDialogOpen->hide();
   }
 
-  buttonBox->addButton( mBuildQueryButton, QDialogButtonBox::ActionRole );
-
   populateConnectionList();
 
-  mSearchModeComboBox->addItem( tr( "Wildcard" ) );
-  mSearchModeComboBox->addItem( tr( "RegExp" ) );
-
-  mSearchColumnComboBox->addItem( tr( "All" ) );
-  mSearchColumnComboBox->addItem( tr( "Table" ) );
-  mSearchColumnComboBox->addItem( tr( "Type" ) );
-  mSearchColumnComboBox->addItem( tr( "Geometry column" ) );
-  mSearchColumnComboBox->addItem( tr( "Sql" ) );
-
-  mProxyModel.setParent( this );
-  mProxyModel.setFilterKeyColumn( -1 );
-  mProxyModel.setFilterCaseSensitivity( Qt::CaseInsensitive );
-  mProxyModel.setDynamicSortFilter( true );
-  mProxyModel.setSourceModel( &mTableModel );
-  mTablesTreeView->setModel( &mProxyModel );
-  mTablesTreeView->setSortingEnabled( true );
+  mTableModel = new QgsOgrDbTableModel( this );
+  init( mTableModel );
 
   connect( mTablesTreeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &QgsOgrDbSourceSelect::treeWidgetSelectionChanged );
-
-  //for Qt < 4.3.2, passing -1 to include all model columns
-  //in search does not seem to work
-  mSearchColumnComboBox->setCurrentIndex( 1 );
-
-  //hide the search options by default
-  //they will be shown when the user ticks
-  //the search options group box
-  mSearchLabel->setVisible( false );
-  mSearchColumnComboBox->setVisible( false );
-  mSearchColumnsLabel->setVisible( false );
-  mSearchModeComboBox->setVisible( false );
-  mSearchModeLabel->setVisible( false );
-  mSearchTableEdit->setVisible( false );
 
   cbxAllowGeometrylessTables->setDisabled( true );
 }
@@ -122,75 +85,21 @@ void QgsOgrDbSourceSelect::cmbConnections_activated( int )
   dbChanged();
 }
 
-void QgsOgrDbSourceSelect::buildQuery()
-{
-  setSql( mTablesTreeView->currentIndex() );
-}
-
 
 void QgsOgrDbSourceSelect::cbxAllowGeometrylessTables_stateChanged( int )
 {
   btnConnect_clicked();
 }
 
-void QgsOgrDbSourceSelect::mTablesTreeView_clicked( const QModelIndex &index )
+void QgsOgrDbSourceSelect::treeviewClicked( const QModelIndex &index )
 {
-  mBuildQueryButton->setEnabled( index.parent().isValid() && mTablesTreeView->currentIndex().data( Qt::UserRole + 2 ) != QLatin1String( "Raster" ) );
+  const QString layerType = mTableModel->itemFromIndex( index )->data( Qt::UserRole + 2 ).toString();
+  mBuildQueryButton->setEnabled( index.parent().isValid() && layerType != QLatin1String( "Raster" ) );
 }
 
-void QgsOgrDbSourceSelect::mTablesTreeView_doubleClicked( const QModelIndex &index )
+void QgsOgrDbSourceSelect::treeviewDoubleClicked( const QModelIndex &index )
 {
   setSql( index );
-}
-
-void QgsOgrDbSourceSelect::mSearchGroupBox_toggled( bool checked )
-{
-  if ( mSearchTableEdit->text().isEmpty() )
-    return;
-
-  mSearchTableEdit_textChanged( checked ? mSearchTableEdit->text() : QString() );
-}
-
-void QgsOgrDbSourceSelect::mSearchTableEdit_textChanged( const QString &text )
-{
-  if ( mSearchModeComboBox->currentText() == tr( "Wildcard" ) )
-  {
-    mProxyModel._setFilterWildcard( text );
-  }
-  else if ( mSearchModeComboBox->currentText() == tr( "RegExp" ) )
-  {
-    mProxyModel._setFilterRegExp( text );
-  }
-}
-
-void QgsOgrDbSourceSelect::mSearchColumnComboBox_currentIndexChanged( const QString &text )
-{
-  if ( text == tr( "All" ) )
-  {
-    mProxyModel.setFilterKeyColumn( -1 );
-  }
-  else if ( text == tr( "Table" ) )
-  {
-    mProxyModel.setFilterKeyColumn( 0 );
-  }
-  else if ( text == tr( "Type" ) )
-  {
-    mProxyModel.setFilterKeyColumn( 1 );
-  }
-  else if ( text == tr( "Geometry column" ) )
-  {
-    mProxyModel.setFilterKeyColumn( 2 );
-  }
-  else if ( text == tr( "Sql" ) )
-  {
-    mProxyModel.setFilterKeyColumn( 3 );
-  }
-}
-
-void QgsOgrDbSourceSelect::mSearchModeComboBox_currentIndexChanged( const QString &text )
-{
-  Q_UNUSED( text )
-  mSearchTableEdit_textChanged( mSearchTableEdit->text() );
 }
 
 void QgsOgrDbSourceSelect::populateConnectionList()
@@ -214,7 +123,7 @@ void QgsOgrDbSourceSelect::populateConnectionList()
 
 void QgsOgrDbSourceSelect::btnNew_clicked()
 {
-  if ( QgsOgrDataCollectionItem::createConnection( name(), extension(), ogrDriverName() ) )
+  if ( QgsOgrProviderUtils::createConnection( name(), extension(), ogrDriverName() ) )
   {
     emit connectionsChanged();
   }
@@ -223,9 +132,9 @@ void QgsOgrDbSourceSelect::btnNew_clicked()
 
 QString QgsOgrDbSourceSelect::layerURI( const QModelIndex &index )
 {
-  QStandardItem *item = mTableModel.itemFromIndex( index );
+  QStandardItem *item = mTableModel->itemFromIndex( index );
   QString uri( item->data().toString() );
-  QString sql = mTableModel.itemFromIndex( index.sibling( index.row(), 3 ) )->text();
+  QString sql = mTableModel->itemFromIndex( index.sibling( index.row(), 3 ) )->text();
   if ( ! sql.isEmpty() )
   {
     uri += QStringLiteral( "|subset=%1" ).arg( sql );
@@ -247,7 +156,7 @@ void QgsOgrDbSourceSelect::btnDelete_clicked()
   if ( result != QMessageBox::Yes )
     return;
 
-  QgsOgrDbConnection::deleteConnection( subKey, ogrDriverName() );
+  QgsOgrDbConnection::deleteConnection( subKey );
   populateConnectionList();
   emit connectionsChanged();
 }
@@ -275,7 +184,7 @@ void QgsOgrDbSourceSelect::addButtonClicked()
       //top level items only contain the schema names
       continue;
     }
-    currentItem = mTableModel.itemFromIndex( mProxyModel.mapToSource( *selected_it ) );
+    currentItem = mTableModel->itemFromIndex( proxyModel()->mapToSource( *selected_it ) );
     if ( !currentItem )
     {
       continue;
@@ -289,11 +198,11 @@ void QgsOgrDbSourceSelect::addButtonClicked()
       dbInfo[currentSchemaName][currentRow] = true;
       if ( currentItem->data( Qt::UserRole + 2 ).toString().contains( QStringLiteral( "Raster" ), Qt::CaseInsensitive ) )
       {
-        selectedRasters << LayerInfo( layerURI( mProxyModel.mapToSource( *selected_it ) ), currentItem->data( Qt::DisplayRole ).toString() );
+        selectedRasters << LayerInfo( layerURI( proxyModel()->mapToSource( *selected_it ) ), currentItem->data( Qt::DisplayRole ).toString() );
       }
       else
       {
-        selectedVectors << LayerInfo( layerURI( mProxyModel.mapToSource( *selected_it ) ), currentItem->data( Qt::DisplayRole ).toString() );
+        selectedVectors << LayerInfo( layerURI( proxyModel()->mapToSource( *selected_it ) ), currentItem->data( Qt::DisplayRole ).toString() );
       }
     }
   }
@@ -305,11 +214,11 @@ void QgsOgrDbSourceSelect::addButtonClicked()
   else
   {
     // Use OGR
-    for ( const LayerInfo &info : qgis::as_const( selectedVectors ) )
+    for ( const LayerInfo &info : std::as_const( selectedVectors ) )
     {
       emit addVectorLayer( info.first, info.second );
     }
-    for ( const LayerInfo &info : qgis::as_const( selectedRasters ) )
+    for ( const LayerInfo &info : std::as_const( selectedRasters ) )
     {
       emit addRasterLayer( info.first, info.second, QStringLiteral( "gdal" ) );
     }
@@ -333,58 +242,74 @@ void QgsOgrDbSourceSelect::btnConnect_clicked()
 
   mPath = conn.path();
 
-  try
+  const QList< QgsProviderSublayerDetails > sublayers = QgsProviderRegistry::instance()->providerMetadata( QStringLiteral( "ogr" ) )->querySublayers( mPath );
+
+  QModelIndex rootItemIndex = mTableModel->indexFromItem( mTableModel->invisibleRootItem() );
+  mTableModel->removeRows( 0, mTableModel->rowCount( rootItemIndex ), rootItemIndex );
+
+  // populate the table list
+  // get the list of suitable tables and columns and populate the UI
+
+  mTableModel->setPath( mPath );
+
+
+  for ( const QgsProviderSublayerDetails &layer : sublayers )
   {
-    const QList<QgsOgrDbLayerInfo *> layers = QgsOgrLayerItem::subLayers( mPath, ogrDriverName() );
-
-    QModelIndex rootItemIndex = mTableModel.indexFromItem( mTableModel.invisibleRootItem() );
-    mTableModel.removeRows( 0, mTableModel.rowCount( rootItemIndex ), rootItemIndex );
-
-    // populate the table list
-    // get the list of suitable tables and columns and populate the UI
-
-    mTableModel.setPath( mPath );
-
-
-    for ( const QgsOgrDbLayerInfo *table : layers )
+    if ( cbxAllowGeometrylessTables->isChecked() || layer.wkbType() != QgsWkbTypes::NoGeometry )
     {
-      if ( cbxAllowGeometrylessTables->isChecked() || table->geometryType() != QLatin1String( "None" ) )
+      Qgis::BrowserLayerType layerType = Qgis::BrowserLayerType::Vector;
+
+      switch ( QgsWkbTypes::geometryType( layer.wkbType() ) )
       {
-        mTableModel.addTableEntry( table->layerType(), table->name(), table->uri(), table->geometryColumn(), table->geometryType(), QString() );
+        case QgsWkbTypes::PointGeometry:
+          layerType = Qgis::BrowserLayerType::Point;
+          break;
+
+        case QgsWkbTypes::LineGeometry:
+          layerType = Qgis::BrowserLayerType::Line;
+          break;
+
+        case QgsWkbTypes::PolygonGeometry:
+          layerType = Qgis::BrowserLayerType::Polygon;
+          break;
+
+        case QgsWkbTypes::NullGeometry:
+          layerType = Qgis::BrowserLayerType::TableLayer;
+          break;
+
+        case QgsWkbTypes::UnknownGeometry:
+          layerType = Qgis::BrowserLayerType::Vector;
+          break;
       }
+
+      mTableModel->addTableEntry( layerType, layer.name(), layer.uri(), layer.geometryColumnName(), QgsWkbTypes::displayString( layer.wkbType() ), QString() );
     }
-
-    mTablesTreeView->sortByColumn( 0, Qt::AscendingOrder );
-
-    //expand all the toplevel items
-    int numTopLevelItems = mTableModel.invisibleRootItem()->rowCount();
-    for ( int i = 0; i < numTopLevelItems; ++i )
-    {
-      mTablesTreeView->expand( mProxyModel.mapFromSource( mTableModel.indexFromItem( mTableModel.invisibleRootItem()->child( i ) ) ) );
-    }
-    mTablesTreeView->resizeColumnToContents( 0 );
-    mTablesTreeView->resizeColumnToContents( 1 );
-
-    cbxAllowGeometrylessTables->setEnabled( true );
-
-    // Store selected connection
-    QgsOgrDbConnection::setSelectedConnection( subKey, ogrDriverName() );
-    qDeleteAll( layers );
   }
-  catch ( QgsOgrLayerNotValidException &ex )
+
+  mTablesTreeView->sortByColumn( 0, Qt::AscendingOrder );
+
+  //expand all the toplevel items
+  int numTopLevelItems = mTableModel->invisibleRootItem()->rowCount();
+  for ( int i = 0; i < numTopLevelItems; ++i )
   {
-    pushMessage( tr( "Error opening layer" ), ex.what(), Qgis::MessageLevel::Critical );
+    mTablesTreeView->expand( proxyModel()->mapFromSource( mTableModel->indexFromItem( mTableModel->invisibleRootItem()->child( i ) ) ) );
   }
+  mTablesTreeView->resizeColumnToContents( QgsOgrDbTableModel::DbtmTable );
+  mTablesTreeView->resizeColumnToContents( QgsOgrDbTableModel::DbtmType );
+
+  cbxAllowGeometrylessTables->setEnabled( true );
+
+  // Store selected connection
+  QgsOgrDbConnection::setSelectedConnection( subKey, ogrDriverName() );
 }
 
 
 void QgsOgrDbSourceSelect::setSql( const QModelIndex &index )
 {
-  QModelIndex idx = mProxyModel.mapToSource( index );
-  QString tableName = mTableModel.itemFromIndex( idx.sibling( idx.row(), 0 ) )->text();
+  QString tableName = mTableModel->itemFromIndex( index.sibling( index.row(), 0 ) )->text();
 
   QgsVectorLayer::LayerOptions options { QgsProject::instance()->transformContext() };
-  std::unique_ptr<QgsVectorLayer> vlayer = qgis::make_unique<QgsVectorLayer>( layerURI( idx ), tableName, QStringLiteral( "ogr" ), options );
+  std::unique_ptr<QgsVectorLayer> vlayer = std::make_unique<QgsVectorLayer>( layerURI( index ), tableName, QStringLiteral( "ogr" ), options );
 
   if ( !vlayer->isValid() )
   {
@@ -396,7 +321,7 @@ void QgsOgrDbSourceSelect::setSql( const QModelIndex &index )
 
   if ( gb->exec() )
   {
-    mTableModel.setSql( mProxyModel.mapToSource( index ), gb->sql() );
+    mTableModel->setSql( index, gb->sql() );
   }
 }
 

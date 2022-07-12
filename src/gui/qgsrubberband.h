@@ -18,6 +18,7 @@
 #include "qgsmapcanvasitem.h"
 #include "qgis_sip.h"
 #include "qgsgeometry.h"
+#include "qgscoordinatetransform.h"
 
 #include <QBrush>
 #include <QVector>
@@ -30,6 +31,7 @@
 
 class QgsVectorLayer;
 class QPaintEvent;
+class QgsSymbol;
 
 #ifdef SIP_RUN
 % ModuleHeaderCode
@@ -57,7 +59,13 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
 #ifdef SIP_RUN
     SIP_CONVERT_TO_SUBCLASS_CODE
     if ( dynamic_cast<QgsRubberBand *>( sipCpp ) )
+    {
       sipType = sipType_QgsRubberBand;
+      // We need to tweak the pointer as sip believes it is single inheritance
+      // from QgsMapCanvasItem, but the raw address of QgsRubberBand (sipCpp)
+      // is actually a QObject
+      *sipCppRet = dynamic_cast<QgsRubberBand *>( sipCpp );
+    }
     else
       sipType = nullptr;
     SIP_END
@@ -132,6 +140,7 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
      *         QgsWkbTypes::LineGeometry, QgsWkbTypes::PolygonGeometry or QgsWkbTypes::PointGeometry
      */
     QgsRubberBand( QgsMapCanvas *mapCanvas SIP_TRANSFERTHIS, QgsWkbTypes::GeometryType geometryType = QgsWkbTypes::LineGeometry );
+    ~QgsRubberBand() override;
 
     /**
      * Sets the color for the rubberband.
@@ -318,17 +327,27 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
     void setToCanvasRectangle( QRect rect );
 
     /**
+     * Copies the points from another rubber band.
+     *
+     * \since QGIS 3.22
+     */
+    void copyPointsFrom( const QgsRubberBand *other );
+
+    /**
      * Adds the geometry of an existing feature to a rubberband
      * This is useful for multi feature highlighting.
      * As of 2.0, this method does not change the GeometryType any more. You need to set the GeometryType
      * of the rubberband explicitly by calling reset() or setToGeometry() with appropriate arguments.
      * setToGeometry() is also to be preferred for backwards-compatibility.
      *
+     * If additional geometries are to be added then set \a doUpdate to FALSE to defer costly repaint and bounding rectangle calculations for better performance.
+     * After adding the final geometry updatePosition() should be called.
+     *
      *  \param geometry the geometry object. Will be treated as a collection of vertices.
-     *  \param layer the layer containing the feature, used for coord transformation to map
-     *               crs. If \a layer is NULLPTR, the coordinates are not going to be transformed.
+     *  \param layer the layer associated with the geometry. This is used for transforming the geometry from the layer's CRS to the map crs. If \a layer is NULLPTR no coordinate transformation will occur.
+     *  \param doUpdate set to FALSE to defer updates of the rubber band.
      */
-    void addGeometry( const QgsGeometry &geometry, QgsVectorLayer *layer );
+    void addGeometry( const QgsGeometry &geometry, QgsMapLayer *layer, bool doUpdate = true );
 
     /**
      * Adds a \a geometry to the rubberband.
@@ -336,9 +355,12 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
      * If \a crs is specified, the geometry will be automatically reprojected from \a crs
      * to the canvas CRS.
      *
+     * If additional geometries are to be added then set \a doUpdate to FALSE to defer costly repaint and bounding rectangle calculations for better performance.
+     * After adding the final geometry updatePosition() should be called.
+     *
      * \since QGIS 3.0
      */
-    void addGeometry( const QgsGeometry &geometry, const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem() );
+    void addGeometry( const QgsGeometry &geometry, const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem(), bool doUpdate = true );
 
     /**
      * Adds translation to original coordinates (all in map coordinates)
@@ -378,6 +400,29 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
 
     void updatePosition() override;
 
+    /**
+     * Returns the symbol used for rendering the rubberband, if set.
+     *
+     * \see setSymbol()
+     * \since QGIS 3.20
+     */
+    QgsSymbol *symbol() const;
+
+    /**
+     * Sets the \a symbol used for rendering the rubberband.
+     *
+     * Ownership of \a symbol is transferred to the rubberband.
+     *
+     * \warning Only line and fill symbols are currently supported.
+     *
+     * \note Setting a symbol for the rubberband overrides any other appearance setting,
+     * such as the strokeColor() or width().
+     *
+     * \see setSymbol()
+     * \since QGIS 3.20
+     */
+    void setSymbol( QgsSymbol *symbol SIP_TRANSFER );
+
   protected:
 
     /**
@@ -415,6 +460,8 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
     IconType mIconType = ICON_CIRCLE;
     std::unique_ptr<QSvgRenderer> mSvgRenderer;
     QPoint mSvgOffset;
+
+    std::unique_ptr< QgsSymbol > mSymbol;
 
     /**
      * Nested lists used for multitypes

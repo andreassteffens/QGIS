@@ -101,7 +101,6 @@ void QgsRasterizeAlgorithm::initAlgorithm( const QVariantMap & )
                   QObject::tr( "Map theme to render" ),
                   QVariant(), true ) );
 
-  QList<QgsMapLayer *> projectLayers { QgsProject::instance()->mapLayers().values() };
   addParameter( new QgsProcessingParameterMultipleLayers(
                   QStringLiteral( "LAYERS" ),
                   QObject::tr( "Layers to render" ),
@@ -196,9 +195,10 @@ QVariantMap QgsRasterizeAlgorithm::processAlgorithm( const QVariantMap &paramete
   QgsMapSettings mapSettings;
   mapSettings.setOutputImageFormat( QImage::Format_ARGB32 );
   mapSettings.setDestinationCrs( context.project()->crs() );
-  mapSettings.setFlag( QgsMapSettings::Antialiasing, true );
-  mapSettings.setFlag( QgsMapSettings::RenderMapTile, true );
-  mapSettings.setFlag( QgsMapSettings::UseAdvancedEffects, true );
+  mapSettings.setFlag( Qgis::MapSettingsFlag::Antialiasing, true );
+  mapSettings.setFlag( Qgis::MapSettingsFlag::HighQualityImageTransforms, true );
+  mapSettings.setFlag( Qgis::MapSettingsFlag::RenderMapTile, true );
+  mapSettings.setFlag( Qgis::MapSettingsFlag::UseAdvancedEffects, true );
   mapSettings.setTransformContext( context.transformContext() );
   mapSettings.setExtentBuffer( extentBuffer );
   mapSettings.setBackgroundColor( bgColor );
@@ -215,7 +215,6 @@ QVariantMap QgsRasterizeAlgorithm::processAlgorithm( const QVariantMap &paramete
   // Start rendering
   const double extentRatio { mapUnitsPerPixel * tileSize };
   const int numTiles { xTileCount * yTileCount };
-  const QString fileExtension { QFileInfo( outputLayerFileName ).suffix() };
 
   // Custom deleter for CPL allocation
   struct CPLDelete
@@ -326,7 +325,7 @@ bool QgsRasterizeAlgorithm::prepareAlgorithm( const QVariantMap &parameters, Qgs
   }
   else if ( ! mapLayers.isEmpty() )
   {
-    for ( const QgsMapLayer *ml : qgis::as_const( mapLayers ) )
+    for ( const QgsMapLayer *ml : std::as_const( mapLayers ) )
     {
       mMapLayers.push_back( std::unique_ptr<QgsMapLayer>( ml->clone( ) ) );
     }
@@ -343,7 +342,7 @@ bool QgsRasterizeAlgorithm::prepareAlgorithm( const QVariantMap &parameters, Qgs
         layers << layer;
     }
 
-    for ( const QgsMapLayer *ml : qgis::as_const( layers ) )
+    for ( const QgsMapLayer *ml : std::as_const( layers ) )
     {
       mMapLayers.push_back( std::unique_ptr<QgsMapLayer>( ml->clone( ) ) );
     }

@@ -17,6 +17,10 @@
 
 #include "qgsmeshtracerenderer.h"
 #include "qgsmeshlayerrenderer.h"
+#include "qgsrendercontext.h"
+
+#include <QPointer>
+
 ///@cond PRIVATE
 
 #ifndef M_DEG2RAD
@@ -68,8 +72,8 @@ QgsMeshVectorValueInterpolator &QgsMeshVectorValueInterpolator::operator=( const
 }
 
 QgsMeshVectorValueInterpolatorFromVertex::
-QgsMeshVectorValueInterpolatorFromVertex( const QgsTriangularMesh &triangularMesh, const QgsMeshDataBlock &datasetVectorValues ):
-  QgsMeshVectorValueInterpolator( triangularMesh, datasetVectorValues )
+QgsMeshVectorValueInterpolatorFromVertex( const QgsTriangularMesh &triangularMesh, const QgsMeshDataBlock &datasetVectorValues )
+  : QgsMeshVectorValueInterpolator( triangularMesh, datasetVectorValues )
 {
 
 }
@@ -77,8 +81,8 @@ QgsMeshVectorValueInterpolatorFromVertex( const QgsTriangularMesh &triangularMes
 QgsMeshVectorValueInterpolatorFromVertex::
 QgsMeshVectorValueInterpolatorFromVertex( const QgsTriangularMesh &triangularMesh,
     const QgsMeshDataBlock &datasetVectorValues,
-    const QgsMeshDataBlock &scalarActiveFaceFlagValues ):
-  QgsMeshVectorValueInterpolator( triangularMesh, datasetVectorValues, scalarActiveFaceFlagValues )
+    const QgsMeshDataBlock &scalarActiveFaceFlagValues )
+  : QgsMeshVectorValueInterpolator( triangularMesh, datasetVectorValues, scalarActiveFaceFlagValues )
 {
 
 }
@@ -269,7 +273,9 @@ void QgsMeshStreamField::updateSize( const QgsRenderContext &renderContext )
   QgsRectangle layerExtent;
   try
   {
-    layerExtent = renderContext.coordinateTransform().transform( mLayerExtent );
+    QgsCoordinateTransform extentTransform = renderContext.coordinateTransform();
+    extentTransform.setBallparkTransformsAreAppropriate( true );
+    layerExtent = extentTransform.transformBoundingBox( mLayerExtent );
   }
   catch ( QgsCsException &cse )
   {
@@ -403,14 +409,14 @@ void QgsMeshStreamField::addTracesOnMesh( const QgsTriangularMesh &mesh, const Q
 {
   QList<int> facesInExtent = mesh.faceIndexesForRectangle( extent );
   QSet<int> vertices;
-  for ( auto f : qgis::as_const( facesInExtent ) )
+  for ( auto f : std::as_const( facesInExtent ) )
   {
     auto face = mesh.triangles().at( f );
-    for ( auto i : qgis::as_const( face ) )
+    for ( auto i : std::as_const( face ) )
       vertices.insert( i );
   }
 
-  for ( auto i : qgis::as_const( vertices ) )
+  for ( auto i : std::as_const( vertices ) )
   {
     addTrace( mesh.vertices().at( i ) );
   }

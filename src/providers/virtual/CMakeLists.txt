@@ -2,14 +2,9 @@
 ########################################################
 # Files
 
-set (QGIS_VLAYER_SQL_FUNCTIONS_RCCS  sqlfunctionslist.qrc)
+set (VLAYER_SQL_FUNCTIONS_RCCS  sqlfunctionslist.qrc)
 
-set(QGIS_VLAYER_PROVIDER_HDRS
-  qgsvirtuallayerprovider.h
-  qgsslottofunction.h
-)
-
-set(QGIS_VLAYER_PROVIDER_SRCS
+set(VLAYER_PROVIDER_SRCS
   qgsvirtuallayerprovider.cpp
   qgsvirtuallayerfeatureiterator.cpp
   qgsvirtuallayerblob.cpp
@@ -17,84 +12,105 @@ set(QGIS_VLAYER_PROVIDER_SRCS
   qgsvirtuallayersqlitehelper.cpp
   qgsvirtuallayerqueryparser.cpp
 )
+set(VLAYER_PROVIDER_HDRS
+  qgsvirtuallayerprovider.h
+  qgsslottofunction.h
+)
 
 if (WITH_GUI)
-  set(QGIS_VLAYER_PROVIDER_SRCS ${QGIS_VLAYER_PROVIDER_SRCS}
+  set(VLAYER_PROVIDER_GUI_SRCS
+    qgsvirtuallayerprovidergui.cpp
     qgsvirtuallayersourceselect.cpp
     qgsembeddedlayerselectdialog.cpp
   )
-  set(QGIS_VLAYER_PROVIDER_HDRS ${QGIS_VLAYER_PROVIDER_HDRS}
+  set(VLAYER_PROVIDER_GUI_HDRS
+    qgsvirtuallayerprovidergui.h
     qgsvirtuallayersourceselect.h
     qgsembeddedlayerselectdialog.h
   )
 endif()
 
-QT5_WRAP_UI(vlayer_provider_UI_H qgsvirtuallayersourceselectbase.ui qgsembeddedlayerselect.ui)
+########################################################
+# Static
+add_library(provider_virtuallayer_a STATIC ${VLAYER_PROVIDER_SRCS} ${VLAYER_PROVIDER_HDRS} ${VLAYER_SQL_FUNCTIONS_RCCS})
 
-include_directories(
-  ${CMAKE_SOURCE_DIR}/src/core
-  ${CMAKE_SOURCE_DIR}/src/core/auth
-  ${CMAKE_SOURCE_DIR}/src/core/expression
-  ${CMAKE_SOURCE_DIR}/src/core/geometry
-  ${CMAKE_SOURCE_DIR}/src/core/metadata
-  ${CMAKE_SOURCE_DIR}/src/core/raster
-  ${CMAKE_SOURCE_DIR}/src/core/symbology
-  ${CMAKE_SOURCE_DIR}/src/core/effects
-  ${CMAKE_SOURCE_DIR}/src/core/textrenderer
-  ${CMAKE_SOURCE_DIR}/src/gui
-  ${CMAKE_SOURCE_DIR}/src/gui/auth
-  ${CMAKE_SOURCE_DIR}/src/gui/codeeditors
-  ${CMAKE_SOURCE_DIR}/external
-  ${CMAKE_SOURCE_DIR}/external/nlohmann
-
-  ${CMAKE_BINARY_DIR}/src/core
-  ${CMAKE_BINARY_DIR}/src/gui
-  ${CMAKE_BINARY_DIR}/src/ui
-
-  ${CMAKE_CURRENT_BINARY_DIR} # ui_xxx_dlg.h
+target_include_directories(provider_virtuallayer_a PUBLIC
+  ${CMAKE_SOURCE_DIR}/src/providers/virtual
 )
 
-if (WITH_GUI)
-  include_directories(${CMAKE_SOURCE_DIR}/src/core/labeling)
-endif()
-
-include_directories(SYSTEM
-  ${POSTGRES_INCLUDE_DIR}
-  ${SQLITE3_INCLUDE_DIR}
-  ${SPATIALITE_INCLUDE_DIR}
-  ${QCA_INCLUDE_DIR}
-)
-
-if (WITH_GUI)
-  include_directories(SYSTEM
-    ${QSCINTILLA_INCLUDE_DIR}
-  )
-endif()
-
-add_library(virtuallayerprovider MODULE
-  ${QGIS_VLAYER_PROVIDER_SRCS}
-  ${QGIS_VLAYER_PROVIDER_HDRS}
-  ${vlayer_provider_UI_H}
-  ${QGIS_VLAYER_SQL_FUNCTIONS_RCCS}
-)
-
-target_link_libraries( virtuallayerprovider
+target_link_libraries(provider_virtuallayer_a
   qgis_core
-  ${Qt5Core_LIBRARIES}
-  ${Qt5Gui_LIBRARIES}
-  ${Qt5Widgets_LIBRARIES}
   ${SQLITE3_LIBRARY}
   ${SPATIALITE_LIBRARY}
 )
 
+# require c++17
+target_compile_features(provider_virtuallayer_a PRIVATE cxx_std_17)
+
+target_compile_definitions(provider_virtuallayer_a PRIVATE "-DQT_NO_FOREACH")
+
 if (WITH_GUI)
-  target_link_libraries (virtuallayerprovider
+  if (WITH_QT6)
+    QT6_WRAP_UI(VLAYER_PROVIDER_UIS_H qgsvirtuallayersourceselectbase.ui qgsembeddedlayerselect.ui)
+  else()
+    QT5_WRAP_UI(VLAYER_PROVIDER_UIS_H qgsvirtuallayersourceselectbase.ui qgsembeddedlayerselect.ui)
+  endif()
+  add_library(provider_virtuallayer_gui_a STATIC ${VLAYER_PROVIDER_GUI_SRCS} ${VLAYER_PROVIDER_GUI_HDRS} ${VLAYER_PROVIDER_UIS_H})
+
+  target_include_directories(provider_virtuallayer_gui_a PUBLIC
+    ${CMAKE_BINARY_DIR}/src/providers/virtual
+  )
+
+  target_link_libraries(provider_virtuallayer_gui_a
     qgis_gui
   )
-  add_dependencies(virtuallayerprovider ui)
+
+  # require c++17
+  target_compile_features(provider_virtuallayer_gui_a PRIVATE cxx_std_17)
+
+  target_compile_definitions(provider_virtuallayer_gui_a PRIVATE "-DQT_NO_FOREACH")
+
+  add_dependencies(provider_virtuallayer_gui_a ui)
+
+  include_directories(
+    ${CMAKE_BINARY_DIR}/src/ui
+    ${CMAKE_CURRENT_BINARY_DIR} # ui_xxx_dlg.h
+  )
 endif()
 
-install(TARGETS virtuallayerprovider
-  RUNTIME DESTINATION ${QGIS_PLUGIN_DIR}
-  LIBRARY DESTINATION ${QGIS_PLUGIN_DIR}
+
+if (FORCE_STATIC_LIBS)
+  # for (external) mobile apps to be able to pick up provider for linking
+  install (TARGETS provider_virtuallayer_a ARCHIVE DESTINATION ${QGIS_PLUGIN_DIR})
+  if (WITH_GUI)
+    install (TARGETS provider_virtuallayer_gui_a ARCHIVE DESTINATION ${QGIS_PLUGIN_DIR})
+  endif()
+else()
+  add_library(provider_virtuallayer MODULE ${VLAYER_PROVIDER_SRCS} ${VLAYER_PROVIDER_HDRS} ${VLAYER_PROVIDER_GUI_SRCS} ${VLAYER_PROVIDER_GUI_HDRS} ${VLAYER_PROVIDER_UIS_H} ${VLAYER_SQL_FUNCTIONS_RCCS})
+
+  # require c++17
+  target_compile_features(provider_virtuallayer PRIVATE cxx_std_17)
+
+  target_compile_definitions(provider_virtuallayer PRIVATE "-DQT_NO_FOREACH")
+  
+  target_link_libraries(provider_virtuallayer
+    qgis_core
+    ${QT_VERSION_BASE}::Core
+    ${QT_VERSION_BASE}::Widgets
+    ${SQLITE3_LIBRARY}
+    ${SPATIALITE_LIBRARY}
   )
+
+  if (WITH_GUI)
+    target_link_libraries (provider_virtuallayer
+      qgis_gui
+      ${QT_VERSION_BASE}::Gui
+    )
+    add_dependencies(provider_virtuallayer ui)
+  endif()
+  
+  install(TARGETS provider_virtuallayer
+    RUNTIME DESTINATION ${QGIS_PLUGIN_DIR}
+    LIBRARY DESTINATION ${QGIS_PLUGIN_DIR}
+  )
+endif()

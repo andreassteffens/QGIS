@@ -15,8 +15,8 @@
 
 class QgsExpressionItem : QStandardItem
 {
-%Docstring
-An expression item that can be used in the QgsExpressionBuilderWidget tree.
+%Docstring(signature="appended")
+An expression item that can be used in the :py:class:`QgsExpressionBuilderWidget` tree.
 %End
 
 %TypeHeaderCode
@@ -68,14 +68,15 @@ Gets the type of expression item, e.g., header, field, ExpressionNode.
     static const int ITEM_TYPE_ROLE;
     static const int SEARCH_TAGS_ROLE;
     static const int ITEM_NAME_ROLE;
+    static const int LAYER_ID_ROLE;
 
 };
 
 
 class QgsExpressionItemSearchProxy : QSortFilterProxyModel
 {
-%Docstring
-Search proxy used to filter the QgsExpressionBuilderWidget tree.
+%Docstring(signature="appended")
+Search proxy used to filter the :py:class:`QgsExpressionBuilderWidget` tree.
 The default search for a tree model only searches top level this will handle one
 level down
 %End
@@ -89,16 +90,24 @@ level down
     virtual bool filterAcceptsRow( int source_row, const QModelIndex &source_parent ) const;
 
 
+    void setFilterString( const QString &string );
+%Docstring
+Sets the search filter ``string``.
+
+.. versionadded:: 3.22
+%End
+
   protected:
 
     virtual bool lessThan( const QModelIndex &left, const QModelIndex &right ) const;
+
 
 };
 
 class QgsExpressionTreeView : QTreeView
 {
-%Docstring
-QgsExpressionTreeView is a tree view to list all expressions
+%Docstring(signature="appended")
+:py:class:`QgsExpressionTreeView` is a tree view to list all expressions
 functions, variables and fields that can be used in an expression.
 
 .. seealso:: :py:class:`QgsExpressionBuilderWidget`
@@ -113,7 +122,7 @@ functions, variables and fields that can be used in an expression.
 
     class MenuProvider
 {
-%Docstring
+%Docstring(signature="appended")
 Implementation of this interface can be implemented to allow QgsExpressionTreeView
 instance to provide custom context menus (opened upon right-click).
 
@@ -213,7 +222,7 @@ Adds the current expression to the given ``collection``.
 By default it is saved to the collection "generic".
 %End
 
-    void saveToUserExpressions( const QString &label, const QString expression, const QString &helpText );
+    void saveToUserExpressions( const QString &label, const QString &expression, const QString &helpText );
 %Docstring
 Stores the user ``expression`` with given ``label`` and ``helpText``.
 %End

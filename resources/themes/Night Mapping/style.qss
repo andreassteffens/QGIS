@@ -4,10 +4,14 @@ QWidget
     background: transparent;
 }
 
-QWindow, QMainWindow, QMdiSubWindow, QDialog, QAbstractScrollArea, QFocusFrame, QWizardPage, QDockWidget, QTabWidget, QGroupBox
+QWindow, QMainWindow, QMdiSubWindow, QDialog, QAbstractScrollArea, QFocusFrame, QWizardPage, QDockWidget, QDockWidgetGroupWindow, QTabWidget, QGroupBox
 {
     color: @text;
     background-color: @background;
+}
+
+QDockWidget, QDockWidgetGroupWindow {
+  padding: 0.2em;
 }
 
 QWidget:item:hover
@@ -32,7 +36,7 @@ QToolTip
 {
     border: 1px solid #222;
     background-color: @itemdarkbackground;
-    color: @itembackground;
+    color: @text;
 }
 
 QMenuBar {
@@ -148,17 +152,22 @@ QMenu
     padding-right: 0em;
 }
 
+QMenu::icon
+{
+    padding-left: 0.3em;
+}
+
 QMenu::item
 {
     background: transparent;
-    padding: 0.2em 1.3em 0.2em 1.3em;
+    padding: 0.2em 1.3em 0.2em 0.4em;
 }
 
 QMenu::item:disabled
 {
     color: #555;
     background: transparent;
-    padding: 0.2em 1.3em 0.2em 1.3em;
+    padding: 0.2em 1.3em 0.2em 0.4em;
 }
 
 QMenu::item:selected
@@ -170,6 +179,11 @@ QMenu::item:selected
 QMenu::item:checked
 {
     text-decoration:underline;
+}
+
+QMenu::indicator
+{
+    width: 0em;
 }
 
 QWidget:disabled, QWidget:editable:disabled
@@ -223,7 +237,7 @@ QToolButton
     color:@text;
 }
 
-QPushButton[autoRaise=true], QToolButton[autoRaise=true] {
+QPushButton[flat=true], QPushButton[autoRaise=true], QToolButton[autoRaise=true] {
     border:1px solid rgba(0,0,0,0);
     background-color:transparent;
 }
@@ -347,15 +361,15 @@ QComboBox::down-arrow
 }
 
 QComboBox:item {
-    padding-left: 1.3em;
+    padding-left: 0.1em;
     height:1.25em;
 }
 QComboBox:item:selected {
-    padding-left: 1.3em;
+    padding-left: 0.1em;
     height:1.25em;
 }
 QComboBox:item:checked {
-    padding-left: 1.3em;
+    padding-left: 0.1em;
     height:1.25em;
     text-decoration:underline;
 }
@@ -550,14 +564,14 @@ QTabBar::tab:disabled {
     color: @itemdarkbackground;
 }
 
-QTabBar::tab:last
+QTabBar::tab:last, QTabBar::tab::only-one
 {
-    margin-right: 0; /* the last selected tab has nothing to overlap with on the right */
+    margin-right: 0;
 }
 
 QTabBar::tab:first:!selected
 {
-  margin-left: 0px; /* the last selected tab has nothing to overlap with on the right */
+    margin-left: 0px;
 }
 
 QTabBar::tab:bottom {
@@ -596,7 +610,7 @@ QRadioButton::indicator:hover
 }
 
 /* ==================================================================================== */
-/* GROUP                                                                                */
+/* GROUP / FRAME                                                                        */
 /* ==================================================================================== */
 
 QGroupBox {
@@ -633,6 +647,10 @@ QGroupBox::indicator:checked {
 
 QGroupBox::indicator:checked:disabled {
     image: url(@theme_path/icons/qcheckbox-checked-disabled.svg);
+}
+
+QFrame, QFrame:disabled {
+    border:1px solid rgba(0,0,0,0);
 }
 
 /* ==================================================================================== */
@@ -777,6 +795,8 @@ QAbstractItemView, QListView
 QAbstractItemView:disabled, QListView:disabled
 {
     color: @itemdarkbackground;
+    border: 1px solid @itemdarkbackground;
+    border-radius: 0px;
 }
 
 QAbstractItemView::selected, QListView::selected {
@@ -908,6 +928,8 @@ QTableView {
 
 QTableView:disabled {
     color: @itemdarkbackground;
+    border: 1px solid @itemdarkbackground;
+    border-radius: 0px;
 }
 
 QTableView::indicator {
@@ -933,6 +955,11 @@ QTableView QTableCornerButton::section {
 }
 
 QHeaderView {
+    background-color:transparent;
+    border:0;
+}
+
+QHeaderView:disabled {
     background-color:transparent;
     border:0;
 }
@@ -977,6 +1004,11 @@ QHeaderView::up-arrow {
 
 QToolButton:focus, QPushButton:focus, QCheckBox:focus, QRadioButton:focus, QGroupBox:focus {
     outline:1px solid @focusdark;
+    outline-radius: 0;
+}
+
+QPushButton[flat=true], QPushButton[autoRaise=true], QToolButton[autoRaise=true] {
+    outline:1px solid rgba(0,0,0,0);
     outline-radius: 0;
 }
 

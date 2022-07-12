@@ -11,7 +11,7 @@
 
 class QgsVector3D
 {
-%Docstring
+%Docstring(signature="appended")
 Class for storage of 3D vectors similar to QVector3D, with the difference that it uses double precision
 instead of single precision floating point numbers.
 
@@ -103,6 +103,17 @@ Returns the perpendicular point of vector ``vp`` from [``v1`` - ``v2``]
 %Docstring
 Returns a string representation of the 3D vector.
 Members will be truncated to the specified ``precision``.
+%End
+
+    QVector3D toVector3D() const;
+%Docstring
+Converts the current object to QVector3D
+
+.. warning::
+
+   the conversion may decrease the accuracy (double to float values conversion)
+
+.. versionadded:: 3.24
 %End
 
     SIP_PYOBJECT __repr__();

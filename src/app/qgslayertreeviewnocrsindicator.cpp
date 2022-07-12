@@ -30,7 +30,7 @@ QgsLayerTreeViewNoCrsIndicatorProvider::QgsLayerTreeViewNoCrsIndicatorProvider( 
 
 void QgsLayerTreeViewNoCrsIndicatorProvider::onIndicatorClicked( const QModelIndex &index )
 {
-  QgsLayerTreeNode *node = mLayerTreeView->layerTreeModel()->index2node( index );
+  QgsLayerTreeNode *node = mLayerTreeView->index2node( index );
   if ( !QgsLayerTree::isLayer( node ) )
     return;
 
@@ -42,7 +42,7 @@ void QgsLayerTreeViewNoCrsIndicatorProvider::onIndicatorClicked( const QModelInd
   selector.showNoCrsForLayerMessage();
   if ( selector.exec() )
   {
-    QgsCoordinateReferenceSystem crs = selector.crs();
+    const QgsCoordinateReferenceSystem crs = selector.crs();
     layer->setCrs( selector.crs() );
     layer->triggerRepaint();
     updateLayerIndicator( layer );

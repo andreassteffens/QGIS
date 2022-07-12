@@ -28,6 +28,7 @@
 #include "qgslayoutitemregistry.h"
 #include "qgslayoutitemguiregistry.h"
 #include "qgslayoutviewrubberband.h"
+#include "qgsannotationitemguiregistry.h"
 #ifdef Q_OS_MACX
 #include "qgsmacnative.h"
 #elif defined (Q_OS_WIN)
@@ -58,7 +59,12 @@
 #include "qgsmessagebaritem.h"
 #include "qgsnumericformatguiregistry.h"
 #include "qgscodeeditorcolorschemeregistry.h"
-
+#include "qgssubsetstringeditorproviderregistry.h"
+#include "qgsprovidersourcewidgetproviderregistry.h"
+#include "qgsrelationwidgetregistry.h"
+#include "qgsmaptoolshaperegistry.h"
+#include "qgssettingsregistrygui.h"
+#include "qgshistoryproviderregistry.h"
 
 QgsGui *QgsGui::instance()
 {
@@ -71,14 +77,39 @@ QgsNative *QgsGui::nativePlatformInterface()
   return instance()->mNative;
 }
 
+QgsSettingsRegistryGui *QgsGui::settingsRegistryGui()
+{
+  return instance()->mSettingsRegistryGui;
+}
+
 QgsEditorWidgetRegistry *QgsGui::editorWidgetRegistry()
 {
   return instance()->mEditorWidgetRegistry;
 }
 
+QgsRelationWidgetRegistry *QgsGui::relationWidgetRegistry()
+{
+  return instance()->mRelationEditorRegistry;
+}
+
+QgsMapToolShapeRegistry *QgsGui::mapToolShapeRegistry()
+{
+  return instance()->mShapeMapToolRegistry;
+}
+
 QgsSourceSelectProviderRegistry *QgsGui::sourceSelectProviderRegistry()
 {
   return instance()->mSourceSelectProviderRegistry;
+}
+
+QgsSubsetStringEditorProviderRegistry *QgsGui::subsetStringEditorProviderRegistry()
+{
+  return instance()->mSubsetStringEditorProviderRegistry;
+}
+
+QgsProviderSourceWidgetProviderRegistry *QgsGui::sourceWidgetProviderRegistry()
+{
+  return instance()->mProviderSourceWidgetProviderRegistry;
 }
 
 QgsShortcutsManager *QgsGui::shortcutsManager()
@@ -99,6 +130,11 @@ QgsMapLayerActionRegistry *QgsGui::mapLayerActionRegistry()
 QgsLayoutItemGuiRegistry *QgsGui::layoutItemGuiRegistry()
 {
   return instance()->mLayoutItemGuiRegistry;
+}
+
+QgsAnnotationItemGuiRegistry *QgsGui::annotationItemGuiRegistry()
+{
+  return instance()->mAnnotationItemGuiRegistry;
 }
 
 QgsProcessingGuiRegistry *QgsGui::processingGuiRegistry()
@@ -136,6 +172,11 @@ QgsProviderGuiRegistry *QgsGui::providerGuiRegistry()
   return instance()->mProviderGuiRegistry;
 }
 
+QgsHistoryProviderRegistry *QgsGui::historyProviderRegistry()
+{
+  return instance()->mHistoryProviderRegistry;
+}
+
 void QgsGui::enableAutoGeometryRestore( QWidget *widget, const QString &key )
 {
   if ( widget->objectName().isEmpty() )
@@ -157,8 +198,7 @@ void QgsGui::setWindowManager( QgsWindowManagerInterface *manager )
 
 QgsGui::HigFlags QgsGui::higFlags()
 {
-  QgsSettings settings;
-  if ( settings.value( QStringLiteral( "locale/userLocale" ), QString() ).toString().startsWith( QLatin1String( "en" ) ) )
+  if ( QgsApplication::settingsLocaleUserLocale.value().startsWith( QLatin1String( "en" ) ) )
   {
     return HigMenuTextIsTitleCase | HigDialogTitleIsTitleCase;
   }
@@ -174,10 +214,12 @@ QgsGui::~QgsGui()
   delete mDataItemGuiProviderRegistry;
   delete mProcessingRecentAlgorithmLog;
   delete mLayoutItemGuiRegistry;
+  delete mAnnotationItemGuiRegistry;
   delete mLayerTreeEmbeddedWidgetRegistry;
   delete mEditorWidgetRegistry;
   delete mMapLayerActionRegistry;
   delete mSourceSelectProviderRegistry;
+  delete mHistoryProviderRegistry;
   delete mShortcutsManager;
   delete mNative;
   delete mNumericFormatGuiRegistry;
@@ -185,6 +227,11 @@ QgsGui::~QgsGui()
   delete mProjectStorageGuiRegistry;
   delete mProviderGuiRegistry;
   delete mCodeEditorColorSchemeRegistry;
+  delete mSubsetStringEditorProviderRegistry;
+  delete mProviderSourceWidgetProviderRegistry;
+  delete mShapeMapToolRegistry;
+  delete mRelationEditorRegistry;
+  delete mSettingsRegistryGui;
 }
 
 QColor QgsGui::sampleColor( QPoint point )
@@ -194,8 +241,8 @@ QColor QgsGui::sampleColor( QPoint point )
   {
     return QColor();
   }
-  QPixmap snappedPixmap = screen->grabWindow( QApplication::desktop()->winId(), point.x(), point.y(), 1, 1 );
-  QImage snappedImage = snappedPixmap.toImage();
+  const QPixmap snappedPixmap = screen->grabWindow( QApplication::desktop()->winId(), point.x(), point.y(), 1, 1 );
+  const QImage snappedImage = snappedPixmap.toImage();
   return snappedImage.pixel( 0, 0 );
 }
 
@@ -230,24 +277,39 @@ QgsGui::QgsGui()
   mNative = new QgsNative();
 #endif
 
+  mSettingsRegistryGui = new QgsSettingsRegistryGui();
+
   mCodeEditorColorSchemeRegistry = new QgsCodeEditorColorSchemeRegistry();
 
   // provider gui registry initialize QgsProviderRegistry too
+  mHistoryProviderRegistry = new QgsHistoryProviderRegistry();
+  mHistoryProviderRegistry->addDefaultProviders();
+
   mProviderGuiRegistry = new QgsProviderGuiRegistry( QgsApplication::pluginPath() );
   mProjectStorageGuiRegistry = new QgsProjectStorageGuiRegistry();
   mDataItemGuiProviderRegistry = new QgsDataItemGuiProviderRegistry();
   mSourceSelectProviderRegistry = new QgsSourceSelectProviderRegistry();
   mNumericFormatGuiRegistry = new QgsNumericFormatGuiRegistry();
+  mSubsetStringEditorProviderRegistry = new QgsSubsetStringEditorProviderRegistry();
+  mProviderSourceWidgetProviderRegistry = new QgsProviderSourceWidgetProviderRegistry();
 
   mProjectStorageGuiRegistry->initializeFromProviderGuiRegistry( mProviderGuiRegistry );
   mDataItemGuiProviderRegistry->initializeFromProviderGuiRegistry( mProviderGuiRegistry );
   mSourceSelectProviderRegistry->initializeFromProviderGuiRegistry( mProviderGuiRegistry );
+  mSubsetStringEditorProviderRegistry->initializeFromProviderGuiRegistry( mProviderGuiRegistry );
+  mProviderSourceWidgetProviderRegistry->initializeFromProviderGuiRegistry( mProviderGuiRegistry );
 
   mEditorWidgetRegistry = new QgsEditorWidgetRegistry();
+  mRelationEditorRegistry = new QgsRelationWidgetRegistry();
+  mShapeMapToolRegistry = new QgsMapToolShapeRegistry();
   mShortcutsManager = new QgsShortcutsManager();
   mLayerTreeEmbeddedWidgetRegistry = new QgsLayerTreeEmbeddedWidgetRegistry();
   mMapLayerActionRegistry = new QgsMapLayerActionRegistry();
   mLayoutItemGuiRegistry = new QgsLayoutItemGuiRegistry();
+
+  mAnnotationItemGuiRegistry = new QgsAnnotationItemGuiRegistry();
+  mAnnotationItemGuiRegistry->addDefaultItems();
+
   mWidgetStateHelper = new QgsWidgetStateHelper();
   mProcessingRecentAlgorithmLog = new QgsProcessingRecentAlgorithmLog();
   mProcessingGuiRegistry = new QgsProcessingGuiRegistry();
@@ -255,7 +317,7 @@ QgsGui::QgsGui()
 
 bool QgsGui::pythonMacroAllowed( void ( *lambda )(), QgsMessageBar *messageBar )
 {
-  Qgis::PythonMacroMode macroMode = QgsSettings().enumValue( QStringLiteral( "qgis/enableMacros" ), Qgis::PythonMacroMode::Ask );
+  const Qgis::PythonMacroMode macroMode = QgsSettings().enumValue( QStringLiteral( "qgis/enableMacros" ), Qgis::PythonMacroMode::Ask );
 
   switch ( macroMode )
   {
@@ -278,7 +340,7 @@ bool QgsGui::pythonMacroAllowed( void ( *lambda )(), QgsMessageBar *messageBar )
       {
         QMessageBox msgBox( QMessageBox::Information, tr( "Python Macros" ),
                             tr( "Python macros are currently disabled. Do you allow this macro to run?" ) );
-        QAbstractButton *stopSessionButton = msgBox.addButton( tr( "Don't Ask Anymore" ), QMessageBox::DestructiveRole );
+        QAbstractButton *stopSessionButton = msgBox.addButton( tr( "Disable for this Session" ), QMessageBox::DestructiveRole );
         msgBox.addButton( tr( "No" ), QMessageBox::NoRole );
         QAbstractButton *yesButton = msgBox.addButton( tr( "Yes" ), QMessageBox::YesRole );
         msgBox.exec();
@@ -306,7 +368,7 @@ bool QgsGui::pythonMacroAllowed( void ( *lambda )(), QgsMessageBar *messageBar )
             tr( "Security warning" ),
             tr( "Python macros cannot currently be run." ),
             btnEnableMacros,
-            Qgis::Warning,
+            Qgis::MessageLevel::Warning,
             0,
             messageBar );
 

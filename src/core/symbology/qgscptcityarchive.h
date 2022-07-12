@@ -20,12 +20,11 @@
 #include "qgis_core.h"
 #include "qgis_sip.h"
 #include "qgis.h"
-#include "qgscolorramp.h"
+#include "qgscolorrampimpl.h"
 
 #include <QAbstractItemModel>
 #include <QIcon>
 #include <QMimeData>
-#include <QAction>
 
 class QgsCptCityColorRamp;
 class QgsCptCityDataItem;
@@ -144,9 +143,6 @@ class CORE_EXPORT QgsCptCityDataItem : public QObject
     virtual bool equal( const QgsCptCityDataItem *other );
 
     virtual QWidget *paramWidget() SIP_FACTORY { return nullptr; }
-
-    // list of actions provided by this item - usually used for popup menu on right-click
-    virtual QList<QAction *> actions() { return QList<QAction *>(); }
 
     // whether accepts drag&drop'd layers - e.g. for import
     virtual bool acceptDrop() { return false; }

@@ -48,7 +48,7 @@ namespace QgsWms
 
   struct QgsWmsParametersRules
   {
-	  QList<QPair<QString, bool>> mRules;
+    QList<QPair<QString, bool>> mRules;
   };
 
   struct QgsWmsParametersLayer
@@ -56,12 +56,12 @@ namespace QgsWms
     QString mNickname; // name, id or short name
     int mOpacity = -1;
     QList<QgsWmsParametersFilter> mFilter; // list of filter
-	QList<QPair<QString, bool>> mRules; // list of display rules;
-	bool mLabelsPresent;
-	bool mLabels; // list of display rules;
+    QList<QPair<QString, bool>> mRules; // list of display rules;
+    bool mLabelsPresent;
+    bool mLabels;
     QStringList mSelection; // list of string fid
-	bool mRenderSelectionOnly;
-	QStringList mQuerySubstitutions;
+    bool mRenderSelectionOnly;
+    QStringList mQuerySubstitutions;
     QString mStyle;
     QString mExternalUri;
   };
@@ -84,6 +84,10 @@ namespace QgsWms
     QString mFont;
     float mBufferSize = 0;
     QColor mBufferColor;
+    double mLabelRotation = 0;
+    double mLabelDistance = 2; //label distance from feature in mm
+    QString mHali; //horizontal alignment
+    QString mVali; //vertical alignment
   };
 
   struct QgsWmsParametersComposerMap
@@ -153,13 +157,13 @@ namespace QgsWms
         FI_POINT_TOLERANCE,
         FILTER,
         FILTER_GEOM,
-		SBRULES,
-		SBLABELS,
-		SBKEY,
-		SBWITHLABEL,
-		SBALWAYSRENDERSELECTION,
-		SBALLOWUNSAFE,
-		SBQUERYSUBSTITUTIONS,
+        SBRULES,
+        SBLABELS,
+        SBKEY,
+        SBWITHLABEL,
+        SBALWAYSRENDERSELECTION,
+        SBALLOWUNSAFE,
+        SBQUERYSUBSTITUTIONS,
         FORMAT,
         INFO_FORMAT,
         I,
@@ -179,6 +183,10 @@ namespace QgsWms
         HIGHLIGHT_LABELCOLOR,
         HIGHLIGHT_LABELBUFFERCOLOR,
         HIGHLIGHT_LABELBUFFERSIZE,
+        HIGHLIGHT_LABEL_ROTATION,
+        HIGHLIGHT_LABEL_DISTANCE,
+        HIGHLIGHT_LABEL_HORIZONTAL_ALIGNMENT,
+        HIGHLIGHT_LABEL_VERTICAL_ALIGNMENT,
         WMS_PRECISION,
         TRANSPARENT,
         BGCOLOR,
@@ -328,7 +336,9 @@ namespace QgsWms
       static QgsWmsParameter::Name name( const QString &name );
 
       QgsWmsParameter::Name mName;
-      int mId = -1;
+
+      //! Map id for prefixed parameters (e.g. "0" for "map0:LAYERS" in GetPrint requests)
+      int mMapId = -1;
   };
 
   /**
@@ -510,41 +520,41 @@ namespace QgsWms
        */
       QStringList selections() const;
 
-	  /**
-	  * Returns the list of substitution values inserted into feature source queries found in SBQUERYSUBSTITUTIONS parameter.
-	  * \returns the list of substitutions
-	  */
-	  QStringList sbQuerySubstitutions() const;
-
-	  /**
-	  * Returns the list of display rules found in SBLABELS parameter.
-	  * \returns the list of rules
-	  */
-	  QStringList sbLabels() const;
+      /**
+       * Returns the list of substitution values inserted into feature source queries found in SBQUERYSUBSTITUTIONS parameter.
+       * \returns the list of substitutions
+       */
+      QStringList sbQuerySubstitutions() const;
 
       /**
-	  * Returns the list of display rules found in SBRULES parameter.
-	  * \returns the list of rules
-	  */
-	  QStringList sbRules() const;
+       * Returns the list of display rules found in SBLABELS parameter.
+       * \returns the list of rules
+       */
+      QStringList sbLabels() const;
 
-	  /**
-	  * Returns the the API key authorizing access to specialized Atapa functions found in RULES parameter.
-	  * \returns Atapa API key
-	  */
-	  QString sbKey() const;
+      /**
+       * Returns the list of display rules found in SBRULES parameter.
+       * \returns the list of rules
+       */
+      QStringList sbRules() const;
 
-	  /**
-	  */
-	  bool sbWithLabel() const;
+      /**
+       * Returns the the API key authorizing access to specialized Atapa functions found in RULES parameter.
+       * \returns Atapa API key
+      */
+      QString sbKey() const;
 
-	  /**
-	  */
-	  bool sbAlwaysRenderSelection() const;
+      /**
+       */
+      bool sbWithLabel() const;
 
-	  /*
-	  */
-	  bool sbAllowUnsafe() const;
+      /**
+       */
+      bool sbAlwaysRenderSelection() const;
+
+      /*
+       */
+      bool sbAllowUnsafe() const;
 
       /**
        * Returns the list of filters found in FILTER parameter.
@@ -597,10 +607,10 @@ namespace QgsWms
        */
       QList<QgsWmsParametersLayer> layersParameters() const;
 
-	  /**
-	  *
-	  */
-	  void sbAddRenderSelectionOnlyLayer(QString& strLayer);
+      /**
+       *
+       */
+      void sbAddRenderSelectionOnlyLayer(QString& strLayer);
 
       /**
        * Returns FI_POLYGON_TOLERANCE parameter or an empty string if not
@@ -1210,6 +1220,30 @@ namespace QgsWms
       QList<QColor> highlightLabelBufferColorAsColor() const;
 
       /**
+       * Returns HIGHLIGHT_LABEL_ROTATION as a list of double.
+       * \returns highlight label rotation
+       */
+      QList<double> highlightLabelRotation() const;
+
+      /**
+       * Returns HIGHLIGHT_LABEL_DISTANCE as a list of double.
+       * \returns highlight label distance
+       */
+      QList<double> highlightLabelDistance() const;
+
+      /**
+       * Returns HIGHLIGHT_LABEL_HORIZONTAL_ALIGNMENT as a list of string.
+       * \returns highlight label horizontal alignment strings
+       */
+      QStringList highlightLabelHorizontalAlignment() const;
+
+      /**
+       * Returns HIGHLIGHT_LABEL_VERTICAL_ALIGNMENT as a list of string.
+       * \returns highlight label vertical alignment strings
+       */
+      QStringList highlightLabelVerticalAlignment() const;
+
+      /**
        * Returns WMS_PRECISION parameter or an empty string if not defined.
        * \returns wms precision parameter
        */
@@ -1385,9 +1419,13 @@ namespace QgsWms
        */
       bool isForce2D() const;
 
-	  QMultiMap<QString, QgsWmsParametersRules> sbAllLayerRules() const;
-	  QMultiMap<QString, bool> sbAllLayerLabels() const;
-	  QStringList sbLayerQuerySubstitutions(const QString &layer) const;
+      QString version() const override;
+
+      QString request() const override;
+
+      QMultiMap<QString, QgsWmsParametersRules> sbAllLayerRules() const;
+      QMultiMap<QString, bool> sbAllLayerLabels() const;
+      QStringList sbLayerQuerySubstitutions(const QString &layer) const;
 
     private:
       static bool isExternalLayer( const QString &name );
@@ -1404,12 +1442,12 @@ namespace QgsWms
       QgsWmsParametersExternalLayer externalLayerParameter( const QString &name ) const;
 
       QMultiMap<QString, QgsWmsParametersFilter> layerFilters( const QStringList &layers ) const;
-	  QMultiMap<QString, QgsWmsParametersRules> sbLayerRules(const QStringList &layers) const;
-	  QMultiMap<QString, bool> sbLayerLabels(const QStringList &layers) const;
-	  
+      QMultiMap<QString, QgsWmsParametersRules> sbLayerRules(const QStringList &layers) const;
+      QMultiMap<QString, bool> sbLayerLabels(const QStringList &layers) const;
+
       QMap<QgsWmsParameter::Name, QgsWmsParameter> mWmsParameters;
       QMap<QString, QMap<QString, QString> > mExternalWMSParameters;
-	  QMap<QString, QString> mSbRenderSelectionOnlyLayers;
+      QMap<QString, QString> mSbRenderSelectionOnlyLayers;
       QList<QgsProjectVersion> mVersions;
   };
 }

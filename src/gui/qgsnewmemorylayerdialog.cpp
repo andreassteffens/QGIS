@@ -27,6 +27,8 @@
 #include "qgssettings.h"
 #include "qgsmemoryproviderutils.h"
 #include "qgsgui.h"
+#include "qgsiconutils.h"
+#include "qgsvariantutils.h"
 
 #include <QPushButton>
 #include <QComboBox>
@@ -42,9 +44,9 @@ QgsVectorLayer *QgsNewMemoryLayerDialog::runAndCreateLayer( QWidget *parent, con
     return nullptr;
   }
 
-  QgsWkbTypes::Type geometrytype = dialog.selectedType();
-  QgsFields fields = dialog.fields();
-  QString name = dialog.layerName().isEmpty() ? tr( "New scratch layer" ) : dialog.layerName();
+  const QgsWkbTypes::Type geometrytype = dialog.selectedType();
+  const QgsFields fields = dialog.fields();
+  const QString name = dialog.layerName().isEmpty() ? tr( "New scratch layer" ) : dialog.layerName();
   QgsVectorLayer *newLayer = QgsMemoryProviderUtils::createMemoryLayer( name, fields, geometrytype, dialog.crs() );
   return newLayer;
 }
@@ -57,31 +59,43 @@ QgsNewMemoryLayerDialog::QgsNewMemoryLayerDialog( QWidget *parent, Qt::WindowFla
 
   mNameLineEdit->setText( tr( "New scratch layer" ) );
 
-  mGeometryTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconTableLayer.svg" ) ), tr( "No Geometry" ), QgsWkbTypes::NoGeometry );
-  mGeometryTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconPointLayer.svg" ) ), tr( "Point" ), QgsWkbTypes::Point );
-  mGeometryTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconLineLayer.svg" ) ), tr( "LineString" ), QgsWkbTypes::LineString );
-  mGeometryTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconLineLayer.svg" ) ), tr( "CompoundCurve" ), QgsWkbTypes::CompoundCurve );
-  mGeometryTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconPolygonLayer.svg" ) ), tr( "Polygon" ), QgsWkbTypes::Polygon );
-  mGeometryTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconPolygonLayer.svg" ) ), tr( "CurvePolygon" ), QgsWkbTypes::CurvePolygon );
-  mGeometryTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconPointLayer.svg" ) ), tr( "MultiPoint" ), QgsWkbTypes::MultiPoint );
-  mGeometryTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconLineLayer.svg" ) ), tr( "MultiLineString" ), QgsWkbTypes::MultiLineString );
-  mGeometryTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconLineLayer.svg" ) ), tr( "MultiCurve" ), QgsWkbTypes::MultiCurve );
-  mGeometryTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconPolygonLayer.svg" ) ), tr( "MultiPolygon" ), QgsWkbTypes::MultiPolygon );
-  mGeometryTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconPolygonLayer.svg" ) ), tr( "MultiSurface" ), QgsWkbTypes::MultiSurface );
+  const QgsWkbTypes::Type geomTypes[] =
+  {
+    QgsWkbTypes::NoGeometry,
+    QgsWkbTypes::Point,
+    QgsWkbTypes::LineString,
+    QgsWkbTypes::CompoundCurve,
+    QgsWkbTypes::Polygon,
+    QgsWkbTypes::CurvePolygon,
+    QgsWkbTypes::MultiPoint,
+    QgsWkbTypes::MultiLineString,
+    QgsWkbTypes::MultiCurve,
+    QgsWkbTypes::MultiPolygon,
+    QgsWkbTypes::MultiSurface,
+  };
+
+  for ( const auto type : geomTypes )
+    mGeometryTypeBox->addItem( QgsIconUtils::iconForWkbType( type ), QgsWkbTypes::translatedDisplayString( type ), type );
   mGeometryTypeBox->setCurrentIndex( -1 );
 
   mGeometryWithZCheckBox->setEnabled( false );
   mGeometryWithMCheckBox->setEnabled( false );
   mCrsSelector->setEnabled( false );
+  mCrsSelector->setShowAccuracyWarnings( true );
 
-  mTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconFieldText.svg" ) ), tr( "Text" ), "string" );
-  mTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconFieldInteger.svg" ) ), tr( "Whole Number" ), "integer" );
-  mTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconFieldFloat.svg" ) ), tr( "Decimal Number" ), "double" );
-  mTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconFieldBool.svg" ) ), tr( "Boolean" ), "bool" );
-  mTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconFieldDate.svg" ) ), tr( "Date" ), "date" );
-  mTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconFieldTime.svg" ) ), tr( "Time" ), "time" );
-  mTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconFieldDateTime.svg" ) ), tr( "Date and Time" ), "datetime" );
-  mTypeBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "/mIconFieldBinary.svg" ) ), tr( "Binary (BLOB)" ), "binary" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::String ), QgsVariantUtils::typeToDisplayString( QVariant::String ), "string" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::Int ), QgsVariantUtils::typeToDisplayString( QVariant::Int ), "integer" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::Double ), QgsVariantUtils::typeToDisplayString( QVariant::Double ), "double" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::Bool ), QgsVariantUtils::typeToDisplayString( QVariant::Bool ), "bool" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::Date ), QgsVariantUtils::typeToDisplayString( QVariant::Date ), "date" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::Time ), QgsVariantUtils::typeToDisplayString( QVariant::Time ), "time" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::DateTime ), QgsVariantUtils::typeToDisplayString( QVariant::DateTime ), "datetime" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::ByteArray ), QgsVariantUtils::typeToDisplayString( QVariant::ByteArray ), "binary" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::StringList ), QgsVariantUtils::typeToDisplayString( QVariant::StringList ), "stringlist" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::List, QVariant::Int ), QgsVariantUtils::typeToDisplayString( QVariant::List, QVariant::Int ), "integerlist" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::List, QVariant::Double ), QgsVariantUtils::typeToDisplayString( QVariant::List, QVariant::Double ), "doublelist" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::List, QVariant::LongLong ), QgsVariantUtils::typeToDisplayString( QVariant::List, QVariant::LongLong ), "integer64list" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::Map ), QgsVariantUtils::typeToDisplayString( QVariant::Map ), "map" );
   mTypeBox_currentIndexChanged( 1 );
 
   mWidth->setValidator( new QIntValidator( 1, 255, this ) );
@@ -100,6 +114,9 @@ QgsNewMemoryLayerDialog::QgsNewMemoryLayerDialog( QWidget *parent, Qt::WindowFla
   connect( mAddAttributeButton, &QToolButton::clicked, this, &QgsNewMemoryLayerDialog::mAddAttributeButton_clicked );
   connect( mRemoveAttributeButton, &QToolButton::clicked, this, &QgsNewMemoryLayerDialog::mRemoveAttributeButton_clicked );
   connect( mButtonBox, &QDialogButtonBox::helpRequested, this, &QgsNewMemoryLayerDialog::showHelp );
+
+  mNameLineEdit->selectAll();
+  mNameLineEdit->setFocus();
 }
 
 QgsWkbTypes::Type QgsNewMemoryLayerDialog::selectedType() const
@@ -121,15 +138,15 @@ QgsWkbTypes::Type QgsNewMemoryLayerDialog::selectedType() const
 
 void QgsNewMemoryLayerDialog::geometryTypeChanged( int )
 {
-  QgsWkbTypes::Type geomType = static_cast<QgsWkbTypes::Type>
-                               ( mGeometryTypeBox->currentData( Qt::UserRole ).toInt() );
+  const QgsWkbTypes::Type geomType = static_cast<QgsWkbTypes::Type>
+                                     ( mGeometryTypeBox->currentData( Qt::UserRole ).toInt() );
 
-  bool isSpatial = geomType != QgsWkbTypes::NoGeometry;
+  const bool isSpatial = geomType != QgsWkbTypes::NoGeometry;
   mGeometryWithZCheckBox->setEnabled( isSpatial );
   mGeometryWithMCheckBox->setEnabled( isSpatial );
   mCrsSelector->setEnabled( isSpatial );
 
-  bool ok = ( !mNameLineEdit->text().isEmpty() && mGeometryTypeBox->currentIndex() != -1 );
+  const bool ok = ( !mNameLineEdit->text().isEmpty() && mGeometryTypeBox->currentIndex() != -1 );
   mOkButton->setEnabled( ok );
 }
 
@@ -184,6 +201,11 @@ void QgsNewMemoryLayerDialog::mTypeBox_currentIndexChanged( int index )
       mPrecision->setEnabled( false );
       break;
     case 7: // Binary
+    case 8: // Stringlist
+    case 9: // Integerlist
+    case 10: // Doublelist
+    case 11: // Integer64list
+    case 12: // Map
       mWidth->clear();
       mWidth->setEnabled( false );
       mPrecision->clear();
@@ -228,11 +250,12 @@ QgsFields QgsNewMemoryLayerDialog::fields() const
   QTreeWidgetItemIterator it( mAttributeView );
   while ( *it )
   {
-    QString name( ( *it )->text( 0 ) );
-    QString typeName( ( *it )->text( 1 ) );
-    int width = ( *it )->text( 2 ).toInt();
-    int precision = ( *it )->text( 3 ).toInt();
+    const QString name( ( *it )->text( 0 ) );
+    const QString typeName( ( *it )->text( 1 ) );
+    const int width = ( *it )->text( 2 ).toInt();
+    const int precision = ( *it )->text( 3 ).toInt();
     QVariant::Type fieldType = QVariant::Invalid;
+    QVariant::Type fieldSubType = QVariant::Invalid;
     if ( typeName == QLatin1String( "string" ) )
       fieldType = QVariant::String;
     else if ( typeName == QLatin1String( "integer" ) )
@@ -247,8 +270,32 @@ QgsFields QgsNewMemoryLayerDialog::fields() const
       fieldType = QVariant::Time;
     else if ( typeName == QLatin1String( "datetime" ) )
       fieldType = QVariant::DateTime;
+    else if ( typeName == QLatin1String( "binary" ) )
+      fieldType = QVariant::ByteArray;
+    else if ( typeName == QLatin1String( "stringlist" ) )
+    {
+      fieldType = QVariant::StringList;
+      fieldSubType = QVariant::String;
+    }
+    else if ( typeName == QLatin1String( "integerlist" ) )
+    {
+      fieldType = QVariant::List;
+      fieldSubType = QVariant::Int;
+    }
+    else if ( typeName == QLatin1String( "doublelist" ) )
+    {
+      fieldType = QVariant::List;
+      fieldSubType = QVariant::Double;
+    }
+    else if ( typeName == QLatin1String( "integer64list" ) )
+    {
+      fieldType = QVariant::List;
+      fieldSubType = QVariant::LongLong;
+    }
+    else if ( typeName == QLatin1String( "map" ) )
+      fieldType = QVariant::Map;
 
-    QgsField field = QgsField( name, fieldType, typeName, width, precision );
+    const QgsField field = QgsField( name, fieldType, typeName, width, precision, QString(), fieldSubType );
     fields.append( field );
     ++it;
   }
@@ -260,10 +307,10 @@ void QgsNewMemoryLayerDialog::mAddAttributeButton_clicked()
 {
   if ( !mFieldNameEdit->text().isEmpty() )
   {
-    QString fieldName = mFieldNameEdit->text();
-    QString fieldType = mTypeBox->currentData( Qt::UserRole ).toString();
-    QString width = mWidth->text();
-    QString precision = mPrecision->text();
+    const QString fieldName = mFieldNameEdit->text();
+    const QString fieldType = mTypeBox->currentData( Qt::UserRole ).toString();
+    const QString width = mWidth->text();
+    const QString precision = mPrecision->text();
     mAttributeView->addTopLevelItem( new QTreeWidgetItem( QStringList() << fieldName << fieldType << width << precision ) );
 
     mFieldNameEdit->clear();

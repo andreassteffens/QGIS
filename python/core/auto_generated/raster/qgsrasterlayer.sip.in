@@ -12,19 +12,19 @@
 
 typedef QList < QPair< QString, QColor > > QgsLegendColorList;
 
-class QgsRasterLayer : QgsMapLayer
+class QgsRasterLayer : QgsMapLayer, QgsAbstractProfileSource
 {
-%Docstring
+%Docstring(signature="appended")
 
 Represents a raster layer.
 
-A QgsRasterLayer is instantiated by specifying the name of a data provider,
+A :py:class:`QgsRasterLayer` is instantiated by specifying the name of a data provider,
 such as "gdal" or "wms", and a url defining the specific data set to connect to.
-The raster layer constructor in turn instantiates a QgsRasterDataProvider subclass
+The raster layer constructor in turn instantiates a :py:class:`QgsRasterDataProvider` subclass
 corresponding to the provider type, and passes it the url. The data provider
 connects to the data source.
 
-Sample usage of the QgsRasterLayer class:
+Sample usage of the :py:class:`QgsRasterLayer` class:
 
 .. code-block:: python
 
@@ -107,6 +107,9 @@ created for the same data source and renderer is cloned too.
 .. versionadded:: 3.0
 %End
 
+    virtual QgsAbstractProfileGenerator *createProfileGenerator( const QgsProfileRequest &request ) /Factory/;
+
+
     enum ColorShadingAlgorithm
     {
       UndefinedShader,
@@ -151,29 +154,11 @@ Set the data provider.
 %Docstring
 Set the data provider.
 
-:param provider: provider key string, must match a valid QgsRasterDataProvider key. E.g. "gdal", "wms", etc.
+:param provider: provider key string, must match a valid :py:class:`QgsRasterDataProvider` key. E.g. "gdal", "wms", etc.
 :param options: provider options
 :param flags: provider flags since QGIS 3.16
 
 .. versionadded:: 3.2
-%End
-
-    virtual void setDataSource( const QString &dataSource, const QString &baseName, const QString &provider, const QgsDataProvider::ProviderOptions &options, bool loadDefaultStyleFlag = false );
-
-%Docstring
-Updates the data source of the layer. The layer's renderer and legend will be preserved only
-if the geometry type of the new data source matches the current geometry type of the layer.
-
-:param dataSource: new layer data source
-:param baseName: base name of the layer
-:param provider: provider string
-:param options: provider options
-:param loadDefaultStyleFlag: set to ``True`` to reset the layer's style to the default for the
-                             data source
-
-.. seealso:: :py:func:`dataSourceChanged`
-
-.. versionadded:: 3.6
 %End
 
     LayerType rasterType();
@@ -222,7 +207,7 @@ Returns the raster's hue/saturation filter.
 .. seealso:: :py:func:`brightnessFilter`
 %End
 
-    void setResamplingStage( QgsRasterPipe::ResamplingStage stage );
+    void setResamplingStage( Qgis::RasterResamplingStage stage );
 %Docstring
 Select which stage of the pipe should apply resampling.
 
@@ -231,7 +216,7 @@ Select which stage of the pipe should apply resampling.
 .. versionadded:: 3.16
 %End
 
-    QgsRasterPipe::ResamplingStage resamplingStage() const;
+    Qgis::RasterResamplingStage resamplingStage() const;
 %Docstring
 Returns which stage of the pipe should apply resampling.
 
@@ -297,14 +282,19 @@ This will be ``None`` if the layer is invalid.
 This is an overloaded version of the :py:func:`~QgsRasterLayer.draw` function that is called by both :py:func:`~QgsRasterLayer.draw` and thumbnailAsPixmap
 %End
 
-    QgsLegendColorList legendSymbologyItems() const;
+ QgsLegendColorList legendSymbologyItems() const /Deprecated/;
 %Docstring
-Returns a list with classification items (Text and color)
+Returns a list with classification items (Text and color).
+
+.. deprecated::
+   use :py:func:`QgsRasterRenderer.createLegendNodes()` instead.
 %End
 
     virtual bool isSpatial() const;
 
     virtual QString htmlMetadata() const;
+
+    virtual Qgis::MapLayerProperties properties() const;
 
 
     QPixmap paletteAsPixmap( int bandNumber = 1 );
@@ -337,6 +327,11 @@ In a world file, this is normally the first row (without the sign).
 
 .. seealso:: :py:func:`rasterUnitsPerPixelX`
 %End
+
+    virtual void setOpacity( double opacity ) ${SIP_FINAL};
+
+    virtual double opacity() const ${SIP_FINAL};
+
 
     void setContrastEnhancement( QgsContrastEnhancement::ContrastEnhancementAlgorithm algorithm,
                                  QgsRasterMinMaxOrigin::Limits limits = QgsRasterMinMaxOrigin::MinMax,
@@ -403,7 +398,7 @@ Draws a preview of the rasterlayer into a QImage
     virtual bool accept( QgsStyleEntityVisitorInterface *visitor ) const;
 
 
-    bool writeSld( QDomNode &node, QDomDocument &doc, QString &errorMessage, const QgsStringMap &props = QgsStringMap() ) const;
+    bool writeSld( QDomNode &node, QDomDocument &doc, QString &errorMessage, const QVariantMap &props = QVariantMap() ) const;
 %Docstring
 Writes the symbology of the layer into the document provided in SLD 1.0.0 format
 
@@ -428,6 +423,8 @@ to be drawn outside the data extent.
 %End
 
     virtual QgsMapLayerTemporalProperties *temporalProperties();
+
+    virtual QgsMapLayerElevationProperties *elevationProperties();
 
 
   public slots:

@@ -28,7 +28,10 @@ SIP_NO_FILE
 class QgsMeshLayer;
 
 /**
- * Widget for selection of active dataset group from tree view.
+ * \ingroup gui
+ * \class QgsMeshRendererActiveDatasetWidget
+ *
+ * \brief Widget for selection of active dataset group from tree view.
  * Also selects the active scalar and vector dataset by slider
  *
  * User can choose different scalar and vector dataset.
@@ -42,7 +45,7 @@ class GUI_EXPORT QgsMeshRendererActiveDatasetWidget : public QWidget, private Ui
   public:
 
     /**
-    mTimeComboBox->setCurrentIndex( mTimeComboBox->count() - 1 );     * A widget to hold the renderer scalar settings for a mesh layer.
+     * A widget to hold the renderer scalar settings for a mesh layer.
      * \param parent Parent object
      */
     QgsMeshRendererActiveDatasetWidget( QWidget *parent = nullptr );

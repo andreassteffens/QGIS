@@ -24,7 +24,7 @@
 //
 
 QVariantMap QgsCollectorAlgorithm::processCollection( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback,
-    const std::function<QgsGeometry( const QVector< QgsGeometry >& )> &collector, int maxQueueLength, QgsProcessingFeatureSource::Flags sourceFlags )
+    const std::function<QgsGeometry( const QVector< QgsGeometry >& )> &collector, int maxQueueLength, QgsProcessingFeatureSource::Flags sourceFlags, bool separateDisjoint )
 {
   std::unique_ptr< QgsProcessingFeatureSource > source( parameterAsSource( parameters, QStringLiteral( "INPUT" ), context ) );
   if ( !source )
@@ -36,14 +36,14 @@ QVariantMap QgsCollectorAlgorithm::processCollection( const QVariantMap &paramet
   if ( !sink )
     throw QgsProcessingException( invalidSinkError( parameters, QStringLiteral( "OUTPUT" ) ) );
 
-  QStringList fields = parameterAsFields( parameters, QStringLiteral( "FIELD" ), context );
+  const QStringList fields = parameterAsFields( parameters, QStringLiteral( "FIELD" ), context );
 
-  long count = source->featureCount();
+  const long count = source->featureCount();
 
   QgsFeature f;
   QgsFeatureIterator it = source->getFeatures( QgsFeatureRequest(), sourceFlags );
 
-  double step = count > 0 ? 100.0 / count : 1;
+  const double step = count > 0 ? 100.0 / count : 1;
   int current = 0;
 
   if ( fields.isEmpty() )
@@ -73,7 +73,7 @@ QVariantMap QgsCollectorAlgorithm::processCollection( const QVariantMap &paramet
         if ( maxQueueLength > 0 && geomQueue.length() > maxQueueLength )
         {
           // queue too long, combine it
-          QgsGeometry tempOutputGeometry = collector( geomQueue );
+          const QgsGeometry tempOutputGeometry = collector( geomQueue );
           geomQueue.clear();
           geomQueue << tempOutputGeometry;
         }
@@ -83,16 +83,32 @@ QVariantMap QgsCollectorAlgorithm::processCollection( const QVariantMap &paramet
       current++;
     }
 
-    outputFeature.setGeometry( collector( geomQueue ) );
-    sink->addFeature( outputFeature, QgsFeatureSink::FastInsert );
+    if ( !separateDisjoint )
+    {
+      outputFeature.setGeometry( collector( geomQueue ) );
+      if ( !sink->addFeature( outputFeature, QgsFeatureSink::FastInsert ) )
+        throw QgsProcessingException( writeFeatureError( sink.get(), parameters, QStringLiteral( "OUTPUT" ) ) );
+    }
+    else
+    {
+      const QgsGeometry combinedGeometry = collector( geomQueue );
+      for ( auto it = combinedGeometry.const_parts_begin(); it != combinedGeometry.const_parts_end(); ++it )
+      {
+        QgsGeometry partGeom( ( ( *it )->clone() ) );
+        partGeom.convertToMultiType();
+        outputFeature.setGeometry( partGeom );
+        if ( !sink->addFeature( outputFeature, QgsFeatureSink::FastInsert ) )
+          throw QgsProcessingException( writeFeatureError( sink.get(), parameters, QStringLiteral( "OUTPUT" ) ) );
+      }
+    }
   }
   else
   {
     QList< int > fieldIndexes;
-    const auto constFields = fields;
-    for ( const QString &field : constFields )
+    fieldIndexes.reserve( fields.size() );
+    for ( const QString &field : fields )
     {
-      int index = source->fields().lookupField( field );
+      const int index = source->fields().lookupField( field );
       if ( index >= 0 )
         fieldIndexes << index;
     }
@@ -108,8 +124,8 @@ QVariantMap QgsCollectorAlgorithm::processCollection( const QVariantMap &paramet
       }
 
       QVariantList indexAttributes;
-      const auto constFieldIndexes = fieldIndexes;
-      for ( int index : constFieldIndexes )
+      indexAttributes.reserve( fieldIndexes.size() );
+      for ( const int index : std::as_const( fieldIndexes ) )
       {
         indexAttributes << f.attribute( index );
       }
@@ -126,7 +142,7 @@ QVariantMap QgsCollectorAlgorithm::processCollection( const QVariantMap &paramet
       }
     }
 
-    int numberFeatures = attributeHash.count();
+    const int numberFeatures = attributeHash.count();
     QHash< QVariant, QgsAttributes >::const_iterator attrIt = attributeHash.constBegin();
     for ( ; attrIt != attributeHash.constEnd(); ++attrIt )
     {
@@ -136,17 +152,38 @@ QVariantMap QgsCollectorAlgorithm::processCollection( const QVariantMap &paramet
       }
 
       QgsFeature outputFeature;
-      if ( geometryHash.contains( attrIt.key() ) )
+      outputFeature.setAttributes( attrIt.value() );
+      auto geometryHashIt = geometryHash.find( attrIt.key() );
+      if ( geometryHashIt != geometryHash.end() )
       {
-        QgsGeometry geom = collector( geometryHash.value( attrIt.key() ) );
+        QgsGeometry geom = collector( geometryHashIt.value() );
         if ( !geom.isMultipart() )
         {
           geom.convertToMultiType();
         }
-        outputFeature.setGeometry( geom );
+        if ( !separateDisjoint )
+        {
+          outputFeature.setGeometry( geom );
+          if ( !sink->addFeature( outputFeature, QgsFeatureSink::FastInsert ) )
+            throw QgsProcessingException( writeFeatureError( sink.get(), parameters, QStringLiteral( "OUTPUT" ) ) );
+        }
+        else
+        {
+          for ( auto it = geom.const_parts_begin(); it != geom.const_parts_end(); ++it )
+          {
+            QgsGeometry partGeom( ( ( *it )->clone() ) );
+            partGeom.convertToMultiType();
+            outputFeature.setGeometry( partGeom );
+            if ( !sink->addFeature( outputFeature, QgsFeatureSink::FastInsert ) )
+              throw QgsProcessingException( writeFeatureError( sink.get(), parameters, QStringLiteral( "OUTPUT" ) ) );
+          }
+        }
       }
-      outputFeature.setAttributes( attrIt.value() );
-      sink->addFeature( outputFeature, QgsFeatureSink::FastInsert );
+      else
+      {
+        if ( !sink->addFeature( outputFeature, QgsFeatureSink::FastInsert ) )
+          throw QgsProcessingException( writeFeatureError( sink.get(), parameters, QStringLiteral( "OUTPUT" ) ) );
+      }
 
       feedback->setProgress( current * 100.0 / numberFeatures );
       current++;
@@ -195,6 +232,11 @@ void QgsDissolveAlgorithm::initAlgorithm( const QVariantMap & )
   addParameter( new QgsProcessingParameterField( QStringLiteral( "FIELD" ), QObject::tr( "Dissolve field(s)" ), QVariant(),
                 QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any, true, true ) );
 
+  std::unique_ptr< QgsProcessingParameterBoolean > disjointParam = std::make_unique< QgsProcessingParameterBoolean >( QStringLiteral( "SEPARATE_DISJOINT" ),
+      QObject::tr( "Keep disjoint features separate" ), false );
+  disjointParam->setFlags( disjointParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
+  addParameter( disjointParam.release() );
+
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Dissolved" ) ) );
 }
 
@@ -204,7 +246,9 @@ QString QgsDissolveAlgorithm::shortHelpString() const
                       "be specified to dissolve features belonging to the same class (having the same value for the specified attributes), alternatively "
                       "all features can be dissolved in a single one.\n\n"
                       "All output geometries will be converted to multi geometries. "
-                      "In case the input is a polygon layer, common boundaries of adjacent polygons being dissolved will get erased." );
+                      "In case the input is a polygon layer, common boundaries of adjacent polygons being dissolved will get erased.\n\n"
+                      "If enabled, the optional \"Keep disjoint features separate\" setting will cause features and parts that do not overlap or touch to be exported "
+                      "as separate features (instead of parts of a single multipart feature)." );
 }
 
 QgsDissolveAlgorithm *QgsDissolveAlgorithm::createInstance() const
@@ -214,6 +258,8 @@ QgsDissolveAlgorithm *QgsDissolveAlgorithm::createInstance() const
 
 QVariantMap QgsDissolveAlgorithm::processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
+  const bool separateDisjoint = parameterAsBool( parameters, QStringLiteral( "SEPARATE_DISJOINT" ), context );
+
   return processCollection( parameters, context, feedback, [ & ]( const QVector< QgsGeometry > &parts )->QgsGeometry
   {
     QgsGeometry result( QgsGeometry::unaryUnion( parts ) );
@@ -244,7 +290,7 @@ QVariantMap QgsDissolveAlgorithm::processAlgorithm( const QVariantMap &parameter
         throw QgsProcessingException( QObject::tr( "The algorithm returned no output." ) );
     }
     return result;
-  }, 10000 );
+  }, 10000, QgsProcessingFeatureSource::Flags(), separateDisjoint );
 }
 
 //

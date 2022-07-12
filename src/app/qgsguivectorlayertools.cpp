@@ -29,19 +29,19 @@
 #include "qgsvectordataprovider.h"
 #include "qgsvectorlayer.h"
 
-bool QgsGuiVectorLayerTools::addFeature( QgsVectorLayer *layer, const QgsAttributeMap &defaultValues, const QgsGeometry &defaultGeometry, QgsFeature *feat ) const
+bool QgsGuiVectorLayerTools::addFeature( QgsVectorLayer *layer, const QgsAttributeMap &defaultValues, const QgsGeometry &defaultGeometry, QgsFeature *feat, QWidget *parentWidget, bool showModal, bool hideParent ) const
 {
   QgsFeature *f = feat;
   if ( !feat )
     f = new QgsFeature();
 
   f->setGeometry( defaultGeometry );
-  QgsFeatureAction a( tr( "Add feature" ), *f, layer );
-  a.setForceSuppressFormPopup( forceSuppressFormPopup() );
-  bool added = a.addFeature( defaultValues );
+  QgsFeatureAction *a = new QgsFeatureAction( tr( "Add feature" ), *f, layer, QString(), -1, parentWidget );
+  a->setForceSuppressFormPopup( forceSuppressFormPopup() );
+  connect( a, &QgsFeatureAction::addFeatureFinished, a, &QObject::deleteLater );
+  const bool added = a->addFeature( defaultValues, showModal, nullptr, hideParent );
   if ( !feat )
     delete f;
-
   return added;
 }
 
@@ -52,15 +52,15 @@ bool QgsGuiVectorLayerTools::startEditing( QgsVectorLayer *layer ) const
     return false;
   }
 
-  bool res = true;
+  const bool res = true;
 
   if ( !layer->isEditable() && !layer->readOnly() )
   {
-    if ( !( layer->dataProvider()->capabilities() & QgsVectorDataProvider::EditingCapabilities ) )
+    if ( !layer->supportsEditing() )
     {
       QgisApp::instance()->messageBar()->pushMessage( tr( "Start editing failed" ),
           tr( "Provider cannot be opened for editing" ),
-          Qgis::Info, QgisApp::instance()->messageTimeout() );
+          Qgis::MessageLevel::Info );
       return false;
     }
 
@@ -131,7 +131,7 @@ bool QgsGuiVectorLayerTools::stopEditing( QgsVectorLayer *layer, bool allowCance
         {
           QgisApp::instance()->messageBar()->pushMessage( tr( "Error" ),
               tr( "Problems during roll back" ),
-              Qgis::Critical );
+              Qgis::MessageLevel::Critical );
           res = false;
         }
         QgisApp::instance()->freezeCanvases( false );
@@ -182,7 +182,7 @@ void QgsGuiVectorLayerTools::commitError( QgsVectorLayer *vlayer ) const
     tr( "Commit errors" ),
     tr( "Could not commit changes to layer %1" ).arg( vlayer->name() ),
     showMore,
-    Qgis::Warning,
+    Qgis::MessageLevel::Warning,
     0,
     QgisApp::instance()->messageBar() );
   QgisApp::instance()->messageBar()->pushItem( errorMsg );

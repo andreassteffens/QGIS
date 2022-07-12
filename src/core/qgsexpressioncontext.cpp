@@ -24,6 +24,7 @@ const QString QgsExpressionContext::EXPR_SYMBOL_COLOR( QStringLiteral( "symbol_c
 const QString QgsExpressionContext::EXPR_SYMBOL_ANGLE( QStringLiteral( "symbol_angle" ) );
 const QString QgsExpressionContext::EXPR_GEOMETRY_PART_COUNT( QStringLiteral( "geometry_part_count" ) );
 const QString QgsExpressionContext::EXPR_GEOMETRY_PART_NUM( QStringLiteral( "geometry_part_num" ) );
+const QString QgsExpressionContext::EXPR_GEOMETRY_RING_NUM( QStringLiteral( "geometry_ring_num" ) );
 const QString QgsExpressionContext::EXPR_GEOMETRY_POINT_COUNT( QStringLiteral( "geometry_point_count" ) );
 const QString QgsExpressionContext::EXPR_GEOMETRY_POINT_NUM( QStringLiteral( "geometry_point_num" ) );
 const QString QgsExpressionContext::EXPR_CLUSTER_SIZE( QStringLiteral( "cluster_size" ) );
@@ -44,6 +45,8 @@ QgsExpressionContextScope::QgsExpressionContextScope( const QgsExpressionContext
   , mVariables( other.mVariables )
   , mHasFeature( other.mHasFeature )
   , mFeature( other.mFeature )
+  , mHasGeometry( other.mHasGeometry )
+  , mGeometry( other.mGeometry )
 {
   QHash<QString, QgsScopedExpressionFunction * >::const_iterator it = other.mFunctions.constBegin();
   for ( ; it != other.mFunctions.constEnd(); ++it )
@@ -58,6 +61,8 @@ QgsExpressionContextScope &QgsExpressionContextScope::operator=( const QgsExpres
   mVariables = other.mVariables;
   mHasFeature = other.mHasFeature;
   mFeature = other.mFeature;
+  mHasGeometry = other.mHasGeometry;
+  mGeometry = other.mGeometry;
 
   qDeleteAll( mFunctions );
   mFunctions.clear();
@@ -77,12 +82,11 @@ QgsExpressionContextScope::~QgsExpressionContextScope()
 
 void QgsExpressionContextScope::setVariable( const QString &name, const QVariant &value, bool isStatic )
 {
-  if ( mVariables.contains( name ) )
+  auto it = mVariables.find( name );
+  if ( it != mVariables.end() )
   {
-    StaticVariable existing = mVariables.value( name );
-    existing.value = value;
-    existing.isStatic = isStatic;
-    addVariable( existing );
+    it->value = value;
+    it->isStatic = isStatic;
   }
   else
   {
@@ -234,7 +238,7 @@ QgsExpressionContext::QgsExpressionContext( const QList<QgsExpressionContextScop
 
 QgsExpressionContext::QgsExpressionContext( const QgsExpressionContext &other ) : mStack{}
 {
-  for ( const QgsExpressionContextScope *scope : qgis::as_const( other.mStack ) )
+  for ( const QgsExpressionContextScope *scope : std::as_const( other.mStack ) )
   {
     mStack << new QgsExpressionContextScope( *scope );
   }
@@ -266,7 +270,7 @@ QgsExpressionContext &QgsExpressionContext::operator=( const QgsExpressionContex
 
   qDeleteAll( mStack );
   mStack.clear();
-  for ( const QgsExpressionContextScope *scope : qgis::as_const( other.mStack ) )
+  for ( const QgsExpressionContextScope *scope : std::as_const( other.mStack ) )
   {
     mStack << new QgsExpressionContextScope( *scope );
   }
@@ -528,8 +532,7 @@ void QgsExpressionContext::setFeature( const QgsFeature &feature )
 
 bool QgsExpressionContext::hasFeature() const
 {
-  const auto constMStack = mStack;
-  for ( const QgsExpressionContextScope *scope : constMStack )
+  for ( const QgsExpressionContextScope *scope : mStack )
   {
     if ( scope->hasFeature() )
       return true;
@@ -548,6 +551,37 @@ QgsFeature QgsExpressionContext::feature() const
       return ( *it )->feature();
   }
   return QgsFeature();
+}
+
+void QgsExpressionContext::setGeometry( const QgsGeometry &geometry )
+{
+  if ( mStack.isEmpty() )
+    mStack.append( new QgsExpressionContextScope() );
+
+  mStack.last()->setGeometry( geometry );
+}
+
+bool QgsExpressionContext::hasGeometry() const
+{
+  for ( const QgsExpressionContextScope *scope : mStack )
+  {
+    if ( scope->hasGeometry() )
+      return true;
+  }
+  return false;
+}
+
+QgsGeometry QgsExpressionContext::geometry() const
+{
+  //iterate through stack backwards, so that higher priority variables take precedence
+  QList< QgsExpressionContextScope * >::const_iterator it = mStack.constEnd();
+  while ( it != mStack.constBegin() )
+  {
+    --it;
+    if ( ( *it )->hasGeometry() )
+      return ( *it )->geometry();
+  }
+  return QgsGeometry();
 }
 
 void QgsExpressionContext::setFields( const QgsFields &fields )
@@ -590,4 +624,14 @@ QVariant QgsExpressionContext::cachedValue( const QString &key ) const
 void QgsExpressionContext::clearCachedValues() const
 {
   mCachedValues.clear();
+}
+
+void QgsExpressionContext::setFeedback( QgsFeedback *feedback )
+{
+  mFeedback = feedback;
+}
+
+QgsFeedback *QgsExpressionContext::feedback() const
+{
+  return mFeedback;
 }

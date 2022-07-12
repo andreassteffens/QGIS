@@ -21,7 +21,8 @@ email                : marco.hugentobler at sourcepole dot com
 #include "qgis_core.h"
 #include "qgis_sip.h"
 #include "qgspoint.h"
-#include "qgsabstractgeometry.h"
+#include "qgsvertexid.h"
+#include "qgsgeometry.h"
 #include "qgsvector3d.h"
 
 #include <QJsonArray>
@@ -91,6 +92,16 @@ class CORE_EXPORT QgsGeometryUtils
      * Returns the squared distance between a point and a line.
      */
     static double sqrDistToLine( double ptX, double ptY, double x1, double y1, double x2, double y2, double &minDistX SIP_OUT, double &minDistY SIP_OUT, double epsilon ) SIP_HOLDGIL;
+
+    /**
+     * Returns the distance between a point and an infinite line.
+     * \param point The point to find the distance to the line
+     * \param linePoint1 The first point of the line
+     * \param linePoint2 The second point of the line
+     * \param epsilon The tolerance to use
+     * \since QGIS 3.26
+     */
+    static double distToInfiniteLine( const QgsPoint &point, const QgsPoint &linePoint1, const QgsPoint &linePoint2, double epsilon = 1e-7 );
 
     /**
      * Computes the intersection between two lines. Z dimension is
@@ -168,8 +179,8 @@ class CORE_EXPORT QgsGeometryUtils
      *
      * \since QGIS 3.2
      */
-    static int circleCircleIntersections( QgsPointXY center1, double radius1,
-                                          QgsPointXY center2, double radius2,
+    static int circleCircleIntersections( const QgsPointXY &center1, double radius1,
+                                          const QgsPointXY &center2, double radius2,
                                           QgsPointXY &intersection1 SIP_OUT, QgsPointXY &intersection2 SIP_OUT ) SIP_HOLDGIL;
 
     /**
@@ -237,9 +248,9 @@ class CORE_EXPORT QgsGeometryUtils
      */
     static QgsPoint projectPointOnSegment( const QgsPoint &p, const QgsPoint &s1, const QgsPoint &s2 ) SIP_HOLDGIL
     {
-      double nx = s2.y() - s1.y();
-      double ny = -( s2.x() - s1.x() );
-      double t = ( p.x() * ny - p.y() * nx - s1.x() * ny + s1.y() * nx ) / ( ( s2.x() - s1.x() ) * ny - ( s2.y() - s1.y() ) * nx );
+      const double nx = s2.y() - s1.y();
+      const double ny = -( s2.x() - s1.x() );
+      const double t = ( p.x() * ny - p.y() * nx - s1.x() * ny + s1.y() * nx ) / ( ( s2.x() - s1.x() ) * ny - ( s2.y() - s1.y() ) * nx );
       return t < 0. ? s1 : t > 1. ? s2 : QgsPoint( s1.x() + ( s2.x() - s1.x() ) * t, s1.y() + ( s2.y() - s1.y() ) * t );
     }
 
@@ -300,6 +311,35 @@ class CORE_EXPORT QgsGeometryUtils
     static void pointOnLineWithDistance( double x1, double y1, double x2, double y2, double distance, double &x, double &y,
                                          double *z1 = nullptr, double *z2 = nullptr, double *z = nullptr,
                                          double *m1 = nullptr, double *m2 = nullptr, double *m = nullptr ) SIP_SKIP;
+
+    /**
+     * Calculates a point a certain \a proportion of the way along the segment from (\a x1, \a y1) to (\a x2, \a y2),
+     * offset from the segment by the specified \a offset amount.
+     *
+     * \param x1 x-coordinate of start of segment
+     * \param y1 y-coordinate of start of segment
+     * \param x2 x-coordinate of end of segment
+     * \param y2 y-coordinate of end of segment
+     * \param proportion proportion of the segment's length at which to place the point (between 0.0 and 1.0)
+     * \param offset perpendicular offset from segment to apply to point. A negative \a offset shifts the point to the left of the segment, while a positive \a offset will shift it to the right of the segment.
+     * \param x calculated point x-coordinate
+     * \param y calculated point y-coordinate
+     *
+     * ### Example
+     *
+     * \code{.py}
+     *   # Offset point at center of segment by 2 units to the right
+     *   x, y = QgsGeometryUtils.perpendicularOffsetPointAlongSegment( 1, 5, 11, 5, 0.5, 2 )
+     *   # (6.0, 3.0)
+     *
+     *   # Offset point at center of segment by 2 units to the left
+     *   x, y = QgsGeometryUtils.perpendicularOffsetPointAlongSegment( 1, 5, 11, 5, 0.5, -2 )
+     *   # (6.0, 7.0)
+     * \endcode
+     *
+     * \since QGIS 3.20
+     */
+    static void perpendicularOffsetPointAlongSegment( double x1, double y1, double x2, double y2, double proportion, double offset, double *x SIP_OUT, double *y  SIP_OUT );
 
     /**
      * Interpolates a point on an arc defined by three points, \a pt1, \a pt2 and \a pt3. The arc will be
@@ -519,6 +559,30 @@ class CORE_EXPORT QgsGeometryUtils
     static QStringList wktGetChildBlocks( const QString &wkt, const QString &defaultType = QString() ) SIP_SKIP;
 
     /**
+     * Returns a number representing the closest side of a rectangle defined by /a right,
+     * \a bottom, \a left, \a top to the point at (\a x, \a y), where
+     * the point may be in the interior of the rectangle or outside it.
+     *
+     * The returned value may be:
+     *
+     * 1. Point is closest to top side of rectangle
+     * 2. Point is located on the top-right diagonal of rectangle, equally close to the top and right sides
+     * 3. Point is closest to right side of rectangle
+     * 4. Point is located on the bottom-right diagonal of rectangle, equally close to the bottom and right sides
+     * 5. Point is closest to bottom side of rectangle
+     * 6. Point is located on the bottom-left diagonal of rectangle, equally close to the bottom and left sides
+     * 7. Point is closest to left side of rectangle
+     * 8. Point is located on the top-left diagonal of rectangle, equally close to the top and left sides
+     *
+     * \note This method effectively partitions the space outside of the rectangle into Voronoi cells, so a point
+     * to the top left of the rectangle may be assigned to the left or top sides based on its position relative
+     * to the diagonal line extended from the rectangle's top-left corner.
+     *
+     * \since QGIS 3.20
+     */
+    static int closestSideOfRectangle( double right, double bottom, double left, double top, double x, double y );
+
+    /**
      * Returns a middle point between points pt1 and pt2.
      * Z value is computed if one of this point have Z.
      * M value is computed if one of this point have M.
@@ -620,6 +684,36 @@ class CORE_EXPORT QgsGeometryUtils
      */
     static QgsLineString perpendicularSegment( const QgsPoint &p, const QgsPoint &s1, const QgsPoint &s2 ) SIP_HOLDGIL;
 
+    /**
+     * \brief Create a perpendicular line segment to a given segment [\a segmentPoint1,\a segmentPoint2] with its center at \a centerPoint.
+     *
+     * May be used to split geometries. Unless \a segmentLength is specified the new centered perpendicular line segment will have double the length of the input segment.
+     *
+     * The result is a line (segment) centered in point p and perpendicular to segment [segmentPoint1, segmentPoint2].
+     *
+     * \param centerPointX x-coordinate of the point where the center of the perpendicular should be located
+     * \param centerPointY y-coordinate of the point where the center of the perpendicular should be located
+     * \param segmentPoint1x: x-coordinate of segmentPoint1, the segment's start point
+     * \param segmentPoint1y: y-coordinate of segmentPoint1, the segment's start point
+     * \param segmentPoint2x: x-coordinate of segmentPoint2, the segment's end point
+     * \param segmentPoint2y: y-coordinate of segmentPoint2, the segment's end point
+     * \param perpendicularSegmentPoint1x: x-coordinate of the perpendicularCenterSegment's start point
+     * \param perpendicularSegmentPoint1y: y-coordinate of the perpendicularCenterSegment's start point
+     * \param perpendicularSegmentPoint2x: x-coordinate of the perpendicularCenterSegment's end point
+     * \param perpendicularSegmentPoint2y: y-coordinate of the perpendicularCenterSegment's end point
+     * \param segmentLength (optional) Trims to given length. A segmentLength value of 0 refers to the default length which is double the length of the input segment. Set to 1 for a normalized length.
+     *
+     *
+     * \since QGIS 3.24
+     */
+
+    static void perpendicularCenterSegment( double centerPointX, double centerPointY,
+                                            double segmentPoint1x, double segmentPoint1y,
+                                            double segmentPoint2x, double segmentPoint2y,
+                                            double &perpendicularSegmentPoint1x SIP_OUT, double &perpendicularSegmentPoint1y SIP_OUT,
+                                            double &perpendicularSegmentPoint2x SIP_OUT, double &perpendicularSegmentPoint2y SIP_OUT,
+                                            double segmentLength = 0
+                                          ) SIP_HOLDGIL;
 
     /**
      * An algorithm to calculate the shortest distance between two skew lines.
@@ -717,15 +811,187 @@ class CORE_EXPORT QgsGeometryUtils
 
     /**
      * A Z dimension is added to \a point if one of the point in the list
-     * \a points is in 3D. Moreover, the Z value of \a point is updated with.
+     * \a points is in 3D. Moreover, the Z value of \a point is updated
+     * with the first Z value found in list \a points even if \a point
+     * already contains a Z value.
      *
      * \param points List of points in which a 3D point is searched.
      * \param point The point to update with Z dimension and value.
      * \returns TRUE if the point is updated, FALSE otherwise
      *
+     * \warning This method does not copy the z value of the coordinate from the
+     * points whose z value is closest to the original x/y point, but only the first one found.
+     *
      * \since QGIS 3.0
+     * \deprecated since QGIS 3.20 use transferFirstZValueToPoint( const QgsPointSequence &points, QgsPoint &point ) instead
      */
-    static bool setZValueFromPoints( const QgsPointSequence &points, QgsPoint &point );
+    Q_DECL_DEPRECATED static bool setZValueFromPoints( const QgsPointSequence &points, QgsPoint &point ) SIP_DEPRECATED
+    {
+      return transferFirstZValueToPoint( points, point );
+    }
+
+    /**
+     * A Z dimension is added to \a point if one of the point in the list
+     * \a points is in 3D. Moreover, the Z value of \a point is updated
+     * with the first Z value found in list \a points even if \a point
+     * already contains a Z value.
+     *
+     * \param points List of points in which a 3D point is searched.
+     * \param point The point to update with Z dimension and value.
+     * \returns TRUE if the point is updated, FALSE otherwise
+     *
+     * \warning This method does not copy the z value of the coordinate from the
+     * points whose z value is closest to the original x/y point, but only the first one found.
+     *
+     * \since QGIS 3.20
+     */
+    static bool transferFirstZValueToPoint( const QgsPointSequence &points, QgsPoint &point );
+
+    /**
+     * A M dimension is added to \a point if one of the points in the list
+     * \a points contains an M value. Moreover, the M value of \a point is
+     * updated with the first M value found in list \a points even if \a point
+     * already contains a M value.
+     *
+     * \param points List of points in which a M point is searched.
+     * \param point The point to update with M dimension and value.
+     * \returns TRUE if the point is updated, FALSE otherwise
+     *
+     * \warning This method does not copy the m value of the coordinate from the
+     * points whose m value is closest to the original x/y point, but only the first one found.
+     *
+     * \since QGIS 3.20
+     */
+    static bool transferFirstMValueToPoint( const QgsPointSequence &points, QgsPoint &point );
+
+    /**
+     * A Z or M dimension is added to \a point if one of the points in the list
+     * \a points contains Z or M value.
+     *
+     * This method is equivalent to successively calling Z and M but avoiding
+     * looping twice over the set of points.
+     *
+     * \param verticesBegin begin vertex which a Z or M point is searched.
+     * \param verticesEnd end vertex which a Z or M point is searched.
+     * \param point The point to update with Z or M dimension and value.
+     * \returns TRUE if the point is updated, FALSE otherwise
+     *
+     * \warning This method does not copy the z or m value of the coordinate from the
+     * points whose z or m value is closest to the original x/y point, but only the first one found.
+     *
+     * \note Not available in Python bindings
+     * \since QGIS 3.20
+     */
+    template <class Iterator> static bool transferFirstZOrMValueToPoint( Iterator verticesBegin, Iterator verticesEnd, QgsPoint &point ) SIP_SKIP
+    {
+      bool zFound = false;
+      bool mFound = false;
+
+      for ( auto it = verticesBegin ; it != verticesEnd ; ++it )
+      {
+        if ( !mFound && ( *it ).isMeasure() )
+        {
+          point.convertTo( QgsWkbTypes::addM( point.wkbType() ) );
+          point.setM( ( *it ).m() );
+          mFound = true;
+        }
+        if ( !zFound && ( *it ).is3D() )
+        {
+          point.convertTo( QgsWkbTypes::addZ( point.wkbType() ) );
+          point.setZ( ( *it ).z() );
+          zFound = true;
+        }
+        if ( zFound && mFound )
+          break;
+      }
+
+      return zFound || mFound;
+    }
+
+    /**
+     * A Z or M dimension is added to \a point if one of the points in the list
+     * \a points contains Z or M value.
+     *
+     * This method is equivalent to successively calling Z and M but avoiding
+     * looping twice over the set of points.
+     *
+     * \param points List of points in which a M point is searched.
+     * \param point The point to update with Z or M dimension and value.
+     * \returns TRUE if the point is updated, FALSE otherwise
+     *
+     * \warning This method does not copy the z or m value of the coordinate from the
+     * points whose z or m value is closest to the original x/y point, but only the first one found.
+     *
+     * \since QGIS 3.20
+     */
+    static bool transferFirstZOrMValueToPoint( const QgsPointSequence &points, QgsPoint &point )
+    {
+      return QgsGeometryUtils::transferFirstZOrMValueToPoint( points.constBegin(), points.constEnd(), point );
+    }
+
+    /**
+     * A Z or M dimension is added to \a point if one of the points in the list
+     * \a points contains Z or M value.
+     *
+     * This method is equivalent to successively calling Z and M but avoiding
+     * looping twice over the set of points.
+     *
+     * \param geom geometry in which a M point is searched.
+     * \param point The point to update with Z or M dimension and value.
+     * \returns TRUE if the point is updated, FALSE otherwise
+     *
+     * \warning This method does not copy the z or m value of the coordinate from the
+     * points whose z or m value is closest to the original x/y point, but only the first one found.
+     *
+     * \since QGIS 3.20
+     */
+    static bool transferFirstZOrMValueToPoint( const QgsGeometry &geom, QgsPoint &point )
+    {
+      return QgsGeometryUtils::transferFirstZOrMValueToPoint( geom.vertices_begin(), geom.vertices_end(), point );
+    }
+
+    /**
+     * Returns the point (\a pointX, \a pointY) forming the bisector from segment (\a aX \a aY) (\a bX \a bY)
+     * and segment (\a bX, \a bY) (\a dX, \a dY).
+     * The bisector segment of AB-CD is (point, projection of point by \a angle)
+     *
+     * \param aX x-coordinate of first vertex of the segment ab
+     * \param aY y-coordinate of first vertex of the segment ab
+     * \param bX x-coordinate of second vertex of the segment ab
+     * \param bY y-coordinate of second vertex of the segment ab
+     * \param cX x-coordinate of first vertex of the segment cd
+     * \param cY y-coordinate of first vertex of the segment cd
+     * \param dX x-coordinate of second vertex of the segment cd
+     * \param dY y-coordinate of second vertex of the segment cd
+     * \param pointX x-coordinate of generated point
+     * \param pointY y-coordinate of generated point
+     * \param angle angle of the bisector from pointX, pointY origin on [ab-cd]
+     * \returns TRUE if the bisector exists (A B and C D are not collinear)
+     *
+     * \since QGIS 3.18
+     */
+
+    static bool angleBisector( double aX, double aY, double bX, double bY, double cX, double cY, double dX, double dY,
+                               double &pointX SIP_OUT, double &pointY SIP_OUT, double &angle SIP_OUT ) SIP_HOLDGIL;
+
+    /**
+     * Returns the point (\a pointX, \a pointY) forming the bisector from point (\a aX, \a aY) to the segment (\a bX, \a bY) (\a cX, \a cY).
+     * The bisector segment of ABC is (A-point)
+     *
+     * \param aX x-coordinate of first vertex in triangle
+     * \param aY y-coordinate of first vertex in triangle
+     * \param bX x-coordinate of second vertex in triangle
+     * \param bY y-coordinate of second vertex in triangle
+     * \param cX x-coordinate of third vertex in triangle
+     * \param cY y-coordinate of third vertex in triangle
+     * \param pointX x-coordinate of generated point
+     * \param pointY y-coordinate of generated point
+     * \returns TRUE if the bisector exists (A B and C are not collinear)
+     *
+     * \since QGIS 3.18
+     */
+    static bool bisector( double aX, double aY, double bX, double bY, double cX, double cY,
+                          double &pointX SIP_OUT, double &pointY SIP_OUT ) SIP_HOLDGIL;
 
     //! \note not available in Python bindings
     enum ComponentType SIP_SKIP

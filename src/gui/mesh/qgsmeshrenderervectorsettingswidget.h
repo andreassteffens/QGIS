@@ -30,7 +30,10 @@ SIP_NO_FILE
 class QgsMeshLayer;
 
 /**
- * A widget for setup of the vector dataset renderer settings of
+ * \ingroup gui
+ * \class QgsMeshRendererVectorSettingsWidget
+ *
+ * \brief A widget for setup of the vector dataset renderer settings of
  * a mesh layer. The layer must be connected and an active dataset
  * must be selected.
  */
@@ -72,10 +75,10 @@ class QgsMeshRendererVectorSettingsWidget : public QWidget, private Ui::QgsMeshR
   private:
 
     /**
-     * convert text to double, return err_val if
-     * text is not possible to convert or the value is negative
+     * Returns the value of the spin box, returns err_val if the
+     * value is equal to the clear value.
      */
-    double filterValue( const QString &text, double errVal ) const;
+    double filterValue( const QgsDoubleSpinBox *spinBox, double err_val ) const;
 
     QgsMeshLayer *mMeshLayer = nullptr; //not owned
     int mActiveDatasetGroup = -1;

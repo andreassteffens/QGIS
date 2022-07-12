@@ -48,7 +48,7 @@ class QgsOapifProvider final: public QgsVectorDataProvider
     QgsFeatureIterator getFeatures( const QgsFeatureRequest &request = QgsFeatureRequest() ) const override;
 
     QgsWkbTypes::Type wkbType() const override;
-    long featureCount() const override;
+    long long featureCount() const override;
 
     QgsFields fields() const override;
 
@@ -68,6 +68,8 @@ class QgsOapifProvider final: public QgsVectorDataProvider
     QString name() const override;
     QString description() const override;
 
+    static QString providerKey();
+
     QgsVectorDataProvider::Capabilities capabilities() const override;
 
     QgsLayerMetadata layerMetadata() const override { return mLayerMetadata; }
@@ -86,6 +88,8 @@ class QgsOapifProvider final: public QgsVectorDataProvider
 
     //! For QgsWFSSourceSelect::buildQuery()
     const QString &clientSideFilterExpression() const;
+
+    void handlePostCloneOperations( QgsVectorDataProvider *source ) override;
 
   private slots:
 
@@ -119,7 +123,9 @@ class QgsOapifProviderMetadata final: public QgsProviderMetadata
 {
   public:
     QgsOapifProviderMetadata();
+    QIcon icon() const override;
     QgsOapifProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
 };
 
 //! Class shared between provider and feature source
@@ -158,7 +164,7 @@ class QgsOapifSharedData final: public QObject, public QgsBackgroundCachedShared
     QgsWkbTypes::Type mWKBType = QgsWkbTypes::Unknown;
 
     //! Page size. 0 = disabled
-    int mPageSize = 0;
+    long long mPageSize = 0;
 
     //! Extra query parameters from the URI, to append to other requests
     QString mExtraQueryParameters;
@@ -202,7 +208,7 @@ class QgsOapifSharedData final: public QObject, public QgsBackgroundCachedShared
 
     QgsRectangle getExtentFromSingleFeatureRequest() const override { return QgsRectangle(); }
 
-    int getFeatureCountFromServer() const override { return -1; }
+    long long getFeatureCountFromServer() const override { return -1; }
 };
 
 
@@ -217,13 +223,13 @@ class QgsOapifFeatureDownloaderImpl final: public QObject, public QgsFeatureDown
     void doStop();
 
     /* Emitted with the total accumulated number of features downloaded. */
-    void updateProgress( int totalFeatureCount );
+    void updateProgress( long long totalFeatureCount );
 
   public:
     QgsOapifFeatureDownloaderImpl( QgsOapifSharedData *shared, QgsFeatureDownloader *downloader, bool requestMadeFromMainThread );
     ~QgsOapifFeatureDownloaderImpl() override;
 
-    void run( bool serializeFeatures, int maxFeatures ) override;
+    void run( bool serializeFeatures, long long maxFeatures ) override;
 
   private slots:
     void createProgressDialog();

@@ -22,8 +22,14 @@
 #include "qgspainting.h"
 #include "qgstextrendererutils.h"
 #include "qgspallabeling.h"
+#include "qgsconfig.h"
 #include <QFontDatabase>
+#include <QMimeData>
+#include <QWidget>
+#include <QScreen>
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
 #include <QDesktopWidget>
+#endif
 
 QgsTextFormat::QgsTextFormat()
 {
@@ -74,11 +80,14 @@ bool QgsTextFormat::operator==( const QgsTextFormat &other ) const
        || d->orientation != other.orientation()
        || d->previewBackgroundColor != other.previewBackgroundColor()
        || d->allowHtmlFormatting != other.allowHtmlFormatting()
+       || d->forcedBold != other.forcedBold()
+       || d->forcedItalic != other.forcedItalic()
        || d->capitalization != other.capitalization()
        || mBufferSettings != other.mBufferSettings
        || mBackgroundSettings != other.mBackgroundSettings
        || mShadowSettings != other.mShadowSettings
        || mMaskSettings != other.mMaskSettings
+       || d->families != other.families()
        || d->mDataDefinedProperties != other.dataDefinedProperties() )
     return false;
 
@@ -153,23 +162,44 @@ QFont QgsTextFormat::font() const
   return d->textFont;
 }
 
-QFont QgsTextFormat::scaledFont( const QgsRenderContext &context, double scaleFactor ) const
+QFont QgsTextFormat::scaledFont( const QgsRenderContext &context, double scaleFactor, bool *isZeroSize ) const
 {
+  if ( isZeroSize )
+    *isZeroSize = false;
+
   QFont font = d->textFont;
   if ( scaleFactor == 1 )
   {
     int fontPixelSize = QgsTextRenderer::sizeToPixel( d->fontSize, context, d->fontSizeUnits,
                         d->fontSizeMapUnitScale );
+    if ( fontPixelSize == 0 )
+    {
+      if ( isZeroSize )
+        *isZeroSize = true;
+      return QFont();
+    }
+
     font.setPixelSize( fontPixelSize );
   }
   else
   {
     double fontPixelSize = context.convertToPainterUnits( d->fontSize, d->fontSizeUnits, d->fontSizeMapUnitScale );
-    font.setPixelSize( std::round( scaleFactor * fontPixelSize + 0.5 ) );
+    if ( qgsDoubleNear( fontPixelSize, 0 ) )
+    {
+      if ( isZeroSize )
+        *isZeroSize = true;
+      return QFont();
+    }
+    const int roundedPixelSize = static_cast< int >( std::round( scaleFactor * fontPixelSize + 0.5 ) );
+    font.setPixelSize( roundedPixelSize );
   }
 
   font.setLetterSpacing( QFont::AbsoluteSpacing, context.convertToPainterUnits( d->textFont.letterSpacing(), d->fontSizeUnits, d->fontSizeMapUnitScale ) * scaleFactor );
   font.setWordSpacing( context.convertToPainterUnits( d->textFont.wordSpacing(), d->fontSizeUnits, d->fontSizeMapUnitScale ) * scaleFactor  * scaleFactor );
+
+  if ( d->capitalization == Qgis::Capitalization::SmallCaps
+       || d->capitalization == Qgis::Capitalization::AllSmallCaps )
+    font.setCapitalization( QFont::SmallCaps );
 
   return font;
 }
@@ -194,6 +224,41 @@ void QgsTextFormat::setNamedStyle( const QString &style )
   d->isValid = true;
   QgsFontUtils::updateFontViaStyle( d->textFont, style );
   d->textNamedStyle = style;
+}
+
+bool QgsTextFormat::forcedBold() const
+{
+  return d->forcedBold;
+}
+
+void QgsTextFormat::setForcedBold( bool forced )
+{
+  d->isValid = true;
+  d->textFont.setBold( forced );
+  d->forcedBold = true;
+}
+
+bool QgsTextFormat::forcedItalic() const
+{
+  return d->forcedItalic;
+}
+
+void QgsTextFormat::setForcedItalic( bool forced )
+{
+  d->isValid = true;
+  d->textFont.setItalic( forced );
+  d->forcedItalic = true;
+}
+
+QStringList QgsTextFormat::families() const
+{
+  return d->families;
+}
+
+void QgsTextFormat::setFamilies( const QStringList &families )
+{
+  d->isValid = true;
+  d->families = families;
 }
 
 QgsUnitTypes::RenderUnit QgsTextFormat::sizeUnit() const
@@ -251,6 +316,17 @@ void QgsTextFormat::setOpacity( double opacity )
   d->opacity = opacity;
 }
 
+int QgsTextFormat::stretchFactor() const
+{
+  return d->textFont.stretch() > 0 ? d->textFont.stretch() : 100;
+}
+
+void QgsTextFormat::setStretchFactor( int factor )
+{
+  d->isValid = true;
+  d->textFont.setStretch( factor );
+}
+
 QPainter::CompositionMode QgsTextFormat::blendMode() const
 {
   return d->blendMode;
@@ -284,17 +360,23 @@ void QgsTextFormat::setOrientation( TextOrientation orientation )
   d->orientation = orientation;
 }
 
-QgsStringUtils::Capitalization QgsTextFormat::capitalization() const
+Qgis::Capitalization QgsTextFormat::capitalization() const
 {
   // bit of complexity here to maintain API..
-  return d->capitalization == QgsStringUtils::MixedCase && d->textFont.capitalization() != QFont::MixedCase ? static_cast< QgsStringUtils::Capitalization >( d->textFont.capitalization() ) : d->capitalization ;
+  return d->capitalization == Qgis::Capitalization::MixedCase && d->textFont.capitalization() != QFont::MixedCase
+         ? static_cast< Qgis::Capitalization >( d->textFont.capitalization() )
+         : d->capitalization ;
 }
 
-void QgsTextFormat::setCapitalization( QgsStringUtils::Capitalization capitalization )
+void QgsTextFormat::setCapitalization( Qgis::Capitalization capitalization )
 {
   d->isValid = true;
   d->capitalization = capitalization;
+#if defined(HAS_KDE_QT5_SMALL_CAPS_FIX) || QT_VERSION >= QT_VERSION_CHECK(6, 3, 0)
+  d->textFont.setCapitalization( capitalization == Qgis::Capitalization::SmallCaps || capitalization == Qgis::Capitalization::AllSmallCaps ? QFont::SmallCaps : QFont::MixedCase );
+#else
   d->textFont.setCapitalization( QFont::MixedCase );
+#endif
 }
 
 bool QgsTextFormat::allowHtmlFormatting() const
@@ -379,7 +461,7 @@ void QgsTextFormat::readFromLayer( QgsVectorLayer *layer )
   d->textFont = QFont( fontFamily, d->fontSize, fontWeight, fontItalic );
   d->textNamedStyle = QgsFontUtils::translateNamedStyle( layer->customProperty( QStringLiteral( "labeling/namedStyle" ), QVariant( "" ) ).toString() );
   QgsFontUtils::updateFontViaStyle( d->textFont, d->textNamedStyle ); // must come after textFont.setPointSizeF()
-  d->capitalization = static_cast< QgsStringUtils::Capitalization >( layer->customProperty( QStringLiteral( "labeling/fontCapitals" ), QVariant( 0 ) ).toUInt() );
+  d->capitalization = static_cast< Qgis::Capitalization >( layer->customProperty( QStringLiteral( "labeling/fontCapitals" ), QVariant( 0 ) ).toUInt() );
   d->textFont.setUnderline( layer->customProperty( QStringLiteral( "labeling/fontUnderline" ) ).toBool() );
   d->textFont.setStrikeOut( layer->customProperty( QStringLiteral( "labeling/fontStrikeout" ) ).toBool() );
   d->textFont.setLetterSpacing( QFont::AbsoluteSpacing, layer->customProperty( QStringLiteral( "labeling/fontLetterSpacing" ), QVariant( 0.0 ) ).toDouble() );
@@ -414,20 +496,45 @@ void QgsTextFormat::readXml( const QDomElement &elem, const QgsReadWriteContext 
   QFont appFont = QApplication::font();
   mTextFontFamily = textStyleElem.attribute( QStringLiteral( "fontFamily" ), appFont.family() );
   QString fontFamily = mTextFontFamily;
+
+  const QDomElement familiesElem = textStyleElem.firstChildElement( QStringLiteral( "families" ) );
+  const QDomNodeList familyNodes = familiesElem.childNodes();
+  QStringList families;
+  families.reserve( familyNodes.size() );
+  for ( int i = 0; i < familyNodes.count(); ++i )
+  {
+    const QDomElement familyElem = familyNodes.at( i ).toElement();
+    families << familyElem.attribute( QStringLiteral( "name" ) );
+  }
+  d->families = families;
+
+  mTextFontFound = false;
   if ( mTextFontFamily != appFont.family() && !QgsFontUtils::fontFamilyMatchOnSystem( mTextFontFamily ) )
   {
-    // trigger to notify user about font family substitution (signal emitted in QgsVectorLayer::prepareLabelingAndDiagrams)
-    mTextFontFound = false;
+    for ( const QString &family : std::as_const( families ) )
+    {
+      if ( QgsFontUtils::fontFamilyMatchOnSystem( family ) )
+      {
+        mTextFontFound = true;
+        fontFamily = family;
+        break;
+      }
+    }
 
-    // TODO: update when pref for how to resolve missing family (use matching algorithm or just default font) is implemented
-    // currently only defaults to matching algorithm for resolving [foundry], if a font of similar family is found (default for QFont)
-
-    // for now, do not use matching algorithm for substitution if family not found, substitute default instead
-    fontFamily = appFont.family();
+    if ( !mTextFontFound )
+    {
+      // couldn't even find a matching font in the backup list -- substitute default instead
+      fontFamily = appFont.family();
+    }
   }
   else
   {
     mTextFontFound = true;
+  }
+
+  if ( !mTextFontFound )
+  {
+    context.pushMessage( QObject::tr( "Font “%1” not available on system" ).arg( mTextFontFamily ) );
   }
 
   if ( textStyleElem.hasAttribute( QStringLiteral( "fontSize" ) ) )
@@ -467,6 +574,8 @@ void QgsTextFormat::readXml( const QDomElement &elem, const QgsReadWriteContext 
   d->textFont.setPointSizeF( d->fontSize ); //double precision needed because of map units
   d->textNamedStyle = QgsFontUtils::translateNamedStyle( textStyleElem.attribute( QStringLiteral( "namedStyle" ) ) );
   QgsFontUtils::updateFontViaStyle( d->textFont, d->textNamedStyle ); // must come after textFont.setPointSizeF()
+  d->forcedBold = textStyleElem.attribute( QStringLiteral( "forcedBold" ) ).toInt();
+  d->forcedItalic = textStyleElem.attribute( QStringLiteral( "forcedItalic" ) ).toInt();
   d->textFont.setUnderline( textStyleElem.attribute( QStringLiteral( "fontUnderline" ) ).toInt() );
   d->textFont.setStrikeOut( textStyleElem.attribute( QStringLiteral( "fontStrikeout" ) ).toInt() );
   d->textFont.setKerning( textStyleElem.attribute( QStringLiteral( "fontKerning" ), QStringLiteral( "1" ) ).toInt() );
@@ -481,6 +590,9 @@ void QgsTextFormat::readXml( const QDomElement &elem, const QgsReadWriteContext 
   {
     d->opacity = ( textStyleElem.attribute( QStringLiteral( "textOpacity" ) ).toDouble() );
   }
+#ifdef HAS_KDE_QT5_FONT_STRETCH_FIX
+  d->textFont.setStretch( textStyleElem.attribute( QStringLiteral( "stretchFactor" ), QStringLiteral( "100" ) ).toInt() );
+#endif
   d->orientation = QgsTextRendererUtils::decodeTextOrientation( textStyleElem.attribute( QStringLiteral( "textOrientation" ) ) );
   d->previewBackgroundColor = QgsSymbolLayerUtils::decodeColor( textStyleElem.attribute( QStringLiteral( "previewBkgrdColor" ), QgsSymbolLayerUtils::encodeColor( Qt::white ) ) );
 
@@ -498,9 +610,12 @@ void QgsTextFormat::readXml( const QDomElement &elem, const QgsReadWriteContext 
   }
 
   if ( textStyleElem.hasAttribute( QStringLiteral( "capitalization" ) ) )
-    d->capitalization = static_cast< QgsStringUtils::Capitalization >( textStyleElem.attribute( QStringLiteral( "capitalization" ), QString::number( QgsStringUtils::MixedCase ) ).toInt() );
+    d->capitalization = static_cast< Qgis::Capitalization >( textStyleElem.attribute( QStringLiteral( "capitalization" ), QString::number( static_cast< int >( Qgis::Capitalization::MixedCase ) ) ).toInt() );
   else
-    d->capitalization = static_cast< QgsStringUtils::Capitalization >( textStyleElem.attribute( QStringLiteral( "fontCapitals" ), QStringLiteral( "0" ) ).toUInt() );
+    d->capitalization = static_cast< Qgis::Capitalization >( textStyleElem.attribute( QStringLiteral( "fontCapitals" ), QStringLiteral( "0" ) ).toUInt() );
+
+  if ( d->capitalization == Qgis::Capitalization::SmallCaps || d->capitalization == Qgis::Capitalization::AllSmallCaps )
+    d->textFont.setCapitalization( QFont::SmallCaps );
 
   d->allowHtmlFormatting = textStyleElem.attribute( QStringLiteral( "allowHtml" ), QStringLiteral( "0" ) ).toInt();
 
@@ -545,6 +660,7 @@ void QgsTextFormat::readXml( const QDomElement &elem, const QgsReadWriteContext 
   if ( !ddElem.isNull() )
   {
     d->mDataDefinedProperties.readXml( ddElem, QgsPalLayerSettings::propertyDefinitions() );
+    mBackgroundSettings.upgradeDataDefinedProperties( d->mDataDefinedProperties );
   }
   else
   {
@@ -557,6 +673,16 @@ QDomElement QgsTextFormat::writeXml( QDomDocument &doc, const QgsReadWriteContex
   // text style
   QDomElement textStyleElem = doc.createElement( QStringLiteral( "text-style" ) );
   textStyleElem.setAttribute( QStringLiteral( "fontFamily" ), d->textFont.family() );
+
+  QDomElement familiesElem = doc.createElement( QStringLiteral( "families" ) );
+  for ( const QString &family : std::as_const( d->families ) )
+  {
+    QDomElement familyElem = doc.createElement( QStringLiteral( "family" ) );
+    familyElem.setAttribute( QStringLiteral( "name" ), family );
+    familiesElem.appendChild( familyElem );
+  }
+  textStyleElem.appendChild( familiesElem );
+
   textStyleElem.setAttribute( QStringLiteral( "namedStyle" ), QgsFontUtils::untranslateNamedStyle( d->textNamedStyle ) );
   textStyleElem.setAttribute( QStringLiteral( "fontSize" ), d->fontSize );
   textStyleElem.setAttribute( QStringLiteral( "fontSizeUnit" ), QgsUnitTypes::encodeUnit( d->fontSizeUnits ) );
@@ -565,12 +691,18 @@ QDomElement QgsTextFormat::writeXml( QDomDocument &doc, const QgsReadWriteContex
   textStyleElem.setAttribute( QStringLiteral( "fontItalic" ), d->textFont.italic() );
   textStyleElem.setAttribute( QStringLiteral( "fontStrikeout" ), d->textFont.strikeOut() );
   textStyleElem.setAttribute( QStringLiteral( "fontUnderline" ), d->textFont.underline() );
+  textStyleElem.setAttribute( QStringLiteral( "forcedBold" ), d->forcedBold );
+  textStyleElem.setAttribute( QStringLiteral( "forcedItalic" ), d->forcedItalic );
   textStyleElem.setAttribute( QStringLiteral( "textColor" ), QgsSymbolLayerUtils::encodeColor( d->textColor ) );
   textStyleElem.setAttribute( QStringLiteral( "previewBkgrdColor" ), QgsSymbolLayerUtils::encodeColor( d->previewBackgroundColor ) );
   textStyleElem.setAttribute( QStringLiteral( "fontLetterSpacing" ), d->textFont.letterSpacing() );
   textStyleElem.setAttribute( QStringLiteral( "fontWordSpacing" ), d->textFont.wordSpacing() );
   textStyleElem.setAttribute( QStringLiteral( "fontKerning" ), d->textFont.kerning() );
   textStyleElem.setAttribute( QStringLiteral( "textOpacity" ), d->opacity );
+#ifdef HAS_KDE_QT5_FONT_STRETCH_FIX
+  if ( d->textFont.stretch() > 0 )
+    textStyleElem.setAttribute( QStringLiteral( "stretchFactor" ), d->textFont.stretch() );
+#endif
   textStyleElem.setAttribute( QStringLiteral( "textOrientation" ), QgsTextRendererUtils::encodeTextOrientation( d->orientation ) );
   textStyleElem.setAttribute( QStringLiteral( "blendMode" ), QgsPainting::getBlendModeEnum( d->blendMode ) );
   textStyleElem.setAttribute( QStringLiteral( "multilineHeight" ), d->multilineHeight );
@@ -592,6 +724,7 @@ QDomElement QgsTextFormat::writeXml( QDomDocument &doc, const QgsReadWriteContex
 QMimeData *QgsTextFormat::toMimeData() const
 {
   //set both the mime color data, and the text (format settings).
+
   QMimeData *mimeData = new QMimeData;
   mimeData->setColorData( QVariant( color() ) );
 
@@ -879,6 +1012,18 @@ void QgsTextFormat::updateDataDefinedProperties( QgsRenderContext &context )
     }
   }
 
+#ifdef HAS_KDE_QT5_FONT_STRETCH_FIX
+  if ( d->mDataDefinedProperties.isActive( QgsPalLayerSettings::FontStretchFactor ) )
+  {
+    context.expressionContext().setOriginalValueVariable( d->textFont.stretch() );
+    const QVariant val = d->mDataDefinedProperties.value( QgsPalLayerSettings::FontStretchFactor, context.expressionContext(), d->textFont.stretch() );
+    if ( !val.isNull() )
+    {
+      d->textFont.setStretch( val.toInt() );
+    }
+  }
+#endif
+
   if ( d->mDataDefinedProperties.isActive( QgsPalLayerSettings::TextOrientation ) )
   {
     const QString encoded = QgsTextRendererUtils::encodeTextOrientation( d->orientation );
@@ -966,22 +1111,34 @@ QPixmap QgsTextFormat::textFormatPreviewPixmap( const QgsTextFormat &format, QSi
   newCoordXForm.setParameters( 1, 0, 0, 0, 0, 0 );
   context.setMapToPixel( newCoordXForm );
 
-  context.setScaleFactor( QgsApplication::desktop()->logicalDpiX() / 25.4 );
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
+  const double logicalDpiX = QgsApplication::desktop()->logicalDpiX();
+#else
+  QWidget *activeWindow = QApplication::activeWindow();
+  const double logicalDpiX = activeWindow && activeWindow->screen() ? activeWindow->screen()->logicalDotsPerInchX() : 96.0;
+#endif
+  context.setScaleFactor( logicalDpiX / 25.4 );
+
   context.setUseAdvancedEffects( true );
-  context.setFlag( QgsRenderContext::Antialiasing, true );
+  context.setFlag( Qgis::RenderContextFlag::Antialiasing, true );
   context.setPainter( &painter );
-  context.setFlag( QgsRenderContext::Antialiasing, true );
+  context.setFlag( Qgis::RenderContextFlag::Antialiasing, true );
 
   // slightly inset text to account for buffer/background
+  const double fontSize = context.convertToPainterUnits( tempFormat.size(), tempFormat.sizeUnit(), tempFormat.sizeMapUnitScale() );
   double xtrans = 0;
   if ( tempFormat.buffer().enabled() )
-    xtrans = context.convertToPainterUnits( tempFormat.buffer().size(), tempFormat.buffer().sizeUnit(), tempFormat.buffer().sizeMapUnitScale() );
+    xtrans = tempFormat.buffer().sizeUnit() == QgsUnitTypes::RenderPercentage
+             ? fontSize * tempFormat.buffer().size() / 100
+             : context.convertToPainterUnits( tempFormat.buffer().size(), tempFormat.buffer().sizeUnit(), tempFormat.buffer().sizeMapUnitScale() );
   if ( tempFormat.background().enabled() && tempFormat.background().sizeType() != QgsTextBackgroundSettings::SizeFixed )
     xtrans = std::max( xtrans, context.convertToPainterUnits( tempFormat.background().size().width(), tempFormat.background().sizeUnit(), tempFormat.background().sizeMapUnitScale() ) );
 
   double ytrans = 0.0;
   if ( tempFormat.buffer().enabled() )
-    ytrans = std::max( ytrans, context.convertToPainterUnits( tempFormat.buffer().size(), tempFormat.buffer().sizeUnit(), tempFormat.buffer().sizeMapUnitScale() ) );
+    ytrans = std::max( ytrans, tempFormat.buffer().sizeUnit() == QgsUnitTypes::RenderPercentage
+                       ? fontSize * tempFormat.buffer().size() / 100
+                       : context.convertToPainterUnits( tempFormat.buffer().size(), tempFormat.buffer().sizeUnit(), tempFormat.buffer().sizeMapUnitScale() ) );
   if ( tempFormat.background().enabled() )
     ytrans = std::max( ytrans, context.convertToPainterUnits( tempFormat.background().size().height(), tempFormat.background().sizeUnit(), tempFormat.background().sizeMapUnitScale() ) );
 

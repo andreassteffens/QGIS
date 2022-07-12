@@ -21,6 +21,7 @@
 #include "qgslogger.h"
 #include "qgsmessagelog.h"
 #include "qgswfsutils.h" // for isCompatibleType()
+#include "qgsgeometryengine.h"
 
 #include <QDataStream>
 #include <QDir>
@@ -60,7 +61,7 @@ void QgsFeatureDownloaderProgressDialog::resizeEvent( QResizeEvent *ev )
   QRect rect = geometry();
   QRect cancelRect = mCancel->geometry();
   QRect hideRect = mHide->geometry();
-  int mtb = style()->pixelMetric( QStyle::PM_DefaultTopLevelMargin );
+  int mtb = style()->pixelMetric( QStyle::PM_LayoutRightMargin );
   int mlr = std::min( width() / 10, mtb );
   if ( rect.width() - cancelRect.x() - cancelRect.width() > mlr )
   {
@@ -91,7 +92,7 @@ void QgsFeatureDownloaderImpl::emitFeatureReceived( QVector<QgsFeatureUniqueIdPa
   emit mDownloader->featureReceived( features );
 }
 
-void QgsFeatureDownloaderImpl::emitFeatureReceived( int featureCount )
+void QgsFeatureDownloaderImpl::emitFeatureReceived( long long featureCount )
 {
   emit mDownloader->featureReceived( featureCount );
 }
@@ -203,7 +204,7 @@ void QgsFeatureDownloaderImpl::endOfRun( bool serializeFeatures,
 // -------------------------
 
 
-void QgsFeatureDownloader::run( bool serializeFeatures, int maxFeatures )
+void QgsFeatureDownloader::run( bool serializeFeatures, long long maxFeatures )
 {
   Q_ASSERT( mImpl );
   mImpl->run( serializeFeatures, maxFeatures );
@@ -299,6 +300,23 @@ QgsBackgroundCachedFeatureIterator::QgsBackgroundCachedFeatureIterator(
     // can't reproject mFilterRect
     close();
     return;
+  }
+
+  // prepare spatial filter geometries for optimal speed
+  switch ( mRequest.spatialFilterType() )
+  {
+    case Qgis::SpatialFilterType::NoFilter:
+    case Qgis::SpatialFilterType::BoundingBox:
+      break;
+
+    case Qgis::SpatialFilterType::DistanceWithin:
+      if ( !mRequest.referenceGeometry().isEmpty() )
+      {
+        mDistanceWithinGeom = mRequest.referenceGeometry();
+        mDistanceWithinEngine.reset( QgsGeometry::createGeometryEngine( mDistanceWithinGeom.constGet() ) );
+        mDistanceWithinEngine->prepareGeometry();
+      }
+      break;
   }
 
   // Configurable for the purpose of unit tests
@@ -425,6 +443,7 @@ void QgsBackgroundCachedFeatureIterator::fillRequestCache( QgsFeatureRequest req
   requestCache.setFilterRect( mFilterRect );
 
   if ( !( mRequest.flags() & QgsFeatureRequest::NoGeometry ) ||
+       ( mRequest.spatialFilterType() == Qgis::SpatialFilterType::DistanceWithin ) ||
        ( mRequest.filterType() == QgsFeatureRequest::FilterExpression && mRequest.filterExpression()->needsGeometry() ) )
   {
     mFetchGeometry = true;
@@ -671,6 +690,9 @@ bool QgsBackgroundCachedFeatureIterator::fetchFeature( QgsFeature &f )
     copyFeature( cachedFeature, f, true );
     geometryToDestinationCrs( f, mTransform );
 
+    if ( mDistanceWithinEngine && mDistanceWithinEngine->distance( f.geometry().constGet() ) > mRequest.distanceWithin() )
+      continue;
+
     // Retrieve the user-visible id from the Spatialite cache database Id
     QgsFeatureId userVisibleId;
     if ( mShared->getUserVisibleIdFromSpatialiteId( cachedFeature.id(), userVisibleId ) )
@@ -767,6 +789,12 @@ bool QgsBackgroundCachedFeatureIterator::fetchFeature( QgsFeature &f )
         }
 
         copyFeature( feat, f, false );
+
+        geometryToDestinationCrs( f, mTransform );
+
+        if ( mDistanceWithinEngine && mDistanceWithinEngine->distance( f.geometry().constGet() ) > mRequest.distanceWithin() )
+          continue;
+
         return true;
       }
 
@@ -811,7 +839,7 @@ bool QgsBackgroundCachedFeatureIterator::fetchFeature( QgsFeature &f )
       mWaitCond.wait( &mMutex, timeout );
       if ( requestMadeFromMainThread && mProcessEvents )
       {
-        QApplication::instance()->processEvents();
+        QApplication::processEvents();
         mProcessEvents = false;
       }
       if ( mInterruptionChecker && mInterruptionChecker->isCanceled() )
@@ -918,7 +946,7 @@ void QgsBackgroundCachedFeatureIterator::copyFeature( const QgsFeature &srcFeatu
 
   if ( mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes )
   {
-    for ( auto i : qgis::as_const( mSubSetAttributes ) )
+    for ( auto i : std::as_const( mSubSetAttributes ) )
     {
       setAttr( i );
     }

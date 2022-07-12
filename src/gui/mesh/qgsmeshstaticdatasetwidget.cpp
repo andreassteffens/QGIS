@@ -21,6 +21,7 @@ QgsMeshStaticDatasetWidget::QgsMeshStaticDatasetWidget( QWidget *parent ): QWidg
 {
   setupUi( this );
 
+  this->layout()->setContentsMargins( 0, 0, 0, 0 );
   mDatasetScalarModel = new QgsMeshDatasetListModel( this );
   mScalarDatasetComboBox->setModel( mDatasetScalarModel );
   mDatasetVectorModel = new QgsMeshDatasetListModel( this );
@@ -149,7 +150,7 @@ QVariant QgsMeshDatasetListModel::data( const QModelIndex &index, int role ) con
     }
     else
     {
-      QgsInterval time = mLayer->datasetRelativeTime( QgsMeshDatasetIndex( mDatasetGroup, index.row() - 1 ) );
+      const QgsInterval time = mLayer->datasetRelativeTime( QgsMeshDatasetIndex( mDatasetGroup, index.row() - 1 ) );
       return mLayer->formatTime( time.hours() );
     }
   }

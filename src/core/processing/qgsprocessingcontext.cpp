@@ -18,6 +18,7 @@
 #include "qgsprocessingcontext.h"
 #include "qgsprocessingutils.h"
 #include "qgsproviderregistry.h"
+#include "qgsmaplayerlistutils_p.h"
 #include "qgssettings.h"
 
 QgsProcessingContext::QgsProcessingContext()
@@ -83,9 +84,9 @@ std::function<void ( const QgsFeature & )> QgsProcessingContext::defaultInvalidG
       auto callback = [sourceName]( const QgsFeature & feature )
       {
         if ( !sourceName.isEmpty() )
-          throw QgsProcessingException( QObject::tr( "Feature (%1) from “%2” has invalid geometry. Please fix the geometry or change the Processing setting to the “Ignore invalid input features” option." ).arg( feature.id() ).arg( sourceName ) );
+          throw QgsProcessingException( QObject::tr( "Feature (%1) from “%2” has invalid geometry. Please fix the geometry or change the “Invalid features filtering” option for this input or globally in Processing settings." ).arg( feature.id() ).arg( sourceName ) );
         else
-          throw QgsProcessingException( QObject::tr( "Feature (%1) has invalid geometry. Please fix the geometry or change the Processing setting to the “Ignore invalid input features” option." ).arg( feature.id() ) );
+          throw QgsProcessingException( QObject::tr( "Feature (%1) has invalid geometry. Please fix the geometry or change the “Invalid features filtering” option for input layers or globally in Processing settings." ).arg( feature.id() ) );
       };
       return callback;
     }
@@ -97,9 +98,9 @@ std::function<void ( const QgsFeature & )> QgsProcessingContext::defaultInvalidG
         if ( mFeedback )
         {
           if ( !sourceName.isEmpty() )
-            mFeedback->reportError( QObject::tr( "Feature (%1) from “%2” has invalid geometry and has been skipped. Please fix the geometry or change the Processing setting to the “Ignore invalid input features” option." ).arg( feature.id() ).arg( sourceName ) );
+            mFeedback->reportError( QObject::tr( "Feature (%1) from “%2” has invalid geometry and has been skipped. Please fix the geometry or change the “Invalid features filtering” option for this input or globally in Processing settings." ).arg( feature.id() ).arg( sourceName ) );
           else
-            mFeedback->reportError( QObject::tr( "Feature (%1) has invalid geometry and has been skipped. Please fix the geometry or change the Processing setting to the “Ignore invalid input features” option." ).arg( feature.id() ) );
+            mFeedback->reportError( QObject::tr( "Feature (%1) has invalid geometry and has been skipped. Please fix the geometry or change the “Invalid features filtering” option for input layers or globally in Processing settings." ).arg( feature.id() ) );
         }
       };
       return callback;
@@ -126,6 +127,59 @@ QgsMapLayer *QgsProcessingContext::getMapLayer( const QString &identifier )
 QgsMapLayer *QgsProcessingContext::takeResultLayer( const QString &id )
 {
   return tempLayerStore.takeMapLayer( tempLayerStore.mapLayer( id ) );
+}
+
+QgsProcessingContext::LogLevel QgsProcessingContext::logLevel() const
+{
+  return mLogLevel;
+}
+
+void QgsProcessingContext::setLogLevel( LogLevel level )
+{
+  mLogLevel = level;
+}
+
+QVariantMap QgsProcessingContext::exportToMap() const
+{
+  QVariantMap res;
+  if ( mDistanceUnit != QgsUnitTypes::DistanceUnknownUnit )
+    res.insert( QStringLiteral( "distance_units" ), QgsUnitTypes::encodeUnit( mDistanceUnit ) );
+  if ( mAreaUnit != QgsUnitTypes::AreaUnknownUnit )
+    res.insert( QStringLiteral( "area_units" ), QgsUnitTypes::encodeUnit( mAreaUnit ) );
+  if ( !mEllipsoid.isEmpty() )
+    res.insert( QStringLiteral( "ellipsoid" ), mEllipsoid );
+  if ( mProject )
+    res.insert( QStringLiteral( "project_path" ), mProject->fileName() );
+
+  return res;
+}
+
+QStringList QgsProcessingContext::asQgisProcessArguments( QgsProcessingContext::ProcessArgumentFlags flags ) const
+{
+  QStringList res;
+  if ( mDistanceUnit != QgsUnitTypes::DistanceUnknownUnit )
+    res << QStringLiteral( "--distance_units=%1" ).arg( QgsUnitTypes::encodeUnit( mDistanceUnit ) );
+  if ( mAreaUnit != QgsUnitTypes::AreaUnknownUnit )
+    res << QStringLiteral( "--area_units=%1" ).arg( QgsUnitTypes::encodeUnit( mAreaUnit ) );
+  if ( !mEllipsoid.isEmpty() )
+    res << QStringLiteral( "--ellipsoid=%1" ).arg( mEllipsoid );
+
+  if ( mProject && flags & ProcessArgumentFlag::IncludeProjectPath )
+  {
+    res << QStringLiteral( "--project_path=%1" ).arg( mProject->fileName() );
+  }
+
+  return res;
+}
+
+QgsDateTimeRange QgsProcessingContext::currentTimeRange() const
+{
+  return mCurrentTimeRange;
+}
+
+void QgsProcessingContext::setCurrentTimeRange( const QgsDateTimeRange &currentTimeRange )
+{
+  mCurrentTimeRange = currentTimeRange;
 }
 
 QString QgsProcessingContext::ellipsoid() const
@@ -176,7 +230,7 @@ void QgsProcessingContext::LayerDetails::setOutputLayerName( QgsMapLayer *layer 
   if ( !layer )
     return;
 
-  const bool preferFilenameAsLayerName = QgsSettings().value( QStringLiteral( "Processing/Configuration/PREFER_FILENAME_AS_LAYER_NAME" ), true ).toBool();
+  const bool preferFilenameAsLayerName = QgsProcessing::settingsPreferFilenameAsLayerName.value();
 
   // note - for temporary layers, we don't use the filename, regardless of user setting (it will be meaningless!)
   if ( ( !forceName && preferFilenameAsLayerName && !layer->isTemporary() ) || name.isEmpty() )

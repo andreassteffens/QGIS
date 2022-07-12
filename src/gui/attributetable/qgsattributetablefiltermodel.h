@@ -19,6 +19,7 @@
 
 #include <QSortFilterProxyModel>
 #include <QModelIndex>
+#include <QTimer>
 
 #include "qgsattributetablemodel.h"
 #include "qgsfeaturemodel.h"
@@ -81,6 +82,11 @@ class GUI_EXPORT QgsAttributeTableFilterModel: public QSortFilterProxyModel, pub
      */
     QgsAttributeTableFilterModel( QgsMapCanvas *canvas, QgsAttributeTableModel *sourceModel, QObject *parent SIP_TRANSFERTHIS = nullptr );
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Woverloaded-virtual"
+#endif
+
     /**
      * Set the attribute table model that backs this model
      *
@@ -89,6 +95,10 @@ class GUI_EXPORT QgsAttributeTableFilterModel: public QSortFilterProxyModel, pub
      * \since QGIS 2.0
      */
     void setSourceModel( QgsAttributeTableModel *sourceModel );
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
     /**
      * Changes the sort order of the features. If set to TRUE, selected features
@@ -228,8 +238,10 @@ class GUI_EXPORT QgsAttributeTableFilterModel: public QSortFilterProxyModel, pub
      * Set the attribute table configuration to control which fields are shown,
      * in which order they are shown as well as if and where an action column
      * is shown.
+     * \param config attribute table config
+     * \param force default FALSE, if TRUE the attribute table configuration will be reset even if it is not changed.
      */
-    void setAttributeTableConfig( const QgsAttributeTableConfig &config );
+    void setAttributeTableConfig( const QgsAttributeTableConfig &config, bool force SIP_PYARGREMOVE = false );
 
     /**
      * Set the \a expression and the \a context to be stored in case of the features

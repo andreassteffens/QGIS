@@ -96,6 +96,8 @@ class CORE_EXPORT QgsGeoNodeRequest : public QObject
       QString wmsURL;
       //! WFS URL for layer
       QString wfsURL;
+      //! WCS URL for layer
+      QString wcsURL;
       //! XYZ tileserver URL for layer
       QString xyzURL;
       //! Backend server (geoserver or qgis-server)
@@ -282,6 +284,7 @@ class CORE_EXPORT QgsGeoNodeRequest : public QObject
 
     bool mIsAborted = false;
     bool mForceRefresh = false;
+    bool mParsingLayers = false;
 
     QList<QgsGeoNodeRequest::ServiceLayerDetail> parseLayers( const QByteArray &layerResponse );
     QgsGeoNodeStyle retrieveStyle( const QString &styleUrl );

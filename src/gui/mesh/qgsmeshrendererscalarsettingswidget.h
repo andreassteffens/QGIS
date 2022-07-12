@@ -27,8 +27,11 @@ SIP_NO_FILE
 
 class QgsMeshLayer;
 
-/*!
- * A widget for setup of the scalar dataset renderer settings of
+/**
+ * \ingroup gui
+ * \class QgsMeshRendererScalarSettingsWidget
+ *
+ * \brief A widget for setup of the scalar dataset renderer settings of
  * a mesh layer. The layer must be connected and an active dataset
  * must be selected.
  */
@@ -62,12 +65,11 @@ class QgsMeshRendererScalarSettingsWidget : public QWidget, private Ui::QgsMeshR
 
   private slots:
     void minMaxChanged();
-    void minMaxEdited();
     void recalculateMinMaxButtonClicked();
     void onEdgeStrokeWidthMethodChanged();
 
   private:
-    double lineEditValue( const QLineEdit *lineEdit ) const;
+    double spinBoxValue( const QgsDoubleSpinBox *spinBox ) const;
     QgsMeshRendererScalarSettings::DataResamplingMethod dataIntepolationMethod() const;
 
     bool dataIsDefinedOnFaces() const;

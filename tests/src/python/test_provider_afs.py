@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """QGIS Unit tests for the AFS provider.
 
+From build dir, run: ctest -R PyQgsAFSProvider -V
+
 .. note:: This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
@@ -476,7 +478,7 @@ class TestPyQgsAFSProvider(unittest.TestCase, ProviderTestCase):
         """
         parts = {'url': 'http://blah.com', 'crs': 'epsg:4326', 'referer': 'me', 'bounds': QgsRectangle(1, 2, 3, 4)}
         uri = QgsProviderRegistry.instance().encodeUri(self.vl.dataProvider().name(), parts)
-        self.assertEqual(uri, " bbox='1,2,3,4' crs='epsg:4326' referer='me' url='http://blah.com'")
+        self.assertEqual(uri, " bbox='1,2,3,4' crs='epsg:4326' url='http://blah.com' http-header:referer='me' referer='me'")
 
     def testObjectIdDifferentName(self):
         """ Test that object id fields not named OBJECTID work correctly """

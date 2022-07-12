@@ -13,7 +13,7 @@
 
 class QgsMapOverviewCanvas : QWidget
 {
-%Docstring
+%Docstring(signature="appended")
 A widget that displays an overview map.
 %End
 
@@ -103,6 +103,12 @@ Overridden mouse press event
 %End
 
     virtual void mouseReleaseEvent( QMouseEvent *e );
+
+%Docstring
+Overridden mouse release event
+%End
+
+    virtual void wheelEvent( QWheelEvent *e );
 
 %Docstring
 Overridden mouse release event

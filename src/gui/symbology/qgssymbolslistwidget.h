@@ -19,7 +19,6 @@
 #include "ui_widget_symbolslist.h"
 
 #include "qgssymbolwidgetcontext.h"
-#include "qgssymbollayer.h"
 #include "qgsstylemodel.h"
 #include <QWidget>
 #include "qgis_gui.h"
@@ -90,23 +89,34 @@ class GUI_EXPORT QgsSymbolsListWidget : public QWidget, private Ui::SymbolsListW
     void changed();
 
   private slots:
-    void setSymbolFromStyle( const QString &name, QgsStyle::StyleEntity type );
+    void setSymbolFromStyle( const QString &name, QgsStyle::StyleEntity type, const QString &stylePath );
     void mSymbolUnitWidget_changed();
     void updateAssistantSymbol();
     void opacityChanged( double value );
     void createAuxiliaryField();
+    void createSymbolAuxiliaryField();
     void forceRHRToggled( bool checked );
+    void showAnimationSettings();
     void saveSymbol();
+    void updateSymbolDataDefinedProperty();
 
   private:
+
+    void registerSymbolDataDefinedButton( QgsPropertyOverrideButton *button, QgsSymbol::Property key );
+
     QgsSymbol *mSymbol = nullptr;
     std::shared_ptr< QgsSymbol > mAssistantSymbol;
     QgsStyle *mStyle = nullptr;
     QMenu *mAdvancedMenu = nullptr;
     QAction *mClipFeaturesAction = nullptr;
     QAction *mStandardizeRingsAction = nullptr;
+    QAction *mAnimationSettingsAction = nullptr;
     QgsVectorLayer *mLayer = nullptr;
     QgsMapCanvas *mMapCanvas = nullptr;
+
+    QgsColorButton *mSymbolColorButton = nullptr;
+    QgsOpacityWidget *mSymbolOpacityWidget = nullptr;
+    QgsUnitSelectionWidget *mSymbolUnitWidget = nullptr;
 
     void updateSymbolColor();
     void updateSymbolInfo();

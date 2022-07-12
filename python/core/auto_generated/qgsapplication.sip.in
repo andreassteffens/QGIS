@@ -9,10 +9,9 @@
 
 
 
-
 class QgsApplication : QApplication
 {
-%Docstring
+%Docstring(signature="appended")
 Extends QApplication to provide access to QGIS specific resources such
 as theme paths, database paths etc.
 
@@ -85,7 +84,16 @@ to change due to centralization.
     static const char *QGIS_ORGANIZATION_NAME;
     static const char *QGIS_ORGANIZATION_DOMAIN;
     static const char *QGIS_APPLICATION_NAME;
-    QgsApplication( SIP_PYLIST argv, bool GUIenabled, QString profileFolder = QString(), QString platformName = "desktop" ) / PostHook = __pyQtQAppHook__ / [( int &argc, char **argv, bool GUIenabled, const QString &profileFolder = QString(), const QString &platformName = "desktop" )];
+
+    QgsApplication( SIP_PYLIST argv, bool GUIenabled, QString profileFolder = QString(), QString platformName = "external" ) / PostHook = __pyQtQAppHook__ / [( int &argc, char **argv, bool GUIenabled, const QString &profileFolder = QString(), const QString &platformName = "desktop" )];
+%Docstring
+Constructor for QgsApplication.
+
+:param argv: command line arguments
+:param GUIenabled: set to ``True`` if a GUI application is required, or ``False`` for a console only application
+:param profileFolder: optional string representing the profile to load at startup
+:param platformName: the QGIS platform name, e.g., "desktop", "server", "qgis_process" or "external" (for external CLI scripts)
+%End
 %MethodCode
     // The Python interface is a list of argument strings that is modified.
 
@@ -283,6 +291,13 @@ Returns the path to the icons image directory.
 Returns the path to the srs.db file.
 %End
 
+    static void setSvgPaths( const QStringList &svgPaths );
+%Docstring
+Sets the paths to svg directories and invalidates the svg path list cache.
+
+.. versionadded:: 3.18
+%End
+
     static QStringList svgPaths();
 %Docstring
 Returns the paths to svg directories.
@@ -331,10 +346,13 @@ Returns path to the desired icon file.
 First it tries to use the active theme path, then default theme path
 %End
 
-    static QIcon getThemeIcon( const QString &name );
+    static QIcon getThemeIcon( const QString &name, const QColor &fillColor = QColor(), const QColor &strokeColor = QColor() );
 %Docstring
 Helper to get a theme icon. It will fall back to the
 default theme if the active theme does not have the required icon.
+
+Since QGIS 3.20, the optional ``fillColor`` and ``strokeColor`` arguments can be used to
+control the color of parameter based SVG icons.
 %End
 
     enum Cursor
@@ -371,9 +389,15 @@ colors are specified then the ``size`` argument also must be set.
 Returns the path to user's style.
 %End
 
-    static QRegExp shortNameRegExp();
+    static QRegularExpression shortNameRegularExpression();
 %Docstring
 Returns the short name regular expression for line edit validator
+
+.. note::
+
+   This functionality was previously available as `shortNameRegExp` for QGIS <= 3.20
+
+.. versionadded:: 3.22
 %End
 
     static QString userLoginName();
@@ -403,9 +427,18 @@ Returns a string name of the operating system QGIS is running on.
 .. versionadded:: 2.14
 %End
 
+    static int systemMemorySizeMb();
+%Docstring
+Returns the size of the system memory (RAM) in megabytes.
+
+This is only supported on some platforms, and will return -1 if not supported.
+
+.. versionadded:: 3.26
+%End
+
     static QString platform();
 %Docstring
-Returns the QGIS platform name, e.g., "desktop" or "server".
+Returns the QGIS platform name, e.g., "desktop", "server", "qgis_process" or "external" (for external CLI scripts).
 
 .. seealso:: :py:func:`osName`
 
@@ -417,6 +450,14 @@ Returns the QGIS platform name, e.g., "desktop" or "server".
 Returns the QGIS locale.
 
 .. versionadded:: 3.0
+%End
+
+    static void setLocale( const QLocale &locale );
+%Docstring
+Sets the QGIS locale - used mainly by 3rd party apps and tests.
+In QGIS this is internally triggered by the application in startup.
+
+.. versionadded:: 3.22.2
 %End
 
     static QString userThemesFolder();
@@ -521,7 +562,7 @@ determines what type of stylesheet is supported by the widget.
 Typically you will use this method by doing:
 QString myStyle = :py:func:`QgsApplication.reportStyleSheet()`;
 textBrowserReport->:py:func:`~QgsApplication.document`->setDefaultStyleSheet(myStyle);
-if you are using a QgsWebView you will need to manually inject
+if you are using a :py:class:`QgsWebView` you will need to manually inject
 the CSS into a head -> script tag instead.
 
 :return: the stylesheet CSS rules.
@@ -652,6 +693,13 @@ wide background task handling.
 .. versionadded:: 3.0
 %End
 
+    static QgsSettingsRegistryCore *settingsRegistryCore() /KeepReference/;
+%Docstring
+Returns the application's settings registry, used for managing application settings.
+
+.. versionadded:: 3.20
+%End
+
     static QgsColorSchemeRegistry *colorSchemeRegistry() /KeepReference/;
 %Docstring
 Returns the application's color scheme registry, used for managing color schemes.
@@ -674,12 +722,27 @@ Returns the application's renderer registry, used for managing vector layer rend
 %End
 
 
+    static QgsPointCloudRendererRegistry *pointCloudRendererRegistry() /KeepReference/;
+%Docstring
+Returns the application's point cloud renderer registry, used for managing point cloud layer 2D renderers.
+
+.. versionadded:: 3.18
+%End
+
     static QgsDataItemProviderRegistry *dataItemProviderRegistry() /KeepReference/;
 %Docstring
 Returns the application's data item provider registry, which keeps a list of data item
 providers that may add items to the browser tree.
 
 .. versionadded:: 3.0
+%End
+
+    static QgsCoordinateReferenceSystemRegistry *coordinateReferenceSystemRegistry() /KeepReference/;
+%Docstring
+Returns the application's coordinate reference system (CRS) registry, which handles
+known CRS definitions (including user-defined CRSes).
+
+.. versionadded:: 3.18
 %End
 
     static QgsSvgCache *svgCache();
@@ -757,6 +820,13 @@ Returns the application's GPS connection registry, used for managing GPS connect
 .. versionadded:: 3.0
 %End
 
+    static QgsBabelFormatRegistry *gpsBabelFormatRegistry() /KeepReference/;
+%Docstring
+Returns the application's GPSBabel format registry, used for managing GPSBabel formats.
+
+.. versionadded:: 3.22
+%End
+
     static QgsPluginLayerRegistry *pluginLayerRegistry() /KeepReference/;
 %Docstring
 Returns the application's plugin layer registry, used for managing plugin layer types.
@@ -778,11 +848,26 @@ Returns the application's bookmark manager, used for storing installation-wide b
 .. versionadded:: 3.10
 %End
 
+
+    static QgsRecentStyleHandler *recentStyleHandler() /KeepReference/;
+%Docstring
+Returns the handler for recently used style items.
+
+.. versionadded:: 3.22
+%End
+
+    static QgsDatabaseQueryLog *databaseQueryLog() /KeepReference/;
+%Docstring
+Returns the database query log.
+
+.. versionadded:: 3.24
+%End
+
     static QgsStyleModel *defaultStyleModel();
 %Docstring
-Returns a shared QgsStyleModel containing the default style library (see :py:func:`QgsStyle.defaultStyle()`).
+Returns a shared :py:class:`QgsStyleModel` containing the default style library (see :py:func:`QgsStyle.defaultStyle()`).
 
-Using this shared model instead of creating a new QgsStyleModel improves performance.
+Using this shared model instead of creating a new :py:class:`QgsStyleModel` improves performance.
 
 .. versionadded:: 3.10
 %End
@@ -884,6 +969,13 @@ Returns registry of available project storage implementations.
 .. versionadded:: 3.2
 %End
 
+    static QgsExternalStorageRegistry *externalStorageRegistry() /KeepReference/;
+%Docstring
+Returns registry of available external storage implementations.
+
+.. versionadded:: 3.20
+%End
+
     static QgsLocalizedDataPathRegistry *localizedDataPathRegistry() /KeepReference/;
 %Docstring
 Returns the registry of data repositories
@@ -962,9 +1054,18 @@ The maximum number of concurrent connections per connections pool.
 
     static void setTranslation( const QString &translation );
 %Docstring
-Set translation
+Set translation locale code
 
 .. versionadded:: 3.4
+%End
+
+    QString translation() const;
+%Docstring
+Returns the current application translation locale code
+
+.. seealso:: :py:func:`setTranslation`
+
+.. versionadded:: 3.22
 %End
 
     void collectTranslatableObjects( QgsTranslationContext *translationContext );
@@ -973,6 +1074,7 @@ Emits the signal to collect all the strings of .qgs to be included in ts file
 
 .. versionadded:: 3.4
 %End
+
 
 %If (ANDROID)
     //dummy method to workaround sip generation issue
@@ -1001,6 +1103,15 @@ In order to register translatable strings, connect to this signal and register t
 
 .. versionadded:: 3.4
 %End
+
+
+    void localeChanged();
+%Docstring
+Emitted when project locale has been changed.
+
+.. versionadded:: 3.22.2
+%End
+
 
 };
 

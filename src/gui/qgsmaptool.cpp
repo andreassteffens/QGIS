@@ -50,11 +50,16 @@ QgsPoint QgsMapTool::toMapCoordinates( const QgsMapLayer *layer, const QgsPoint 
 
 QgsPointXY QgsMapTool::toLayerCoordinates( const QgsMapLayer *layer, QPoint point )
 {
-  QgsPointXY pt = toMapCoordinates( point );
+  const QgsPointXY pt = toMapCoordinates( point );
   return toLayerCoordinates( layer, pt );
 }
 
 QgsPointXY QgsMapTool::toLayerCoordinates( const QgsMapLayer *layer, const QgsPointXY &point )
+{
+  return mCanvas->mapSettings().mapToLayerCoordinates( layer, point );
+}
+
+QgsPoint QgsMapTool::toLayerCoordinates( const QgsMapLayer *layer, const QgsPoint &point )
 {
   return mCanvas->mapSettings().mapToLayerCoordinates( layer, point );
 }
@@ -76,6 +81,15 @@ QPoint QgsMapTool::toCanvasCoordinates( const QgsPointXY &point ) const
   return QPoint( std::round( x ), std::round( y ) );
 }
 
+QgsMapLayer *QgsMapTool::layer( const QString &id )
+{
+  return mCanvas->layer( id );
+}
+
+void QgsMapTool::setToolName( const QString &name )
+{
+  mToolName = name;
+}
 
 void QgsMapTool::activate()
 {
@@ -192,6 +206,12 @@ bool QgsMapTool::gestureEvent( QGestureEvent *e )
   return true;
 }
 
+bool QgsMapTool::canvasToolTipEvent( QHelpEvent *e )
+{
+  Q_UNUSED( e )
+  return false;
+}
+
 QgsMapCanvas *QgsMapTool::canvas() const
 {
   return mCanvas;
@@ -199,8 +219,8 @@ QgsMapCanvas *QgsMapTool::canvas() const
 
 double QgsMapTool::searchRadiusMM()
 {
-  QgsSettings settings;
-  double radius = settings.value( QStringLiteral( "Map/searchRadiusMM" ), Qgis::DEFAULT_SEARCH_RADIUS_MM ).toDouble();
+  const QgsSettings settings;
+  const double radius = settings.value( QStringLiteral( "Map/searchRadiusMM" ), Qgis::DEFAULT_SEARCH_RADIUS_MM ).toDouble();
 
   if ( radius > 0 )
   {
@@ -220,12 +240,19 @@ double QgsMapTool::searchRadiusMU( QgsMapCanvas *canvas )
   {
     return 0;
   }
-  QgsMapSettings mapSettings = canvas->mapSettings();
-  QgsRenderContext context = QgsRenderContext::fromMapSettings( mapSettings );
+  const QgsMapSettings mapSettings = canvas->mapSettings();
+  const QgsRenderContext context = QgsRenderContext::fromMapSettings( mapSettings );
   return searchRadiusMU( context );
 }
+
 
 void QgsMapTool::populateContextMenu( QMenu * )
 {
 
+}
+
+
+bool QgsMapTool::populateContextMenuWithEvent( QMenu *, QgsMapMouseEvent * )
+{
+  return false;
 }

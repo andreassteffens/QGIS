@@ -19,6 +19,7 @@
 #include "qgsmapclippingregion.h"
 #include "qgslogger.h"
 #include <algorithm>
+#include <QPointer>
 
 QList<QgsMapClippingRegion> QgsMapClippingUtils::collectClippingRegionsForLayer( const QgsRenderContext &context, const QgsMapLayer *layer )
 {
@@ -65,7 +66,7 @@ QgsGeometry QgsMapClippingUtils::calculateFeatureRequestGeometry( const QList< Q
   // lastly transform back to layer CRS
   try
   {
-    result.transform( context.coordinateTransform(), QgsCoordinateTransform::ReverseTransform );
+    result.transform( context.coordinateTransform(), Qgis::TransformDirection::Reverse );
   }
   catch ( QgsCsException & )
   {
@@ -111,7 +112,7 @@ QgsGeometry QgsMapClippingUtils::calculateFeatureIntersectionGeometry( const QLi
   // lastly transform back to layer CRS
   try
   {
-    result.transform( context.coordinateTransform(), QgsCoordinateTransform::ReverseTransform );
+    result.transform( context.coordinateTransform(), Qgis::TransformDirection::Reverse );
   }
   catch ( QgsCsException & )
   {
@@ -149,7 +150,9 @@ QPainterPath QgsMapClippingUtils::calculatePainterClipRegion( const QList<QgsMap
       case QgsMapLayerType::MeshLayer:
       case QgsMapLayerType::RasterLayer:
       case QgsMapLayerType::PluginLayer:
+      case QgsMapLayerType::PointCloudLayer:
       case QgsMapLayerType::AnnotationLayer:
+      case QgsMapLayerType::GroupLayer:
         // for these layer types, we ignore the region's featureClip behavior.
         break;
 
@@ -214,7 +217,7 @@ QgsGeometry QgsMapClippingUtils::calculateLabelIntersectionGeometry( const QList
   // lastly transform back to layer CRS
   try
   {
-    result.transform( context.coordinateTransform(), QgsCoordinateTransform::ReverseTransform );
+    result.transform( context.coordinateTransform(), Qgis::TransformDirection::Reverse );
   }
   catch ( QgsCsException & )
   {

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """QGIS Unit tests for QgsAggregateMapping widget and model.
 
+From build dir, run: ctest -R PyQgsAggregateMappingWidget -V
+
 .. note:: This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
@@ -78,7 +80,7 @@ class TestPyQgsAggregateMappingModel(unittest.TestCase):
         self.assertEqual(model.data(model.index(0, 1), Qt.DisplayRole), 'concatenate')
         self.assertEqual(model.data(model.index(0, 2), Qt.DisplayRole), ',')
         self.assertEqual(model.data(model.index(0, 3), Qt.DisplayRole), 'source_field1')
-        self.assertEqual(model.data(model.index(0, 4), Qt.DisplayRole), QVariant.String)
+        self.assertEqual(model.data(model.index(0, 4), Qt.DisplayRole), 'text')
         self.assertEqual(model.data(model.index(0, 5), Qt.DisplayRole), 0)
         self.assertEqual(model.data(model.index(0, 6), Qt.DisplayRole), 0)
 
@@ -86,7 +88,7 @@ class TestPyQgsAggregateMappingModel(unittest.TestCase):
         self.assertEqual(model.data(model.index(1, 1), Qt.DisplayRole), 'sum')
         self.assertEqual(model.data(model.index(1, 2), Qt.DisplayRole), ',')
         self.assertEqual(model.data(model.index(1, 3), Qt.DisplayRole), 'source_field2')
-        self.assertEqual(model.data(model.index(1, 4), Qt.DisplayRole), QVariant.Int)
+        self.assertEqual(model.data(model.index(1, 4), Qt.DisplayRole), 'integer')
         self.assertEqual(model.data(model.index(1, 5), Qt.DisplayRole), 10)
         self.assertEqual(model.data(model.index(1, 6), Qt.DisplayRole), 8)
 
@@ -101,7 +103,7 @@ class TestPyQgsAggregateMappingModel(unittest.TestCase):
         self.assertEqual(model.data(model.index(2, 1), Qt.DisplayRole), 'first_value')
         self.assertEqual(model.data(model.index(2, 2), Qt.DisplayRole), ',')
         self.assertEqual(model.data(model.index(2, 3), Qt.DisplayRole), 'field3')
-        self.assertEqual(model.data(model.index(2, 4), Qt.DisplayRole), QVariant.String)
+        self.assertEqual(model.data(model.index(2, 4), Qt.DisplayRole), 'text')
         self.assertEqual(model.data(model.index(2, 5), Qt.DisplayRole), 0)
         self.assertEqual(model.data(model.index(2, 6), Qt.DisplayRole), 0)
 
@@ -189,21 +191,21 @@ class TestPyQgsAggregateMappingModel(unittest.TestCase):
         self.assertEqual(model.data(model.index(0, 1), Qt.DisplayRole), 'first_value')
         self.assertEqual(model.data(model.index(0, 2), Qt.DisplayRole), '|')
         self.assertEqual(model.data(model.index(0, 3), Qt.DisplayRole), 'source_field1')
-        self.assertEqual(model.data(model.index(0, 4), Qt.DisplayRole), QVariant.String)
+        self.assertEqual(model.data(model.index(0, 4), Qt.DisplayRole), 'text')
         self.assertEqual(model.data(model.index(0, 5), Qt.DisplayRole), 0)
         self.assertEqual(model.data(model.index(0, 6), Qt.DisplayRole), 0)
         self.assertEqual(model.data(model.index(1, 0), Qt.DisplayRole), '"source_field2"')
         self.assertEqual(model.data(model.index(1, 1), Qt.DisplayRole), 'sum')
         self.assertEqual(model.data(model.index(1, 2), Qt.DisplayRole), ',')
         self.assertEqual(model.data(model.index(1, 3), Qt.DisplayRole), 'source_field2')
-        self.assertEqual(model.data(model.index(1, 4), Qt.DisplayRole), QVariant.Int)
+        self.assertEqual(model.data(model.index(1, 4), Qt.DisplayRole), 'integer')
         self.assertEqual(model.data(model.index(1, 5), Qt.DisplayRole), 10)
         self.assertEqual(model.data(model.index(1, 6), Qt.DisplayRole), 8)
         self.assertEqual(model.data(model.index(2, 0), Qt.DisplayRole), 'randf(1,2)')
         self.assertEqual(model.data(model.index(2, 1), Qt.DisplayRole), 'mean')
         self.assertEqual(model.data(model.index(2, 2), Qt.DisplayRole), '*')
         self.assertEqual(model.data(model.index(2, 3), Qt.DisplayRole), 'output_field3')
-        self.assertEqual(model.data(model.index(2, 4), Qt.DisplayRole), QVariant.Double)
+        self.assertEqual(model.data(model.index(2, 4), Qt.DisplayRole), 'double precision')
         self.assertEqual(model.data(model.index(2, 5), Qt.DisplayRole), 4)
         self.assertEqual(model.data(model.index(2, 6), Qt.DisplayRole), 2)
 

@@ -16,13 +16,17 @@
 #ifndef QGSPROJECTSNAPPINGSETTINGS_H
 #define QGSPROJECTSNAPPINGSETTINGS_H
 
-#include <QHash>
+#include "qgis.h"
 #include "qgis_core.h"
 #include "qgstolerance.h"
+
+#include <QHash>
+#include <QIcon>
 
 class QDomDocument;
 class QgsProject;
 class QgsVectorLayer;
+
 
 
 /**
@@ -39,19 +43,8 @@ class CORE_EXPORT QgsSnappingConfig
   public:
 
     /**
-     * SnappingMode defines on which layer the snapping is performed
-     */
-    enum SnappingMode
-    {
-      ActiveLayer = 1, //!< On the active layer
-      AllLayers = 2, //!< On all vector layers
-      AdvancedConfiguration = 3, //!< On a per layer configuration basis
-    };
-    Q_ENUM( SnappingMode )
-
-    /**
      * SnappingType defines on what object the snapping is performed
-     * \deprecated since QGIS 3.12 use SnappingTypeFlag instead.
+     * \deprecated since QGIS 3.12 use Qgis::SnappingTypes instead.
      */
     enum SnappingType
     {
@@ -62,23 +55,6 @@ class CORE_EXPORT QgsSnappingConfig
     // TODO QGIS 4: remove
     // this could not be tagged with Q_DECL_DEPRECATED due to Doxygen warning
     // might be fixed in newer Doxygen (does not on 1.8.15, might be ok on 1.8.16)
-
-    /**
-     * SnappingTypeFlag defines on what object the snapping is performed
-     * \since QGIS 3.12
-     */
-    enum SnappingTypes
-    {
-      NoSnapFlag = 0, //!< No snapping
-      VertexFlag = 1, //!< On vertices
-      SegmentFlag = 2, //!< On segments
-      AreaFlag = 4, //!< On Area
-      CentroidFlag = 8, //!< On centroid
-      MiddleOfSegmentFlag = 16, //!< On Middle segment
-    };
-    Q_ENUM( SnappingTypes )
-    Q_DECLARE_FLAGS( SnappingTypeFlag, SnappingTypes )
-    Q_FLAG( SnappingTypeFlag )
 
     /**
      * ScaleDependencyMode the scale dependency mode of snapping
@@ -94,24 +70,34 @@ class CORE_EXPORT QgsSnappingConfig
 
     /**
      * Convenient method to returns the translated name of the enum type
-     * QgsSnappingConfig::SnappingTypeFlag
-     *
-     * \since QGIS 3.12
+     * Qgis::SnappingTypes.
+     * \since QGIS 3.26
      */
-    static const QString snappingTypeFlagToString( SnappingTypeFlag type )
-    {
-      switch ( type )
-      {
-        case QgsSnappingConfig::NoSnapFlag: return QObject::tr( "No Snapping" );
-        case QgsSnappingConfig::VertexFlag: return QObject::tr( "Vertex" );
-        case QgsSnappingConfig::SegmentFlag: return QObject::tr( "Segment" );
-        case QgsSnappingConfig::AreaFlag: return QObject::tr( "Area" );
-        case QgsSnappingConfig::CentroidFlag: return QObject::tr( "Centroid" );
-        case QgsSnappingConfig::MiddleOfSegmentFlag: return QObject::tr( "Middle of Segments" );
-      }
-      return QString();
-    }
+    static QString snappingTypeToString( Qgis::SnappingType type );
 
+    /**
+     * Convenient method to return the translated name of the enum type
+     * Qgis::SnappingTypes.
+     * \since QGIS 3.12
+     * \deprecated since QGIS 3.26 use Qgis::snappingTypeToString instead
+     */
+    Q_DECL_DEPRECATED static QString snappingTypeFlagToString( Qgis::SnappingType type ) SIP_DEPRECATED {return snappingTypeToString( type );}
+
+
+    /**
+     * Convenient method to return an icon corresponding to the enum type
+     * Qgis::SnappingTypes.
+     * \since QGIS 3.20
+     */
+    static QIcon snappingTypeToIcon( Qgis::SnappingType type );
+
+    /**
+     * Convenient method to return an icon corresponding to the enum type
+     * Qgis::SnappingTypes.
+     * \deprecated since QGIS 3.26 use Qgis::snappingTypeToString instead
+     * \since QGIS 3.20
+     */
+    Q_DECL_DEPRECATED static QIcon snappingTypeFlagToIcon( Qgis::SnappingType type ) SIP_DEPRECATED {return snappingTypeToIcon( type );}
 
     /**
      * \ingroup core
@@ -128,7 +114,7 @@ class CORE_EXPORT QgsSnappingConfig
          * \param type
          * \param tolerance
          * \param units
-         * \deprecated since QGIS 3.12 use the method with SnappingTypeFlag instead.
+         * \deprecated since QGIS 3.12 use the method with Qgis::SnappingTypes instead.
          */
         Q_DECL_DEPRECATED IndividualLayerSettings( bool enabled, SnappingType type, double tolerance, QgsTolerance::UnitType units ) SIP_DEPRECATED;
 
@@ -142,7 +128,7 @@ class CORE_EXPORT QgsSnappingConfig
          * \param maxScale 0.0 disable scale limit
          * \since QGIS 3.12
          */
-        IndividualLayerSettings( bool enabled, SnappingTypeFlag type, double tolerance, QgsTolerance::UnitType units, double minScale = 0.0, double maxScale = 0.0 );
+        IndividualLayerSettings( bool enabled, Qgis::SnappingTypes type, double tolerance, QgsTolerance::UnitType units, double minScale = 0.0, double maxScale = 0.0 );
 
         /**
          * Constructs an invalid setting
@@ -162,7 +148,7 @@ class CORE_EXPORT QgsSnappingConfig
          * Returns the flags type (vertices | segments | area | centroid | middle)
          * \since QGIS 3.12
          */
-        QgsSnappingConfig::SnappingTypeFlag typeFlag() const;
+        Qgis::SnappingTypes typeFlag() const;
 
         /**
          * Returns the flags type (vertices | segments | area | centroid | middle)
@@ -174,13 +160,13 @@ class CORE_EXPORT QgsSnappingConfig
          * define the type of snapping
         * \deprecated since QGIS 3.12 use setTypeFlag instead.
         */
-        Q_DECL_DEPRECATED void setType( QgsSnappingConfig::SnappingType type ) SIP_DEPRECATED;
+        Q_DECL_DEPRECATED void setType( SnappingType type ) SIP_DEPRECATED;
 
         /**
          * define the type of snapping
          * \since QGIS 3.12
          */
-        void setTypeFlag( QgsSnappingConfig::SnappingTypeFlag type );
+        void setTypeFlag( Qgis::SnappingTypes type );
 
         //! Returns the tolerance
         double tolerance() const;
@@ -223,12 +209,13 @@ class CORE_EXPORT QgsSnappingConfig
          */
         bool operator!= ( const QgsSnappingConfig::IndividualLayerSettings &other ) const;
 
+        // TODO c++20 - replace with = default
         bool operator== ( const QgsSnappingConfig::IndividualLayerSettings &other ) const;
 
       private:
         bool mValid = false;
         bool mEnabled = false;
-        SnappingTypeFlag mType = VertexFlag;
+        Qgis::SnappingTypes mType = Qgis::SnappingType::Vertex;
         double mTolerance = 0;
         QgsTolerance::UnitType mUnits = QgsTolerance::Pixels;
         double mMinimumScale = 0.0;
@@ -252,16 +239,16 @@ class CORE_EXPORT QgsSnappingConfig
     void setEnabled( bool enabled );
 
     //! Returns the mode (all layers, active layer, per layer settings)
-    SnappingMode mode() const;
+    Qgis::SnappingMode mode() const;
 
     //! define the mode of snapping
-    void setMode( SnappingMode mode );
+    void setMode( Qgis::SnappingMode mode );
 
     /**
      * Returns the flags type (vertices | segments | area | centroid | middle)
      * \since QGIS 3.12
      */
-    QgsSnappingConfig::SnappingTypeFlag typeFlag() const;
+    Qgis::SnappingTypes typeFlag() const;
 
     /**
      * Returns the flags type (vertices | segments | area | centroid | middle)
@@ -279,7 +266,7 @@ class CORE_EXPORT QgsSnappingConfig
      * define the type of snapping
      * \since QGIS 3.12
      */
-    void setTypeFlag( QgsSnappingConfig::SnappingTypeFlag type );
+    void setTypeFlag( Qgis::SnappingTypes type );
 
     //! Returns the tolerance
     double tolerance() const;
@@ -471,8 +458,8 @@ class CORE_EXPORT QgsSnappingConfig
     //! associated project for this snapping configuration
     QgsProject *mProject = nullptr;
     bool mEnabled = false;
-    SnappingMode mMode = ActiveLayer;
-    SnappingTypeFlag mType = VertexFlag;
+    Qgis::SnappingMode mMode = Qgis::SnappingMode::ActiveLayer;
+    Qgis::SnappingTypes mType = Qgis::SnappingType::Vertex;
     double mTolerance = 0.0;
     ScaleDependencyMode mScaleDependencyMode = Disabled;
     double mMinimumScale = 0.0;
@@ -484,6 +471,5 @@ class CORE_EXPORT QgsSnappingConfig
     QHash<QgsVectorLayer *, IndividualLayerSettings> mIndividualLayerSettings;
 
 };
-Q_DECLARE_OPERATORS_FOR_FLAGS( QgsSnappingConfig::SnappingTypeFlag )
 
 #endif // QGSPROJECTSNAPPINGSETTINGS_H

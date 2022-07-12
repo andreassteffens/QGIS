@@ -41,6 +41,8 @@
 #include "qgspallabeling.h"
 #include "qgsproject.h"
 #include "qgsshadoweffect.h"
+#include "qgslinesymbol.h"
+#include "qgsmarkersymbol.h"
 
 /**
  * \ingroup UnitTests
@@ -78,19 +80,19 @@ class TestQgsDiagram : public QObject
       //
       //create a non spatial layer that will be used in all tests...
       //
-      QString myDataDir( TEST_DATA_DIR ); //defined in CmakeLists.txt
+      const QString myDataDir( TEST_DATA_DIR ); //defined in CmakeLists.txt
       mTestDataDir = myDataDir + '/';
 
       //
       //create a point layer that will be used in all tests...
       //
-      QString myPointsFileName = mTestDataDir + "points.shp";
-      QFileInfo myPointFileInfo( myPointsFileName );
+      const QString myPointsFileName = mTestDataDir + "points.shp";
+      const QFileInfo myPointFileInfo( myPointsFileName );
       mPointsLayer = new QgsVectorLayer( myPointFileInfo.filePath(),
                                          myPointFileInfo.completeBaseName(), QStringLiteral( "ogr" ) );
 
       //we don't want to render the points themselves, just the diagrams
-      QgsStringMap symbolProps;
+      QVariantMap symbolProps;
       symbolProps.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,0" ) );
       symbolProps.insert( QStringLiteral( "outline_style" ), QStringLiteral( "no" ) );
       QgsMarkerSymbol *symbol = QgsMarkerSymbol::createSimple( symbolProps );
@@ -110,7 +112,7 @@ class TestQgsDiagram : public QObject
       delete mMapSettings;
       delete mPointsLayer;
 
-      QString myReportFile = QDir::tempPath() + "/qgistest.html";
+      const QString myReportFile = QDir::tempPath() + "/qgistest.html";
       QFile myFile( myReportFile );
       if ( myFile.open( QIODevice::WriteOnly | QIODevice::Append ) )
       {
@@ -126,7 +128,7 @@ class TestQgsDiagram : public QObject
     void init()
     {
       mPointsLayer->setDiagramRenderer( nullptr );
-      QgsDiagramLayerSettings dls;
+      const QgsDiagramLayerSettings dls;
       mPointsLayer->setDiagramLayerSettings( dls );
     }
 
@@ -171,6 +173,80 @@ class TestQgsDiagram : public QObject
       mPointsLayer->setDiagramLayerSettings( dls );
 
       QVERIFY( imageCheck( "piediagram" ) );
+    }
+
+    void testPieDiagramAggregate()
+    {
+      QgsDiagramSettings ds;
+      QColor col1 = Qt::red;
+      QColor col2 = Qt::yellow;
+      col1.setAlphaF( 0.5 );
+      col2.setAlphaF( 0.5 );
+      ds.categoryColors = QList<QColor>() << col1 << col2;
+      ds.categoryAttributes = QList<QString>() << QStringLiteral( "\"Pilots\"/sum(\"Pilots\")" ) << QStringLiteral( "\"Cabin Crew\"/sum(\"Cabin Crew\")" );
+      ds.minimumScale = -1;
+      ds.maximumScale = -1;
+      ds.minimumSize = 0;
+      ds.penColor = Qt::green;
+      ds.penWidth = .5;
+      ds.scaleByArea = true;
+      ds.sizeType = QgsUnitTypes::RenderMillimeters;
+      ds.size = QSizeF( 5, 5 );
+      ds.rotationOffset = 0;
+
+      QgsLinearlyInterpolatedDiagramRenderer *dr = new QgsLinearlyInterpolatedDiagramRenderer();
+      dr->setLowerValue( 0.0 );
+      dr->setLowerSize( QSizeF( 0.0, 0.0 ) );
+      dr->setUpperValue( 10 );
+      dr->setUpperSize( QSizeF( 40, 40 ) );
+      dr->setClassificationField( QStringLiteral( "Staff" ) );
+      dr->setDiagram( new QgsPieDiagram() );
+      dr->setDiagramSettings( ds );
+      mPointsLayer->setDiagramRenderer( dr );
+
+      QgsDiagramLayerSettings dls = QgsDiagramLayerSettings();
+      dls.setPlacement( QgsDiagramLayerSettings::OverPoint );
+      dls.setShowAllDiagrams( true );
+      mPointsLayer->setDiagramLayerSettings( dls );
+
+      QVERIFY( imageCheck( "piediagram_aggregate" ) );
+    }
+
+    void testDiagramWithGeometryBasedExpressionAttribute()
+    {
+      QgsDiagramSettings ds;
+      QColor col1 = Qt::red;
+      QColor col2 = Qt::yellow;
+      col1.setAlphaF( 0.5 );
+      col2.setAlphaF( 0.5 );
+      ds.categoryColors = QList<QColor>() << col1 << col2;
+      ds.categoryAttributes = QList<QString>() << QStringLiteral( "abs($x)" ) << QStringLiteral( "$y" );
+      ds.minimumScale = -1;
+      ds.maximumScale = -1;
+      ds.minimumSize = 0;
+      ds.penColor = Qt::green;
+      ds.penWidth = .5;
+      ds.scaleByArea = true;
+      ds.sizeType = QgsUnitTypes::RenderMillimeters;
+      ds.size = QSizeF( 5, 5 );
+      ds.rotationOffset = 0;
+
+      QgsLinearlyInterpolatedDiagramRenderer *dr = new QgsLinearlyInterpolatedDiagramRenderer();
+      dr->setLowerValue( 0.0 );
+      dr->setLowerSize( QSizeF( 0.0, 0.0 ) );
+      dr->setUpperValue( 10 );
+      dr->setUpperSize( QSizeF( 40, 40 ) );
+      dr->setClassificationField( QStringLiteral( "Staff" ) );
+      dr->setDiagram( new QgsPieDiagram() );
+      dr->setDiagramSettings( ds );
+      mPointsLayer->setDiagramRenderer( dr );
+
+      QgsDiagramLayerSettings dls = QgsDiagramLayerSettings();
+      dls.setPlacement( QgsDiagramLayerSettings::OverPoint );
+      dls.setShowAllDiagrams( true );
+      mPointsLayer->setDiagramLayerSettings( dls );
+
+      QVERIFY( imageCheck( "piediagram_geometry_based_expression" ) );
     }
 
     void testPaintEffect()
@@ -307,7 +383,7 @@ class TestQgsDiagram : public QObject
       ds.rotationOffset = 0;
       ds.setShowAxis( true );
 
-      QgsStringMap props;
+      QVariantMap props;
       props.insert( QStringLiteral( "width" ), QStringLiteral( "2" ) );
       props.insert( QStringLiteral( "color" ), QStringLiteral( "#ff00ff" ) );
       ds.setAxisLineSymbol( QgsLineSymbol::createSimple( props ) );
@@ -507,7 +583,7 @@ class TestQgsDiagram : public QObject
       ds.setSpacing( 3 );
       ds.setShowAxis( true );
 
-      QgsStringMap props;
+      QVariantMap props;
       props.insert( QStringLiteral( "width" ), QStringLiteral( "2" ) );
       props.insert( QStringLiteral( "color" ), QStringLiteral( "#ff00ff" ) );
       ds.setAxisLineSymbol( QgsLineSymbol::createSimple( props ) );
@@ -563,7 +639,7 @@ class TestQgsDiagram : public QObject
       ds.setSpacing( 3 );
       ds.setShowAxis( true );
 
-      QgsStringMap props;
+      QVariantMap props;
       props.insert( QStringLiteral( "width" ), QStringLiteral( "2" ) );
       props.insert( QStringLiteral( "color" ), QStringLiteral( "#ff00ff" ) );
       ds.setAxisLineSymbol( QgsLineSymbol::createSimple( props ) );
@@ -898,8 +974,8 @@ class TestQgsDiagram : public QObject
     void testDataDefinedZIndex()
     {
       QgsDiagramSettings ds;
-      QColor col1 = Qt::red;
-      QColor col2 = Qt::yellow;
+      const QColor col1 = Qt::red;
+      const QColor col2 = Qt::yellow;
       ds.categoryColors = QList<QColor>() << col1 << col2;
       ds.categoryAttributes = QList<QString>() << QStringLiteral( "\"Pilots\"" ) << QStringLiteral( "\"Cabin Crew\"" );
       ds.minimumScale = -1;
@@ -1011,7 +1087,7 @@ class TestQgsDiagram : public QObject
       const QString filename = QStringLiteral( TEST_DATA_DIR ) + "/lines.shp";
       std::unique_ptr< QgsVectorLayer> vl2( new QgsVectorLayer( filename, QStringLiteral( "lines" ), QStringLiteral( "ogr" ) ) );
 
-      QgsStringMap props;
+      QVariantMap props;
       props.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#487bb6" ) );
       props.insert( QStringLiteral( "outline_width" ), QStringLiteral( "1" ) );
       std::unique_ptr< QgsLineSymbol > symbol( QgsLineSymbol::createSimple( props ) );
@@ -1070,16 +1146,16 @@ bool TestQgsDiagram::imageCheck( const QString &testType )
   //use the QgsRenderChecker test utility class to
   //ensure the rendered output matches our control image
 
-  QgsRectangle extent( -126, 23, -70, 47 );
+  const QgsRectangle extent( -126, 23, -70, 47 );
   mMapSettings->setExtent( extent );
-  mMapSettings->setFlag( QgsMapSettings::ForceVectorOutput );
+  mMapSettings->setFlag( Qgis::MapSettingsFlag::ForceVectorOutput );
   mMapSettings->setOutputDpi( 96 );
   QgsMultiRenderChecker checker;
   checker.setControlPathPrefix( QStringLiteral( "diagrams" ) );
   checker.setControlName( "expected_" + testType );
   checker.setMapSettings( *mMapSettings );
   checker.setColorTolerance( 15 );
-  bool resultFlag = checker.runTest( testType, 200 );
+  const bool resultFlag = checker.runTest( testType, 200 );
   mReport += checker.report();
   return resultFlag;
 }

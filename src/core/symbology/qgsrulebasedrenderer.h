@@ -23,6 +23,7 @@
 #include "qgis.h"
 
 #include "qgsrenderer.h"
+#include "qgsrendercontext.h"
 
 class QgsExpression;
 
@@ -90,7 +91,10 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
      */
     struct RenderLevel
     {
-      explicit RenderLevel( int z ): zIndex( z ) {}
+      explicit RenderLevel( int z )
+        : zIndex( z )
+      {}
+
       ~RenderLevel() { qDeleteAll( jobs ); }
       int zIndex;
 
@@ -102,9 +106,9 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
         zIndex = rh.zIndex;
         qDeleteAll( jobs );
         jobs.clear();
-        for ( RenderJob *job :  qgis::as_const( rh.jobs ) )
+        for ( auto it = rh.jobs.constBegin(); it != rh.jobs.constEnd(); ++it )
         {
-          jobs << new RenderJob( *job );
+          jobs << new RenderJob( *( *it ) );
         }
         return *this;
       }
@@ -112,9 +116,9 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
       RenderLevel( const QgsRuleBasedRenderer::RenderLevel &other )
         : zIndex( other.zIndex ), jobs()
       {
-        for ( RenderJob *job : qgis::as_const( other.jobs ) )
+        for ( auto it = other.jobs.constBegin(); it != other.jobs.constEnd(); ++it )
         {
-          jobs << new RenderJob( *job );
+          jobs << new RenderJob( * ( *it ) );
         }
       }
 
@@ -306,7 +310,8 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
         //! clone this rule, return new instance
         QgsRuleBasedRenderer::Rule *clone() const SIP_FACTORY;
 
-        void toSld( QDomDocument &doc, QDomElement &element, QgsStringMap props ) const;
+        //! Saves the symbol layer as SLD
+        void toSld( QDomDocument &doc, QDomElement &element, QVariantMap props ) const;
 
         /**
          * Create a rule from the SLD provided in element and for the specified geometry type.
@@ -382,7 +387,7 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
          *
          * \returns A list of rules
          */
-        const QgsRuleBasedRenderer::RuleList &children() { return mChildren; }
+        const QgsRuleBasedRenderer::RuleList &children() const { return mChildren; }
 
         /**
          * Returns all children, grand-children, grand-grand-children, grand-gra... you get it
@@ -509,7 +514,7 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
 
     QgsRuleBasedRenderer *clone() const override SIP_FACTORY;
 
-    void toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap &props = QgsStringMap() ) const override;
+    void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const override;
 
     static QgsFeatureRenderer *createFromSld( QDomElement &element, QgsWkbTypes::GeometryType geomType ) SIP_FACTORY;
 
@@ -519,6 +524,7 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
     bool legendSymbolItemsCheckable() const override;
     bool legendSymbolItemChecked( const QString &key ) override;
     void checkLegendSymbolItem( const QString &key, bool state = true ) override;
+    QString legendKeyToExpression( const QString &key, QgsVectorLayer *layer, bool &ok ) const override;
 
     void setLegendSymbolItem( const QString &key, QgsSymbol *symbol SIP_TRANSFER ) override;
     QgsLegendSymbolList legendSymbolItems() const override;
@@ -544,11 +550,14 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
     static void refineRuleScales( QgsRuleBasedRenderer::Rule *initialRule, QList<int> scales );
 
     /**
-     * creates a QgsRuleBasedRenderer from an existing renderer.
-     * \returns a new renderer if the conversion was possible, otherwise 0.
+     * Creates a new QgsRuleBasedRenderer from an existing \a renderer.
+     *
+     * Since QGIS 3.20, the optional \a layer parameter is required for conversions of some renderer types.
+     *
+     * \returns a new renderer if the conversion was possible, otherwise NULLPTR.
      * \since QGIS 2.5
      */
-    static QgsRuleBasedRenderer *convertFromRenderer( const QgsFeatureRenderer *renderer ) SIP_FACTORY;
+    static QgsRuleBasedRenderer *convertFromRenderer( const QgsFeatureRenderer *renderer, QgsVectorLayer *layer = nullptr ) SIP_FACTORY;
 
     //! helper function to convert the size scale and rotation fields present in some other renderers to data defined symbology
     static void convertToDataDefinedSymbology( QgsSymbol *symbol, const QString &sizeScaleField, const QString &rotationField = QString() );

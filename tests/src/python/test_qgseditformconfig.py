@@ -12,17 +12,15 @@ __copyright__ = 'Copyright 2018, The QGIS Project'
 
 import qgis  # NOQA
 import os
-import filecmp
 
 from qgis.core import (QgsApplication, QgsVectorLayer, QgsReadWriteContext, QgsEditFormConfig,
                        QgsFetchedContent, QgsAttributeEditorContainer, QgsFeature, QgsSettings,
-                       Qgis, QgsNetworkContentFetcherRegistry)
-from qgis.gui import QgsGui, QgsAttributeForm
+                       Qgis, QgsNetworkContentFetcherRegistry, QgsAttributeEditorElement)
+from qgis.gui import QgsGui
 
 from qgis.testing import start_app, unittest
-from qgis.PyQt.QtXml import QDomDocument, QDomElement
+from qgis.PyQt.QtXml import QDomDocument
 from qgis.PyQt.QtGui import QColor
-from qgis.PyQt.QtWidgets import QLabel
 from utilities import unitTestDataPath
 import socketserver
 import threading
@@ -65,6 +63,8 @@ class TestQgsEditFormConfig(unittest.TestCase):
         config.setReadOnly(1, False)
         config.setLabelOnTop(0, False)
         config.setLabelOnTop(1, True)
+        config.setReuseLastValue(0, False)
+        config.setReuseLastValue(1, True)
 
         doc = QDomDocument("testdoc")
         elem = doc.createElement('edit')
@@ -78,6 +78,8 @@ class TestQgsEditFormConfig(unittest.TestCase):
         self.assertFalse(config2.readOnly(1))
         self.assertFalse(config2.labelOnTop(0))
         self.assertTrue(config2.labelOnTop(1))
+        self.assertFalse(config2.reuseLastValue(0))
+        self.assertTrue(config2.reuseLastValue(1))
 
     def testFormUi(self):
         layer = self.createLayer()
@@ -180,17 +182,34 @@ class TestQgsEditFormConfig(unittest.TestCase):
         self.assertFalse(config.labelOnTop(0))
         self.assertFalse(config.labelOnTop(1))
 
+    def testReuseLastValue(self):
+        layer = self.createLayer()
+        config = layer.editFormConfig()
+
+        # safety checks
+        config.setReuseLastValue(-1, True)
+        config.setReuseLastValue(100, True)
+
+        # real checks
+        config.setReuseLastValue(0, True)
+        config.setReuseLastValue(1, True)
+        self.assertTrue(config.reuseLastValue(0))
+        self.assertTrue(config.reuseLastValue(1))
+
+        config.setReuseLastValue(0, False)
+        config.setReuseLastValue(1, False)
+        self.assertFalse(config.reuseLastValue(0))
+        self.assertFalse(config.reuseLastValue(1))
+
     def test_backgroundColorSerialize(self):
         """Test backgroundColor serialization"""
 
         layer = self.createLayer()
-        config = layer.editFormConfig()
         color_name = '#ff00ff'
         container = QgsAttributeEditorContainer('container name', None, QColor('#ff00ff'))
         doc = QDomDocument()
         element = container.toDomElement(doc)
-        config = QgsEditFormConfig()
-        container2 = config.attributeEditorElementFromDomElement(element, None, self.layer.id())
+        container2 = QgsAttributeEditorElement.create(element, self.layer.id(), layer.fields(), QgsReadWriteContext(), None)
         self.assertEqual(container2.backgroundColor().name(), color_name)
 
 

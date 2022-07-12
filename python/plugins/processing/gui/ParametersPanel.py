@@ -198,7 +198,8 @@ class ParametersPanel(QgsProcessingParametersWidget):
         for wrapper in list(self.wrappers.values()):
             wrapper.postInitialize(list(self.wrappers.values()))
 
-    def createProcessingParameters(self):
+    def createProcessingParameters(self, flags=QgsProcessingParametersGenerator.Flags()):
+        include_default = not (flags & QgsProcessingParametersGenerator.Flag.SkipDefaultValueParameters)
         parameters = {}
         for p, v in self.extra_parameters.items():
             parameters[p] = v
@@ -225,7 +226,8 @@ class ParametersPanel(QgsProcessingParametersWidget):
                     continue
 
                 value = wrapper.parameterValue()
-                parameters[param.name()] = value
+                if param.defaultValue() != value or include_default:
+                    parameters[param.name()] = value
 
                 if not param.checkValueIsAcceptable(value):
                     raise AlgorithmDialogBase.InvalidParameterValue(param, widget)
@@ -248,7 +250,7 @@ class ParametersPanel(QgsProcessingParametersWidget):
 
                 if value and isinstance(value, QgsProcessingOutputLayerDefinition):
                     value.destinationProject = dest_project
-                if value:
+                if value and (param.defaultValue() != value or include_default):
                     parameters[param.name()] = value
 
                     context = createContext()

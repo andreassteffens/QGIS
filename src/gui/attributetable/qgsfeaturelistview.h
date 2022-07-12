@@ -23,6 +23,7 @@
 
 #include "qgsfeature.h" // For QgsFeatureIds
 #include "qgis_gui.h"
+#include <QTimer>
 
 class QgsAttributeTableFilterModel;
 class QgsFeatureListModel;
@@ -61,12 +62,20 @@ class GUI_EXPORT QgsFeatureListView : public QListView
      */
     QgsVectorLayerCache *layerCache();
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Woverloaded-virtual"
+#endif
+
     /**
      * Set the QgsFeatureListModel which is used to retrieve information
      *
      * \param featureListModel  The model to use
      */
     virtual void setModel( QgsFeatureListModel *featureListModel );
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
     /**
      * Gets the featureListModel used by this view
@@ -242,7 +251,16 @@ class GUI_EXPORT QgsFeatureListView : public QListView
     QgsIFeatureSelectionManager *mOwnedFeatureSelectionManager = nullptr;
     QgsIFeatureSelectionManager *mFeatureSelectionManager = nullptr;
     QgsFeatureListViewDelegate *mItemDelegate = nullptr;
-    bool mEditSelectionDrag = false; // Is set to true when the user initiated a left button click over an edit button and still keeps pressing //!< TODO
+
+    enum class DragMode
+    {
+      Inactive,
+      ExpandSelection,
+      MoveSelection
+    };
+
+    DragMode mDragMode = DragMode::Inactive;
+
     int mRowAnchor = 0;
     QItemSelectionModel::SelectionFlags mCtrlDragSelectionFlag;
 

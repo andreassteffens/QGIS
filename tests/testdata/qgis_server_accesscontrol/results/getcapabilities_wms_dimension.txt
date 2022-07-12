@@ -104,8 +104,8 @@ Content-Type: text/xml; charset=utf-8
   <sld:UserDefinedSymbolization SupportSLD="1" UserStyle="1" RemoteWCS="0" RemoteWFS="0" UserLayer="0" InlineFeature="0"/>
   <Layer queryable="1">
    <Name>QGIS Server WMS Dimensions</Name>
-   <Title>QGIS Server WMS Dimensions</Title>
-   <Abstract>QGIS Server WMS Dimensions</Abstract>
+   <Title>QGIS Server WMS Dimension test</Title>
+   <Abstract><![CDATA[Simple test app for WMS dimension]]></Abstract>
    <KeywordList>
     <Keyword vocabulary="ISO">infoMapAccessService</Keyword>
    </KeywordList>
@@ -164,7 +164,7 @@ Content-Type: text/xml; charset=utf-8
      <Title>default</Title>
      <LegendURL>
       <Format>image/png</Format>
-      <OnlineResource xlink:type="simple" xlink:href="https://www.qgis.org/?*****" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="https://www.qgis.org/?MAP=/root/QGIS/tests/testdata/qgis_server_accesscontrol/project_with_dimensions.qgs&amp;*****" xlink:type="simple"/>
      </LegendURL>
     </Style>
     <Dimension unitSymbol="m" name="elevation" units="meters" multipleValues="1" nearestValue="0">0, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000</Dimension>
@@ -188,7 +188,7 @@ Content-Type: text/xml; charset=utf-8
      <Title>default</Title>
      <LegendURL>
       <Format>image/png</Format>
-      <OnlineResource xlink:type="simple" xlink:href="https://www.qgis.org/?*****" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="https://www.qgis.org/?MAP=/root/QGIS/tests/testdata/qgis_server_accesscontrol/project_with_dimensions.qgs&amp;*****" xlink:type="simple"/>
      </LegendURL>
     </Style>
     <Dimension unitSymbol="m" name="range_elevation" units="meters" multipleValues="1" nearestValue="0">0, 500, 1000, 1500, 2000, 2500, 3000</Dimension>
@@ -212,7 +212,7 @@ Content-Type: text/xml; charset=utf-8
      <Title>default</Title>
      <LegendURL>
       <Format>image/png</Format>
-      <OnlineResource xlink:type="simple" xlink:href="https://www.qgis.org/?*****" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+      <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="https://www.qgis.org/?MAP=/root/QGIS/tests/testdata/qgis_server_accesscontrol/project_with_dimensions.qgs&amp;*****" xlink:type="simple"/>
      </LegendURL>
     </Style>
    </Layer>

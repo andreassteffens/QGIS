@@ -30,7 +30,7 @@
 #include "qgscoordinateutils.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectorlayerjoininfo.h"
-
+#include "qgscoordinatereferencesystemutils.h"
 
 QgsStatusBarCoordinatesWidget::QgsStatusBarCoordinatesWidget( QWidget *parent )
   : QWidget( parent )
@@ -58,7 +58,7 @@ QgsStatusBarCoordinatesWidget::QgsStatusBarCoordinatesWidget( QWidget *parent )
   mLineEdit->setAlignment( Qt::AlignCenter );
   connect( mLineEdit, &QLineEdit::returnPressed, this, &QgsStatusBarCoordinatesWidget::validateCoordinates );
 
-  QRegExp coordValidator( "[+-]?\\d+\\.?\\d*\\s*,\\s*[+-]?\\d+\\.?\\d*" );
+  const QRegExp coordValidator( "[+-]?\\d+\\.?\\d*\\s*,\\s*[+-]?\\d+\\.?\\d*" );
   mCoordsEditValidator = new QRegExpValidator( coordValidator, this );
   mLineEdit->setToolTip( tr( "Current map coordinate (longitude,latitude or east,north)" ) );
 
@@ -161,15 +161,16 @@ void QgsStatusBarCoordinatesWidget::validateCoordinates()
 
   bool xOk = false;
   bool  yOk = false;
-  double x = 0., y = 0.;
+  double first = 0;
+  double second = 0;
   QString coordText = mLineEdit->text();
   coordText.replace( QRegExp( " {2,}" ), QStringLiteral( " " ) );
 
   QStringList parts = coordText.split( ',' );
   if ( parts.size() == 2 )
   {
-    x = parts.at( 0 ).toDouble( &xOk );
-    y = parts.at( 1 ).toDouble( &yOk );
+    first = parts.at( 0 ).toDouble( &xOk );
+    second = parts.at( 1 ).toDouble( &yOk );
   }
 
   if ( !xOk || !yOk )
@@ -177,15 +178,29 @@ void QgsStatusBarCoordinatesWidget::validateCoordinates()
     parts = coordText.split( ' ' );
     if ( parts.size() == 2 )
     {
-      x = parts.at( 0 ).toDouble( &xOk );
-      y = parts.at( 1 ).toDouble( &yOk );
+      first = parts.at( 0 ).toDouble( &xOk );
+      second = parts.at( 1 ).toDouble( &yOk );
     }
   }
 
   if ( !xOk || !yOk )
     return;
 
-  mMapCanvas->setCenter( QgsPointXY( x, y ) );
+  const Qgis::CoordinateOrder projectAxisOrder = qgsEnumKeyToValue( QgsProject::instance()->readEntry( QStringLiteral( "PositionPrecision" ), QStringLiteral( "/CoordinateOrder" ) ), Qgis::CoordinateOrder::Default );
+
+  const Qgis::CoordinateOrder coordinateOrder = projectAxisOrder == Qgis::CoordinateOrder::Default ? QgsCoordinateReferenceSystemUtils::defaultCoordinateOrderForCrs( mMapCanvas->mapSettings().destinationCrs() ) : projectAxisOrder;
+  // we may need to flip coordinates depending on crs axis ordering
+  switch ( coordinateOrder )
+  {
+    case Qgis::CoordinateOrder::Default:
+    case Qgis::CoordinateOrder::XY:
+      mMapCanvas->setCenter( QgsPointXY( first, second ) );
+      break;
+    case Qgis::CoordinateOrder::YX:
+      mMapCanvas->setCenter( QgsPointXY( second, first ) );
+      break;
+  }
+
   mMapCanvas->refresh();
 }
 
@@ -197,8 +212,8 @@ void QgsStatusBarCoordinatesWidget::dizzy()
     return;
   }
   // constants should go to options so that people can customize them to their taste
-  int d = 10; // max. translational dizziness offset
-  int r = 4;  // max. rotational dizzines angle
+  const int d = 10; // max. translational dizziness offset
+  const int r = 4;  // max. rotational dizzines angle
   QRectF rect = mMapCanvas->sceneRect();
   if ( rect.x() < -d || rect.x() > d || rect.y() < -d || rect.y() > d )
     return; // do not affect panning
@@ -215,8 +230,8 @@ void QgsStatusBarCoordinatesWidget::contributors()
   {
     return;
   }
-  QString fileName = QgsApplication::pkgDataPath() + QStringLiteral( "/resources/data/contributors.json" );
-  QFileInfo fileInfo = QFileInfo( fileName );
+  const QString fileName = QgsApplication::pkgDataPath() + QStringLiteral( "/resources/data/contributors.json" );
+  const QFileInfo fileInfo = QFileInfo( fileName );
   const QgsVectorLayer::LayerOptions options { QgsProject::instance()->transformContext() };
   QgsVectorLayer *layer = new QgsVectorLayer( fileInfo.absoluteFilePath(),
       tr( "QGIS Contributors" ), QStringLiteral( "ogr" ), options );
@@ -232,8 +247,8 @@ void QgsStatusBarCoordinatesWidget::world()
   {
     return;
   }
-  QString fileName = QgsApplication::pkgDataPath() + QStringLiteral( "/resources/data/world_map.gpkg|layername=countries" );
-  QFileInfo fileInfo = QFileInfo( fileName );
+  const QString fileName = QgsApplication::pkgDataPath() + QStringLiteral( "/resources/data/world_map.gpkg|layername=countries" );
+  const QFileInfo fileInfo = QFileInfo( fileName );
   const QgsVectorLayer::LayerOptions options { QgsProject::instance()->transformContext() };
   QgsVectorLayer *layer = new QgsVectorLayer( fileInfo.absoluteFilePath(),
       tr( "World Map" ), QStringLiteral( "ogr" ), options );
@@ -247,8 +262,8 @@ void QgsStatusBarCoordinatesWidget::hackfests()
   {
     return;
   }
-  QString fileName = QgsApplication::pkgDataPath() + QStringLiteral( "/resources/data/qgis-hackfests.json" );
-  QFileInfo fileInfo = QFileInfo( fileName );
+  const QString fileName = QgsApplication::pkgDataPath() + QStringLiteral( "/resources/data/qgis-hackfests.json" );
+  const QFileInfo fileInfo = QFileInfo( fileName );
   const QgsVectorLayer::LayerOptions options { QgsProject::instance()->transformContext() };
   QgsVectorLayer *layer = new QgsVectorLayer( fileInfo.absoluteFilePath(),
       tr( "QGIS Hackfests" ), QStringLiteral( "ogr" ), options );
@@ -264,14 +279,14 @@ void QgsStatusBarCoordinatesWidget::userGroups()
   {
     return;
   }
-  QString fileName = QgsApplication::pkgDataPath() + QStringLiteral( "/resources/data/world_map.gpkg|layername=countries" );
-  QFileInfo fileInfo = QFileInfo( fileName );
+  const QString fileName = QgsApplication::pkgDataPath() + QStringLiteral( "/resources/data/world_map.gpkg|layername=countries" );
+  const QFileInfo fileInfo = QFileInfo( fileName );
   const QgsVectorLayer::LayerOptions options { QgsProject::instance()->transformContext() };
   QgsVectorLayer *layer = new QgsVectorLayer( fileInfo.absoluteFilePath(),
       tr( "User Groups" ), QStringLiteral( "ogr" ), options );
 
-  QString fileNameData = QgsApplication::pkgDataPath() + QStringLiteral( "/resources/data/user_groups_data.json" );
-  QFileInfo fileInfoData = QFileInfo( fileNameData );
+  const QString fileNameData = QgsApplication::pkgDataPath() + QStringLiteral( "/resources/data/user_groups_data.json" );
+  const QFileInfo fileInfoData = QFileInfo( fileNameData );
   QgsVectorLayer *layerData = new QgsVectorLayer( fileInfoData.absoluteFilePath(),
       tr( "user_groups_data" ), QStringLiteral( "ogr" ), options );
 
@@ -289,7 +304,7 @@ void QgsStatusBarCoordinatesWidget::userGroups()
   layer->addJoin( joinInfo );
 
   // Load QML for polygon symbology and maptips
-  QString fileNameStyle = QgsApplication::pkgDataPath() + QStringLiteral( "/resources/data/user_groups.qml" );
+  const QString fileNameStyle = QgsApplication::pkgDataPath() + QStringLiteral( "/resources/data/user_groups.qml" );
   bool styleFlag = false;
   layer->loadNamedStyle( fileNameStyle, styleFlag, true );
 }
@@ -345,10 +360,9 @@ void QgsStatusBarCoordinatesWidget::showExtent()
     return;
   }
 
-  // update the statusbar with the current extents.
-  QgsRectangle myExtents = mMapCanvas->extent();
   mLabel->setText( tr( "Extents" ) );
-  mLineEdit->setText( myExtents.toString( true ) );
+  mLineEdit->setText( QgsCoordinateUtils::formatExtentForProject( QgsProject::instance(), mMapCanvas->extent(), mMapCanvas->mapSettings().destinationCrs(),
+                      mMousePrecisionDecimalPlaces ) );
 
   ensureCoordinatesVisible();
 }
@@ -357,7 +371,7 @@ void QgsStatusBarCoordinatesWidget::ensureCoordinatesVisible()
 {
 
   //ensure the label is big (and small) enough
-  int width = std::max( mLineEdit->fontMetrics().boundingRect( mLineEdit->text() ).width() + 16, mMinimumWidth );
+  const int width = std::max( mLineEdit->fontMetrics().boundingRect( mLineEdit->text() ).width() + 16, mMinimumWidth );
   if ( mLineEdit->minimumWidth() < width || ( mLineEdit->minimumWidth() - width ) > mTwoCharSize )
   {
     mLineEdit->setMinimumWidth( width );

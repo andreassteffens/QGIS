@@ -27,6 +27,7 @@
 
 #include <QSharedDataPointer>
 
+class QMimeData;
 class QgsTextSettingsPrivate;
 
 /**
@@ -188,11 +189,12 @@ class CORE_EXPORT QgsTextFormat
      * QgsTextRenderer::FONT_WORKAROUND_SCALE and then manually scale painter devices or calculations
      * based on the resultant font metrics. Failure to do so will result in poor quality text rendering
      * at small font sizes.
+     * \param isZeroSize will be set to true if the font is scaled down to a near 0 size, and nothing should be rendered. Not available in Python bindings.
      * \returns font with scaled size
      * \see font()
      * \see size()
      */
-    QFont scaledFont( const QgsRenderContext &context, double scaleFactor = 1.0 ) const;
+    QFont scaledFont( const QgsRenderContext &context, double scaleFactor = 1.0, bool *isZeroSize SIP_PYARGREMOVE = nullptr ) const;
 
     /**
      * Sets the font used for rendering text. Note that the size of the font
@@ -219,6 +221,84 @@ class CORE_EXPORT QgsTextFormat
      * \see setFont()
      */
     void setNamedStyle( const QString &style );
+
+    /**
+     * Returns TRUE if the format is set to force a bold style.
+     *
+     * \warning Unlike setting a font's style via setNamedStyle(), this will ensure that a font is
+     * always rendered in bold regardless of whether the font family actually has a bold variant. A
+     * "faux bold" effect will be emulated, which may result in poor quality font rendering. For this
+     * reason it is greatly preferred to call setNamedStyle() instead.
+     *
+     * \see setForcedBold()
+     * \since QGIS 3.26
+     */
+    bool forcedBold() const;
+
+    /**
+     * Sets whether the format is set to force a bold style.
+     *
+     * \warning Unlike setting a font's style via setNamedStyle(), this will ensure that a font is
+     * always rendered in bold regardless of whether the font family actually has a bold variant. A
+     * "faux bold" effect will be emulated, which may result in poor quality font rendering. For this
+     * reason it is greatly preferred to call setNamedStyle() instead.
+     *
+     * \see forcedBold()
+     * \since QGIS 3.26
+     */
+    void setForcedBold( bool forced );
+
+    /**
+     * Returns TRUE if the format is set to force an italic style.
+     *
+     * \warning Unlike setting a font's style via setNamedStyle(), this will ensure that a font is
+     * always rendered in italic regardless of whether the font family actually has an italic variant. A
+     * "faux italic" slanted text effect will be emulated, which may result in poor quality font rendering. For this
+     * reason it is greatly preferred to call setNamedStyle() instead.
+     *
+     * \see setForcedItalic()
+     * \since QGIS 3.26
+     */
+    bool forcedItalic() const;
+
+    /**
+     * Sets whether the format is set to force an italic style.
+     *
+     * \warning Unlike setting a font's style via setNamedStyle(), this will ensure that a font is
+     * always rendered in italic regardless of whether the font family actually has an italic variant. A
+     * "faux italic" slanted text effect will be emulated, which may result in poor quality font rendering. For this
+     * reason it is greatly preferred to call setNamedStyle() instead.
+     *
+     * \see forcedItalic()
+     * \since QGIS 3.26
+     */
+    void setForcedItalic( bool forced );
+
+    /**
+     * Returns the list of font families to use when restoring the text format, in order of precedence.
+     *
+     * \warning The list of families returned by this method is ONLY used when restoring the text format
+     * from serialized versions, and will not affect the current font() familily used by the format.
+     *
+     * \see setFamilies()
+     * \since QGIS 3.20
+     */
+    QStringList families() const;
+
+    /**
+     * Sets a list of font \a families to use for the text format, in order of precedence.
+     *
+     * When restoring serialized versions of the text format then the first matching font family
+     * from this list will be used for the text format. This provides a way to specify a list of possible
+     * font families which are used as fallbacks if a family isn't available on a particular QGIS install (CSS style).
+     *
+     * \warning The list of families set by calling this method is ONLY used when restoring the text format
+     * from serialized versions, and will not affect the current font() familily used by the format.
+     *
+     * \see families()
+     * \since QGIS 3.20
+     */
+    void setFamilies( const QStringList &families );
 
     /**
      * Returns the size for rendered text. Units are retrieved using sizeUnit().
@@ -297,6 +377,34 @@ class CORE_EXPORT QgsTextFormat
     void setOpacity( double opacity );
 
     /**
+     * Returns the text's stretch factor.
+     *
+     * The stretch factor matches a condensed or expanded version of the font or applies a stretch
+     * transform that changes the width of all characters in the font by factor percent.
+     *
+     * For example, a factor of 150 results in all characters in the font being 1.5 times
+     * (ie. 150%) wider. The minimum stretch factor is 1, and the maximum stretch factor is 4000.
+     *
+     * \see setStretchFactor()
+     * \since QGIS 3.24
+     */
+    int stretchFactor() const;
+
+    /**
+     * Sets the text's stretch \a factor.
+     *
+     * The stretch factor matches a condensed or expanded version of the font or applies a stretch
+     * transform that changes the width of all characters in the font by factor percent.
+     *
+     * For example, setting \a factor to 150 results in all characters in the font being 1.5 times
+     * (ie. 150%) wider. The minimum stretch factor is 1, and the maximum stretch factor is 4000.
+     *
+     * \see stretchFactor()
+     * \since QGIS 3.24
+     */
+    void setStretchFactor( int factor );
+
+    /**
      * Returns the blending mode used for drawing the text.
      * \see setBlendMode()
      */
@@ -346,7 +454,7 @@ class CORE_EXPORT QgsTextFormat
      * \see setCapitalization()
      * \since QGIS 3.16
      */
-    QgsStringUtils::Capitalization capitalization() const;
+    Qgis::Capitalization capitalization() const;
 
     /**
      * Sets the text \a capitalization style.
@@ -354,7 +462,7 @@ class CORE_EXPORT QgsTextFormat
      * \see capitalization()
      * \since QGIS 3.16
      */
-    void setCapitalization( QgsStringUtils::Capitalization capitalization );
+    void setCapitalization( Qgis::Capitalization capitalization );
 
     /**
      * Returns TRUE if text should be treated as a HTML document and HTML tags should be used for formatting

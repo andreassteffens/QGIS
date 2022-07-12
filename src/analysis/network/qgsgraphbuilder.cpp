@@ -25,8 +25,8 @@
 
 QgsGraphBuilder::QgsGraphBuilder( const QgsCoordinateReferenceSystem &crs, bool otfEnabled, double topologyTolerance, const QString &ellipsoidID )
   : QgsGraphBuilderInterface( crs, otfEnabled, topologyTolerance, ellipsoidID )
+  , mGraph( std::make_unique< QgsGraph >() )
 {
-  mGraph = qgis::make_unique< QgsGraph >();
 }
 
 QgsGraphBuilder::~QgsGraphBuilder() = default;
@@ -51,7 +51,7 @@ QgsGraph *QgsGraphBuilder::takeGraph()
   QgsGraph *res = mGraph.release();
 
   // create a new graph in case this builder is used for additional work
-  mGraph = qgis::make_unique< QgsGraph >();
+  mGraph = std::make_unique< QgsGraph >();
 
   return res;
 }

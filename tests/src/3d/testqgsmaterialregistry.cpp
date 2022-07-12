@@ -36,6 +36,7 @@ class DummyMaterialSettings : public QgsAbstractMaterialSettings
     void addParametersToEffect( Qt3DRender::QEffect * ) const override {}
     Qt3DRender::QMaterial *toMaterial( QgsMaterialSettingsRenderingTechnique, const QgsMaterialContext & ) const override { return nullptr; }
     QMap<QString, QString> toExportParameters() const override { return QMap<QString, QString>(); }
+    QByteArray dataDefinedVertexColorsAsByte( const QgsExpressionContext & ) const override {return QByteArray();}
 };
 
 class TestQgsMaterialRegistry : public QObject
@@ -87,8 +88,7 @@ void TestQgsMaterialRegistry::metadata()
   QCOMPARE( metadata.visibleName(), QString( "display name" ) );
 
   //test creating material settings from metadata
-  QVariantMap map;
-  std::unique_ptr< QgsAbstractMaterialSettings > material( metadata.create() );
+  const std::unique_ptr< QgsAbstractMaterialSettings > material( metadata.create() );
   QVERIFY( material );
   DummyMaterialSettings *dummyMaterial = dynamic_cast<DummyMaterialSettings *>( material.get() );
   QVERIFY( dummyMaterial );
@@ -115,7 +115,7 @@ void TestQgsMaterialRegistry::instanceHasDefaultMaterials()
 void TestQgsMaterialRegistry::addMaterialSettings()
 {
   QgsMaterialRegistry *registry = Qgs3D::materialRegistry();
-  int previousCount = registry->materialSettingsTypes().length();
+  const int previousCount = registry->materialSettingsTypes().length();
 
   registry->addMaterialSettingsType( new QgsMaterialSettingsMetadata( QStringLiteral( "Dummy" ), QStringLiteral( "Dummy material" ),
                                      DummyMaterialSettings::create, DummyMaterialSettings::supportsTechnique ) );
@@ -135,7 +135,7 @@ void TestQgsMaterialRegistry::addMaterialSettings()
 void TestQgsMaterialRegistry::fetchTypes()
 {
   QgsMaterialRegistry *registry = Qgs3D::materialRegistry();
-  QStringList types = registry->materialSettingsTypes();
+  const QStringList types = registry->materialSettingsTypes();
 
   QVERIFY( types.contains( "Dummy" ) );
 

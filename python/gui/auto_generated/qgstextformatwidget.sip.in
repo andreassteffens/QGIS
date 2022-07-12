@@ -14,16 +14,16 @@
 
 class QgsTextFormatWidget : QWidget, QgsExpressionContextGenerator, protected Ui::QgsTextFormatWidgetBase
 {
-%Docstring
+%Docstring(signature="appended")
 A widget for customizing text formatting settings.
 
-QgsTextFormatWidget provides a widget for controlling the appearance of text rendered
-using QgsTextRenderer. The widget includes all settings contained within
-a QgsTextFormat, including shadow, background and buffer.
+:py:class:`QgsTextFormatWidget` provides a widget for controlling the appearance of text rendered
+using :py:class:`QgsTextRenderer`. The widget includes all settings contained within
+a :py:class:`QgsTextFormat`, including shadow, background and buffer.
 
 Additionally, the widget can handle labeling settings due to the large overlap between
 the text renderer settings and the labeling settings. This mode is possible by
-subclassing QgsTextFormatWidget and calling the protected constructor with a mode
+subclassing :py:class:`QgsTextFormatWidget` and calling the protected constructor with a mode
 of Labeling.
 
 .. versionadded:: 3.0
@@ -145,11 +145,12 @@ Sets the background color for the text preview widget.
 :param color: background color
 %End
 
-    void enableDataDefinedAlignment( bool enable );
+ void enableDataDefinedAlignment( bool enable ) /Deprecated/;
 %Docstring
-Controls whether data defined alignment buttons are enabled.
+Update the enabled state of the data defined alignment buttons.
 
-:param enable: set to ``True`` to enable alignment controls
+.. deprecated::
+   QGIS 3.24
 %End
 
     virtual QgsExpressionContext createExpressionContext() const;
@@ -182,7 +183,7 @@ Updates line placement options to reflect current state of widget
 Updates label placement options to reflect current state of widget
 %End
 
-    virtual void setFormatFromStyle( const QString &name, QgsStyle::StyleEntity type );
+    virtual void setFormatFromStyle( const QString &name, QgsStyle::StyleEntity type, const QString &stylePath );
 %Docstring
 Sets the current text settings from a style entry.
 
@@ -208,10 +209,10 @@ Updates the text preview.
 
 class QgsTextFormatDialog : QDialog
 {
-%Docstring
+%Docstring(signature="appended")
 A simple dialog for customizing text formatting settings.
 
-QgsTextFormatDialog provides a dialog for controlling the appearance of text rendered
+:py:class:`QgsTextFormatDialog` provides a dialog for controlling the appearance of text rendered
 using :py:class:`QgsTextRenderer`. The dialog includes all settings contained within
 a :py:class:`QgsTextFormat`, including shadow, background and buffer.
 
@@ -258,10 +259,10 @@ Returns a reference to the dialog's button box.
 
 class QgsTextFormatPanelWidget : QgsPanelWidgetWrapper
 {
-%Docstring
+%Docstring(signature="appended")
 A panel widget for customizing text formatting settings.
 
-QgsTextFormatPanelWidget provides a panel widget for controlling the appearance of text rendered
+:py:class:`QgsTextFormatPanelWidget` provides a panel widget for controlling the appearance of text rendered
 using :py:class:`QgsTextRenderer`. The dialog includes all settings contained within
 a :py:class:`QgsTextFormat`, including shadow, background and buffer.
 

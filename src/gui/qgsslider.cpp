@@ -37,7 +37,7 @@ void QgsSlider::paintEvent( QPaintEvent *event )
 {
   QSlider::paintEvent( event );
   QPainter painter( this );
-  QRect rect = geometry();
+  const QRect rect = geometry();
   painter.setPen( QPen( palette().color( QPalette::WindowText ) ) );
   painter.drawText( QRectF( 0, rect.height() * 0.5, rect.width(), rect.height() ),
                     Qt::AlignHCenter, variantValue().toString(), nullptr );
@@ -86,16 +86,12 @@ void QgsSlider::update()
     QSlider::setSingleStep( mStep.toInt() );
     QSlider::setValue( mValue.toInt() );
   }
-
-  if ( mMin.type() == QVariant::Double &&
-       mMax.type() == QVariant::Double &&
-       mStep.type() == QVariant::Double &&
-       mValue.type() == QVariant::Double )
+  else
   {
     if ( minimum() != 0 )
       QSlider::setMinimum( 0 );
 
-    int max = std::ceil( ( mMax.toDouble() - mMin.toDouble() ) / mStep.toDouble() );
+    const int max = std::ceil( ( mMax.toDouble() - mMin.toDouble() ) / mStep.toDouble() );
     if ( maximum() != max )
       QSlider::setMaximum( max );
 
@@ -126,10 +122,7 @@ void QgsSlider::onValueChanged( int value )
   {
     mValue = value;
   }
-  else if ( mMin.type() == QVariant::Double &&
-            mMax.type() == QVariant::Double &&
-            mStep.type() == QVariant::Double &&
-            mValue.type() == QVariant::Double )
+  else
   {
     mValue = QVariant( mMin.toDouble() + value * mStep.toDouble() );
   }

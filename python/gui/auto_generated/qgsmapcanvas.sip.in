@@ -21,9 +21,10 @@
 
 
 
+
 class QgsMapCanvas : QGraphicsView, QgsExpressionContextGenerator
 {
-%Docstring
+%Docstring(signature="appended")
 Map canvas is a class for displaying all GIS data types on a canvas.
 %End
 
@@ -77,8 +78,9 @@ Gets access to properties used for map rendering
 
     void setTemporalController( QgsTemporalController *controller );
 %Docstring
-Sets the temporal controller, tQgsMapCanvasInteractionBlockerhis controller will be used to
-update the canvas temporal range.
+Sets the temporal ``controller`` for this canvas.
+
+The controller will be used to update the canvas' temporal range.
 
 .. versionadded:: 3.14
 %End
@@ -93,23 +95,37 @@ update the canvas temporal range.
 
     void setDestinationCrs( const QgsCoordinateReferenceSystem &crs );
 %Docstring
-sets destination coordinate reference system
+Sets destination coordinate reference system
 
 .. versionadded:: 2.4
 %End
 
-    void setMapSettingsFlags( QgsMapSettings::Flags flags );
+    void setMapSettingsFlags( Qgis::MapSettingsFlags flags );
 %Docstring
 Resets the ``flags`` for the canvas' map settings.
 
 .. versionadded:: 3.0
 %End
 
-    const QgsLabelingResults *labelingResults() const;
+    const QgsLabelingResults *labelingResults( bool allowOutdatedResults = true ) const;
 %Docstring
-Gets access to the labeling results (may be ``None``)
+Gets access to the labeling results (may be ``None``).
+
+Since QGIS 3.20, if the ``allowOutdatedResults`` flag is ``False`` then outdated labeling results (e.g.
+as a result of an ongoing canvas render) will not be returned, and instead ``None`` will be returned.
 
 .. versionadded:: 2.4
+%End
+
+    const QgsRenderedItemResults *renderedItemResults( bool allowOutdatedResults = true ) const;
+%Docstring
+Gets access to the rendered item results (may be ``None``), which includes the results of rendering
+annotation items in the canvas map.
+
+If the ``allowOutdatedResults`` flag is ``False`` then outdated rendered item results (e.g.
+as a result of an ongoing canvas render) will not be returned, and instead ``None`` will be returned.
+
+.. versionadded:: 3.22
 %End
 
     void setCachingEnabled( bool enabled );
@@ -188,9 +204,27 @@ Returns the mapUnitsPerPixel (map units per pixel) for the canvas
 %Docstring
 Returns the current zoom extent of the map canvas
 %End
+
     QgsRectangle fullExtent() const;
 %Docstring
-Returns the combined extent for all layers on the map canvas
+Returns the combined extent for all layers on the map canvas.
+
+This method returns the combined extent for all layers which are currently visible in the map canvas.
+The returned extent will be in the same CRS as the map canvas.
+
+.. seealso:: :py:func:`projectExtent`
+%End
+
+    QgsRectangle projectExtent() const;
+%Docstring
+Returns the associated project's full extent, in the canvas' CRS.
+
+This method returns the full extent for the project associated with this canvas.
+Unlike :py:func:`~QgsMapCanvas.fullExtent`, this method does NOT consider which layers are actually visible in the map canvas.
+
+.. seealso:: :py:func:`fullExtent`
+
+.. versionadded:: 3.20
 %End
 
     void setExtent( const QgsRectangle &r, bool magnified = false );
@@ -247,7 +281,19 @@ Gets map center, in geographical coordinates
 
     void zoomToFullExtent();
 %Docstring
-Zoom to the full extent of all layers
+Zoom to the full extent of all layers currently visible in the canvas.
+
+.. seealso:: :py:func:`zoomToProjectExtent`
+%End
+
+    void zoomToProjectExtent();
+%Docstring
+Zoom to the full extent the project associated with this canvas.
+
+This method zooms to the full extent for the project associated with this canvas.
+Unlike :py:func:`~QgsMapCanvas.zoomToFullExtent`, this method does NOT consider which layers are actually visible in the map canvas.
+
+.. versionadded:: 3.20
 %End
 
     void zoomToPreviousExtent();
@@ -286,6 +332,15 @@ Centers canvas extent to feature ids
     void panToSelected( QgsVectorLayer *layer = 0 );
 %Docstring
 Pan to the selected features of current (vector) layer keeping same extent.
+%End
+
+    void panToSelected( const QList<QgsMapLayer *> &layers );
+%Docstring
+Pan to the combined extent of the selected features of all provided (vector) layers.
+
+:param layers: A list of layers
+
+.. versionadded:: 3.18
 %End
 
     void flashFeatureIds( QgsVectorLayer *layer, const QgsFeatureIds &ids,
@@ -335,7 +390,7 @@ Unset the current map tool or last non zoom tool
 
 This is called from destructor of map tools to make sure
 that this map tool won't be used any more.
-You don't have to call it manually, QgsMapTool takes care of it.
+You don't have to call it manually, :py:class:`QgsMapTool` takes care of it.
 %End
 
     QgsMapTool *mapTool();
@@ -391,14 +446,29 @@ Emits signal scaleChanged to update scale in main window
 Returns the map layer at position index in the layer stack
 %End
 
-    int layerCount() const;
+    QgsMapLayer *layer( const QString &id );
 %Docstring
-Returns number of layers on the map
+Returns the map layer with the matching ID, or ``None`` if no layers could be found.
+
+This method searches both layers associated with the map canvas (see :py:func:`~QgsMapCanvas.layers`)
+and layers from the :py:class:`QgsProject` associated with the canvas
+(which is current the :py:func:`QgsProject.instance()`). It can be used to resolve layer IDs to
+layers which may be visible in the canvas, but not associated with a :py:class:`QgsProject`.
+
+.. versionadded:: 3.22
 %End
 
-    QList<QgsMapLayer *> layers() const;
+    int layerCount() const;
+%Docstring
+Returns number of layers on the map.
+%End
+
+    QList<QgsMapLayer *> layers( bool expandGroupLayers = false ) const;
 %Docstring
 Returns the list of layers shown within the map canvas.
+
+Since QGIS 3.24, if the ``expandGroupLayers`` option is ``True`` then group layers will be converted to
+all their child layers.
 
 .. seealso:: :py:func:`setLayers`
 %End
@@ -477,7 +547,7 @@ a theme present in the associated project's :py:class:`QgsMapThemeCollection`.
 When the canvas is associated to a map theme, it will automatically follow
 the layer selection and layer styles from that theme. Calls to :py:func:`~QgsMapCanvas.setLayers`
 or :py:func:`~QgsMapCanvas.setLayerStyleOverrides` will have no effect, and canvases associated
-with a QgsLayerTreeMapCanvasBridge will no longer synchronize their
+with a :py:class:`QgsLayerTreeMapCanvasBridge` will no longer synchronize their
 state with the layer tree. In these cases it is necessary to call
 :py:func:`~QgsMapCanvas.setTheme` with an empty string to clear the theme association and
 allow map updates with :py:func:`~QgsMapCanvas.setLayers`, :py:func:`~QgsMapCanvas.setLayerStyleOverrides`, or via
@@ -958,6 +1028,15 @@ Zoom to the extent of the selected features of provided (vector) layer.
 :param layer: optionally specify different than current layer
 %End
 
+    void zoomToSelected( const QList<QgsMapLayer *> &layers );
+%Docstring
+Zoom to the combined extent of the selected features of all provided (vector) layers.
+
+:param layers: A list of layers
+
+.. versionadded:: 3.18
+%End
+
     void setZoomResolutions( const QList<double> &resolutions );
 %Docstring
 Set a list of resolutions (map units per pixel) to which to "snap to" when zooming the map
@@ -965,6 +1044,16 @@ Set a list of resolutions (map units per pixel) to which to "snap to" when zoomi
 :param resolutions: A list of resolutions
 
 .. versionadded:: 3.12
+%End
+
+    double zoomInFactor() const;
+%Docstring
+Returns the zoom in factor.
+%End
+
+    double zoomOutFactor() const;
+%Docstring
+Returns the zoom in factor.
 %End
 
     const QList<double> &zoomResolutions() const;
@@ -975,6 +1064,28 @@ Set a list of resolutions (map units per pixel) to which to "snap to" when zoomi
 .. seealso:: :py:func:`setZoomResolutions`
 
 .. versionadded:: 3.12
+%End
+
+    QgsDoubleRange zRange() const;
+%Docstring
+Returns the range of z-values which will be visible in the map.
+
+.. seealso:: :py:func:`setZRange`
+
+.. seealso:: :py:func:`zRangeChanged`
+
+.. versionadded:: 3.18
+%End
+
+    void setZRange( const QgsDoubleRange &range );
+%Docstring
+Sets the ``range`` of z-values which will be visible in the map.
+
+.. seealso:: :py:func:`zRange`
+
+.. seealso:: :py:func:`zRangeChanged`
+
+.. versionadded:: 3.18
 %End
 
   signals:
@@ -1001,7 +1112,7 @@ Emitted when the scale locked state of the map changes
 
 .. seealso:: :py:func:`setScaleLocked`
 
-.. versionadded:: 3.16
+.. versionadded:: 3.18
 %End
 
 
@@ -1052,6 +1163,13 @@ Emitted when canvas finished a refresh request.
     void renderStarting();
 %Docstring
 Emitted when the canvas is about to be rendered.
+%End
+
+    void mapRefreshCanceled();
+%Docstring
+Emitted when the pending map refresh has been canceled
+
+.. versionadded:: 3.18
 %End
 
     void layersChanged();
@@ -1129,7 +1247,7 @@ Emitted when the canvas has been assigned a different map theme.
 .. versionadded:: 3.0
 %End
 
-    void messageEmitted( const QString &title, const QString &message, Qgis::MessageLevel = Qgis::Info );
+    void messageEmitted( const QString &title, const QString &message, Qgis::MessageLevel = Qgis::MessageLevel::Info );
 %Docstring
 emit a message (usually to be displayed in a message bar)
 %End
@@ -1169,6 +1287,16 @@ Emitted when the map canvas temporal range changes.
 .. versionadded:: 3.14
 %End
 
+    void zRangeChanged();
+%Docstring
+Emitted when the map canvas z (elevation) range changes.
+
+.. seealso:: :py:func:`zRange`
+
+.. seealso:: :py:func:`setZRange`
+
+.. versionadded:: 3.18
+%End
 
     void contextMenuAboutToShow( QMenu *menu, QgsMapMouseEvent *event );
 %Docstring
@@ -1177,7 +1305,6 @@ Can be used to extend the context menu.
 
 .. versionadded:: 3.16
 %End
-
 
   protected:
 
@@ -1203,6 +1330,8 @@ Can be used to extend the context menu.
 
     virtual void dragEnterEvent( QDragEnterEvent *e );
 
+    virtual bool viewportEvent( QEvent *event );
+
 
     void moveCanvasContents( bool reset = false );
 %Docstring
@@ -1211,6 +1340,8 @@ called when panning is in action, reset indicates end of panning
 
     virtual void dropEvent( QDropEvent *event );
 
+
+    virtual void showEvent( QShowEvent *event );
 
 
 

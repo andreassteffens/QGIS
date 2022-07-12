@@ -9,9 +9,10 @@
 
 
 
+
 class QgsVectorFieldSymbolLayer: QgsMarkerSymbolLayer
 {
-%Docstring
+%Docstring(signature="appended")
 A symbol layer class for displaying displacement arrows based on point layer attributes.
 %End
 
@@ -39,8 +40,12 @@ A symbol layer class for displaying displacement arrows based on point layer att
     };
 
     QgsVectorFieldSymbolLayer();
+    ~QgsVectorFieldSymbolLayer();
 
-    static QgsSymbolLayer *create( const QgsStringMap &properties = QgsStringMap() );
+    static QgsSymbolLayer *create( const QVariantMap &properties = QVariantMap() );
+%Docstring
+Creates the symbol layer
+%End
     static QgsSymbolLayer *createFromSld( QDomElement &element );
 
     virtual QString layerType() const;
@@ -48,6 +53,7 @@ A symbol layer class for displaying displacement arrows based on point layer att
     virtual bool setSubSymbol( QgsSymbol *symbol /Transfer/ );
 
     virtual QgsSymbol *subSymbol();
+
 
     virtual void setColor( const QColor &color );
 
@@ -63,12 +69,14 @@ A symbol layer class for displaying displacement arrows based on point layer att
 
     virtual QgsVectorFieldSymbolLayer *clone() const /Factory/;
 
-    virtual QgsStringMap properties() const;
+    virtual QVariantMap properties() const;
+
+    virtual bool usesMapUnits() const;
 
     virtual bool usesMapUnits() const;
 
 
-    virtual void toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap &props ) const;
+    virtual void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props ) const;
 
 
     virtual void drawPreviewIcon( QgsSymbolRenderContext &context, QSize size );

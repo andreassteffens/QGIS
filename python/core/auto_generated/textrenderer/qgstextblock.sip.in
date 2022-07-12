@@ -10,9 +10,9 @@
 
 class QgsTextBlock
 {
-%Docstring
+%Docstring(signature="appended")
 
-Represents a block of text consisting of one or more QgsTextFragment objects.
+Represents a block of text consisting of one or more :py:class:`QgsTextFragment` objects.
 
 .. warning::
 
@@ -64,7 +64,7 @@ Returns ``True`` if the block is empty.
 Returns the number of fragments in the block.
 %End
 
-    void applyCapitalization( QgsStringUtils::Capitalization capitalization );
+    void applyCapitalization( Qgis::Capitalization capitalization );
 %Docstring
 Applies a ``capitalization`` style to the block's text.
 
@@ -76,9 +76,12 @@ Applies a ``capitalization`` style to the block's text.
     sipRes = sipCpp->size();
 %End
 
+
     const QgsTextFragment &at( int index ) const /Factory/;
 %Docstring
 Returns the fragment at the specified ``index``.
+
+:raises KeyError: if no fragment exists at the specified index.
 %End
 %MethodCode
     if ( a0 < 0 || a0 >= sipCpp->size() )

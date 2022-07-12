@@ -28,6 +28,7 @@
 #include <QStringList>
 #include <QSize>
 #include <QAbstractItemModel>
+#include <QDebug>
 
 /*!
     Connect to all of the models signals.  Whenever anything happens
@@ -124,7 +125,6 @@ void ModelTest::nonDestructiveBasicTest()
   model->setData( QModelIndex(), variant, -1 );
   model->setHeaderData( -1, Qt::Horizontal, QVariant() );
   model->setHeaderData( 999999, Qt::Horizontal, QVariant() );
-  QMap<int, QVariant> roles;
   model->sibling( 0, 0, QModelIndex() );
   model->span( QModelIndex() );
   model->supportedDropActions();
@@ -493,23 +493,24 @@ void ModelTest::rowsAboutToBeInserted( const QModelIndex &parent, int start, int
 void ModelTest::rowsInserted( const QModelIndex &parent, int start, int end )
 {
   Changing c = insert.pop();
-  Q_ASSERT( c.parent == parent );
-  Q_ASSERT( c.oldSize + ( end - start + 1 ) == model->rowCount( parent ) );
-  Q_ASSERT( c.last == model->data( model->index( start - 1, 0, c.parent ) ) );
-  /*
-  if (c.next != model->data(model->index(end + 1, 0, c.parent))) {
-      qDebug() << start << end;
-      for (int i=0; i < model->rowCount(); ++i)
-          qDebug() << model->index(i, 0).data().toString();
-      qDebug() << c.next << model->data(model->index(end + 1, 0, c.parent));
+  //*
+  if ( c.next != model->data( model->index( end + 1, 0, c.parent ) ) )
+  {
+    qDebug() << start << end;
+    for ( int i = 0; i < model->rowCount(); ++i )
+      qDebug() << model->index( i, 0 ).data().toString();
+    qDebug() << c.next << model->data( model->index( end + 1, 0, c.parent ) );
   }
-  */
+  //*/
+  Q_ASSERT( c.parent == parent );
+  Q_ASSERT_X( c.oldSize + ( end - start + 1 ) == model->rowCount( parent ), "Rows inserted", QStringLiteral( "%1 != %2" ).arg( c.oldSize + ( end - start + 1 ) ).arg( model->rowCount( parent ) ).toStdString().c_str() );
+  Q_ASSERT( c.last == model->data( model->index( start - 1, 0, c.parent ) ) );
   Q_ASSERT( c.next == model->data( model->index( end + 1, 0, c.parent ) ) );
 }
 
 void ModelTest::layoutAboutToBeChanged()
 {
-  for ( int i = 0; i < qBound( 0, model->rowCount(), 100 ); ++i )
+  for ( int i = 0; i < std::clamp( model->rowCount(), 0, 100 ); ++i )
     changing.append( QPersistentModelIndex( model->index( i, 0 ) ) );
 }
 
@@ -547,7 +548,7 @@ void ModelTest::rowsRemoved( const QModelIndex &parent, int start, int end )
 {
   Changing c = remove.pop();
   Q_ASSERT( c.parent == parent );
-  Q_ASSERT( c.oldSize - ( end - start + 1 ) == model->rowCount( parent ) );
+  Q_ASSERT_X( c.oldSize - ( end - start + 1 ) == model->rowCount( parent ), "Rows removed", QStringLiteral( "%1 != %2" ).arg( c.oldSize + ( end - start + 1 ) ).arg( model->rowCount( parent ) ).toStdString().c_str() );
   Q_ASSERT( c.last == model->data( model->index( start - 1, 0, c.parent ) ) );
   Q_ASSERT( c.next == model->data( model->index( start, 0, c.parent ) ) );
 }

@@ -21,6 +21,7 @@
 #include "qgsexpressioncontext.h"
 #include "qgsfields.h"
 #include "qgsgeometry.h"
+#include "qgscoordinatetransform.h"
 
 ///@cond PRIVATE
 
@@ -72,6 +73,8 @@ class QgsMemoryFeatureIterator final: public QgsAbstractFeatureIteratorFromSourc
 
     QgsGeometry mSelectRectGeom;
     std::unique_ptr< QgsGeometryEngine > mSelectRectEngine;
+    QgsGeometry mDistanceWithinGeom;
+    std::unique_ptr< QgsGeometryEngine > mDistanceWithinEngine;
     QgsRectangle mFilterRect;
     QgsFeatureMap::const_iterator mSelectIterator;
     bool mUsingFeatureIdList = false;

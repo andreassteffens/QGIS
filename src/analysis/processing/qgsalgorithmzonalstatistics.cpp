@@ -61,6 +61,11 @@ QString QgsZonalStatisticsAlgorithm::groupId() const
   return QStringLiteral( "rasteranalysis" );
 }
 
+QString QgsZonalStatisticsAlgorithm::shortDescription() const
+{
+  return QObject::tr( "Calculates statistics for a raster layer's values for each feature of an overlapping polygon vector layer." );
+}
+
 QString QgsZonalStatisticsAlgorithm::shortHelpString() const
 {
   return QObject::tr( "This algorithm calculates statistics of a raster layer for each feature "
@@ -81,7 +86,7 @@ void QgsZonalStatisticsAlgorithm::initAlgorithm( const QVariantMap & )
 {
   QStringList statChoices;
   statChoices.reserve( STATS.size() );
-  for ( QgsZonalStatistics::Statistic stat : STATS )
+  for ( const QgsZonalStatistics::Statistic stat : STATS )
   {
     statChoices << QgsZonalStatistics::displayName( stat );
   }
@@ -119,7 +124,7 @@ bool QgsZonalStatisticsAlgorithm::prepareAlgorithm( const QVariantMap &parameter
 
   const QList< int > stats = parameterAsEnums( parameters, QStringLiteral( "STATISTICS" ), context );
   mStats = QgsZonalStatistics::Statistics();
-  for ( int s : stats )
+  for ( const int s : stats )
   {
     mStats |= STATS.at( s );
   }

@@ -55,7 +55,7 @@ void QgsCapabilitiesCache::insertCapabilitiesDocument( const QString &configFile
   if ( mCachedCapabilities.size() > 40 )
   {
     //remove another cache entry to avoid memory problems
-    QHash<QString, QHash<QString, QDomDocument> >::iterator capIt = mCachedCapabilities.begin();
+    const QHash<QString, QHash<QString, QDomDocument> >::iterator capIt = mCachedCapabilities.begin();
     mFileSystemWatcher.removePath( capIt.key() );
     mCachedCapabilities.erase( capIt );
   }
@@ -73,10 +73,10 @@ void QgsCapabilitiesCache::insertCapabilitiesDocument( const QString &configFile
   if ( statfs( configFilePath.toUtf8().constData(), &sStatFS ) == 0 &&
        ( sStatFS.f_type == 0x6969 /* NFS */ ||
          sStatFS.f_type == 0x517b /* SMB */ ||
-         sStatFS.f_type == 0xff534d42 /* CIFS */ ||
-         sStatFS.f_type == 0xfe534d42 /* CIFS */ ) )
+         sStatFS.f_type == 0xff534d42ul /* CIFS */ ||
+         sStatFS.f_type == 0xfe534d42ul /* CIFS */ ) )
   {
-    QFileInfo fi( configFilePath );
+    const QFileInfo fi( configFilePath );
     mCachedCapabilitiesTimestamps[ configFilePath ] = fi.lastModified();
     mTimer.start( 1000 );
   }
@@ -101,7 +101,7 @@ void QgsCapabilitiesCache::removeOutdatedEntries()
   QgsDebugMsg( QStringLiteral( "Checking for outdated entries" ) );
   for ( const QString &configFilePath : mCachedCapabilitiesTimestamps.keys() )
   {
-    QFileInfo fi( configFilePath );
+    const QFileInfo fi( configFilePath );
     if ( !fi.exists() || mCachedCapabilitiesTimestamps[ configFilePath ] < fi.lastModified() )
       removeChangedEntry( configFilePath );
   }

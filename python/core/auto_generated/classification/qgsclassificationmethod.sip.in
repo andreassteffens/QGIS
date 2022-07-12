@@ -19,14 +19,15 @@
 #include "qgsclassificationprettybreaks.h"
 #include "qgsclassificationquantile.h"
 #include "qgsclassificationstandarddeviation.h"
+#include "qgsclassificationfixedinterval.h"
 %End
 
 
 
 class QgsClassificationRange
 {
-%Docstring
-QgsClassificationRange contains the information about a classification range
+%Docstring(signature="appended")
+:py:class:`QgsClassificationRange` contains the information about a classification range
 
 .. versionadded:: 3.10
 %End
@@ -65,8 +66,8 @@ Returns the lower bound
 
 class QgsClassificationMethod /Abstract/
 {
-%Docstring
-QgsClassificationMethod is an abstract class for implementations of classification methods
+%Docstring(signature="appended")
+:py:class:`QgsClassificationMethod` is an abstract class for implementations of classification methods
 
 .. seealso:: :py:class:`QgsClassificationMethodRegistry`
 
@@ -87,6 +88,8 @@ QgsClassificationMethod is an abstract class for implementations of classificati
       sipType = sipType_QgsClassificationQuantile;
     else if ( dynamic_cast<QgsClassificationStandardDeviation *>( sipCpp ) )
       sipType = sipType_QgsClassificationStandardDeviation;
+    else if ( dynamic_cast<QgsClassificationFixedInterval *>( sipCpp ) )
+      sipType = sipType_QgsClassificationFixedInterval;
     else
       sipType = 0;
 %End
@@ -97,6 +100,7 @@ QgsClassificationMethod is an abstract class for implementations of classificati
       NoFlag,
       ValuesNotRequired,
       SymmetricModeAvailable,
+      IgnoresClassCount,
     };
     typedef QFlags<QgsClassificationMethod::MethodProperty> MethodProperties;
 
@@ -138,6 +142,13 @@ The id of the method as saved in the project, must be unique in registry
     virtual QIcon icon() const;
 %Docstring
 The icon of the method
+%End
+
+    QgsClassificationMethod::MethodProperties flags() const;
+%Docstring
+Returns the classification flags.
+
+.. versionadded:: 3.26
 %End
 
     virtual QString labelForRange( double lowerValue, double upperValue, ClassPosition position = Inner ) const;
@@ -314,7 +325,7 @@ Defines the values of the additional parameters
     QVariantMap parameterValues() const;
 %Docstring
 Returns the values of the processing parameters.
-One could use QgsProcessingParameters.parameterAsXxxx to retrieve the actual value of a parameter.
+One could use :py:class:`QgsProcessingParameters`.parameterAsXxxx to retrieve the actual value of a parameter.
 
 .. versionadded:: 3.12
 %End

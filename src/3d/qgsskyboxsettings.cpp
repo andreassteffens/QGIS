@@ -20,10 +20,26 @@
 #include "qgsreadwritecontext.h"
 #include "qgssymbollayerutils.h"
 
+QgsSkyboxSettings::QgsSkyboxSettings( const QgsSkyboxSettings &other )
+  : mSkyboxType( other.mSkyboxType )
+  , mPanoramicTexturePath( other.mPanoramicTexturePath )
+  , mCubeMapFacesPaths( other.mCubeMapFacesPaths )
+{
+
+}
+
+QgsSkyboxSettings &QgsSkyboxSettings::operator=( QgsSkyboxSettings const &rhs )
+{
+  this->mSkyboxType = rhs.mSkyboxType;
+  this->mPanoramicTexturePath = rhs.mPanoramicTexturePath;
+  this->mCubeMapFacesPaths = rhs.mCubeMapFacesPaths;
+  return *this;
+}
+
 void QgsSkyboxSettings::readXml( const QDomElement &element, const QgsReadWriteContext &context )
 {
   const QgsPathResolver &pathResolver = context.pathResolver();
-  QString skyboxTypeStr = element.attribute( QStringLiteral( "skybox-type" ) );
+  const QString skyboxTypeStr = element.attribute( QStringLiteral( "skybox-type" ) );
   if ( skyboxTypeStr == QLatin1String( "Distinct Faces" ) )
     mSkyboxType = QgsSkyboxEntity::DistinctTexturesSkybox;
   else if ( skyboxTypeStr == QLatin1String( "Panoramic Texture" ) )

@@ -15,11 +15,12 @@
 
 #include "qgsafsshareddata.h"
 #include "qgsarcgisrestutils.h"
+#include "qgsarcgisrestquery.h"
 #include "qgslogger.h"
 
 void QgsAfsSharedData::clearCache()
 {
-  QMutexLocker locker( &mMutex );
+  const QMutexLocker locker( &mMutex );
   mCache.clear();
 }
 
@@ -36,8 +37,8 @@ bool QgsAfsSharedData::getFeature( QgsFeatureId id, QgsFeature &f, const QgsRect
   }
 
   // Fetch 100 features at the time
-  int startId = ( id / 100 ) * 100;
-  int stopId = std::min( startId + 100, mObjectIds.length() );
+  const int startId = ( id / 100 ) * 100;
+  const int stopId = std::min< size_t >( startId + 100, mObjectIds.length() );
   QList<quint32> objectIds;
   objectIds.reserve( stopId );
   for ( int i = startId; i < stopId; ++i )
@@ -59,15 +60,10 @@ bool QgsAfsSharedData::getFeature( QgsFeatureId id, QgsFeature &f, const QgsRect
   QString errorTitle, errorMessage;
 
   const QString authcfg = mDataSource.authConfigId();
-  QgsStringMap headers;
-  const QString referer = mDataSource.param( QStringLiteral( "referer" ) );
-  if ( !referer.isEmpty() )
-    headers[ QStringLiteral( "Referer" )] = referer;
-
-  const QVariantMap queryData = QgsArcGisRestUtils::getObjects(
+  const QVariantMap queryData = QgsArcGisRestQueryUtils::getObjects(
                                   mDataSource.param( QStringLiteral( "url" ) ), authcfg, objectIds, mDataSource.param( QStringLiteral( "crs" ) ), true,
                                   QStringList(), QgsWkbTypes::hasM( mGeometryType ), QgsWkbTypes::hasZ( mGeometryType ),
-                                  filterRect, errorTitle, errorMessage, headers, feedback );
+                                  filterRect, errorTitle, errorMessage, mDataSource.httpHeaders(), feedback );
 
   if ( queryData.isEmpty() )
   {
@@ -105,7 +101,7 @@ bool QgsAfsSharedData::getFeature( QgsFeatureId id, QgsFeature &f, const QgsRect
 
       // date/datetime fields must be converted
       if ( mFields.at( idx ).type() == QVariant::DateTime || mFields.at( idx ).type() == QVariant::Date )
-        attribute = QgsArcGisRestUtils::parseDateTime( attribute );
+        attribute = QgsArcGisRestUtils::convertDateTime( attribute );
 
       if ( !mFields.at( idx ).convertCompatible( attribute ) )
       {
@@ -124,8 +120,8 @@ bool QgsAfsSharedData::getFeature( QgsFeatureId id, QgsFeature &f, const QgsRect
 
     // Set geometry
     const QVariantMap geometryData = featureData[QStringLiteral( "geometry" )].toMap();
-    std::unique_ptr< QgsAbstractGeometry > geometry = QgsArcGisRestUtils::parseEsriGeoJSON( geometryData, queryData[QStringLiteral( "geometryType" )].toString(),
-        QgsWkbTypes::hasM( mGeometryType ), QgsWkbTypes::hasZ( mGeometryType ) );
+    std::unique_ptr< QgsAbstractGeometry > geometry( QgsArcGisRestUtils::convertGeometry( geometryData, queryData[QStringLiteral( "geometryType" )].toString(),
+        QgsWkbTypes::hasM( mGeometryType ), QgsWkbTypes::hasZ( mGeometryType ) ) );
     // Above might return 0, which is OK since in theory empty geometries are allowed
     if ( geometry )
       feature.setGeometry( QgsGeometry( std::move( geometry ) ) );
@@ -150,17 +146,13 @@ QgsFeatureIds QgsAfsSharedData::getFeatureIdsInExtent( const QgsRectangle &exten
   QString errorText;
 
   const QString authcfg = mDataSource.authConfigId();
-  QgsStringMap headers;
-  const QString referer = mDataSource.param( QStringLiteral( "referer" ) );
-  if ( !referer.isEmpty() )
-    headers[ QStringLiteral( "Referer" )] = referer;
-  const QList<quint32> featuresInRect = QgsArcGisRestUtils::getObjectIdsByExtent( mDataSource.param( QStringLiteral( "url" ) ),
-                                        extent, errorTitle, errorText, authcfg, headers, feedback );
+  const QList<quint32> featuresInRect = QgsArcGisRestQueryUtils::getObjectIdsByExtent( mDataSource.param( QStringLiteral( "url" ) ),
+                                        extent, errorTitle, errorText, authcfg, mDataSource.httpHeaders(), feedback );
 
   QgsFeatureIds ids;
-  for ( quint32 id : featuresInRect )
+  for ( const quint32 id : featuresInRect )
   {
-    int featureId = mObjectIds.indexOf( id );
+    const int featureId = mObjectIds.indexOf( id );
     if ( featureId >= 0 )
       ids.insert( featureId );
   }

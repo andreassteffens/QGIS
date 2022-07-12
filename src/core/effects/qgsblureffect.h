@@ -20,6 +20,9 @@
 #include "qgis_core.h"
 #include "qgspainteffect.h"
 #include "qgis_sip.h"
+#include "qgsunittypes.h"
+#include "qgsmapunitscale.h"
+
 #include <QPainter>
 
 /**
@@ -48,7 +51,7 @@ class CORE_EXPORT QgsBlurEffect : public QgsPaintEffect SIP_NODEFAULTCTORS
      * \param map encoded properties string map
      * \returns new QgsBlurEffect
      */
-    static QgsPaintEffect *create( const QgsStringMap &map ) SIP_FACTORY;
+    static QgsPaintEffect *create( const QVariantMap &map ) SIP_FACTORY;
 
     /**
      * Constructor for QgsBlurEffect.
@@ -56,8 +59,8 @@ class CORE_EXPORT QgsBlurEffect : public QgsPaintEffect SIP_NODEFAULTCTORS
     QgsBlurEffect() = default;
 
     QString type() const override { return QStringLiteral( "blur" ); }
-    QgsStringMap properties() const override;
-    void readProperties( const QgsStringMap &props ) override;
+    QVariantMap properties() const override;
+    void readProperties( const QVariantMap &props ) override;
     QgsBlurEffect *clone() const override SIP_FACTORY;
 
     /**

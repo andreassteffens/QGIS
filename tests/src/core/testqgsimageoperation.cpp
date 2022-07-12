@@ -16,7 +16,7 @@
  ***************************************************************************/
 
 #include "qgsimageoperation.h"
-#include "qgscolorramp.h"
+#include "qgscolorrampimpl.h"
 #include <QObject>
 #include "qgstest.h"
 #include "qgsrenderchecker.h"
@@ -102,7 +102,7 @@ void TestQgsImageOperation::initTestCase()
 
 void TestQgsImageOperation::cleanupTestCase()
 {
-  QString myReportFile = QDir::tempPath() + "/qgistest.html";
+  const QString myReportFile = QDir::tempPath() + "/qgistest.html";
   QFile myFile( myReportFile );
   if ( myFile.open( QIODevice::WriteOnly | QIODevice::Append ) )
   {
@@ -126,7 +126,7 @@ void TestQgsImageOperation::smallImageOp()
   QImage image( QStringLiteral( TEST_DATA_DIR ) + "/small_sample_image.png" );
   QgsImageOperation::convertToGrayscale( image, QgsImageOperation::GrayscaleLightness );
 
-  bool result = imageCheck( QStringLiteral( "imageop_smallimage" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_smallimage" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -135,7 +135,7 @@ void TestQgsImageOperation::grayscaleLightness()
   QImage image( mSampleImage );
   QgsImageOperation::convertToGrayscale( image, QgsImageOperation::GrayscaleLightness );
 
-  bool result = imageCheck( QStringLiteral( "imageop_graylightness" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_graylightness" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -144,7 +144,7 @@ void TestQgsImageOperation::grayscaleLuminosity()
   QImage image( mSampleImage );
   QgsImageOperation::convertToGrayscale( image, QgsImageOperation::GrayscaleLuminosity );
 
-  bool result = imageCheck( QStringLiteral( "imageop_grayluminosity" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_grayluminosity" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -153,7 +153,7 @@ void TestQgsImageOperation::grayscaleAverage()
   QImage image( mSampleImage );
   QgsImageOperation::convertToGrayscale( image, QgsImageOperation::GrayscaleAverage );
 
-  bool result = imageCheck( QStringLiteral( "imageop_grayaverage" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_grayaverage" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -162,7 +162,7 @@ void TestQgsImageOperation::brightnessContrastNoChange()
   QImage image( mSampleImage );
   QgsImageOperation::adjustBrightnessContrast( image, 0, 1.0 );
 
-  bool result = imageCheck( QStringLiteral( "imageop_bcnochange" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_bcnochange" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -171,7 +171,7 @@ void TestQgsImageOperation::increaseBrightness()
   QImage image( mSampleImage );
   QgsImageOperation::adjustBrightnessContrast( image, 50, 1.0 );
 
-  bool result = imageCheck( QStringLiteral( "imageop_increasebright" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_increasebright" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -180,7 +180,7 @@ void TestQgsImageOperation::decreaseBrightness()
   QImage image( mSampleImage );
   QgsImageOperation::adjustBrightnessContrast( image, -50, 1.0 );
 
-  bool result = imageCheck( QStringLiteral( "imageop_decreasebright" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_decreasebright" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -189,7 +189,7 @@ void TestQgsImageOperation::increaseContrast()
   QImage image( mSampleImage );
   QgsImageOperation::adjustBrightnessContrast( image, 0, 30.0 );
 
-  bool result = imageCheck( QStringLiteral( "imageop_increasecontrast" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_increasecontrast" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -198,7 +198,7 @@ void TestQgsImageOperation::decreaseContrast()
   QImage image( mSampleImage );
   QgsImageOperation::adjustBrightnessContrast( image, 0, 0.1 );
 
-  bool result = imageCheck( QStringLiteral( "imageop_decreasecontrast" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_decreasecontrast" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -207,7 +207,7 @@ void TestQgsImageOperation::hueSaturationNoChange()
   QImage image( mSampleImage );
   QgsImageOperation::adjustHueSaturation( image, 1.0 );
 
-  bool result = imageCheck( QStringLiteral( "imageop_satnochange" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_satnochange" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -216,7 +216,7 @@ void TestQgsImageOperation::increaseSaturation()
   QImage image( mSampleImage );
   QgsImageOperation::adjustHueSaturation( image, 5.0 );
 
-  bool result = imageCheck( QStringLiteral( "imageop_increasesat" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_increasesat" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -225,7 +225,7 @@ void TestQgsImageOperation::decreaseSaturation()
   QImage image( mSampleImage );
   QgsImageOperation::adjustHueSaturation( image, 0.5 );
 
-  bool result = imageCheck( QStringLiteral( "imageop_decreasesat" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_decreasesat" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -234,7 +234,7 @@ void TestQgsImageOperation::colorizeFull()
   QImage image( mSampleImage );
   QgsImageOperation::adjustHueSaturation( image, 1.0, QColor( 255, 255, 0 ), 1.0 );
 
-  bool result = imageCheck( QStringLiteral( "imageop_colorizefull" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_colorizefull" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -243,7 +243,7 @@ void TestQgsImageOperation::colorizePartial()
   QImage image( mSampleImage );
   QgsImageOperation::adjustHueSaturation( image, 1.0, QColor( 255, 255, 0 ), 0.5 );
 
-  bool result = imageCheck( QStringLiteral( "imageop_colorizepartial" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_colorizepartial" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -252,7 +252,7 @@ void TestQgsImageOperation::opacityNoChange()
   QImage image( mSampleImage );
   QgsImageOperation::multiplyOpacity( image, 1.0 );
 
-  bool result = imageCheck( QStringLiteral( "imageop_opacitynochange" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_opacitynochange" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -261,7 +261,7 @@ void TestQgsImageOperation::opacityIncrease()
   QImage image( mSampleImage );
   QgsImageOperation::multiplyOpacity( image, 2.0 );
 
-  bool result = imageCheck( QStringLiteral( "imageop_opacityincrease" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_opacityincrease" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -270,7 +270,7 @@ void TestQgsImageOperation::opacityDecrease()
   QImage image( mSampleImage );
   QgsImageOperation::multiplyOpacity( image, 0.5 );
 
-  bool result = imageCheck( QStringLiteral( "imageop_opacitydecrease" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_opacitydecrease" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -279,14 +279,14 @@ void TestQgsImageOperation::overlayColor()
   QImage image( mSampleImage );
   QgsImageOperation::overlayColor( image, QColor( 0, 255, 255 ) );
 
-  bool result = imageCheck( QStringLiteral( "imageop_overlaycolor" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_overlaycolor" ), image, 0 );
   QVERIFY( result );
 }
 
 void TestQgsImageOperation::distanceTransformMaxDist()
 {
   QImage image( mTransparentSampleImage );
-  QgsGradientColorRamp ramp;
+  QgsGradientColorRamp ramp( QColor( 0, 0, 255 ), QColor( 0, 255, 0 ) );
   QgsImageOperation::DistanceTransformProperties props;
   props.useMaxDistance = true;
   props.ramp = &ramp;
@@ -294,14 +294,14 @@ void TestQgsImageOperation::distanceTransformMaxDist()
 
   QgsImageOperation::distanceTransform( image, props );
 
-  bool result = imageCheck( QStringLiteral( "imageop_dt_max" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_dt_max" ), image, 0 );
   QVERIFY( result );
 }
 
 void TestQgsImageOperation::distanceTransformSetSpread()
 {
   QImage image( mTransparentSampleImage );
-  QgsGradientColorRamp ramp;
+  QgsGradientColorRamp ramp( QColor( 0, 0, 255 ), QColor( 0, 255, 0 ) );
   QgsImageOperation::DistanceTransformProperties props;
   props.useMaxDistance = false;
   props.spread = 10;
@@ -310,14 +310,14 @@ void TestQgsImageOperation::distanceTransformSetSpread()
 
   QgsImageOperation::distanceTransform( image, props );
 
-  bool result = imageCheck( QStringLiteral( "imageop_dt_spread" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_dt_spread" ), image, 0 );
   QVERIFY( result );
 }
 
 void TestQgsImageOperation::distanceTransformInterior()
 {
   QImage image( mTransparentSampleImage );
-  QgsGradientColorRamp ramp;
+  QgsGradientColorRamp ramp( QColor( 0, 0, 255 ), QColor( 0, 255, 0 ) );
   QgsImageOperation::DistanceTransformProperties props;
   props.useMaxDistance = true;
   props.ramp = &ramp;
@@ -325,7 +325,7 @@ void TestQgsImageOperation::distanceTransformInterior()
 
   QgsImageOperation::distanceTransform( image, props );
 
-  bool result = imageCheck( QStringLiteral( "imageop_dt_interior" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_dt_interior" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -344,7 +344,7 @@ void TestQgsImageOperation::distanceTransformMisc()
   //zero spread
   QImage image2( mSampleImage );
   QgsImageOperation::DistanceTransformProperties props2;
-  QgsGradientColorRamp ramp;
+  QgsGradientColorRamp ramp( QColor( 0, 0, 255 ), QColor( 0, 255, 0 ) );
   props2.useMaxDistance = false;
   props2.spread = 0;
   props2.ramp = &ramp;
@@ -359,7 +359,7 @@ void TestQgsImageOperation::stackBlur()
   QImage image( mSampleImage );
   QgsImageOperation::stackBlur( image, 10 );
 
-  bool result = imageCheck( QStringLiteral( "imageop_stackblur" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_stackblur" ), image, 0 );
   QVERIFY( result );
   QCOMPARE( image.format(), QImage::Format_ARGB32 );
 }
@@ -370,7 +370,7 @@ void TestQgsImageOperation::stackBlurPremultiplied()
   image = image.convertToFormat( QImage::Format_ARGB32_Premultiplied );
   QgsImageOperation::stackBlur( image, 10 );
 
-  bool result = imageCheck( QStringLiteral( "imageop_stackblur" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_stackblur" ), image, 0 );
   QVERIFY( result );
   QCOMPARE( image.format(), QImage::Format_ARGB32_Premultiplied );
 }
@@ -398,7 +398,7 @@ void TestQgsImageOperation::gaussianBlur()
   QImage image( mSampleImage );
   QImage *blurredImage = QgsImageOperation::gaussianBlur( image, 30 );
 
-  bool result = imageCheck( QStringLiteral( "imageop_gaussianblur" ), *blurredImage, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_gaussianblur" ), *blurredImage, 0 );
   QCOMPARE( blurredImage->format(), QImage::Format_ARGB32 );
   delete blurredImage;
   QVERIFY( result );
@@ -413,7 +413,7 @@ void TestQgsImageOperation::gaussianBlurSmall()
   QImage *blurredImage = QgsImageOperation::gaussianBlur( image, 10 );
 
   QCOMPARE( blurredImage->format(), QImage::Format_ARGB32_Premultiplied );
-  bool result = imageCheck( QStringLiteral( "imageop_gaussianblur_small" ), *blurredImage, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_gaussianblur_small" ), *blurredImage, 0 );
   delete blurredImage;
   QVERIFY( result );
 }
@@ -423,7 +423,7 @@ void TestQgsImageOperation::gaussianBlurNoChange()
   QImage image( mSampleImage );
   QImage *blurredImage = QgsImageOperation::gaussianBlur( image, 0 );
 
-  bool result = imageCheck( QStringLiteral( "imageop_nochange" ), *blurredImage, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_nochange" ), *blurredImage, 0 );
   delete blurredImage;
   QVERIFY( result );
 }
@@ -433,7 +433,7 @@ void TestQgsImageOperation::flipHorizontal()
   QImage image( mSampleImage );
   QgsImageOperation::flipImage( image, QgsImageOperation::FlipHorizontal );
 
-  bool result = imageCheck( QStringLiteral( "imageop_fliphoz" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_fliphoz" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -442,7 +442,7 @@ void TestQgsImageOperation::flipVertical()
   QImage image( mSampleImage );
   QgsImageOperation::flipImage( image, QgsImageOperation::FlipVertical );
 
-  bool result = imageCheck( QStringLiteral( "imageop_flipvert" ), image, 0 );
+  const bool result = imageCheck( QStringLiteral( "imageop_flipvert" ), image, 0 );
   QVERIFY( result );
 }
 
@@ -460,15 +460,15 @@ bool TestQgsImageOperation::imageCheck( const QString &testName, QImage &image, 
   painter.end();
 
   mReport += "<h2>" + testName + "</h2>\n";
-  QString tempDir = QDir::tempPath() + '/';
-  QString fileName = tempDir + testName + ".png";
+  const QString tempDir = QDir::tempPath() + '/';
+  const QString fileName = tempDir + testName + ".png";
   imageWithBackground.save( fileName, "PNG" );
   QgsRenderChecker checker;
   checker.setControlPathPrefix( QStringLiteral( "image_operations" ) );
   checker.setControlName( "expected_" + testName );
   checker.setRenderedImage( fileName );
   checker.setColorTolerance( 2 );
-  bool resultFlag = checker.compareImages( testName, mismatchCount );
+  const bool resultFlag = checker.compareImages( testName, mismatchCount );
   mReport += checker.report();
   return resultFlag;
 }

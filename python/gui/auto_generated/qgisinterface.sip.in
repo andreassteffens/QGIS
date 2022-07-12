@@ -12,10 +12,9 @@
 
 
 
-
 class QgisInterface : QObject
 {
-%Docstring
+%Docstring(signature="appended")
 QgisInterface
 Abstract base class defining interfaces exposed by QgisApp and
 made available to plugins.
@@ -121,6 +120,13 @@ Returns a pointer to the active layer (layer selected in the legend)
     virtual QgsMapCanvas *mapCanvas() = 0;
 %Docstring
 Returns a pointer to the map canvas
+%End
+
+    virtual QList<QgsMapDecoration *> activeDecorations() = 0;
+%Docstring
+Returns a list of the active decorations.
+
+.. versionadded:: 3.22
 %End
 
     virtual QgsLayerTreeMapCanvasBridge *layerTreeCanvasBridge() = 0;
@@ -514,10 +520,22 @@ Returns the native measure area action. Call :py:func:`~QgisInterface.trigger` o
 %Docstring
 Returns the native zoom full extent action. Call :py:func:`~QgisInterface.trigger` on it to zoom to the full extent.
 %End
-    virtual QAction *actionZoomToLayer() = 0;
+
+ virtual QAction *actionZoomToLayer() = 0 /Deprecated/;
 %Docstring
 Returns the native zoom to layer action. Call :py:func:`~QgisInterface.trigger` on it to zoom to the active layer.
+
+.. deprecated::
+   Use :py:func:`~QgisInterface.actionZoomToLayers` instead.
 %End
+
+    virtual QAction *actionZoomToLayers() = 0;
+%Docstring
+Returns the native zoom to layers action. Call :py:func:`~QgisInterface.trigger` on it to zoom to the selected layers.
+
+.. versionadded:: 3.18
+%End
+
     virtual QAction *actionZoomToSelected() = 0;
 %Docstring
 Returns the native zoom to selected action. Call :py:func:`~QgisInterface.trigger` on it to zoom to the current selection.
@@ -570,14 +588,24 @@ Returns the native Add Vector Tile Layer action.
 
 .. versionadded:: 3.14
 %End
+
+    virtual QAction *actionAddPointCloudLayer() = 0;
+%Docstring
+Returns the native Add Point Cloud Layer action.
+
+.. versionadded:: 3.18
+%End
+
     virtual QAction *actionAddAfsLayer() = 0;
 %Docstring
-Returns the native Add ArcGIS FeatureServer action.
+Returns the native Add ArcGIS REST Server action.
 %End
+
     virtual QAction *actionAddAmsLayer() = 0;
 %Docstring
-Returns the native Add ArcGIS MapServer action.
+Returns the native Add ArcGIS REST Server action.
 %End
+
     virtual QAction *actionCopyLayerStyle() = 0;
     virtual QAction *actionPasteLayerStyle() = 0;
     virtual QAction *actionOpenTable() = 0;
@@ -644,69 +672,133 @@ Returns the Hide Deselected Layers action.
     virtual QAction *actionCheckQgisVersion() = 0;
     virtual QAction *actionAbout() = 0;
 
-    virtual QAction *actionCircle2Points()  = 0;
+
+ virtual QAction *actionCircle2Points() /Deprecated/;
 %Docstring
 Returns the native add circle from 2 points action. Call :py:func:`~QgisInterface.trigger` on it to set the map tool.
+
+.. deprecated:: QGIS 3.26
+   shape digitizing is now part of the add feature tool. To enable the shape tool, use :py:func:`QgsMapToolCapture.setCurrentCaptureTechnique()` and then :py:func:`QgsMapToolCapture.setCurrentShapeMapTool()`.
 %End
-    virtual QAction *actionCircle3Points()  = 0;
+
+ virtual QAction *actionCircle3Points() /Deprecated/;
 %Docstring
 Returns the native add circle from 3 points action. Call :py:func:`~QgisInterface.trigger` on it to set the map tool.
+
+.. deprecated:: QGIS 3.26
+   shape digitizing is now part of the add feature tool. To enable the shape tool, use :py:func:`QgsMapToolCapture.setCurrentCaptureTechnique()` and then :py:func:`QgsMapToolCapture.setCurrentShapeMapTool()`.
 %End
-    virtual QAction *actionCircle3Tangents()  = 0;
+
+ virtual QAction *actionCircle3Tangents() /Deprecated/;
 %Docstring
 Returns the native add circle from 3 tangents action. Call :py:func:`~QgisInterface.trigger` on it to set the map tool.
+
+.. deprecated:: QGIS 3.26
+   shape digitizing is now part of the add feature tool. To enable the shape tool, use :py:func:`QgsMapToolCapture.setCurrentCaptureTechnique()` and then :py:func:`QgsMapToolCapture.setCurrentShapeMapTool()`.
 %End
-    virtual QAction *actionCircle2TangentsPoint()  = 0;
+
+ virtual QAction *actionCircle2TangentsPoint() /Deprecated/;
 %Docstring
 Returns the native add circle from 2 tangents and a point action. Call :py:func:`~QgisInterface.trigger` on it to set the map tool.
+
+.. deprecated:: QGIS 3.26
+   shape digitizing is now part of the add feature tool. To enable the shape tool, use :py:func:`QgsMapToolCapture.setCurrentCaptureTechnique()` and then :py:func:`QgsMapToolCapture.setCurrentShapeMapTool()`.
 %End
-    virtual QAction *actionCircleCenterPoint()  = 0;
+
+ virtual QAction *actionCircleCenterPoint() /Deprecated/;
 %Docstring
 Returns the native add circle from center action. Call :py:func:`~QgisInterface.trigger` on it to set the map tool.
+
+.. deprecated:: QGIS 3.26
+   shape digitizing is now part of the add feature tool. To enable the shape tool, use :py:func:`QgsMapToolCapture.setCurrentCaptureTechnique()` and then :py:func:`QgsMapToolCapture.setCurrentShapeMapTool()`.
 %End
-    virtual QAction *actionEllipseCenter2Points()  = 0;
+
+ virtual QAction *actionEllipseCenter2Points() /Deprecated/;
 %Docstring
 Returns the native add ellipse from center and 2 points action. Call :py:func:`~QgisInterface.trigger` on it to set the map tool.
+
+.. deprecated:: QGIS 3.26
+   shape digitizing is now part of the add feature tool. To enable the shape tool, use :py:func:`QgsMapToolCapture.setCurrentCaptureTechnique()` and then :py:func:`QgsMapToolCapture.setCurrentShapeMapTool()`.
 %End
-    virtual QAction *actionEllipseCenterPoint()  = 0;
+
+ virtual QAction *actionEllipseCenterPoint() /Deprecated/;
 %Docstring
 Returns the native add ellipse from center and a point action. Call :py:func:`~QgisInterface.trigger` on it to set the map tool.
+
+.. deprecated:: QGIS 3.26
+   shape digitizing is now part of the add feature tool. To enable the shape tool, use :py:func:`QgsMapToolCapture.setCurrentCaptureTechnique()` and then :py:func:`QgsMapToolCapture.setCurrentShapeMapTool()`.
 %End
-    virtual QAction *actionEllipseExtent()  = 0;
+
+ virtual QAction *actionEllipseExtent() /Deprecated/;
 %Docstring
 Returns the native add ellipse from an extent action. Call :py:func:`~QgisInterface.trigger` on it to set the map tool.
+
+.. deprecated:: QGIS 3.26
+   shape digitizing is now part of the add feature tool. To enable the shape tool, use :py:func:`QgsMapToolCapture.setCurrentCaptureTechnique()` and then :py:func:`QgsMapToolCapture.setCurrentShapeMapTool()`.
 %End
-    virtual QAction *actionEllipseFoci()  = 0;
+
+ virtual QAction *actionEllipseFoci() /Deprecated/;
 %Docstring
 Returns the native add ellipse from foci action. Call :py:func:`~QgisInterface.trigger` on it to set the map tool.
+
+.. deprecated:: QGIS 3.26
+   shape digitizing is now part of the add feature tool. To enable the shape tool, use :py:func:`QgsMapToolCapture.setCurrentCaptureTechnique()` and then :py:func:`QgsMapToolCapture.setCurrentShapeMapTool()`.
 %End
-    virtual QAction *actionRectangleCenterPoint()  = 0;
+
+ virtual QAction *actionRectangleCenterPoint() /Deprecated/;
 %Docstring
 Returns the native add rectangle from center and a point action. Call :py:func:`~QgisInterface.trigger` on it to set the map tool.
+
+.. deprecated:: QGIS 3.26
+   shape digitizing is now part of the add feature tool. To enable the shape tool, use :py:func:`QgsMapToolCapture.setCurrentCaptureTechnique()` and then :py:func:`QgsMapToolCapture.setCurrentShapeMapTool()`.
 %End
-    virtual QAction *actionRectangleExtent()  = 0;
+
+ virtual QAction *actionRectangleExtent() /Deprecated/;
 %Docstring
 Returns the native add rectangle from extent action. Call :py:func:`~QgisInterface.trigger` on it to set the map tool.
+
+.. deprecated:: QGIS 3.26
+   shape digitizing is now part of the add feature tool. To enable the shape tool, use :py:func:`QgsMapToolCapture.setCurrentCaptureTechnique()` and then :py:func:`QgsMapToolCapture.setCurrentShapeMapTool()`.
 %End
-    virtual QAction *actionRectangle3PointsDistance()  = 0;
+
+ virtual QAction *actionRectangle3PointsDistance() /Deprecated/;
 %Docstring
 Returns the native add rectangle from 3 points (distance from 2nd and 3rd points) action. Call :py:func:`~QgisInterface.trigger` on it to set the map tool.
+
+.. deprecated:: QGIS 3.26
+   shape digitizing is now part of the add feature tool. To enable the shape tool, use :py:func:`QgsMapToolCapture.setCurrentCaptureTechnique()` and then :py:func:`QgsMapToolCapture.setCurrentShapeMapTool()`.
 %End
-    virtual QAction *actionRectangle3PointsProjected()  = 0;
+
+ virtual QAction *actionRectangle3PointsProjected() /Deprecated/;
 %Docstring
 Returns the native add rectangle from 3 points (distance from projected 3rd point on segment p1 and p2) action. Call :py:func:`~QgisInterface.trigger` on it to set the map tool.
+
+.. deprecated:: QGIS 3.26
+   shape digitizing is now part of the add feature tool. To enable the shape tool, use :py:func:`QgsMapToolCapture.setCurrentCaptureTechnique()` and then :py:func:`QgsMapToolCapture.setCurrentShapeMapTool()`.
 %End
-    virtual QAction *actionRegularPolygon2Points()  = 0;
+
+ virtual QAction *actionRegularPolygon2Points() /Deprecated/;
 %Docstring
 Returns the native add regular polygon from 2 points action. Call :py:func:`~QgisInterface.trigger` on it to set the map tool.
+
+.. deprecated:: QGIS 3.26
+   shape digitizing is now part of the add feature tool. To enable the shape tool, use :py:func:`QgsMapToolCapture.setCurrentCaptureTechnique()` and then :py:func:`QgsMapToolCapture.setCurrentShapeMapTool()`.
 %End
-    virtual QAction *actionRegularPolygonCenterPoint()  = 0;
+
+ virtual QAction *actionRegularPolygonCenterPoint() /Deprecated/;
 %Docstring
 Returns the native add regular polygon from center and a point action. Call :py:func:`~QgisInterface.trigger` on it to set the map tool.
+
+.. deprecated:: QGIS 3.26
+   shape digitizing is now part of the add feature tool. To enable the shape tool, use :py:func:`QgsMapToolCapture.setCurrentCaptureTechnique()` and then :py:func:`QgsMapToolCapture.setCurrentShapeMapTool()`.
 %End
-    virtual QAction *actionRegularPolygonCenterCorner()  = 0;
+
+ virtual QAction *actionRegularPolygonCenterCorner() /Deprecated/;
 %Docstring
 Returns the native add regular polygon from center and a corner action. Call :py:func:`~QgisInterface.trigger` on it to set the map tool.
+
+.. deprecated:: QGIS 3.26
+   shape digitizing is now part of the add feature tool. To enable the shape tool, use :py:func:`QgsMapToolCapture.setCurrentCaptureTechnique()` and then :py:func:`QgsMapToolCapture.setCurrentShapeMapTool()`.
 %End
 
     virtual QgsVectorLayerTools *vectorLayerTools() = 0;
@@ -737,7 +829,7 @@ status bar (do not use the native Qt :py:func:`~QgisInterface.statusBar` method)
 Take screenshots for user documentation
 
 :param saveDirectory: path where the screenshots will be saved
-:param categories: an int as a flag value of QgsAppScreenShots.Categories
+:param categories: an int as a flag value of :py:class:`QgsAppScreenShots`.Categories
 
 .. versionadded:: 3.4
 %End
@@ -798,6 +890,13 @@ Adds a mesh layer to the current project.
 Adds a vector tile layer to the current project.
 
 .. versionadded:: 3.14
+%End
+
+    virtual QgsPointCloudLayer *addPointCloudLayer( const QString &url, const QString &baseName, const QString &providerKey ) = 0;
+%Docstring
+Adds a point cloud layer to the current project.
+
+.. versionadded:: 3.18
 %End
 
     virtual bool addProject( const QString &project ) = 0;
@@ -1078,6 +1177,20 @@ Add action to the Web menu
 Remove action from the Web menu
 %End
 
+    virtual void addPluginToMeshMenu( const QString &name, QAction *action ) = 0;
+%Docstring
+Add action to the Mesh menu
+
+.. versionadded:: 3.24
+%End
+
+    virtual void removePluginMeshMenu( const QString &name, QAction *action ) = 0;
+%Docstring
+Remove action from the Mesh menu
+
+.. versionadded:: 3.24
+%End
+
     virtual void addDockWidget( Qt::DockWidgetArea area, QDockWidget *dockwidget ) = 0;
 %Docstring
 Adds a ``dock`` widget to the main window, in the specified dock ``area``.
@@ -1110,9 +1223,42 @@ Removes the specified ``dock`` widget from main window (without deleting it).
 .. seealso:: :py:func:`addDockWidget`
 %End
 
-    virtual void showLayerProperties( QgsMapLayer *l ) = 0;
+    virtual void showLayerProperties( QgsMapLayer *l, const QString &page = QString() ) = 0;
 %Docstring
-Open layer properties dialog
+Opens layer properties dialog for the layer ``l``.
+Optionally, a ``page`` to open can be specified (since QGIS 3.20).
+The list below contains valid page names:
+
+Vector Layer:
+mOptsPage_Information, mOptsPage_Source, mOptsPage_Style, mOptsPage_Labels,
+mOptsPage_Masks, mOptsPage_Diagrams, mOptsPage_SourceFields, mOptsPage_AttributesForm,
+mOptsPage_Joins, mOptsPage_AuxiliaryStorage, mOptsPage_Actions, mOptsPage_Display,
+mOptsPage_Rendering, mOptsPage_Temporal, mOptsPage_Variables, mOptsPage_Metadata,
+mOptsPage_DataDependencies, mOptsPage_Legend, mOptsPage_Server
+
+Raster Layer:
+mOptsPage_Information, mOptsPage_Source, mOptsPage_Style, mOptsPage_Transparency,
+mOptsPage_Histogram, mOptsPage_Rendering, mOptsPage_Temporal, mOptsPage_Pyramids,
+mOptsPage_Metadata, mOptsPage_Legend, mOptsPage_Server
+
+Mesh Layer:
+mOptsPage_Information, mOptsPage_Source, mOptsPage_Style, mOptsPage_StyleContent,
+mOptsPage_Rendering, mOptsPage_Temporal, mOptsPage_Metadata
+
+Point Cloud Layer:
+mOptsPage_Information, mOptsPage_Source, mOptsPage_Metadata, mOptsPage_Statistics
+
+Vector Tile Layer:
+mOptsPage_Information, mOptsPage_Style, mOptsPage_Labeling, mOptsPage_Metadata
+
+.. note::
+
+   Page names are subject to change without notice between QGIS versions,
+   they are not considered part of the stable API.
+
+.. note::
+
+   More strings may be available depending on the context, e.g. via plugins.
 %End
 
     virtual QDialog *showAttributeTable( QgsVectorLayer *l, const QString &filterExpression = QString() ) = 0;

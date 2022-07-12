@@ -18,13 +18,12 @@
 #include "qgslayertree.h"
 #include "qgslayertreemodel.h"
 #include "qgslayertreemodellegendnode.h"
-#include "qgsmaplayerlistutils.h"
+#include "qgsmaplayerlistutils_p.h"
 #include "qgsmaplayerstylemanager.h"
 #include "qgsproject.h"
 #include "qgsrenderer.h"
 #include "qgsvectorlayer.h"
-
-#include <QInputDialog>
+#include "qgssymbol.h"
 
 QgsMapThemeCollection::QgsMapThemeCollection( QgsProject *project )
   : mProject( project )
@@ -111,7 +110,7 @@ QgsMapThemeCollection::MapThemeRecord QgsMapThemeCollection::createThemeFromCurr
 
 bool QgsMapThemeCollection::findRecordForLayer( QgsMapLayer *layer, const QgsMapThemeCollection::MapThemeRecord &rec, QgsMapThemeCollection::MapThemeLayerRecord &layerRec )
 {
-  for ( const QgsMapThemeCollection::MapThemeLayerRecord &lr : qgis::as_const( rec.mLayerRecords ) )
+  for ( const QgsMapThemeCollection::MapThemeLayerRecord &lr : std::as_const( rec.mLayerRecords ) )
   {
     if ( lr.layer() == layer )
     {
@@ -418,9 +417,9 @@ void QgsMapThemeCollection::reconnectToLayersStyleManager()
   // disconnect( 0, 0, this, SLOT( layerStyleRenamed( QString, QString ) ) );
 
   QSet<QgsMapLayer *> layers;
-  for ( const MapThemeRecord &rec : qgis::as_const( mMapThemes ) )
+  for ( const MapThemeRecord &rec : std::as_const( mMapThemes ) )
   {
-    for ( const MapThemeLayerRecord &layerRec : qgis::as_const( rec.mLayerRecords ) )
+    for ( const MapThemeLayerRecord &layerRec : std::as_const( rec.mLayerRecords ) )
     {
       if ( auto *lLayer = layerRec.layer() )
         layers << lLayer;
@@ -584,7 +583,7 @@ void QgsMapThemeCollection::writeXmlContent(QDomElement &parent, QDomDocument &d
 
   std::sort( keys.begin(), keys.end() );
 
-  for ( const QString &grpName : qgis::as_const( keys ) )
+  for ( const QString &grpName : std::as_const( keys ) )
   {
     const MapThemeRecord &rec = mMapThemes.value( grpName );
     QDomElement visPresetElem = doc.createElement( QStringLiteral( "visibility-preset" ) );
@@ -593,7 +592,7 @@ void QgsMapThemeCollection::writeXmlContent(QDomElement &parent, QDomDocument &d
       visPresetElem.setAttribute( QStringLiteral( "has-expanded-info" ), QStringLiteral( "1" ) );
     if ( rec.hasCheckedStateInfo() )
       visPresetElem.setAttribute( QStringLiteral( "has-checked-group-info" ), QStringLiteral( "1" ) );
-    for ( const MapThemeLayerRecord &layerRec : qgis::as_const( rec.mLayerRecords ) )
+    for ( const MapThemeLayerRecord &layerRec : std::as_const( rec.mLayerRecords ) )
     {
       if ( !layerRec.layer() )
         continue;
@@ -617,7 +616,7 @@ void QgsMapThemeCollection::writeXmlContent(QDomElement &parent, QDomDocument &d
       {
         QDomElement checkedLegendNodesElem = doc.createElement( QStringLiteral( "checked-legend-nodes" ) );
         checkedLegendNodesElem.setAttribute( QStringLiteral( "id" ), layerID );
-        for ( const QString &checkedLegendNode : qgis::as_const( layerRec.checkedLegendItems ) )
+        for ( const QString &checkedLegendNode : std::as_const( layerRec.checkedLegendItems ) )
         {
           QDomElement checkedLegendNodeElem = doc.createElement( QStringLiteral( "checked-legend-node" ) );
           checkedLegendNodeElem.setAttribute( QStringLiteral( "id" ), checkedLegendNode );
@@ -632,7 +631,7 @@ void QgsMapThemeCollection::writeXmlContent(QDomElement &parent, QDomDocument &d
 
         QDomElement expandedLegendNodesElem = doc.createElement( QStringLiteral( "expanded-legend-nodes" ) );
         expandedLegendNodesElem.setAttribute( QStringLiteral( "id" ), layerID );
-        for ( const QString &expandedLegendNode : qgis::as_const( layerRec.expandedLegendItems ) )
+        for ( const QString &expandedLegendNode : std::as_const( layerRec.expandedLegendItems ) )
         {
           QDomElement expandedLegendNodeElem = doc.createElement( QStringLiteral( "expanded-legend-node" ) );
           expandedLegendNodeElem.setAttribute( QStringLiteral( "id" ), expandedLegendNode );
@@ -692,7 +691,7 @@ void QgsMapThemeCollection::registryLayersRemoved( const QStringList &layerIDs )
     }
   }
 
-  for ( const QString &theme : qgis::as_const( changedThemes ) )
+  for ( const QString &theme : std::as_const( changedThemes ) )
   {
     emit mapThemeChanged( theme );
   }
@@ -725,7 +724,7 @@ void QgsMapThemeCollection::layerStyleRenamed( const QString &oldName, const QSt
     }
   }
 
-  for ( const QString &theme : qgis::as_const( changedThemes ) )
+  for ( const QString &theme : std::as_const( changedThemes ) )
   {
     emit mapThemeChanged( theme );
   }

@@ -140,7 +140,7 @@ QVariant QgsAggregateMappingModel::data( const QModelIndex &index, int role ) co
           }
           case ColumnDataIndex::DestinationType:
           {
-            return static_cast<int>( agg.field.type() );
+            return agg.field.typeName();
           }
           case ColumnDataIndex::DestinationLength:
           {
@@ -201,7 +201,7 @@ bool QgsAggregateMappingModel::setData( const QModelIndex &index, const QVariant
         }
         case ColumnDataIndex::DestinationType:
         {
-          f.field.setType( static_cast<QVariant::Type>( value.toInt( ) ) );
+          QgsFieldMappingModel::setFieldTypeFromName( f.field, value.toString() );
           break;
         }
         case ColumnDataIndex::DestinationLength:
@@ -260,7 +260,7 @@ void QgsAggregateMappingModel::setSourceFields( const QgsFields &sourceFields )
   if ( mExpressionContextGenerator )
     mExpressionContextGenerator->setSourceFields( mSourceFields );
 
-  QStringList usedFields;
+  const QStringList usedFields;
   beginResetModel();
   mMapping.clear();
 
@@ -268,6 +268,7 @@ void QgsAggregateMappingModel::setSourceFields( const QgsFields &sourceFields )
   {
     Aggregate aggregate;
     aggregate.field = f;
+    aggregate.field.setTypeName( QgsFieldMappingModel::qgsFieldToTypeName( f ) );
     aggregate.source = QgsExpression::quotedColumnRef( f.name() );
 
     if ( f.isNumeric() )
@@ -301,6 +302,10 @@ void QgsAggregateMappingModel::setMapping( const QList<QgsAggregateMappingModel:
 {
   beginResetModel();
   mMapping = mapping;
+  for ( auto &agg : mMapping )
+  {
+    agg.field.setTypeName( QgsFieldMappingModel::qgsFieldToTypeName( agg.field ) );
+  }
   endResetModel();
 }
 
@@ -310,6 +315,7 @@ void QgsAggregateMappingModel::appendField( const QgsField &field, const QString
   beginInsertRows( QModelIndex(), lastRow, lastRow );
   Aggregate agg;
   agg.field = field;
+  agg.field.setTypeName( QgsFieldMappingModel::qgsFieldToTypeName( field ) );
   agg.source = source;
   agg.aggregate = aggregate;
   agg.delimiter = ',';
@@ -429,7 +435,7 @@ bool QgsAggregateMappingWidget::removeSelectedFields()
 
   std::list<int> rowsToRemove { selectedRows() };
   rowsToRemove.reverse();
-  for ( int row : rowsToRemove )
+  for ( const int row : rowsToRemove )
   {
     if ( ! model()->removeField( model()->index( row, 0, QModelIndex() ) ) )
     {
@@ -445,7 +451,7 @@ bool QgsAggregateMappingWidget::moveSelectedFieldsUp()
     return false;
 
   const std::list<int> rowsToMoveUp { selectedRows() };
-  for ( int row : rowsToMoveUp )
+  for ( const int row : rowsToMoveUp )
   {
     if ( ! model()->moveUp( model()->index( row, 0, QModelIndex() ) ) )
     {
@@ -462,7 +468,7 @@ bool QgsAggregateMappingWidget::moveSelectedFieldsDown()
 
   std::list<int> rowsToMoveDown { selectedRows() };
   rowsToMoveDown.reverse();
-  for ( int row : rowsToMoveDown )
+  for ( const int row : rowsToMoveDown )
   {
     if ( ! model()->moveDown( model()->index( row, 0, QModelIndex() ) ) )
     {
@@ -529,7 +535,7 @@ QWidget *QgsAggregateMappingWidget::AggregateDelegate::createEditor( QWidget *pa
   }
 
   connect( editor,
-           qgis::overload<int >::of( &QComboBox::currentIndexChanged ),
+           qOverload<int >( &QComboBox::currentIndexChanged ),
            this,
            [ = ]( int currentIndex )
   {
@@ -566,7 +572,8 @@ const QStringList QgsAggregateMappingWidget::AggregateDelegate::aggregates()
   static std::once_flag initialized;
   std::call_once( initialized, [ = ]( )
   {
-    sAggregates << QStringLiteral( "first_value" );
+    sAggregates << QStringLiteral( "first_value" )
+                << QStringLiteral( "last_value" );
 
     const QList<QgsExpressionFunction *> functions = QgsExpression::Functions();
     for ( const QgsExpressionFunction *function : functions )

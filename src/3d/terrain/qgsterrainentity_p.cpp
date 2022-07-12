@@ -57,10 +57,8 @@ class TerrainMapUpdateJobFactory : public QgsChunkQueueJobFactory
 // -----------
 
 
-QgsTerrainEntity::QgsTerrainEntity( int maxLevel, const Qgs3DMapSettings &map, Qt3DCore::QNode *parent )
-  : QgsChunkedEntity( map.terrainGenerator()->rootChunkBbox( map ),
-                      map.terrainGenerator()->rootChunkError( map ),
-                      map.maxTerrainScreenError(), maxLevel, map.terrainGenerator(), false, parent )
+QgsTerrainEntity::QgsTerrainEntity( const Qgs3DMapSettings &map, Qt3DCore::QNode *parent )
+  : QgsChunkedEntity( map.maxTerrainScreenError(), map.terrainGenerator(), false, std::numeric_limits<int>::max(), parent )
   , mMap( map )
 {
   map.terrainGenerator()->setTerrain( this );
@@ -69,9 +67,10 @@ QgsTerrainEntity::QgsTerrainEntity( int maxLevel, const Qgs3DMapSettings &map, Q
   connect( &map, &Qgs3DMapSettings::showTerrainBoundingBoxesChanged, this, &QgsTerrainEntity::onShowBoundingBoxesChanged );
   connect( &map, &Qgs3DMapSettings::showTerrainTilesInfoChanged, this, &QgsTerrainEntity::invalidateMapImages );
   connect( &map, &Qgs3DMapSettings::showLabelsChanged, this, &QgsTerrainEntity::invalidateMapImages );
-  connect( &map, &Qgs3DMapSettings::terrainLayersChanged, this, &QgsTerrainEntity::onLayersChanged );
+  connect( &map, &Qgs3DMapSettings::layersChanged, this, &QgsTerrainEntity::onLayersChanged );
   connect( &map, &Qgs3DMapSettings::backgroundColorChanged, this, &QgsTerrainEntity::invalidateMapImages );
   connect( &map, &Qgs3DMapSettings::terrainMapThemeChanged, this, &QgsTerrainEntity::invalidateMapImages );
+  connect( &map, &Qgs3DMapSettings::terrainElevationOffsetChanged, this, &QgsTerrainEntity::onTerrainElevationOffsetChanged );
 
   connectToLayersRepaintRequest();
 
@@ -85,6 +84,11 @@ QgsTerrainEntity::QgsTerrainEntity( int maxLevel, const Qgs3DMapSettings &map, Q
   // add camera control's terrain picker as a component to be able to capture height where mouse was
   // pressed in order to correctly pan camera when dragging mouse
   addComponent( mTerrainPicker );
+
+  mTerrainTransform = new Qt3DCore::QTransform;
+  mTerrainTransform->setScale( 1.0f );
+  mTerrainTransform->setTranslation( QVector3D( 0.0f, map.terrainElevationOffset(), 0.0f ) );
+  addComponent( mTerrainTransform );
 }
 
 QgsTerrainEntity::~QgsTerrainEntity()
@@ -148,7 +152,8 @@ void QgsTerrainEntity::invalidateMapImages()
   // handle inactive nodes afterwards
 
   QList<QgsChunkNode *> inactiveNodes;
-  Q_FOREACH ( QgsChunkNode *node, mRootNode->descendants() )
+  const QList<QgsChunkNode *> descendants = mRootNode->descendants();
+  for ( QgsChunkNode *node : descendants )
   {
     if ( !node->entity() )
       continue;
@@ -170,17 +175,27 @@ void QgsTerrainEntity::onLayersChanged()
 
 void QgsTerrainEntity::connectToLayersRepaintRequest()
 {
-  Q_FOREACH ( QgsMapLayer *layer, mLayers )
+  for ( QgsMapLayer *layer : std::as_const( mLayers ) )
   {
     disconnect( layer, &QgsMapLayer::repaintRequested, this, &QgsTerrainEntity::invalidateMapImages );
   }
 
-  mLayers = mMap.terrainLayers();
+  mLayers = mMap.layers();
 
-  Q_FOREACH ( QgsMapLayer *layer, mLayers )
+  for ( QgsMapLayer *layer : std::as_const( mLayers ) )
   {
     connect( layer, &QgsMapLayer::repaintRequested, this, &QgsTerrainEntity::invalidateMapImages );
   }
+}
+
+void QgsTerrainEntity::onTerrainElevationOffsetChanged( float newOffset )
+{
+  mTerrainTransform->setTranslation( QVector3D( 0.0f, newOffset, 0.0f ) );
+}
+
+float QgsTerrainEntity::terrainElevationOffset() const
+{
+  return mMap.terrainElevationOffset();
 }
 
 

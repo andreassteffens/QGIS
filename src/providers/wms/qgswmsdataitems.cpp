@@ -12,6 +12,7 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+
 #include "qgswmsdataitems.h"
 
 #include "qgslogger.h"
@@ -22,12 +23,9 @@
 #include "qgswmsconnection.h"
 #include "qgsxyzconnection.h"
 
-#ifdef HAVE_GUI
-#include "qgswmssourceselect.h"
-#endif
 #include "qgsgeonodeconnection.h"
 #include "qgsgeonoderequest.h"
-#include "qgssettings.h"
+
 
 // ---------------------------------------------------------------------------
 QgsWMSConnectionItem::QgsWMSConnectionItem( QgsDataItem *parent, QString name, QString path, QString uri )
@@ -35,13 +33,19 @@ QgsWMSConnectionItem::QgsWMSConnectionItem( QgsDataItem *parent, QString name, Q
   , mUri( uri )
 {
   mIconName = QStringLiteral( "mIconConnect.svg" );
-  mCapabilities |= Collapse;
+  mCapabilities |= Qgis::BrowserItemCapability::Collapse;
   mCapabilitiesDownload = new QgsWmsCapabilitiesDownload( false );
 }
 
 QgsWMSConnectionItem::~QgsWMSConnectionItem()
 {
   delete mCapabilitiesDownload;
+}
+
+void QgsWMSConnectionItem::refresh()
+{
+  mCapabilitiesDownload->setForceRefresh( true );
+  QgsDataItem::refresh();
 }
 
 void QgsWMSConnectionItem::deleteLater()
@@ -73,7 +77,7 @@ QVector<QgsDataItem *> QgsWMSConnectionItem::createChildren()
 
   if ( !res )
   {
-    children.append( new QgsErrorItem( this, tr( "Failed to download capabilities" ), mPath + "/error" ) );
+    children.append( new QgsErrorItem( this, mCapabilitiesDownload->lastError(), mPath + "/error" ) );
     return children;
   }
 
@@ -91,7 +95,7 @@ QVector<QgsDataItem *> QgsWMSConnectionItem::createChildren()
     QgsWmsCapabilitiesProperty capabilitiesProperty = caps.capabilitiesProperty();
     const QgsWmsCapabilityProperty &capabilityProperty = capabilitiesProperty.capability;
 
-    for ( const QgsWmsLayerProperty &layerProperty : qgis::as_const( capabilityProperty.layers ) )
+    for ( const QgsWmsLayerProperty &layerProperty : std::as_const( capabilityProperty.layers ) )
     {
       // Attention, the name may be empty
       QgsDebugMsgLevel( QString::number( layerProperty.orderId ) + ' ' + layerProperty.name + ' ' + layerProperty.title, 2 );
@@ -107,109 +111,200 @@ QVector<QgsDataItem *> QgsWMSConnectionItem::createChildren()
     }
   }
 
-  QStringList styleIdentifiers;
-  QStringList linkIdentifiers;
+  QSet< QString > styleIdentifiers;
+  QSet< QString > dimensionIdentifiers;
+  QSet< QString > dimensionValueIdentifiers;
+  QSet< QString > linkIdentifiers;
 
-  QList<QgsWmtsTileLayer> tileLayers = caps.supportedTileLayers();
+  const QList<QgsWmtsTileLayer> tileLayers = caps.supportedTileLayers();
   if ( !tileLayers.isEmpty() )
   {
-    QHash<QString, QgsWmtsTileMatrixSet> tileMatrixSets = caps.supportedTileMatrixSets();
+    const QHash<QString, QgsWmtsTileMatrixSet> tileMatrixSets = caps.supportedTileMatrixSets();
 
-    const auto constTileLayers = tileLayers;
-    for ( const QgsWmtsTileLayer &l : constTileLayers )
+    for ( const QgsWmtsTileLayer &l : tileLayers )
     {
-      QString title = l.title.isEmpty() ? l.identifier : l.title;
+      const QString title = l.title.isEmpty() ? l.identifier : l.title;
 
-      QgsDataItem *layerItem = l.styles.size() == 1 ? static_cast<  QgsDataItem * >( this ) : static_cast<  QgsDataItem * >( new QgsWMTSRootItem( this, title, mPath + '/' + l.identifier ) );
-
-      if ( layerItem != this )
+      QgsDataItem *dimensionItem = ( l.dimensions.empty() || ( l.dimensions.size() == 1 && l.dimensions.constBegin()->values.size() < 2 ) ) ? qobject_cast< QgsDataItem *>( this ) : new QgsWMTSRootItem( this, title, mPath + '/' + l.identifier );
+      if ( dimensionItem != this )
       {
-        layerItem->setCapabilities( layerItem->capabilities2() & ~QgsDataItem::Fertile );
-        layerItem->setState( QgsDataItem::Populated );
-        layerItem->setToolTip( title );
-        children << layerItem;
+        dimensionItem->setCapabilities( dimensionItem->capabilities2() & ~ Qgis::BrowserItemCapabilities( Qgis::BrowserItemCapability::Fertile ) );
+        dimensionItem->setState( Qgis::BrowserItemState::Populated );
+        dimensionItem->setToolTip( title );
+        children << dimensionItem;
       }
 
-      for ( const QgsWmtsStyle &style : qgis::as_const( l.styles ) )
+      QStringList dimensionIds = l.dimensions.keys();
+      std::sort( dimensionIds.begin(), dimensionIds.end(), []( const QString & a, const QString & b )->bool
       {
-        QString styleName = style.title.isEmpty() ? style.identifier : style.title;
-        if ( layerItem == this )
-          styleName = title;  // just one style so no need to display it
+        return QString::localeAwareCompare( a, b ) < 0;
+      } );
 
-        // Ensure style path is unique
-        QString stylePathIdentifier { style.identifier };
+      if ( dimensionIds.empty() )
+      {
+        // if no dimensions present on service, we add a blank one just to keep the below loops manageable!
+        dimensionIds.append( QString() );
+      }
+
+      for ( const QString &dimensionId : std::as_const( dimensionIds ) )
+      {
+        const QgsWmtsDimension dimension = l.dimensions.value( dimensionId );
+        QString dimensionName = dimension.title.isEmpty() ? dimension.identifier : dimension.title;
+        if ( dimensionItem == this )
+          dimensionName = title;  // just one dimension so no need to display it
+
+        // Ensure dimension path is unique
+        QString dimensionPathIdentifier { dimension.identifier };
         int i = 0;
-        while ( styleIdentifiers.contains( stylePathIdentifier ) )
+        while ( dimensionIdentifiers.contains( dimensionPathIdentifier ) )
         {
-          stylePathIdentifier = QStringLiteral( "%1_%2" ).arg( style.identifier ).arg( ++i );
+          dimensionPathIdentifier = QStringLiteral( "%1_%2" ).arg( dimension.identifier ).arg( ++i );
         }
-        styleIdentifiers.push_back( stylePathIdentifier );
+        dimensionIdentifiers.insert( dimensionPathIdentifier );
 
-        QgsDataItem *styleItem = l.setLinks.size() == 1 ? static_cast<  QgsDataItem * >( layerItem ) : static_cast<  QgsDataItem * >( new QgsWMTSRootItem( layerItem, styleName, layerItem->path() + '/' + stylePathIdentifier ) );
+        QStringList dimensionValues = dimension.values;
 
-        if ( styleItem != layerItem )
+        QgsDataItem *dimensionValueItem = dimensionValues.size() < 2 ? static_cast<  QgsDataItem * >( dimensionItem ) : static_cast<  QgsDataItem * >( new QgsWMTSRootItem( this, dimensionName, dimensionItem->path() + '/' + dimensionPathIdentifier ) );
+
+        if ( dimensionValueItem != dimensionItem )
         {
-          styleItem->setCapabilities( styleItem->capabilities2() & ~QgsDataItem::Fertile );
-          styleItem->setState( QgsDataItem::Populated );
-          styleItem->setToolTip( styleName );
-          if ( layerItem == this )
+          dimensionValueItem->setCapabilities( dimensionItem->capabilities2() & ~ Qgis::BrowserItemCapabilities( Qgis::BrowserItemCapability::Fertile ) );
+          dimensionValueItem->setState( Qgis::BrowserItemState::Populated );
+          dimensionValueItem->setToolTip( dimensionName );
+          if ( dimensionItem == this )
           {
-            children << styleItem;
+            children << dimensionValueItem;
           }
           else
           {
-            layerItem->addChildItem( styleItem );
+            dimensionItem->addChildItem( dimensionValueItem );
           }
         }
 
-        for ( const QgsWmtsTileMatrixSetLink &setLink : qgis::as_const( l.setLinks ) )
+        if ( dimensionValues.empty() )
         {
-          QString linkName = setLink.tileMatrixSet;
-          if ( styleItem == layerItem )
-            linkName = styleName;  // just one link so no need to display it
+          // if no dimension values present on service, we add a blank one just to keep the below loops manageable!
+          dimensionValues << QString();
+        }
 
-          // Ensure link path is unique
-          QString linkPathIdentifier { linkName };
+        // iterate through available dimension values
+        for ( const QString &dimensionValue : std::as_const( dimensionValues ) )
+        {
+          QString dimensionValueTitle = dimensionValue;
+          if ( dimensionValueItem == this )
+            dimensionValueTitle = dimensionName;  // just one dimension value so no need to display it
+
+          // Ensure dimension value path is unique
+          QString dimensionValuePathIdentifier = QStringLiteral( "%1_%2" ).arg( dimension.identifier, dimensionValue );
           int i = 0;
-          while ( linkIdentifiers.contains( linkPathIdentifier ) )
+          while ( dimensionValueIdentifiers.contains( dimensionValuePathIdentifier ) )
           {
-            linkPathIdentifier = QStringLiteral( "%1_%2" ).arg( linkName ).arg( ++i );
+            dimensionValuePathIdentifier = QStringLiteral( "%1_%2_%3" ).arg( dimension.identifier, dimensionValue ).arg( ++i );
           }
-          linkIdentifiers.push_back( linkPathIdentifier );
+          dimensionValueIdentifiers.insert( dimensionValuePathIdentifier );
 
-          QgsDataItem *linkItem = l.formats.size() == 1 ? static_cast<  QgsDataItem * >( styleItem ) : static_cast<  QgsDataItem * >( new QgsWMTSRootItem( styleItem, linkName, styleItem->path() + '/' + linkPathIdentifier ) );
+          QgsDataItem *layerItem = l.styles.size() == 1 ? static_cast<  QgsDataItem * >( dimensionValueItem ) : static_cast<  QgsDataItem * >( new QgsWMTSRootItem( this, dimensionValueTitle, dimensionValueItem->path() + '/' + dimensionValuePathIdentifier ) );
 
-          if ( linkItem != styleItem )
+          if ( layerItem != dimensionValueItem )
           {
-            linkItem->setCapabilities( linkItem->capabilities2() & ~QgsDataItem::Fertile );
-            linkItem->setState( QgsDataItem::Populated );
-            linkItem->setToolTip( linkName );
-            if ( styleItem == this )
+            layerItem->setCapabilities( layerItem->capabilities2() & ~ Qgis::BrowserItemCapabilities( Qgis::BrowserItemCapability::Fertile ) );
+            layerItem->setState( Qgis::BrowserItemState::Populated );
+            layerItem->setToolTip( dimensionValueTitle );
+            if ( dimensionValueItem == this )
             {
-              children << linkItem;
+              children << layerItem;
             }
             else
             {
-              styleItem->addChildItem( linkItem );
+              dimensionValueItem->addChildItem( layerItem );
             }
           }
 
-          for ( const QString &format : qgis::as_const( l.formats ) )
+          for ( const QgsWmtsStyle &style : std::as_const( l.styles ) )
           {
-            QString name = format;
-            if ( linkItem == styleItem )
-              name = linkName;  // just one format so no need to display it
+            QString styleName = style.title.isEmpty() ? style.identifier : style.title;
+            if ( layerItem == dimensionValueItem )
+              styleName = dimensionValueTitle;  // just one style so no need to display it
 
-            QgsDataItem *tileLayerItem = new QgsWMTSLayerItem( linkItem, name, linkItem->path() + '/' + name, uri,
-                l.identifier, format, style.identifier, setLink.tileMatrixSet, tileMatrixSets[ setLink.tileMatrixSet ].crs, title );
-            tileLayerItem->setToolTip( name );
-            if ( linkItem == this )
+            // Ensure style path is unique
+            QString stylePathIdentifier { style.identifier };
+            int i = 0;
+            while ( styleIdentifiers.contains( stylePathIdentifier ) )
             {
-              children << tileLayerItem;
+              stylePathIdentifier = QStringLiteral( "%1_%2" ).arg( style.identifier ).arg( ++i );
             }
-            else
+            styleIdentifiers.insert( stylePathIdentifier );
+
+            QgsDataItem *styleItem = l.setLinks.size() == 1 ? static_cast<  QgsDataItem * >( layerItem ) : static_cast<  QgsDataItem * >( new QgsWMTSRootItem( layerItem, styleName, layerItem->path() + '/' + stylePathIdentifier ) );
+
+            if ( styleItem != layerItem )
             {
-              linkItem->addChildItem( tileLayerItem );
+              styleItem->setCapabilities( styleItem->capabilities2() & ~Qgis::BrowserItemCapabilities( Qgis::BrowserItemCapability::Fertile ) );
+              styleItem->setState( Qgis::BrowserItemState::Populated );
+              styleItem->setToolTip( styleName );
+              if ( layerItem == this )
+              {
+                children << styleItem;
+              }
+              else
+              {
+                layerItem->addChildItem( styleItem );
+              }
+            }
+
+            for ( const QgsWmtsTileMatrixSetLink &setLink : std::as_const( l.setLinks ) )
+            {
+              QString linkName = setLink.tileMatrixSet;
+              if ( styleItem == layerItem )
+                linkName = styleName;  // just one link so no need to display it
+
+              // Ensure link path is unique
+              QString linkPathIdentifier { linkName };
+              int i = 0;
+              while ( linkIdentifiers.contains( linkPathIdentifier ) )
+              {
+                linkPathIdentifier = QStringLiteral( "%1_%2" ).arg( linkName ).arg( ++i );
+              }
+              linkIdentifiers.insert( linkPathIdentifier );
+
+              QgsDataItem *linkItem = l.formats.size() == 1 ? static_cast<  QgsDataItem * >( styleItem ) : static_cast<  QgsDataItem * >( new QgsWMTSRootItem( styleItem, linkName, styleItem->path() + '/' + linkPathIdentifier ) );
+
+              if ( linkItem != styleItem )
+              {
+                linkItem->setCapabilities( linkItem->capabilities2() & ~Qgis::BrowserItemCapabilities( Qgis::BrowserItemCapability::Fertile ) );
+                linkItem->setState( Qgis::BrowserItemState::Populated );
+                linkItem->setToolTip( linkName );
+                if ( styleItem == this )
+                {
+                  children << linkItem;
+                }
+                else
+                {
+                  styleItem->addChildItem( linkItem );
+                }
+              }
+
+              for ( const QString &format : std::as_const( l.formats ) )
+              {
+                QString name = format;
+                if ( linkItem == styleItem )
+                  name = linkName;  // just one format so no need to display it
+
+                QgsDataItem *tileLayerItem = new QgsWMTSLayerItem( linkItem, name, linkItem->path() + '/' + name, uri,
+                    l.identifier,
+                    dimensionId,
+                    dimensionValue,
+                    format, style.identifier, setLink.tileMatrixSet, tileMatrixSets[ setLink.tileMatrixSet ].crs, title );
+                tileLayerItem->setToolTip( name );
+                if ( linkItem == this )
+                {
+                  children << tileLayerItem;
+                }
+                else
+                {
+                  linkItem->addChildItem( tileLayerItem );
+                }
+              }
             }
           }
         }
@@ -274,7 +369,7 @@ QgsWMSItemBase::QgsWMSItemBase( const QgsWmsCapabilitiesProperty &capabilitiesPr
 {
 }
 
-QString QgsWMSItemBase::createUri()
+QString QgsWMSItemBase::createUri( bool withStyle )
 {
   if ( mLayerProperty.name.isEmpty() )
     return QString(); // layer collection
@@ -282,10 +377,10 @@ QString QgsWMSItemBase::createUri()
   // Number of styles must match number of layers
   mDataSourceUri.setParam( QStringLiteral( "layers" ), mLayerProperty.name );
   QString style = !mLayerProperty.style.isEmpty() ? mLayerProperty.style.at( 0 ).name : QString();
-  mDataSourceUri.setParam( QStringLiteral( "styles" ), style );
+  mDataSourceUri.setParam( QStringLiteral( "styles" ), withStyle ? style : QString() );
 
   // Check for layer dimensions
-  for ( const QgsWmsDimensionProperty &dimension : qgis::as_const( mLayerProperty.dimensions ) )
+  for ( const QgsWmsDimensionProperty &dimension : std::as_const( mLayerProperty.dimensions ) )
   {
     // add temporal dimensions only
     if ( dimension.name == QLatin1String( "time" ) || dimension.name == QLatin1String( "reference_time" ) )
@@ -322,7 +417,7 @@ QString QgsWMSItemBase::createUri()
   QString crs;
   // get first known if possible
   QgsCoordinateReferenceSystem testCrs;
-  for ( const QString &c : qgis::as_const( mLayerProperty.crs ) )
+  for ( const QString &c : std::as_const( mLayerProperty.crs ) )
   {
     testCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( c );
     if ( testCrs.isValid() )
@@ -349,10 +444,11 @@ QgsWMSLayerCollectionItem::QgsWMSLayerCollectionItem( QgsDataItem *parent, QStri
   , QgsWMSItemBase( capabilitiesProperty, dataSourceUri, layerProperty )
 {
   mIconName = QStringLiteral( "mIconWms.svg" );
-  mUri = createUri();
+  // For collection items we want the default style (empty) so let's strip it
+  mUri = createUri( /* withStyle */ false );
 
   // Populate everything, it costs nothing, all info about layers is collected
-  for ( const QgsWmsLayerProperty &layerProperty : qgis::as_const( mLayerProperty.layer ) )
+  for ( const QgsWmsLayerProperty &layerProperty : std::as_const( mLayerProperty.layer ) )
   {
     // Attention, the name may be empty
     QgsDebugMsgLevel( QString::number( layerProperty.orderId ) + ' ' + layerProperty.name + ' ' + layerProperty.title, 2 );
@@ -368,7 +464,7 @@ QgsWMSLayerCollectionItem::QgsWMSLayerCollectionItem( QgsDataItem *parent, QStri
     addChildItem( layer );
   }
 
-  setState( Populated );
+  setState( Qgis::BrowserItemState::Populated );
 }
 
 bool QgsWMSLayerCollectionItem::equal( const QgsDataItem *other )
@@ -419,7 +515,8 @@ bool QgsWMSLayerCollectionItem::hasDragEnabled() const
   return false;
 }
 
-QgsMimeDataUtils::Uri QgsWMSLayerCollectionItem::mimeUri() const
+
+QgsMimeDataUtils::UriList QgsWMSLayerCollectionItem::mimeUris() const
 {
   QgsMimeDataUtils::Uri u;
 
@@ -430,13 +527,13 @@ QgsMimeDataUtils::Uri QgsWMSLayerCollectionItem::mimeUri() const
   u.supportedCrs = mLayerProperty.crs;
   u.supportedFormats = mCapabilitiesProperty.capability.request.getMap.format;
 
-  return u;
+  return { u };
 }
 
 // ---------------------------------------------------------------------------
 
 QgsWMSLayerItem::QgsWMSLayerItem( QgsDataItem *parent, QString name, QString path, const QgsWmsCapabilitiesProperty &capabilitiesProperty, const QgsDataSourceUri &dataSourceUri, const QgsWmsLayerProperty &layerProperty )
-  : QgsLayerItem( parent, name, path, QString(), QgsLayerItem::Raster, QStringLiteral( "wms" ) )
+  : QgsLayerItem( parent, name, path, QString(), Qgis::BrowserLayerType::Raster, QStringLiteral( "wms" ) )
   ,  QgsWMSItemBase( capabilitiesProperty, dataSourceUri, layerProperty )
 {
   mSupportedCRS = mLayerProperty.crs;
@@ -445,7 +542,7 @@ QgsWMSLayerItem::QgsWMSLayerItem( QgsDataItem *parent, QString name, QString pat
 
   mUri = createUri();
   mIconName = QStringLiteral( "mIconWms.svg" );
-  setState( Populated );
+  setState( Qgis::BrowserItemState::Populated );
 }
 
 bool QgsWMSLayerItem::equal( const QgsDataItem *other )
@@ -474,14 +571,18 @@ QgsWMTSLayerItem::QgsWMTSLayerItem( QgsDataItem *parent,
                                     const QString &path,
                                     const QgsDataSourceUri &uri,
                                     const QString &id,
+                                    const QString &dimension,
+                                    const QString &dimensionValue,
                                     const QString &format,
                                     const QString &style,
                                     const QString &tileMatrixSet,
                                     const QString &crs,
                                     const QString &title )
-  : QgsLayerItem( parent, name, path, QString(), QgsLayerItem::Raster, QStringLiteral( "wms" ) )
+  : QgsLayerItem( parent, name, path, QString(), Qgis::BrowserLayerType::Raster, QStringLiteral( "wms" ) )
   , mDataSourceUri( uri )
   , mId( id )
+  , mDimension( dimension )
+  , mDimensionValue( dimensionValue )
   , mFormat( format )
   , mStyle( style )
   , mTileMatrixSet( tileMatrixSet )
@@ -489,19 +590,21 @@ QgsWMTSLayerItem::QgsWMTSLayerItem( QgsDataItem *parent,
   , mTitle( title )
 {
   mUri = createUri();
-  setState( Populated );
+  setState( Qgis::BrowserItemState::Populated );
 }
 
 QString QgsWMTSLayerItem::createUri()
 {
-  // TODO dimensions
-
   QgsDataSourceUri uri( mDataSourceUri );
   uri.setParam( QStringLiteral( "layers" ), mId );
   uri.setParam( QStringLiteral( "styles" ), mStyle );
   uri.setParam( QStringLiteral( "format" ), mFormat );
   uri.setParam( QStringLiteral( "crs" ), mCrs );
   uri.setParam( QStringLiteral( "tileMatrixSet" ), mTileMatrixSet );
+
+  if ( !mDimension.isEmpty() && !mDimensionValue.isEmpty() )
+    uri.setParam( QStringLiteral( "tileDimensions" ), QStringLiteral( "%1=%2" ).arg( mDimension, mDimensionValue ) );
+
   return uri.encodedUri();
 }
 
@@ -509,7 +612,7 @@ QString QgsWMTSLayerItem::createUri()
 QgsWMSRootItem::QgsWMSRootItem( QgsDataItem *parent, QString name, QString path )
   : QgsConnectionsRootItem( parent, name, path, QStringLiteral( "WMS" ) )
 {
-  mCapabilities |= Fast;
+  mCapabilities |= Qgis::BrowserItemCapability::Fast;
   mIconName = QStringLiteral( "mIconWms.svg" );
   populate();
 }
@@ -534,7 +637,7 @@ QVector<QgsDataItem *> QgsWMSRootItem::createChildren()
 QgsWMTSRootItem::QgsWMTSRootItem( QgsDataItem *parent, QString name, QString path )
   : QgsConnectionsRootItem( parent, name, path, QStringLiteral( "WMS" ) )
 {
-  mCapabilities |= Fast;
+  mCapabilities |= Qgis::BrowserItemCapability::Fast;
   mIconName = QStringLiteral( "mIconWms.svg" );
   populate();
 
@@ -575,7 +678,7 @@ QgsDataItem *QgsWmsDataItemProvider::createDataItem( const QString &path, QgsDat
 QgsXyzTileRootItem::QgsXyzTileRootItem( QgsDataItem *parent, QString name, QString path )
   : QgsConnectionsRootItem( parent, name, path, QStringLiteral( "WMS" ) )
 {
-  mCapabilities |= Fast;
+  mCapabilities |= Qgis::BrowserItemCapability::Fast;
   mIconName = QStringLiteral( "mIconXyz.svg" );
   populate();
 }
@@ -598,10 +701,10 @@ QVector<QgsDataItem *> QgsXyzTileRootItem::createChildren()
 
 
 QgsXyzLayerItem::QgsXyzLayerItem( QgsDataItem *parent, QString name, QString path, const QString &encodedUri )
-  : QgsLayerItem( parent, name, path, encodedUri, QgsLayerItem::Raster, QStringLiteral( "wms" ) )
+  : QgsLayerItem( parent, name, path, encodedUri, Qgis::BrowserLayerType::Raster, QStringLiteral( "wms" ) )
 {
   mIconName = QStringLiteral( "mIconXyz.svg" );
-  setState( Populated );
+  setState( Qgis::BrowserItemState::Populated );
 }
 
 
@@ -628,14 +731,13 @@ QVector<QgsDataItem *> QgsWmsDataItemProvider::createDataItems( const QString &p
         {
           QgsDebugMsgLevel( encodedUri, 3 );
           QgsDataSourceUri uri;
-          QgsSettings settings;
-          QString key( QgsGeoNodeConnectionUtils::pathGeoNodeConnection() + "/" + connectionName );
 
-          QString dpiMode = settings.value( key + "/wms/dpiMode", "all" ).toString();
+          QStringList serviceConnectionDetails = {QgsGeoNodeConnectionUtils::sGeoNodeConnection.toLower(), QStringLiteral( "%1/wms" ).arg( connectionName )};
+
           uri.setParam( QStringLiteral( "url" ), encodedUri );
-          if ( !dpiMode.isEmpty() )
+          if ( QgsOwsConnection::settingsConnectionDpiMode.exists( serviceConnectionDetails ) )
           {
-            uri.setParam( QStringLiteral( "dpiMode" ), dpiMode );
+            uri.setParam( QStringLiteral( "dpiMode" ), QString::number( static_cast<int>( QgsOwsConnection::settingsConnectionDpiMode.value( serviceConnectionDetails ) ) ) );
           }
 
           QgsDebugMsgLevel( QStringLiteral( "WMS full uri: '%1'." ).arg( QString( uri.encodedUri() ) ), 2 );

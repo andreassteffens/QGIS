@@ -10,6 +10,7 @@
 
 
 
+
 typedef QMap<QString, QString> QgsStringMap;
 typedef QMap<QString, QgsSymbol * > QgsSymbolMap;
 
@@ -21,13 +22,6 @@ class QgsSymbolLayerUtils
 #include "qgssymbollayerutils.h"
 %End
   public:
-
-    enum VertexMarkerType
-    {
-      SemiTransparentCircle,
-      Cross,
-      NoMarker
-    };
 
     static QString encodeColor( const QColor &color );
     static QColor decodeColor( const QString &str );
@@ -62,6 +56,31 @@ class QgsSymbolLayerUtils
     static QString encodeSldBrushStyle( Qt::BrushStyle style );
     static Qt::BrushStyle decodeSldBrushStyle( const QString &str );
 
+    static Qgis::SymbolCoordinateReference decodeCoordinateReference( const QString &string, bool *ok /Out/ = 0 );
+%Docstring
+Decodes a ``string`` representing a symbol coordinate reference mode.
+
+:param string: string to decode
+
+:return: - decoded marker clip mode
+         - ok: will be set to ``True`` if ``string`` was successfully decoded
+
+.. seealso:: :py:func:`encodeCoordinateReference`
+
+.. versionadded:: 3.24
+%End
+
+    static QString encodeCoordinateReference( Qgis::SymbolCoordinateReference coordinateReference );
+%Docstring
+Encodes a symbol coordinate reference mode to a string.
+
+:param coordinateReference: coordinate reference mode
+
+.. seealso:: :py:func:`decodeCoordinateReference`
+
+.. versionadded:: 3.24
+%End
+
     static QgsArrowSymbolLayer::HeadType decodeArrowHeadType( const QVariant &value, bool *ok /Out/ = 0 );
 %Docstring
 Decodes a ``value`` representing an arrow head type.
@@ -74,6 +93,52 @@ Decodes a ``value`` representing an arrow head type.
 Decodes a ``value`` representing an arrow type.
 
 .. versionadded:: 3.2
+%End
+
+    static Qgis::MarkerClipMode decodeMarkerClipMode( const QString &string, bool *ok /Out/ = 0 );
+%Docstring
+Decodes a ``string`` representing a marker clip mode.
+
+:param string: string to decode
+
+:return: - decoded marker clip mode
+         - ok: will be set to ``True`` if ``string`` was successfully decoded
+
+.. seealso:: :py:func:`encodeMarkerClipMode`
+
+.. versionadded:: 3.24
+%End
+
+    static QString encodeMarkerClipMode( Qgis::MarkerClipMode mode );
+%Docstring
+Encodes a marker clip ``mode`` to a string.
+
+.. seealso:: :py:func:`decodeMarkerClipMode`
+
+.. versionadded:: 3.24
+%End
+
+    static Qgis::LineClipMode decodeLineClipMode( const QString &string, bool *ok /Out/ = 0 );
+%Docstring
+Decodes a ``string`` representing a line clip mode.
+
+:param string: string to decode
+
+:return: - decoded line clip mode
+         - ok: will be set to ``True`` if ``string`` was successfully decoded
+
+.. seealso:: :py:func:`encodeLineClipMode`
+
+.. versionadded:: 3.24
+%End
+
+    static QString encodeLineClipMode( Qgis::LineClipMode mode );
+%Docstring
+Encodes a line clip ``mode`` to a string.
+
+.. seealso:: :py:func:`decodeLineClipMode`
+
+.. versionadded:: 3.24
 %End
 
     static QString encodePoint( QPointF point );
@@ -195,8 +260,19 @@ Returns the size scaled in pixels according to the uom attribute.
 .. versionadded:: 3.0
 %End
 
-    static QString encodeScaleMethod( QgsSymbol::ScaleMethod scaleMethod );
-    static QgsSymbol::ScaleMethod decodeScaleMethod( const QString &str );
+    static QString encodeScaleMethod( Qgis::ScaleMethod scaleMethod );
+%Docstring
+Encodes a symbol scale method to a string.
+
+.. seealso:: :py:func:`decodeScaleMethod`
+%End
+
+    static Qgis::ScaleMethod decodeScaleMethod( const QString &str );
+%Docstring
+Decodes a symbol scale method from a string.
+
+.. seealso:: :py:func:`encodeScaleMethod`
+%End
 
     static QPainter::CompositionMode decodeBlendMode( const QString &s );
 
@@ -245,7 +321,7 @@ Returns a pixmap preview for a color ramp.
 .. seealso:: :py:func:`symbolPreviewIcon`
 %End
 
-    static QPicture symbolLayerPreviewPicture( const QgsSymbolLayer *layer, QgsUnitTypes::RenderUnit units, QSize size, const QgsMapUnitScale &scale = QgsMapUnitScale() );
+    static QPicture symbolLayerPreviewPicture( const QgsSymbolLayer *layer, QgsUnitTypes::RenderUnit units, QSize size, const QgsMapUnitScale &scale = QgsMapUnitScale(), Qgis::SymbolType parentSymbolType = Qgis::SymbolType::Hybrid );
 %Docstring
 Draws a symbol layer preview to a QPicture
 
@@ -253,6 +329,7 @@ Draws a symbol layer preview to a QPicture
 :param units: size units
 :param size: target size of preview picture
 :param scale: map unit scale for preview
+:param parentSymbolType: since QGIS 3.22, can be used to specify the parent symbol type so that geometry generator preview icons are correctly calculated
 
 :return: QPicture containing symbol layer preview
 
@@ -261,7 +338,7 @@ Draws a symbol layer preview to a QPicture
 .. versionadded:: 2.9
 %End
 
-    static QIcon symbolLayerPreviewIcon( const QgsSymbolLayer *layer, QgsUnitTypes::RenderUnit u, QSize size, const QgsMapUnitScale &scale = QgsMapUnitScale() );
+    static QIcon symbolLayerPreviewIcon( const QgsSymbolLayer *layer, QgsUnitTypes::RenderUnit u, QSize size, const QgsMapUnitScale &scale = QgsMapUnitScale(), Qgis::SymbolType parentSymbolType = Qgis::SymbolType::Hybrid );
 %Docstring
 Draws a symbol layer preview to an icon.
 
@@ -269,6 +346,7 @@ Draws a symbol layer preview to an icon.
 :param u: size units
 :param size: target size of preview icon
 :param scale: map unit scale for preview
+:param parentSymbolType: since QGIS 3.22, can be used to specify the parent symbol type so that geometry generator preview icons are correctly calculated
 
 :return: icon containing symbol layer preview
 
@@ -286,20 +364,26 @@ Returns an icon preview for a color ramp.
 .. seealso:: :py:func:`colorRampPreviewPixmap`
 %End
 
-    static QPixmap colorRampPreviewPixmap( QgsColorRamp *ramp, QSize size, int padding = 0 );
+    static QPixmap colorRampPreviewPixmap( QgsColorRamp *ramp, QSize size, int padding = 0, Qt::Orientation direction = Qt::Horizontal,
+                                           bool flipDirection = false, bool drawTransparentBackground = true );
 %Docstring
 Returns a pixmap preview for a color ramp.
 
 :param ramp: color ramp
 :param size: target pixmap size
 :param padding: space between icon edge and color ramp
+:param direction: direction to render pixmap (since QGIS 3.18)
+:param flipDirection: set to ``True`` to flip the direction of the ramp. For horizontal ``directions``, ramps will be
+                      rendered left to right by default. For vertical ``directions``, ramps will be rendered top to bottom by default. Setting
+                      this flag to ``True`` will reverse these default directions.
+:param drawTransparentBackground: set to ``False`` to disable the checkerboard effect drawn below transparent colors in the ramp
 
 .. seealso:: :py:func:`colorRampPreviewIcon`
 %End
 
     static void drawStippledBackground( QPainter *painter, QRect rect );
 
-    static void drawVertexMarker( double x, double y, QPainter &p, QgsSymbolLayerUtils::VertexMarkerType type, int markerSize );
+    static void drawVertexMarker( double x, double y, QPainter &p, Qgis::VertexMarkerType type, int markerSize );
 %Docstring
 Draws a vertex symbol at (painter) coordinates x, y. (Useful to assist vertex editing.)
 
@@ -339,13 +423,19 @@ between symbols.
 .. versionadded:: 2.12
 %End
 
-    static bool createSymbolLayerListFromSld( QDomElement &element, QgsWkbTypes::GeometryType geomType, QgsSymbolLayerList &layers );
+    static bool createSymbolLayerListFromSld( QDomElement &element, QgsWkbTypes::GeometryType geomType, QList<QgsSymbolLayer *> &layers );
+%Docstring
+Creates a symbol layer list from a DOM ``element``.
+%End
 
     static QgsSymbolLayer *createFillLayerFromSld( QDomElement &element ) /Factory/;
     static QgsSymbolLayer *createLineLayerFromSld( QDomElement &element ) /Factory/;
     static QgsSymbolLayer *createMarkerLayerFromSld( QDomElement &element ) /Factory/;
 
-    static bool convertPolygonSymbolizerToPointMarker( QDomElement &element, QgsSymbolLayerList &layerList );
+    static bool convertPolygonSymbolizerToPointMarker( QDomElement &element, QList<QgsSymbolLayer *> &layerList );
+%Docstring
+Converts a polygon symbolizer ``element`` to a list of marker symbol layers.
+%End
     static bool hasExternalGraphic( QDomElement &element );
     static bool hasWellKnownMark( QDomElement &element );
 
@@ -456,8 +546,14 @@ Creates a OGC Expression element based on the provided function expression
     static QDomElement createVendorOptionElement( QDomDocument &doc, const QString &name, const QString &value );
     static QgsStringMap getVendorOptionList( QDomElement &element );
 
-    static QgsStringMap parseProperties( QDomElement &element );
-    static void saveProperties( QgsStringMap props, QDomDocument &doc, QDomElement &element );
+    static QVariantMap parseProperties( const QDomElement &element );
+%Docstring
+Parses the properties from XML and returns a map
+%End
+    static void saveProperties( QVariantMap props, QDomDocument &doc, QDomElement &element );
+%Docstring
+Saves the map of properties to XML
+%End
 
     static QgsSymbolMap loadSymbols( QDomElement &element, const QgsReadWriteContext &context ) /Factory/;
 %Docstring
@@ -518,7 +614,7 @@ Encodes a color ramp's settings to an XML element
     static QVariant colorRampToVariant( const QString &name, QgsColorRamp *ramp );
 %Docstring
 Saves a color ramp to a QVariantMap, wrapped in a QVariant.
-You can use QgsXmlUtils.writeVariant to save it to an XML document.
+You can use :py:class:`QgsXmlUtils`.writeVariant to save it to an XML document.
 
 .. seealso:: :py:func:`loadColorRamp`
 %End
@@ -526,7 +622,7 @@ You can use QgsXmlUtils.writeVariant to save it to an XML document.
     static QgsColorRamp *loadColorRamp( const QVariant &value ) /Factory/;
 %Docstring
 Load a color ramp from a QVariantMap, wrapped in a QVariant.
-You can use QgsXmlUtils.readVariant to load it from an XML document.
+You can use :py:class:`QgsXmlUtils`.readVariant to load it from an XML document.
 
 .. seealso:: :py:func:`colorRampToVariant`
 %End
@@ -671,6 +767,20 @@ Converts a QColor into a premultiplied ARGB QColor value using a specified alpha
 .. versionadded:: 2.3
 %End
 
+    static bool condenseFillAndOutline( QgsFillSymbolLayer *fill, QgsLineSymbolLayer *outline );
+%Docstring
+Attempts to condense a ``fill`` and ``outline`` layer, by moving the outline layer to the
+fill symbol's stroke.
+
+This will only be done if the ``outline`` can be transformed into a stroke on the fill layer
+losslessly. If so, ``fill`` will be updated in place with the new stroke. Any existing stroke
+settings in ``fill`` will be replaced.
+
+Returns ``True`` if the fill and outline were successfully condensed.
+
+.. versionadded:: 3.20
+%End
+
     static void sortVariantList( QList<QVariant> &list, Qt::SortOrder order );
 %Docstring
 Sorts the passed list in requested order
@@ -719,6 +829,13 @@ Calculate a point on the surface of a QPolygonF
     static bool pointInPolygon( const QPolygonF &points, QPointF point );
 %Docstring
 Calculate whether a point is within of a QPolygonF
+%End
+
+    static double polylineLength( const QPolygonF &polyline );
+%Docstring
+Returns the total length of a ``polyline``.
+
+.. versionadded:: 3.20
 %End
 
     static QPolygonF polylineSubstring( const QPolygonF &polyline, double startOffset, double endOffset );
@@ -782,7 +899,7 @@ The values are chosen so that they are 1, 2 or 5 times a power of 10.
 .. versionadded:: 2.10
 %End
 
-    static double rescaleUom( double size, QgsUnitTypes::RenderUnit unit, const QgsStringMap &props );
+    static double rescaleUom( double size, QgsUnitTypes::RenderUnit unit, const QVariantMap &props );
 %Docstring
 Rescales the given size based on the uomScale found in the props, if any is found, otherwise
 returns the value un-modified
@@ -790,7 +907,7 @@ returns the value un-modified
 .. versionadded:: 3.0
 %End
 
-    static QPointF rescaleUom( QPointF point, QgsUnitTypes::RenderUnit unit, const QgsStringMap &props ) /PyName=rescalePointUom/;
+    static QPointF rescaleUom( QPointF point, QgsUnitTypes::RenderUnit unit, const QVariantMap &props ) /PyName=rescalePointUom/;
 %Docstring
 Rescales the given point based on the uomScale found in the props, if any is found, otherwise
 returns a copy of the original point
@@ -798,7 +915,7 @@ returns a copy of the original point
 .. versionadded:: 3.0
 %End
 
-    static QVector<qreal> rescaleUom( const QVector<qreal> &array, QgsUnitTypes::RenderUnit unit, const QgsStringMap &props ) /PyName=rescaleArrayUom/;
+    static QVector<qreal> rescaleUom( const QVector<qreal> &array, QgsUnitTypes::RenderUnit unit, const QVariantMap &props ) /PyName=rescaleArrayUom/;
 %Docstring
 Rescales the given array based on the uomScale found in the props, if any is found, otherwise
 returns a copy of the original point
@@ -806,14 +923,14 @@ returns a copy of the original point
 .. versionadded:: 3.0
 %End
 
-    static void applyScaleDependency( QDomDocument &doc, QDomElement &ruleElem, QgsStringMap &props );
+    static void applyScaleDependency( QDomDocument &doc, QDomElement &ruleElem, QVariantMap &props );
 %Docstring
 Checks if the properties contain scaleMinDenom and scaleMaxDenom, if available, they are added into the SE Rule element
 
 .. versionadded:: 3.0
 %End
 
-    static void mergeScaleDependencies( double mScaleMinDenom, double mScaleMaxDenom, QgsStringMap &props );
+    static void mergeScaleDependencies( double mScaleMinDenom, double mScaleMaxDenom, QVariantMap &props );
 %Docstring
 Merges the local scale limits, if any, with the ones already in the map, if any
 
@@ -845,6 +962,15 @@ Converts a set of symbol layer id to a set of pointers to actual symbol layers c
 .. versionadded:: 3.12
 %End
 
+    static double rendererFrameRate( const QgsFeatureRenderer *renderer );
+%Docstring
+Calculates the frame rate (in frames per second) at which the given ``renderer`` must be redrawn.
+
+Returns -1 if the ``renderer`` is not animated.
+
+.. versionadded:: 3.26
+%End
+
     static QgsSymbol *restrictedSizeSymbol( const QgsSymbol *s, double minSize, double maxSize, QgsRenderContext *context, double &width, double &height );
 %Docstring
 Creates a new symbol with size restricted to min/max size if original size is out of min/max range
@@ -858,6 +984,15 @@ Creates a new symbol with size restricted to min/max size if original size is ou
 
 :return: 0 if size is within minSize/maxSize range. New symbol if size was out of min/max range. Caller takes ownership
 %End
+
+    static QgsStringMap evaluatePropertiesMap( const QMap<QString, QgsProperty> &propertiesMap, const QgsExpressionContext &context );
+%Docstring
+Evaluates a map of properties using the given ``context`` and returns a variant map with evaluated expressions from the properties.
+
+.. versionadded:: 3.18
+%End
+
+
 };
 
 

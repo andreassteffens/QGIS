@@ -32,6 +32,8 @@
 #include "qgsproxyprogresstask.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgsvectorlayerjoinbuffer.h"
+#include "qgsvariantutils.h"
+#include "qgsfields.h"
 
 
 // FTC = FieldTypeCombo
@@ -150,10 +152,10 @@ QgsFieldCalculator::QgsFieldCalculator( QgsVectorLayer *vl, QWidget *parent )
     mInfoIcon->setVisible( true );
   }
 
-  bool hasselection = vl->selectedFeatureCount() > 0;
+  const bool hasselection = vl->selectedFeatureCount() > 0;
   mOnlyUpdateSelectedCheckBox->setChecked( mCanChangeAttributeValue && hasselection );
   mOnlyUpdateSelectedCheckBox->setEnabled( mCanChangeAttributeValue && hasselection );
-  mOnlyUpdateSelectedCheckBox->setText( tr( "Only update %1 selected features" ).arg( vl->selectedFeatureCount() ) );
+  mOnlyUpdateSelectedCheckBox->setText( tr( "Only update %n selected feature(s)", nullptr, vl->selectedFeatureCount() ) );
 
   builder->initWithLayer( vl, expContext, QStringLiteral( "fieldcalc" ) );
 
@@ -177,7 +179,7 @@ void QgsFieldCalculator::accept()
   myDa.setSourceCrs( mVectorLayer->crs(), QgsProject::instance()->transformContext() );
   myDa.setEllipsoid( QgsProject::instance()->ellipsoid() );
 
-  QString calcString = builder->expressionText();
+  const QString calcString = builder->expressionText();
   QgsExpression exp( calcString );
   exp.setGeomCalculator( &myDa );
   exp.setDistanceUnits( QgsProject::instance()->distanceUnits() );
@@ -222,7 +224,7 @@ void QgsFieldCalculator::accept()
       else
       {
         bool ok = false;
-        int id = mExistingFieldComboBox->currentData().toInt( &ok );
+        const int id = mExistingFieldComboBox->currentData().toInt( &ok );
         if ( ok )
           mAttributeId = id;
       }
@@ -273,12 +275,12 @@ void QgsFieldCalculator::accept()
     bool calculationSuccess = true;
     QString error;
 
-    bool useGeometry = exp.needsGeometry();
+    const bool useGeometry = exp.needsGeometry();
     int rownum = 1;
 
-    QgsField field = !updatingGeom ? mVectorLayer->fields().at( mAttributeId ) : QgsField();
+    const QgsField field = !updatingGeom ? mVectorLayer->fields().at( mAttributeId ) : QgsField();
 
-    bool newField = !mUpdateExistingGroupBox->isChecked();
+    const bool newField = !mUpdateExistingGroupBox->isChecked();
     QVariant emptyAttribute;
     if ( newField )
       emptyAttribute = QVariant( field.type() );
@@ -293,8 +295,8 @@ void QgsFieldCalculator::accept()
     }
     QgsFeatureIterator fit = mVectorLayer->getFeatures( req );
 
-    std::unique_ptr< QgsScopedProxyProgressTask > task = qgis::make_unique< QgsScopedProxyProgressTask >( tr( "Calculating field" ) );
-    long long count = mOnlyUpdateSelectedCheckBox->isChecked() ? mVectorLayer->selectedFeatureCount() : mVectorLayer->featureCount();
+    std::unique_ptr< QgsScopedProxyProgressTask > task = std::make_unique< QgsScopedProxyProgressTask >( tr( "Calculating field" ) );
+    const long long count = mOnlyUpdateSelectedCheckBox->isChecked() ? mVectorLayer->selectedFeatureCount() : mVectorLayer->featureCount();
     long long i = 0;
     while ( fit.nextFeature( feature ) )
     {
@@ -355,32 +357,32 @@ void QgsFieldCalculator::populateOutputFieldTypes()
     return;
   }
 
-  int oldDataType = mOutputFieldTypeComboBox->currentData( Qt::UserRole + FTC_TYPE_ROLE_IDX ).toInt();
+  const int oldDataType = mOutputFieldTypeComboBox->currentData( Qt::UserRole + FTC_TYPE_ROLE_IDX ).toInt();
 
   mOutputFieldTypeComboBox->blockSignals( true );
 
   // Standard subset of fields in case of virtual
   const QList< QgsVectorDataProvider::NativeType > &typelist = mCreateVirtualFieldCheckbox->isChecked() ?
       ( QList< QgsVectorDataProvider::NativeType >()
-        << QgsVectorDataProvider::NativeType( tr( "Whole number (integer)" ), QStringLiteral( "integer" ), QVariant::Int, 0, 10 )
-        << QgsVectorDataProvider::NativeType( tr( "Decimal number (double)" ), QStringLiteral( "double precision" ), QVariant::Double, -1, -1, -1, -1 )
-        << QgsVectorDataProvider::NativeType( tr( "Text (string)" ), QStringLiteral( "string" ), QVariant::String )
+        << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::Int ), QStringLiteral( "integer" ), QVariant::Int, 0, 10 )
+        << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::Double ), QStringLiteral( "double precision" ), QVariant::Double, -1, -1, -1, -1 )
+        << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::String ), QStringLiteral( "string" ), QVariant::String )
         // date time
-        << QgsVectorDataProvider::NativeType( tr( "Date" ), QStringLiteral( "date" ), QVariant::Date, -1, -1, -1, -1 )
-        << QgsVectorDataProvider::NativeType( tr( "Time" ), QStringLiteral( "time" ), QVariant::Time, -1, -1, -1, -1 )
-        << QgsVectorDataProvider::NativeType( tr( "Date & Time" ), QStringLiteral( "datetime" ), QVariant::DateTime, -1, -1, -1, -1 )
+        << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::Date ), QStringLiteral( "date" ), QVariant::Date, -1, -1, -1, -1 )
+        << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::Time ), QStringLiteral( "time" ), QVariant::Time, -1, -1, -1, -1 )
+        << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::DateTime ), QStringLiteral( "datetime" ), QVariant::DateTime, -1, -1, -1, -1 )
         // string types
         << QgsVectorDataProvider::NativeType( tr( "Text, unlimited length (text)" ), QStringLiteral( "text" ), QVariant::String, -1, -1, -1, -1 )
         // boolean
-        << QgsVectorDataProvider::NativeType( tr( "Boolean" ), QStringLiteral( "bool" ), QVariant::Bool )
+        << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::Bool ), QStringLiteral( "bool" ), QVariant::Bool )
         // blob
-        << QgsVectorDataProvider::NativeType( tr( "Binary object (BLOB)" ), QStringLiteral( "binary" ), QVariant::ByteArray ) ) :
+        << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::ByteArray ), QStringLiteral( "binary" ), QVariant::ByteArray ) ) :
       provider->nativeTypes();
 
   mOutputFieldTypeComboBox->clear();
   for ( int i = 0; i < typelist.size(); i++ )
   {
-    mOutputFieldTypeComboBox->addItem( typelist[i].mTypeDesc );
+    mOutputFieldTypeComboBox->addItem( QgsFields::iconForFieldType( typelist[i].mType, typelist[i].mSubType ), typelist[i].mTypeDesc );
     mOutputFieldTypeComboBox->setItemData( i, static_cast<int>( typelist[i].mType ), Qt::UserRole + FTC_TYPE_ROLE_IDX );
     mOutputFieldTypeComboBox->setItemData( i, typelist[i].mTypeName, Qt::UserRole + FTC_TYPE_NAME_IDX );
     mOutputFieldTypeComboBox->setItemData( i, typelist[i].mMinLen, Qt::UserRole + FTC_MINLEN_IDX );
@@ -391,7 +393,7 @@ void QgsFieldCalculator::populateOutputFieldTypes()
   }
   mOutputFieldTypeComboBox->blockSignals( false );
 
-  int idx = mOutputFieldTypeComboBox->findData( oldDataType, Qt::UserRole + FTC_TYPE_ROLE_IDX );
+  const int idx = mOutputFieldTypeComboBox->findData( oldDataType, Qt::UserRole + FTC_TYPE_ROLE_IDX );
   if ( idx != -1 )
   {
     mOutputFieldTypeComboBox->setCurrentIndex( idx );
@@ -519,7 +521,7 @@ void QgsFieldCalculator::populateFields()
       }
     }
 
-    QString fieldName = fields.at( idx ).name();
+    const QString fieldName = fields.at( idx ).name();
 
     //insert into field combo box
     mExistingFieldComboBox->addItem( fields.iconForField( idx ), fieldName, idx );
@@ -561,10 +563,10 @@ void QgsFieldCalculator::setOkButtonState()
 
 void QgsFieldCalculator::setPrecisionMinMax()
 {
-  int idx = mOutputFieldTypeComboBox->currentIndex();
-  int minPrecType = mOutputFieldTypeComboBox->itemData( idx, Qt::UserRole + FTC_MINPREC_IDX ).toInt();
-  int maxPrecType = mOutputFieldTypeComboBox->itemData( idx, Qt::UserRole + FTC_MAXPREC_IDX ).toInt();
-  bool precisionIsEnabled = minPrecType < maxPrecType;
+  const int idx = mOutputFieldTypeComboBox->currentIndex();
+  const int minPrecType = mOutputFieldTypeComboBox->itemData( idx, Qt::UserRole + FTC_MINPREC_IDX ).toInt();
+  const int maxPrecType = mOutputFieldTypeComboBox->itemData( idx, Qt::UserRole + FTC_MAXPREC_IDX ).toInt();
+  const bool precisionIsEnabled = minPrecType < maxPrecType;
   mOutputFieldPrecisionSpinBox->setEnabled( precisionIsEnabled );
   // Do not set min/max if it's disabled or we'll loose the default value,
   // see https://github.com/qgis/QGIS/issues/26880 - QGIS saves integer field when

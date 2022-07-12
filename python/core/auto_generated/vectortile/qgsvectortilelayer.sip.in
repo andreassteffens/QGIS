@@ -13,7 +13,7 @@
 
 class QgsVectorTileLayer : QgsMapLayer
 {
-%Docstring
+%Docstring(signature="appended")
 Implements a map layer that is dedicated to rendering of vector tiles.
 Vector tiles compared to "ordinary" vector layers are pre-processed data
 optimized for fast rendering. A dataset is provided with a series of zoom levels
@@ -38,17 +38,17 @@ layer types use. The process of rendering of vector tiles looks like this:
 +--------+                +------+                 +---------+
 
 Data source is a place from where tiles are fetched from (URL for HTTP access, local
-files, MBTiles file, GeoPackage file or others. Loader (QgsVectorTileLoader) class
+files, MBTiles file, GeoPackage file or others. Loader (:py:class:`QgsVectorTileLoader`) class
 takes care of loading data from the data source. The "raw tile" data is just a blob
 (QByteArray) that is encoded in some way. There are multiple ways how vector tiles
 are encoded just like there are different formats how to store images. For example,
 tiles can be encoded using Mapbox Vector Tiles (MVT) format or in GeoJSON. Decoder
-(QgsVectorTileDecoder) takes care of decoding raw tile data into QgsFeature objects.
+(:py:class:`QgsVectorTileDecoder`) takes care of decoding raw tile data into :py:class:`QgsFeature` objects.
 A decoded tile is essentially an array of vector features for each sub-layer found
-in the tile - this is what vector tile renderer (QgsVectorTileRenderer) expects
+in the tile - this is what vector tile renderer (:py:class:`QgsVectorTileRenderer`) expects
 and does the map rendering.
 
-To construct a vector tile layer, it is best to use QgsDataSourceUri class and set
+To construct a vector tile layer, it is best to use :py:class:`QgsDataSourceUri` class and set
 the following parameters to get a valid encoded URI:
 
 - "type" - what kind of data source will be used
@@ -71,7 +71,20 @@ Currently supported decoders:
 #include "qgsvectortilelayer.h"
 %End
   public:
-    explicit QgsVectorTileLayer( const QString &path = QString(), const QString &baseName = QString() );
+
+
+    struct LayerOptions
+    {
+
+      explicit LayerOptions( const QgsCoordinateTransformContext &transformContext = QgsCoordinateTransformContext( ) );
+%Docstring
+Constructor for LayerOptions with optional ``transformContext``.
+%End
+
+      QgsCoordinateTransformContext transformContext;
+    };
+
+    explicit QgsVectorTileLayer( const QString &path = QString(), const QString &baseName = QString(), const QgsVectorTileLayer::LayerOptions &options = QgsVectorTileLayer::LayerOptions() );
 %Docstring
 Constructs a new vector tile layer
 %End
@@ -86,25 +99,23 @@ Constructs a new vector tile layer
 
     virtual QgsVectorTileLayer *clone() const /Factory/;
 
+    virtual QgsDataProvider *dataProvider();
 
     virtual QgsMapLayerRenderer *createMapRenderer( QgsRenderContext &rendererContext ) /Factory/;
 
-
     virtual bool readXml( const QDomNode &layerNode, QgsReadWriteContext &context );
-
 
     virtual bool writeXml( QDomNode &layerNode, QDomDocument &doc, const QgsReadWriteContext &context ) const;
 
-
      virtual bool readSymbology( const QDomNode &node, QString &errorMessage,
                         QgsReadWriteContext &context, StyleCategories categories = AllStyleCategories );
-
      virtual bool writeSymbology( QDomNode &node, QDomDocument &doc, QString &errorMessage, const QgsReadWriteContext &context,
                          StyleCategories categories = AllStyleCategories ) const;
-
     virtual void setTransformContext( const QgsCoordinateTransformContext &transformContext );
 
     virtual QString loadDefaultStyle( bool &resultFlag /Out/ );
+
+    virtual Qgis::MapLayerProperties properties() const;
 
 
 
@@ -118,6 +129,13 @@ Constructs a new vector tile layer
     virtual QString htmlMetadata() const;
 
 
+
+    QgsVectorTileMatrixSet &tileMatrixSet();
+%Docstring
+Returns the vector tile matrix set.
+
+.. versionadded:: 3.22.6
+%End
 
     QString sourceType() const;
 %Docstring
@@ -174,6 +192,7 @@ Returns whether to render also borders of tiles (useful for debugging)
 %End
 
 };
+
 
 
 /************************************************************************

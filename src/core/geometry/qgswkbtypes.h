@@ -294,6 +294,8 @@ class CORE_EXPORT QgsWkbTypes
 
     /**
      * Returns the multi type for a WKB type. For example, for Polygon WKB types the multi type would be MultiPolygon.
+     *
+     * \see promoteNonPointTypesToMulti()
      * \see isMultiType()
      * \see singleType()
      * \see curveType()
@@ -433,6 +435,34 @@ class CORE_EXPORT QgsWkbTypes
       return Unknown;
     }
 
+
+    /**
+     * Promotes a WKB geometry type to its multi-type equivalent, with the exception of point geometry types.
+     *
+     * Specifically, this method should be used to determine the most-permissive possible resultant WKB type which can result
+     * from subtracting parts of a geometry. A single-point geometry type can never become a multi-point geometry type as
+     * a result of a subtraction, but a single-line or single-polygon geometry CAN become a multipart geometry as a result of subtracting
+     * portions of the geometry.
+     *
+     * \see multiType()
+     * \see singleType()
+     * \since QGIS 3.24
+     */
+    static Type promoteNonPointTypesToMulti( Type type ) SIP_HOLDGIL
+    {
+      switch ( geometryType( type ) )
+      {
+        case QgsWkbTypes::PointGeometry:
+        case QgsWkbTypes::UnknownGeometry:
+        case QgsWkbTypes::NullGeometry:
+          return type;
+
+        case QgsWkbTypes::LineGeometry:
+        case QgsWkbTypes::PolygonGeometry:
+          return multiType( type );
+      }
+      return Unknown;
+    }
 
     /**
      * Returns the curve type for a WKB type. For example, for Polygon WKB types the curve type would be CurvePolygon.
@@ -903,7 +933,7 @@ class CORE_EXPORT QgsWkbTypes
      */
     static int wkbDimensions( Type type ) SIP_HOLDGIL
     {
-      GeometryType gtype = geometryType( type );
+      const GeometryType gtype = geometryType( type );
       switch ( gtype )
       {
         case LineGeometry:
@@ -1014,9 +1044,16 @@ class CORE_EXPORT QgsWkbTypes
     }
 
     /**
-     * Returns a display string type for a WKB type, e.g., the geometry name used in WKT geometry representations.
+     * Returns a non-translated display string type for a WKB type, e.g., the geometry name used in WKT geometry representations.
      */
     static QString displayString( Type type ) SIP_HOLDGIL;
+
+    /**
+     * Returns a translated display string type for a WKB type, e.g., the geometry name used in WKT geometry representations.
+     *
+     * \since QGIS 3.18
+     */
+    static QString translatedDisplayString( Type type ) SIP_HOLDGIL;
 
     /**
      * Returns a display string for a geometry type.
@@ -1146,7 +1183,7 @@ class CORE_EXPORT QgsWkbTypes
         return NoGeometry;
 
       //upgrade with z dimension
-      Type flat = flatType( type );
+      const Type flat = flatType( type );
       if ( hasM( type ) )
         return static_cast< QgsWkbTypes::Type >( flat + 3000 );
       else
@@ -1183,7 +1220,7 @@ class CORE_EXPORT QgsWkbTypes
         return MultiPolygonZM;
 
       //upgrade with m dimension
-      Type flat = flatType( type );
+      const Type flat = flatType( type );
       if ( hasZ( type ) )
         return static_cast< QgsWkbTypes::Type >( flat + 3000 );
       else
@@ -1233,7 +1270,7 @@ class CORE_EXPORT QgsWkbTypes
      */
     static Type to25D( Type type ) SIP_HOLDGIL
     {
-      QgsWkbTypes::Type flat = flatType( type );
+      const QgsWkbTypes::Type flat = flatType( type );
 
       if ( flat >= Point && flat <= MultiPolygon )
         return static_cast< QgsWkbTypes::Type >( static_cast<unsigned>( flat ) + 0x80000000U );

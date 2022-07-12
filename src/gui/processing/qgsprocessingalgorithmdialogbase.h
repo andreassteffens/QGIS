@@ -81,7 +81,7 @@ class QgsProcessingAlgorithmDialogFeedback : public QgsProcessingFeedback
  * \note This is not considered stable API and may change in future QGIS versions.
  * \since QGIS 3.0
  */
-class GUI_EXPORT QgsProcessingAlgorithmDialogBase : public QDialog, public QgsProcessingParametersGenerator, private Ui::QgsProcessingDialogBase
+class GUI_EXPORT QgsProcessingAlgorithmDialogBase : public QDialog, public QgsProcessingParametersGenerator, public QgsProcessingContextGenerator, private Ui::QgsProcessingDialogBase
 {
     Q_OBJECT
 
@@ -98,9 +98,21 @@ class GUI_EXPORT QgsProcessingAlgorithmDialogBase : public QDialog, public QgsPr
     };
 
     /**
+     * Dialog modes.
+     *
+     * \since QGIS 3.24
+     */
+    enum class DialogMode : int
+    {
+      Single, //!< Single algorithm execution mode
+      Batch, //!< Batch processing mode
+    };
+    Q_ENUM( QgsProcessingAlgorithmDialogBase::DialogMode )
+
+    /**
      * Constructor for QgsProcessingAlgorithmDialogBase.
      */
-    QgsProcessingAlgorithmDialogBase( QWidget *parent SIP_TRANSFERTHIS = nullptr, Qt::WindowFlags flags = Qt::WindowFlags() );
+    QgsProcessingAlgorithmDialogBase( QWidget *parent SIP_TRANSFERTHIS = nullptr, Qt::WindowFlags flags = Qt::WindowFlags(), QgsProcessingAlgorithmDialogBase::DialogMode mode = QgsProcessingAlgorithmDialogBase::DialogMode::Single );
     ~QgsProcessingAlgorithmDialogBase() override;
 
     /**
@@ -162,6 +174,29 @@ class GUI_EXPORT QgsProcessingAlgorithmDialogBase : public QDialog, public QgsPr
      * \since QGIS 3.2
      */
     void saveLogToFile( const QString &path, LogFormat format = FormatPlainText );
+
+    /**
+     * Returns the logging level to use when running algorithms from the dialog.
+     *
+     * \see setLogLevel()
+     * \since QGIS 3.20
+     */
+    QgsProcessingContext::LogLevel logLevel() const;
+
+    /**
+     * Sets the logging \a level to use when running algorithms from the dialog.
+     *
+     * \see logLevel()
+     * \since QGIS 3.20
+     */
+    void setLogLevel( QgsProcessingContext::LogLevel level );
+
+    /**
+     * Sets the parameter \a values to show in the dialog.
+     *
+     * \since QGIS 3.24
+     */
+    virtual void setParameters( const QVariantMap &values );
 
   public slots:
 
@@ -348,6 +383,13 @@ class GUI_EXPORT QgsProcessingAlgorithmDialogBase : public QDialog, public QgsPr
      */
     static QString formatStringForLog( const QString &string );
 
+    /**
+     * Returns TRUE if the dialog is all finalized and can be safely deleted.
+     *
+     * \since QGIS 3.26
+     */
+    virtual bool isFinalized();
+
   signals:
 
     /**
@@ -369,6 +411,13 @@ class GUI_EXPORT QgsProcessingAlgorithmDialogBase : public QDialog, public QgsPr
      */
     virtual void runAlgorithm();
 
+    /**
+     * Called when an algorithm task has completed.
+     *
+     * \since QGIS 3.26
+     */
+    virtual void algExecuted( bool successful, const QVariantMap &results );
+
   private slots:
 
     void openHelp();
@@ -377,11 +426,12 @@ class GUI_EXPORT QgsProcessingAlgorithmDialogBase : public QDialog, public QgsPr
     void splitterChanged( int pos, int index );
     void mTabWidget_currentChanged( int index );
     void linkClicked( const QUrl &url );
-    void algExecuted( bool successful, const QVariantMap &results );
     void taskTriggered( QgsTask *task );
     void closeClicked();
 
   private:
+
+    DialogMode mMode = DialogMode::Single;
 
     QPushButton *mButtonRun = nullptr;
     QPushButton *mButtonClose = nullptr;
@@ -389,6 +439,10 @@ class GUI_EXPORT QgsProcessingAlgorithmDialogBase : public QDialog, public QgsPr
     QByteArray mSplitterState;
     QToolButton *mButtonCollapse = nullptr;
     QgsMessageBar *mMessageBar = nullptr;
+    QPushButton *mAdvancedButton = nullptr;
+    QMenu *mAdvancedMenu = nullptr;
+    QAction *mCopyAsQgisProcessCommand = nullptr;
+    QAction *mPasteJsonAction = nullptr;
 
     bool mExecuted = false;
     bool mExecutedAnyResult = false;
@@ -400,6 +454,8 @@ class GUI_EXPORT QgsProcessingAlgorithmDialogBase : public QDialog, public QgsPr
     bool mHelpCollapsed = false;
 
     int mMessageLoggedCount = 0;
+
+    QgsProcessingContext::LogLevel mLogLevel = QgsProcessingContext::DefaultLevel;
 
     QString formatHelp( QgsProcessingAlgorithm *algorithm );
     void scrollToBottomOfLog();

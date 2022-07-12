@@ -17,6 +17,7 @@
 ***************************************************************************
 """
 
+
 __author__ = 'Victor Olaya'
 __date__ = 'August 2012'
 __copyright__ = '(C) 2012, Victor Olaya'
@@ -26,7 +27,7 @@ import os
 import inspect
 import importlib.util
 
-from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtCore import QCoreApplication, QDir
 
 from qgis.core import (Qgis,
                        QgsApplication,
@@ -38,7 +39,7 @@ from qgis.core import (Qgis,
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.tools.system import mkdir, userFolder
 
-scriptsRegistry = dict()
+scriptsRegistry = {}
 
 SCRIPTS_FOLDERS = "SCRIPTS_FOLDERS"
 
@@ -109,7 +110,7 @@ def resetScriptFolder(folder):
     # isolate "QGIS3/profiles/"
     appIndex = -4
     profileIndex = -3
-    currentSettingPath = QgsApplication.qgisSettingsDirPath()
+    currentSettingPath = QDir.toNativeSeparators(QgsApplication.qgisSettingsDirPath())
     paths = currentSettingPath.split(os.sep)
     commonSettingPath = os.path.join(paths[appIndex], paths[profileIndex])
 

@@ -19,6 +19,7 @@
 #include <QAbstractItemModel>
 #include <QSortFilterProxyModel>
 #include <QStringList>
+#include <QIcon>
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
@@ -76,6 +77,13 @@ class CORE_EXPORT QgsMapLayerModel : public QAbstractItemModel
     void setItemsCheckable( bool checkable );
 
     /**
+     * Sets the QgsProject from which map layers are shown
+     *
+     * \since QGIS 3.24
+     */
+    void setProject( QgsProject *project );
+
+    /**
      * Sets whether items in the model can be reordered via drag and drop.
      *
      * \see itemsCanBeReordered()
@@ -98,10 +106,13 @@ class CORE_EXPORT QgsMapLayerModel : public QAbstractItemModel
 
     /**
      * Sets whether an optional empty layer ("not set") option is present in the model.
+     *
+     * Since QGIS 3.20, the optional \a text and \a icon arguments allows the text and icon for the empty layer item to be set.
+     *
      * \see allowEmptyLayer()
      * \since QGIS 3.0
      */
-    void setAllowEmptyLayer( bool allowEmpty );
+    void setAllowEmptyLayer( bool allowEmpty, const QString &text = QString(), const QIcon &icon = QIcon() );
 
     /**
      * Returns TRUE if the model allows the empty layer ("not set") choice.
@@ -152,8 +163,8 @@ class CORE_EXPORT QgsMapLayerModel : public QAbstractItemModel
 
     /**
      * Sets a list of additional (non map layer) items to include at the end of the model.
-     * These may represent additional layers such as layers which are not included in the map
-     * layer registry, or paths to layers which have not yet been loaded into QGIS.
+     * These may represent additional layers such as layers which are not included in the active project,
+     * or paths to layers which have not yet been loaded into QGIS.
      * \see additionalItems()
      * \since QGIS 3.0
      */
@@ -165,6 +176,25 @@ class CORE_EXPORT QgsMapLayerModel : public QAbstractItemModel
      * \since QGIS 3.0
      */
     QStringList additionalItems() const { return mAdditionalItems; }
+
+    /**
+     * Sets a list of additional \a layers to include in the model.
+     *
+     * This method allows adding additional layers, which are not part of a project's
+     * layers, into the model.
+     *
+     * \see additionalLayers()
+     * \since QGIS 3.22
+     */
+    void setAdditionalLayers( const QList<QgsMapLayer *> &layers );
+
+    /**
+     * Returns the list of additional layers added to the model.
+     *
+     * \see setAdditionalLayers()
+     * \since QGIS 3.22
+     */
+    QList< QgsMapLayer * > additionalLayers() const;
 
     // QAbstractItemModel interface
     QModelIndex index( int row, int column, const QModelIndex &parent = QModelIndex() ) const override;
@@ -201,6 +231,7 @@ class CORE_EXPORT QgsMapLayerModel : public QAbstractItemModel
 
   protected:
     QList<QgsMapLayer *> mLayers;
+    QList< QPointer<QgsMapLayer> > mAdditionalLayers;
     QMap<QString, Qt::CheckState> mLayersChecked;
     bool mItemCheckable = false;
     bool mCanReorder = false;
@@ -210,6 +241,8 @@ class CORE_EXPORT QgsMapLayerModel : public QAbstractItemModel
   private:
 
     bool mAllowEmpty = false;
+    QString mEmptyText;
+    QIcon mEmptyIcon;
     bool mShowCrs = false;
     QStringList mAdditionalItems;
 };

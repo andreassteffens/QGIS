@@ -13,12 +13,14 @@
  *                                                                         *
  ***************************************************************************/
 
+
+#include "qclipboard.h"
+#include "qaction.h"
+#include "qgsapplication.h"
 #include "qgsexpressionpreviewwidget.h"
 #include "qgsmessageviewer.h"
 #include "qgsvectorlayer.h"
 #include "qgsfeaturepickerwidget.h"
-
-
 
 
 
@@ -27,10 +29,14 @@ QgsExpressionPreviewWidget::QgsExpressionPreviewWidget( QWidget *parent )
 {
   setupUi( this );
   mPreviewLabel->clear();
+  mPreviewLabel->setContextMenuPolicy( Qt::ActionsContextMenu );
+  mCopyPreviewAction = new QAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionEditCopy.svg" ) ), tr( "Copy Expression Value" ), this );
+  mPreviewLabel->addAction( mCopyPreviewAction );
   mFeaturePickerWidget->setShowBrowserButtons( true );
 
   connect( mFeaturePickerWidget, &QgsFeaturePickerWidget::featureChanged, this, &QgsExpressionPreviewWidget::setCurrentFeature );
   connect( mPreviewLabel, &QLabel::linkActivated, this, &QgsExpressionPreviewWidget::linkActivated );
+  connect( mCopyPreviewAction, &QAction::triggered, this, &QgsExpressionPreviewWidget::copyFullExpressionValue );
 }
 
 void QgsExpressionPreviewWidget::setLayer( QgsVectorLayer *layer )
@@ -72,6 +78,7 @@ void QgsExpressionPreviewWidget::refreshPreview()
   {
     mPreviewLabel->clear();
     mPreviewLabel->setStyleSheet( QString() );
+    mCopyPreviewAction->setEnabled( false );
     setExpressionToolTip( QString() );
     emit expressionParsed( false );
     mExpression = QgsExpression();
@@ -80,32 +87,39 @@ void QgsExpressionPreviewWidget::refreshPreview()
   {
     mExpression = QgsExpression( mExpressionText );
 
-    if ( !mExpressionContext.feature().isValid() )
-    {
-      if ( !mExpression.referencedColumns().isEmpty() || mExpression.needsGeometry() )
-      {
-        mPreviewLabel->setText( tr( "No feature was found on this layer to evaluate the expression." ) );
-        mPreviewLabel->setStyleSheet( QStringLiteral( "color: rgba(255, 6, 10,  255);" ) );
-        return;
-      }
-    }
-
     if ( mUseGeomCalculator )
     {
       // only set an explicit geometry calculator if a call to setGeomCalculator was made. If not,
       // let the expression context handle this correctly
       mExpression.setGeomCalculator( &mDa );
     }
-
-    QVariant value = mExpression.evaluate( &mExpressionContext );
+    const QVariant value = mExpression.evaluate( &mExpressionContext );
+    const QString preview = QgsExpression::formatPreviewString( value );
     if ( !mExpression.hasEvalError() )
     {
-      mPreviewLabel->setText( QgsExpression::formatPreviewString( value ) );
+      mPreviewLabel->setText( preview );
+      mCopyPreviewAction->setEnabled( true );
     }
 
     if ( mExpression.hasParserError() || mExpression.hasEvalError() )
     {
-      QString errorString = mExpression.parserErrorString().replace( "\n", "<br>" );
+      // if parser error was a result of missing feature, then skip the misleading parser error message
+      // and instead show a friendly message, and allow the user to accept the expression anyway
+      // refs https://github.com/qgis/QGIS/issues/42884
+      if ( !mExpressionContext.feature().isValid() )
+      {
+        if ( !mExpression.referencedColumns().isEmpty() || mExpression.needsGeometry() )
+        {
+          mPreviewLabel->setText( tr( "No feature was found on this layer to evaluate the expression." ) );
+          mPreviewLabel->setStyleSheet( QStringLiteral( "color: rgba(220, 125, 0, 255);" ) );
+          emit expressionParsed( true );
+          setParserError( false );
+          setEvalError( false );
+          return;
+        }
+      }
+
+      const QString errorString = mExpression.parserErrorString().replace( QLatin1String( "\n" ), QLatin1String( "<br>" ) );
       QString tooltip;
       if ( mExpression.hasParserError() )
         tooltip = QStringLiteral( "<b>%1:</b>"
@@ -115,19 +129,25 @@ void QgsExpressionPreviewWidget::refreshPreview()
         tooltip += QStringLiteral( "<b>%1:</b> %2" ).arg( tr( "Eval Error" ), mExpression.evalErrorString() );
 
       mPreviewLabel->setText( tr( "Expression is invalid <a href=""more"">(more info)</a>" ) );
-      mPreviewLabel->setStyleSheet( QStringLiteral( "color: rgba(255, 6, 10,  255);" ) );
+      mPreviewLabel->setStyleSheet( QStringLiteral( "color: rgba(255, 6, 10, 255);" ) );
       setExpressionToolTip( tooltip );
       emit expressionParsed( false );
       setParserError( mExpression.hasParserError() );
       setEvalError( mExpression.hasEvalError() );
+      mCopyPreviewAction->setEnabled( false );
     }
     else
     {
       mPreviewLabel->setStyleSheet( QString() );
-      setExpressionToolTip( QString() );
+      const QString longerPreview = QgsExpression::formatPreviewString( value, true, 255 );
+      if ( longerPreview != preview )
+        setExpressionToolTip( longerPreview );
+      else
+        setExpressionToolTip( QString() );
       emit expressionParsed( true );
       setParserError( false );
       setEvalError( false );
+      mCopyPreviewAction->setEnabled( true );
     }
   }
 }
@@ -146,7 +166,14 @@ void QgsExpressionPreviewWidget::setExpressionToolTip( const QString &toolTip )
     return;
 
   mToolTip = toolTip;
-  mPreviewLabel->setToolTip( mToolTip );
+  if ( toolTip.isEmpty() )
+  {
+    mPreviewLabel->setToolTip( tr( "Right-click to copy" ) );
+  }
+  else
+  {
+    mPreviewLabel->setToolTip( tr( "%1 (right-click to copy)" ).arg( mToolTip ) );
+  }
   emit toolTipChanged( mToolTip );
 }
 
@@ -175,4 +202,13 @@ void QgsExpressionPreviewWidget::setEvalError( bool evalError )
 bool QgsExpressionPreviewWidget::evalError() const
 {
   return mEvalError;
+}
+
+void QgsExpressionPreviewWidget::copyFullExpressionValue()
+{
+  QClipboard *clipboard = QApplication::clipboard();
+  const QVariant value = mExpression.evaluate( &mExpressionContext );
+  const QString copiedValue = QgsExpression::formatPreviewString( value, false, 100000 );
+  QgsDebugMsgLevel( QStringLiteral( "set clipboard: %1" ).arg( copiedValue ), 4 );
+  clipboard->setText( copiedValue );
 }

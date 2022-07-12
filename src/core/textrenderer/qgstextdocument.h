@@ -19,10 +19,10 @@
 #include "qgis_sip.h"
 #include "qgis_core.h"
 #include "qgsstringutils.h"
+#include "qgstextblock.h"
 
 #include <QVector>
 
-class QgsTextBlock;
 class QgsTextFragment;
 
 /**
@@ -78,11 +78,20 @@ class CORE_EXPORT QgsTextDocument
      */
     void reserve( int count );
 
+#ifndef SIP_RUN
+
     /**
      * Returns the block at the specified \a index.
      */
     const QgsTextBlock &at( int index ) const SIP_FACTORY;
-#ifdef SIP_RUN
+#else
+
+    /**
+     * Returns the block at the specified \a index.
+     *
+     * \throws KeyError if no block exists at the specified index.
+     */
+    const QgsTextBlock &at( int index ) const SIP_FACTORY;
     % MethodCode
     if ( a0 < 0 || a0 >= sipCpp->size() )
     {
@@ -143,7 +152,7 @@ class CORE_EXPORT QgsTextDocument
      *
      * \since QGIS 3.16
      */
-    void applyCapitalization( QgsStringUtils::Capitalization capitalization );
+    void applyCapitalization( Qgis::Capitalization capitalization );
 
 #ifndef SIP_RUN
     ///@cond PRIVATE

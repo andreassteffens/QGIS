@@ -7,31 +7,10 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
 
-    ${CMAKE_SOURCE_DIR}/src/core
-    ${CMAKE_SOURCE_DIR}/src/core/annotations
-    ${CMAKE_SOURCE_DIR}/src/core/auth
-    ${CMAKE_SOURCE_DIR}/src/core/composer
-    ${CMAKE_SOURCE_DIR}/src/core/fieldformatter
-    ${CMAKE_SOURCE_DIR}/src/core/geometry
-    ${CMAKE_SOURCE_DIR}/src/core/labeling
-    ${CMAKE_SOURCE_DIR}/src/core/layertree
-    ${CMAKE_SOURCE_DIR}/src/core/layout
-    ${CMAKE_SOURCE_DIR}/src/core/locator
-    ${CMAKE_SOURCE_DIR}/src/core/metadata
-    ${CMAKE_SOURCE_DIR}/src/core/providers/memory
-    ${CMAKE_SOURCE_DIR}/src/core/raster
-    ${CMAKE_SOURCE_DIR}/src/core/scalebar
-    ${CMAKE_SOURCE_DIR}/src/core/symbology
-    ${CMAKE_SOURCE_DIR}/src/core/effects
-    ${CMAKE_SOURCE_DIR}/src/core/metadata
-    ${CMAKE_SOURCE_DIR}/src/core/expression
     ${CMAKE_SOURCE_DIR}/src/native
     ${CMAKE_SOURCE_DIR}/src/quickgui
     ${CMAKE_SOURCE_DIR}/src/test
-    ${CMAKE_SOURCE_DIR}/external
-    ${CMAKE_SOURCE_DIR}/external/nlohmann
 
-    ${CMAKE_BINARY_DIR}/src/core
     ${CMAKE_BINARY_DIR}/src/native
     ${CMAKE_BINARY_DIR}/src/quickgui
 )
@@ -49,42 +28,11 @@ include_directories(SYSTEM
     ${QTKEYCHAIN_INCLUDE_DIR}
 )
 
-#note for tests we should not include the moc of our
-#qtests in the executable file list as the moc is
-#directly included in the sources
-#and should not be compiled twice. Trying to include
-#them in will cause an error at build time
-
-#No relinking and full RPATH for the install tree
-#See: http://www.cmake.org/Wiki/CMake_RPATH_handling#No_relinking_and_full_RPATH_for_the_install_tree
-
-macro (ADD_QGIS_TEST testname testsrc)
-  set(qgis_${testname}_SRCS ${testsrc} ${util_SRCS})
-  add_custom_target(qgis_${testname}moc ALL DEPENDS ${qgis_${testname}_MOC_SRCS})
-  add_executable(qgis_${testname} ${qgis_${testname}_SRCS})
-  target_link_libraries(qgis_${testname}
-    ${Qt5Xml_LIBRARIES}
-    ${Qt5Core_LIBRARIES}
-    ${Qt5Svg_LIBRARIES}
-    ${Qt5Test_LIBRARIES}
-    Qt5::Gui
-    Qt5::Qml
-    Qt5::Quick
-    Qt5::Xml
-    qgis_core
-    qgis_quick)
-
-  add_test(qgis_${testname} ${CMAKE_CURRENT_BINARY_DIR}/../../../output/bin/qgis_${testname} -maxwarnings 10000)
-endmacro (ADD_QGIS_TEST)
 
 #############################################################
 # Tests:
 
-ADD_QGIS_TEST(qgsquickidentifykit testqgsquickidentifykit.cpp)
-ADD_QGIS_TEST(qgsquickutils testqgsquickutils.cpp)
-ADD_QGIS_TEST(qgsquickscalebarkit testqgsquickscalebarkit.cpp)
-ADD_QGIS_TEST(qgsquickpositionkit testqgsquickpositionkit.cpp)
-
+add_qgis_test(testqgsquickmapsettings.cpp MODULE quick LINKEDLIBRARIES qgis_quick)
 
 #############################################################
 # Add also test application

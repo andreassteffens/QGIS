@@ -21,6 +21,7 @@
 #include <QPushButton>
 #include <QStandardItemModel>
 #include <QToolButton>
+#include <QItemSelectionModel>
 
 #include "qgspanelwidget.h"
 
@@ -104,8 +105,10 @@ QVariant QgsProcessingFieldMapPanelWidget::value() const
     QVariantMap def;
     def.insert( QStringLiteral( "name" ), field.field.name() );
     def.insert( QStringLiteral( "type" ), static_cast< int >( field.field.type() ) );
+    def.insert( QStringLiteral( "type_name" ), field.field.typeName() );
     def.insert( QStringLiteral( "length" ), field.field.length() );
     def.insert( QStringLiteral( "precision" ), field.field.precision() );
+    def.insert( QStringLiteral( "sub_type" ), static_cast< int >( field.field.subType() ) );
     def.insert( QStringLiteral( "expression" ), field.expression );
     results.append( def );
   }
@@ -127,17 +130,13 @@ void QgsProcessingFieldMapPanelWidget::setValue( const QVariant &value )
     const QVariantMap map = field.toMap();
     QgsField f( map.value( QStringLiteral( "name" ) ).toString(),
                 static_cast< QVariant::Type >( map.value( QStringLiteral( "type" ), QVariant::Invalid ).toInt() ),
-                QVariant::typeToName( static_cast< QVariant::Type >( map.value( QStringLiteral( "type" ), QVariant::Invalid ).toInt() ) ),
+                map.value( QStringLiteral( "type_name" ), QVariant::typeToName( static_cast< QVariant::Type >( map.value( QStringLiteral( "type" ), QVariant::Invalid ).toInt() ) ) ).toString(),
                 map.value( QStringLiteral( "length" ), 0 ).toInt(),
-                map.value( QStringLiteral( "precision" ), 0 ).toInt() );
+                map.value( QStringLiteral( "precision" ), 0 ).toInt(),
+                QString(),
+                static_cast< QVariant::Type >( map.value( QStringLiteral( "sub_type" ), QVariant::Invalid ).toInt() ) );
 
-    int layerFieldIdx = layerFields.indexFromName( f.name() );
-
-    if ( mLayer && layerFieldIdx >= 0 && ! map.contains( QStringLiteral( "constraints" ) ) )
-    {
-      f.setConstraints( layerFields.at( layerFieldIdx ).constraints() );
-    }
-    else
+    if ( map.contains( QStringLiteral( "constraints" ) ) )
     {
       const QgsFieldConstraints::Constraints constraints = static_cast<QgsFieldConstraints::Constraints>( map.value( QStringLiteral( "constraints" ), 0 ).toInt() );
       QgsFieldConstraints fieldConstraints;
@@ -186,7 +185,7 @@ void QgsProcessingFieldMapPanelWidget::addField()
 {
   const int rowCount = mModel->rowCount();
   mModel->appendField( QgsField( QStringLiteral( "new_field" ) ) );
-  QModelIndex index = mModel->index( rowCount, 0 );
+  const QModelIndex index = mModel->index( rowCount, 0 );
   mFieldsView->selectionModel()->select(
     index,
     QItemSelectionModel::SelectionFlags(
@@ -263,7 +262,7 @@ QgsProcessingFieldMapParameterDefinitionWidget::QgsProcessingFieldMapParameterDe
 
 QgsProcessingParameterDefinition *QgsProcessingFieldMapParameterDefinitionWidget::createParameter( const QString &name, const QString &description, QgsProcessingParameterDefinition::Flags flags ) const
 {
-  auto param = qgis::make_unique< QgsProcessingParameterFieldMapping >( name, description, mParentLayerComboBox->currentData().toString() );
+  auto param = std::make_unique< QgsProcessingParameterFieldMapping >( name, description, mParentLayerComboBox->currentData().toString() );
   param->setFlags( flags );
   return param.release();
 }
@@ -349,7 +348,7 @@ void QgsProcessingFieldMapWidgetWrapper::setParentLayerWrapperValue( const QgsAb
 
   if ( !context )
   {
-    tmpContext = qgis::make_unique< QgsProcessingContext >();
+    tmpContext = std::make_unique< QgsProcessingContext >();
     context = tmpContext.get();
   }
 

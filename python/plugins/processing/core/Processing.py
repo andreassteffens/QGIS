@@ -38,6 +38,7 @@ from qgis.core import (QgsMessageLog,
                        QgsProcessingParameterDefinition,
                        QgsProcessingOutputVectorLayer,
                        QgsProcessingOutputRasterLayer,
+                       QgsProcessingOutputPointCloudLayer,
                        QgsProcessingOutputMapLayer,
                        QgsProcessingOutputMultipleLayers,
                        QgsProcessingFeedback,
@@ -56,23 +57,11 @@ from processing.tools import dataobjects
 with QgsRuntimeProfiler.profile('Import QGIS Provider'):
     from processing.algs.qgis.QgisAlgorithmProvider import QgisAlgorithmProvider  # NOQA
 
-with QgsRuntimeProfiler.profile('Import GRASS Provider'):
-    from processing.algs.grass7.Grass7AlgorithmProvider import Grass7AlgorithmProvider
-
 with QgsRuntimeProfiler.profile('Import GDAL Provider'):
     from processing.algs.gdal.GdalAlgorithmProvider import GdalAlgorithmProvider  # NOQA
 
-with QgsRuntimeProfiler.profile('Import OTB Provider'):
-    from processing.algs.otb.OtbAlgorithmProvider import OtbAlgorithmProvider  # NOQA
-
-with QgsRuntimeProfiler.profile('Import SAGA Provider'):
-    from processing.algs.saga.SagaAlgorithmProvider import SagaAlgorithmProvider  # NOQA
-
 with QgsRuntimeProfiler.profile('Import Script Provider'):
     from processing.script.ScriptAlgorithmProvider import ScriptAlgorithmProvider  # NOQA
-
-
-# from processing.preconfigured.PreconfiguredAlgorithmProvider import PreconfiguredAlgorithmProvider  # NOQA
 
 # should be loaded last - ensures that all dependent algorithms are available when loading models
 from processing.modeler.ModelerAlgorithmProvider import ModelerAlgorithmProvider  # NOQA
@@ -117,10 +106,7 @@ class Processing(object):
             # Add the basic providers
             for c in [
                 QgisAlgorithmProvider,
-                Grass7AlgorithmProvider,
                 GdalAlgorithmProvider,
-                OtbAlgorithmProvider,
-                SagaAlgorithmProvider,
                 ScriptAlgorithmProvider,
                 ModelerAlgorithmProvider,
                 ProjectProvider
@@ -128,6 +114,33 @@ class Processing(object):
                 p = c()
                 if QgsApplication.processingRegistry().addProvider(p):
                     Processing.BASIC_PROVIDERS.append(p)
+
+            if QgsApplication.platform() == 'external':
+                # for external applications we must also load the builtin providers stored in separate plugins
+                try:
+                    from grassprovider.Grass7AlgorithmProvider import Grass7AlgorithmProvider
+                    p = Grass7AlgorithmProvider()
+                    if QgsApplication.processingRegistry().addProvider(p):
+                        Processing.BASIC_PROVIDERS.append(p)
+                except ImportError:
+                    pass
+
+                try:
+                    from otbprovider.OtbAlgorithmProvider import OtbAlgorithmProvider
+                    p = OtbAlgorithmProvider()
+                    if QgsApplication.processingRegistry().addProvider(p):
+                        Processing.BASIC_PROVIDERS.append(p)
+                except ImportError:
+                    pass
+
+                try:
+                    from sagaprovider.SagaAlgorithmProvider import SagaAlgorithmProvider
+                    p = SagaAlgorithmProvider()
+                    if QgsApplication.processingRegistry().addProvider(p):
+                        Processing.BASIC_PROVIDERS.append(p)
+                except ImportError:
+                    pass
+
             # And initialize
             ProcessingConfig.initialize()
             ProcessingConfig.readSettings()
@@ -184,7 +197,7 @@ class Processing(object):
                     if out.name() not in results:
                         continue
 
-                    if isinstance(out, (QgsProcessingOutputVectorLayer, QgsProcessingOutputRasterLayer, QgsProcessingOutputMapLayer)):
+                    if isinstance(out, (QgsProcessingOutputVectorLayer, QgsProcessingOutputRasterLayer, QgsProcessingOutputPointCloudLayer, QgsProcessingOutputMapLayer)):
                         result = results[out.name()]
                         if not isinstance(result, QgsMapLayer):
                             layer = context.takeResultLayer(result)  # transfer layer ownership out of context

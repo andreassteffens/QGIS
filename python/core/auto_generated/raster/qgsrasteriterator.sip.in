@@ -10,7 +10,7 @@
 
 class QgsRasterIterator
 {
-%Docstring
+%Docstring(signature="appended")
 Iterator for sequentially processing raster cells.
 %End
 
@@ -22,6 +22,26 @@ Iterator for sequentially processing raster cells.
     QgsRasterIterator( QgsRasterInterface *input );
 %Docstring
 Constructor for QgsRasterIterator, iterating over the specified ``input`` raster source.
+%End
+
+    static QgsRectangle subRegion( const QgsRectangle &rasterExtent, int rasterWidth, int rasterHeight, const QgsRectangle &subRegion, int &subRegionWidth /Out/, int &subRegionHeight /Out/, int &subRegionLeft /Out/, int &subRegionTop /Out/ );
+%Docstring
+Given an overall raster extent and width and height in pixels, calculates the sub region
+of the raster covering the specified ``subRegion``.
+
+:param rasterExtent: overall raster extent
+:param rasterWidth: overall raster width
+:param rasterHeight: overall raster height
+:param subRegion: desired sub region extent
+
+:return: - sub region geographic extent, snapped to exact pixel boundaries
+         - subRegionWidth: width in pixels of sub region
+         - subRegionHeight: height in pixels of sub region
+         - subRegionLeft: starting column of left side of sub region
+         - subRegionTop: starting row of top side of sub region
+
+
+.. versionadded:: 3.26
 %End
 
     void startRasterRead( int bandNumber, qgssize nCols, qgssize nRows, const QgsRectangle &extent, QgsRasterBlockFeedback *feedback = 0 );

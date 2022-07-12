@@ -30,6 +30,8 @@
 #include "qgsjsonutils.h"
 #include "qgspostgresstringutils.h"
 #include "qgspostgresconnpool.h"
+#include "qgsvariantutils.h"
+#include "qgsdbquerylog.h"
 
 #include <QApplication>
 #include <QStringList>
@@ -172,24 +174,68 @@ QgsPostgresConn *QgsPostgresConn::connectDb( const QString &conninfo, bool reado
     shared = false;
   }
 
+  QgsPostgresConn *conn;
+
   if ( shared )
   {
     // sharing connection between threads is not safe
     // See https://github.com/qgis/QGIS/issues/21205
     Q_ASSERT( QApplication::instance()->thread() == QThread::currentThread() );
 
-    if ( connections.contains( conninfo ) )
+    QMap<QString, QgsPostgresConn *>::iterator it = connections.find( conninfo );
+    if ( it != connections.end() )
     {
-      QgsDebugMsgLevel( QStringLiteral( "Using cached connection for %1" ).arg( conninfo ), 2 );
-      connections[conninfo]->mRef++;
-      return connections[conninfo];
+      conn = *it;
+      QgsDebugMsgLevel(
+        QStringLiteral(
+          "Using cached (%3) connection for %1 (%2)"
+        )
+        .arg( conninfo )
+        .arg( reinterpret_cast<std::uintptr_t>( conn ) )
+        .arg( readonly ? "readonly" : "read-write" )
+        ,
+        2
+      );
+      conn->mRef++;
+      return conn;
     }
+    QgsDebugMsgLevel(
+      QStringLiteral(
+        "Cached (%2) connection for %1 not found"
+      )
+      .arg( conninfo )
+      .arg( readonly ? "readonly" : "read-write" )
+      ,
+      2
+    );
   }
 
-  QgsPostgresConn *conn = new QgsPostgresConn( conninfo, readonly, shared, transaction );
+  conn = new QgsPostgresConn( conninfo, readonly, shared, transaction );
+  QgsDebugMsgLevel(
+    QStringLiteral(
+      "Created new (%4) connection %2 for %1%3"
+    )
+    .arg( conninfo )
+    .arg( reinterpret_cast<std::uintptr_t>( conn ) )
+    .arg( shared ? " (shared)" : "" )
+    .arg( readonly ? "readonly" : "read-write" )
+    ,
+    2
+  );
 
+  // mRef will be set to 0 when the connection fails
   if ( conn->mRef == 0 )
   {
+    QgsDebugMsgLevel(
+      QStringLiteral(
+        "New (%3) connection %2 failed for conninfo %1"
+      )
+      .arg( conninfo )
+      .arg( reinterpret_cast<std::uintptr_t>( conn ) )
+      .arg( readonly ? "readonly" : "read-write" )
+      ,
+      2
+    );
     delete conn;
     return nullptr;
   }
@@ -197,6 +243,16 @@ QgsPostgresConn *QgsPostgresConn::connectDb( const QString &conninfo, bool reado
   if ( shared )
   {
     connections.insert( conninfo, conn );
+    QgsDebugMsgLevel(
+      QStringLiteral(
+        "Added connection %2 (for %1) in (%3) cache"
+      )
+      .arg( conninfo )
+      .arg( reinterpret_cast<std::uintptr_t>( conn ) )
+      .arg( readonly ? "readonly" : "read-write" )
+      ,
+      2
+    );
   }
 
   return conn;
@@ -229,7 +285,6 @@ QgsPostgresConn::QgsPostgresConn( const QString &conninfo, bool readOnly, bool s
   , mNextCursorId( 0 )
   , mShared( shared )
   , mTransaction( transaction )
-  , mLock( QMutex::Recursive )
 {
 
   QgsDebugMsgLevel( QStringLiteral( "New PostgreSQL connection for " ) + conninfo, 2 );
@@ -248,7 +303,7 @@ QgsPostgresConn::QgsPostgresConn( const QString &conninfo, bool readOnly, bool s
       connectString += QStringLiteral( " connect_timeout=%1" ).arg( timeout );
     }
 
-    connectString += QStringLiteral( " client_encoding='UTF-8'" );
+    connectString += QLatin1String( " client_encoding='UTF-8'" );
   };
   addDefaultTimeoutAndClientEncoding( expandedConnectionInfo );
 
@@ -358,8 +413,8 @@ QgsPostgresConn::QgsPostgresConn( const QString &conninfo, bool readOnly, bool s
 
   if ( mPostgresqlVersion >= 90000 )
   {
-    PQexecNR( QStringLiteral( "SET application_name='QGIS'" ) );
-    PQexecNR( QStringLiteral( "SET extra_float_digits=3" ) );
+    LoggedPQexecNR( "QgsPostgresConn", QStringLiteral( "SET application_name='QGIS'" ) );
+    LoggedPQexecNR( "QgsPostgresConn", QStringLiteral( "SET extra_float_digits=3" ) );
   }
 
   PQsetNoticeProcessor( mConn, noticeProcessor, nullptr );
@@ -389,10 +444,19 @@ void QgsPostgresConn::unref()
   {
     QMap<QString, QgsPostgresConn *> &connections = mReadOnly ? sConnectionsRO : sConnectionsRW;
 
-    QString key = connections.key( this, QString() );
+    int removed = connections.remove( mConnInfo );
+    Q_ASSERT( removed == 1 );
 
-    Q_ASSERT( !key.isNull() );
-    connections.remove( key );
+    QgsDebugMsgLevel(
+      QStringLiteral(
+        "Cached (%1) connection for %2 (%3) removed"
+      )
+      .arg( mReadOnly ? "readonly" : "read-write" )
+      .arg( mConnInfo )
+      .arg( reinterpret_cast<std::uintptr_t>( this ) )
+      ,
+      2
+    );
   }
 
   // to avoid destroying locked mutex
@@ -435,7 +499,7 @@ void QgsPostgresConn::addColumnInfo( QgsPostgresLayerProperty &layerProperty, co
                 .arg( quotedIdentifier( schemaName ),
                       quotedIdentifier( viewName ) );
   QgsDebugMsgLevel( "getting column info: " + sql, 2 );
-  QgsPostgresResult colRes( PQexec( sql ) );
+  QgsPostgresResult colRes( LoggedPQexec( "QgsPostgresConn", sql ) );
 
   layerProperty.pkCols.clear();
   layerProperty.nSpCols = 0;
@@ -568,7 +632,7 @@ bool QgsPostgresConn::getTableInfo( bool searchGeometryColumnsOnly, bool searchP
                    " AND has_table_privilege(c.oid,'select')" // user has select privilege
                  )
           .arg( tableName, schemaName, columnName, typeName, sridName, dimName, gtableName )
-          .arg( 1 )
+          .arg( i )
           .arg( supportedSpatialTypes().join( ',' ) )
           .arg( mPostgresqlVersion >= 90000 ? "array_agg(a.attname ORDER BY a.attnum)" : "(SELECT array_agg(attname) FROM (SELECT unnest(array_agg(a.attname)) AS attname ORDER BY unnest(array_agg(a.attnum))) AS attname)" )
           ;
@@ -593,7 +657,7 @@ bool QgsPostgresConn::getTableInfo( bool searchGeometryColumnsOnly, bool searchP
 
 
   QgsDebugMsgLevel( "getting table info from layer registries: " + query, 2 );
-  result = PQexec( query, true );
+  result = LoggedPQexec( "QgsPostgresConn", query );
   // NOTE: we intentionally continue if the query fails
   //       (for example because PostGIS is not installed)
   for ( int idx = 0; idx < result.PQntuples(); idx++ )
@@ -721,34 +785,42 @@ bool QgsPostgresConn::getTableInfo( bool searchGeometryColumnsOnly, bool searchP
     {
       if ( foundInTables & ( 1 << SctGeometry ) )
       {
-        sql += QLatin1String( " AND (n.nspname,c.relname,a.attname) NOT IN (SELECT f_table_schema,f_table_name,f_geometry_column FROM geometry_columns)" );
+        sql += QLatin1String( " AND NOT EXISTS (SELECT 1 FROM geometry_columns WHERE n.nspname=f_table_schema AND c.relname=f_table_name AND a.attname=f_geometry_column)" );
       }
 
       if ( foundInTables & ( 1 << SctGeography ) )
       {
-        sql += QLatin1String( " AND (n.nspname,c.relname,a.attname) NOT IN (SELECT f_table_schema,f_table_name,f_geography_column FROM geography_columns)" );
+        sql += QLatin1String( " AND NOT EXISTS (SELECT 1 FROM geography_columns WHERE n.nspname=f_table_schema AND c.relname=f_table_name AND a.attname=f_geography_column)" );
       }
 
       if ( foundInTables & ( 1 << SctPcPatch ) )
       {
-        sql += QLatin1String( " AND (n.nspname,c.relname,a.attname) NOT IN (SELECT \"schema\",\"table\",\"column\" FROM pointcloud_columns)" );
+        sql += QLatin1String( " AND NOT EXISTS (SELECT 1 FROM pointcloud_columns WHERE n.nspname=\"schema\" AND c.relname=\"table\" AND a.attname=\"column\")" );
       }
+
       if ( foundInTables & ( 1 << SctRaster ) )
       {
-        sql += QLatin1String( " AND (n.nspname,c.relname,a.attname) NOT IN (SELECT \"r_table_schema\",\"r_table_name\",\"r_raster_column\" FROM raster_columns)" );
+        sql += QLatin1String( " AND NOT EXISTS (SELECT 1 FROM raster_columns WHERE n.nspname=\"r_table_schema\" AND c.relname=\"r_table_name\" AND a.attname=\"r_raster_column\")" );
+      }
+
+      if ( foundInTables & ( 1 << SctTopoGeometry ) )
+      {
+        sql += QLatin1String( " AND NOT EXISTS (SELECT 1 FROM topology.layer WHERE n.nspname=\"schema_name\" AND c.relname=\"table_name\" AND a.attname=\"feature_column\")" );
       }
     }
 
     QgsDebugMsgLevel( "getting spatial table info from pg_catalog: " + sql, 2 );
 
-    result = PQexec( sql );
+
+
+    result = LoggedPQexec( QStringLiteral( "QgsPostresConn" ), sql );
 
     if ( result.PQresultStatus() != PGRES_TUPLES_OK )
     {
       QgsMessageLog::logMessage( tr( "Database connection was successful, but the accessible tables could not be determined. The error message from the database was:\n%1\n" )
                                  .arg( result.PQresultErrorMessage() ),
                                  tr( "PostGIS" ) );
-      PQexecNR( QStringLiteral( "COMMIT" ) );
+      LoggedPQexecNR( "QgsPostgresConn", QStringLiteral( "COMMIT" ) );
       return false;
     }
 
@@ -853,7 +925,7 @@ bool QgsPostgresConn::getTableInfo( bool searchGeometryColumnsOnly, bool searchP
 
     QgsDebugMsgLevel( "getting non-spatial table info: " + sql, 2 );
 
-    result = PQexec( sql );
+    result = LoggedPQexec( QStringLiteral( "QgsPostresConn" ), sql );
 
     if ( result.PQresultStatus() != PGRES_TUPLES_OK )
     {
@@ -949,10 +1021,10 @@ bool QgsPostgresConn::getSchemas( QList<QgsPostgresSchemaProperty> &schemas )
 
   QString sql = QStringLiteral( "SELECT nspname, pg_get_userbyid(nspowner), pg_catalog.obj_description(oid) FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname != 'information_schema' ORDER BY nspname" );
 
-  result = PQexec( sql, true );
+  result = LoggedPQexec( QStringLiteral( "QgsPostresConn" ), sql );
   if ( result.PQresultStatus() != PGRES_TUPLES_OK )
   {
-    PQexecNR( QStringLiteral( "COMMIT" ) );
+    LoggedPQexecNR( "QgsPostgresConn", QStringLiteral( "COMMIT" ) );
     return false;
   }
 
@@ -1015,7 +1087,7 @@ QString QgsPostgresConn::postgisVersion() const
 
   mPostgresqlVersion = PQserverVersion( mConn );
 
-  QgsPostgresResult result( PQexec( QStringLiteral( "SELECT postgis_version()" ), false ) );
+  QgsPostgresResult result( LoggedPQexecNoLogError( QStringLiteral( "QgsPostgresConn" ), QStringLiteral( "SELECT postgis_version()" ) ) );
   if ( result.PQntuples() != 1 )
   {
     QgsMessageLog::logMessage( tr( "No PostGIS support in the database." ), tr( "PostGIS" ) );
@@ -1052,12 +1124,12 @@ QString QgsPostgresConn::postgisVersion() const
   // apparently PostGIS 1.5.2 doesn't report capabilities in postgis_version() anymore
   if ( mPostgisVersionMajor > 1 || ( mPostgisVersionMajor == 1 && mPostgisVersionMinor >= 5 ) )
   {
-    result = PQexec( QStringLiteral( "SELECT postgis_geos_version(), postgis_proj_version()" ) );
+    result = LoggedPQexec( QStringLiteral( "QgsPostresConn" ), QStringLiteral( "SELECT postgis_geos_version(), postgis_proj_version()" ) );
     mGeosAvailable = result.PQntuples() == 1 && !result.PQgetisnull( 0, 0 );
     mProjAvailable = result.PQntuples() == 1 && !result.PQgetisnull( 0, 1 );
-    QgsDebugMsg( QStringLiteral( "geos:%1 proj:%2" )
-                 .arg( mGeosAvailable ? result.PQgetvalue( 0, 0 ) : "none" )
-                 .arg( mProjAvailable ? result.PQgetvalue( 0, 1 ) : "none" ) );
+    QgsDebugMsgLevel( QStringLiteral( "geos:%1 proj:%2" )
+                      .arg( mGeosAvailable ? result.PQgetvalue( 0, 0 ) : "none" )
+                      .arg( mProjAvailable ? result.PQgetvalue( 0, 1 ) : "none" ), 2 );
   }
   else
   {
@@ -1077,19 +1149,18 @@ QString QgsPostgresConn::postgisVersion() const
   mTopologyAvailable = false;
   if ( mPostgisVersionMajor > 1 )
   {
-    QgsPostgresResult result(
-      PQexec(
-        QStringLiteral(
-          "SELECT has_schema_privilege(n.oid, 'usage')"
-          "   AND has_table_privilege(t.oid, 'select')"
-          "   AND has_table_privilege(l.oid, 'select')"
-          "  FROM pg_namespace n, pg_class t, pg_class l"
-          " WHERE n.nspname = 'topology'"
-          "   AND t.relnamespace = n.oid"
-          "   AND l.relnamespace = n.oid"
-          "   AND t.relname = 'topology'"
-          "   AND l.relname = 'layer'"
-        ) ) );
+    const QString query = QStringLiteral(
+                            "SELECT has_schema_privilege(n.oid, 'usage')"
+                            " AND has_table_privilege(t.oid, 'select')"
+                            " AND has_table_privilege(l.oid, 'select')"
+                            " FROM pg_namespace n, pg_class t, pg_class l"
+                            " WHERE n.nspname = 'topology'"
+                            " AND t.relnamespace = n.oid"
+                            " AND l.relnamespace = n.oid"
+                            " AND t.relname = 'topology'"
+                            " AND l.relname = 'layer'"
+                          );
+    QgsPostgresResult result( LoggedPQexec( QStringLiteral( "QgsPostresConn" ), query ) );
     if ( result.PQntuples() >= 1 && result.PQgetvalue( 0, 0 ) == QLatin1String( "t" ) )
     {
       mTopologyAvailable = true;
@@ -1110,18 +1181,17 @@ QString QgsPostgresConn::postgisVersion() const
   if ( mPostgresqlVersion >= 90000 )
   {
     QgsDebugMsgLevel( QStringLiteral( "Checking for pointcloud support" ), 2 );
-    result = PQexec( QStringLiteral( R"(
-SELECT
- has_table_privilege(c.oid, 'select')
- AND has_table_privilege(f.oid, 'select')
-FROM pg_class c, pg_class f, pg_namespace n, pg_extension e
-WHERE c.relnamespace = n.oid
-  AND c.relname = 'pointcloud_columns'
-  AND f.relnamespace = n.oid
-  AND f.relname = 'pointcloud_formats'
-  AND n.oid = e.extnamespace
-  AND e.extname = 'pointcloud'
-    )" ), false );
+    result = LoggedPQexecNoLogError( QStringLiteral( "QgsPostresConn" ), QStringLiteral(
+                                       "SELECT has_table_privilege(c.oid, 'select')"
+                                       " AND has_table_privilege(f.oid, 'select')"
+                                       " FROM pg_class c, pg_class f, pg_namespace n, pg_extension e"
+                                       " WHERE c.relnamespace = n.oid"
+                                       " AND c.relname = 'pointcloud_columns'"
+                                       " AND f.relnamespace = n.oid"
+                                       " AND f.relname = 'pointcloud_formats'"
+                                       " AND n.oid = e.extnamespace"
+                                       " AND e.extname = 'pointcloud'"
+                                     ) );
     if ( result.PQntuples() >= 1 && result.PQgetvalue( 0, 0 ) == QLatin1String( "t" ) )
     {
       mPointcloudAvailable = true;
@@ -1132,15 +1202,14 @@ WHERE c.relnamespace = n.oid
   QgsDebugMsgLevel( QStringLiteral( "Checking for raster support" ), 2 );
   if ( mPostgisVersionMajor >= 2 )
   {
-    result = PQexec( QStringLiteral( R"(
-SELECT
- has_table_privilege(c.oid, 'select')
-FROM pg_class c, pg_namespace n, pg_type t
-WHERE c.relnamespace = n.oid
-  AND n.oid = t.typnamespace
-  AND c.relname = 'raster_columns'
-  AND t.typname = 'raster'
-    )" ), false );
+    result = LoggedPQexecNoLogError( QStringLiteral( "QgsPostresConn" ), QStringLiteral(
+                                       "SELECT has_table_privilege(c.oid, 'select')"
+                                       " FROM pg_class c, pg_namespace n, pg_type t"
+                                       " WHERE c.relnamespace = n.oid"
+                                       " AND n.oid = t.typnamespace"
+                                       " AND c.relname = 'raster_columns'"
+                                       " AND t.typname = 'raster'"
+                                     ) );
     if ( result.PQntuples() >= 1 && result.PQgetvalue( 0, 0 ) == QLatin1String( "t" ) )
     {
       mRasterAvailable = true;
@@ -1247,11 +1316,11 @@ QString QgsPostgresConn::quotedJsonValue( const QVariant &value )
 {
   if ( value.isNull() || !value.isValid() )
     return QStringLiteral( "null" );
-// where json is a string literal just construct it from that rather than dump
+  // where json is a string literal just construct it from that rather than dump
   if ( value.type() == QVariant::String )
   {
     QString valueStr = value.toString();
-    if ( valueStr.at( 0 ) == "\"" && valueStr.at( valueStr.size() - 1 ) == "\"" )
+    if ( valueStr.at( 0 ) == '\"' && valueStr.at( valueStr.size() - 1 ) == '\"' )
     {
       return quotedString( value.toString() );
     }
@@ -1260,11 +1329,13 @@ QString QgsPostgresConn::quotedJsonValue( const QVariant &value )
   return quotedString( QString::fromStdString( j.dump() ) );
 }
 
-PGresult *QgsPostgresConn::PQexec( const QString &query, bool logError, bool retry ) const
+PGresult *QgsPostgresConn::PQexec( const QString &query, bool logError, bool retry, const QString &originatorClass, const QString &queryOrigin ) const
 {
   QMutexLocker locker( &mLock );
 
   QgsDebugMsgLevel( QStringLiteral( "Executing SQL: %1" ).arg( query ), 3 );
+
+  std::unique_ptr<QgsDatabaseQueryLogWrapper> logWrapper = std::make_unique<QgsDatabaseQueryLogWrapper>( query, mConnInfo, QStringLiteral( "postgres" ), originatorClass, queryOrigin );
 
   PGresult *res = ::PQexec( mConn, query.toUtf8() );
 
@@ -1274,11 +1345,13 @@ PGresult *QgsPostgresConn::PQexec( const QString &query, bool logError, bool ret
     int errorStatus = PQresultStatus( res );
     if ( errorStatus != PGRES_COMMAND_OK && errorStatus != PGRES_TUPLES_OK )
     {
+      const QString error { tr( "Erroneous query: %1 returned %2 [%3]" )
+                            .arg( query ).arg( errorStatus ).arg( PQresultErrorMessage( res ) ) };
+      logWrapper->setError( error );
+
       if ( logError )
       {
-        QgsMessageLog::logMessage( tr( "Erroneous query: %1 returned %2 [%3]" )
-                                   .arg( query ).arg( errorStatus ).arg( PQresultErrorMessage( res ) ),
-                                   tr( "PostGIS" ) );
+        QgsMessageLog::logMessage( error, tr( "PostGIS" ) );
       }
       else
       {
@@ -1286,14 +1359,17 @@ PGresult *QgsPostgresConn::PQexec( const QString &query, bool logError, bool ret
                      .arg( query ).arg( errorStatus ).arg( PQresultErrorMessage( res ) ) );
       }
     }
+    logWrapper->setFetchedRows( PQntuples( res ) );
     return res;
   }
   if ( PQstatus() != CONNECTION_OK )
   {
+    const QString error { tr( "Connection error: %1 returned %2 [%3]" )
+                          .arg( query ).arg( PQstatus() ).arg( PQerrorMessage() ) };
+    logWrapper->setError( error );
     if ( logError )
     {
-      QgsMessageLog::logMessage( tr( "Connection error: %1 returned %2 [%3]" )
-                                 .arg( query ).arg( PQstatus() ).arg( PQerrorMessage() ),
+      QgsMessageLog::logMessage( error,
                                  tr( "PostGIS" ) );
     }
     else
@@ -1304,9 +1380,11 @@ PGresult *QgsPostgresConn::PQexec( const QString &query, bool logError, bool ret
   }
   else
   {
+    const QString error { tr( "Query failed: %1\nError: no result buffer" ).arg( query ) };
+    logWrapper->setError( error );
     if ( logError )
     {
-      QgsMessageLog::logMessage( tr( "Query failed: %1\nError: no result buffer" ).arg( query ), tr( "PostGIS" ) );
+      QgsMessageLog::logMessage( error, tr( "PostGIS" ) );
     }
     else
     {
@@ -1318,6 +1396,7 @@ PGresult *QgsPostgresConn::PQexec( const QString &query, bool logError, bool ret
   {
     QgsMessageLog::logMessage( tr( "resetting bad connection." ), tr( "PostGIS" ) );
     ::PQreset( mConn );
+    logWrapper.reset( new QgsDatabaseQueryLogWrapper( query, mConnInfo, QStringLiteral( "postgres" ), originatorClass, queryOrigin ) );
     res = PQexec( query, logError, false );
     if ( PQstatus() == CONNECTION_OK )
     {
@@ -1328,13 +1407,17 @@ PGresult *QgsPostgresConn::PQexec( const QString &query, bool logError, bool ret
       }
       else
       {
-        QgsMessageLog::logMessage( tr( "retry after reset failed again." ), tr( "PostGIS" ) );
+        const QString error { tr( "retry after reset failed again." ) };
+        logWrapper->setError( error );
+        QgsMessageLog::logMessage( error, tr( "PostGIS" ) );
         return nullptr;
       }
     }
     else
     {
-      QgsMessageLog::logMessage( tr( "connection still bad after reset." ), tr( "PostGIS" ) );
+      const QString error { tr( "connection still bad after reset." ) };
+      logWrapper->setError( error );
+      QgsMessageLog::logMessage( error, tr( "PostGIS" ) );
     }
   }
   else
@@ -1364,32 +1447,34 @@ int QgsPostgresConn::PQCancel()
 bool QgsPostgresConn::openCursor( const QString &cursorName, const QString &sql )
 {
   QMutexLocker locker( &mLock ); // to protect access to mOpenCursors
+  QString preStr;
 
   if ( mOpenCursors++ == 0 && !mTransaction )
   {
     QgsDebugMsgLevel( QStringLiteral( "Starting read-only transaction: %1" ).arg( mPostgresqlVersion ), 4 );
     if ( mPostgresqlVersion >= 80000 )
-      PQexecNR( QStringLiteral( "BEGIN READ ONLY" ) );
+      preStr = QStringLiteral( "BEGIN READ ONLY;" );
     else
-      PQexecNR( QStringLiteral( "BEGIN" ) );
+      preStr = QStringLiteral( "BEGIN;" );
   }
   QgsDebugMsgLevel( QStringLiteral( "Binary cursor %1 for %2" ).arg( cursorName, sql ), 3 );
-  return PQexecNR( QStringLiteral( "DECLARE %1 BINARY CURSOR%2 FOR %3" ).
-                   arg( cursorName, !mTransaction ? QString() : QStringLiteral( " WITH HOLD" ), sql ) );
+  return LoggedPQexecNR( "QgsPostgresConn", QStringLiteral( "%1DECLARE %2 BINARY CURSOR%3 FOR %4" ).
+                         arg( preStr, cursorName, !mTransaction ? QString() : QStringLiteral( " WITH HOLD" ), sql ) );
 }
 
 bool QgsPostgresConn::closeCursor( const QString &cursorName )
 {
   QMutexLocker locker( &mLock ); // to protect access to mOpenCursors
-
-  if ( !PQexecNR( QStringLiteral( "CLOSE %1" ).arg( cursorName ) ) )
-    return false;
+  QString postStr;
 
   if ( --mOpenCursors == 0 && !mTransaction )
   {
     QgsDebugMsgLevel( QStringLiteral( "Committing read-only transaction" ), 4 );
-    PQexecNR( QStringLiteral( "COMMIT" ) );
+    postStr = QStringLiteral( ";COMMIT" );
   }
+
+  if ( !LoggedPQexecNR( QStringLiteral( "QgsPostresConn" ), QStringLiteral( "CLOSE %1%2" ).arg( cursorName, postStr ) ) )
+    return false;
 
   return true;
 }
@@ -1400,11 +1485,11 @@ QString QgsPostgresConn::uniqueCursorName()
   return QStringLiteral( "qgis_%1" ).arg( ++mNextCursorId );
 }
 
-bool QgsPostgresConn::PQexecNR( const QString &query )
+bool QgsPostgresConn::PQexecNR( const QString &query, const QString &originatorClass, const QString &queryOrigin )
 {
   QMutexLocker locker( &mLock ); // to protect access to mOpenCursors
 
-  QgsPostgresResult res( PQexec( query, false ) );
+  QgsPostgresResult res( PQexec( query, false, true, originatorClass, queryOrigin ) );
 
   ExecStatusType errorStatus = res.PQresultStatus();
   if ( errorStatus == PGRES_COMMAND_OK )
@@ -1426,7 +1511,7 @@ bool QgsPostgresConn::PQexecNR( const QString &query )
 
   if ( PQstatus() == CONNECTION_OK )
   {
-    PQexecNR( QStringLiteral( "ROLLBACK" ) );
+    LoggedPQexecNR( QStringLiteral( "QgsPostresConn" ), QStringLiteral( "ROLLBACK" ) );
   }
 
   return false;
@@ -1437,14 +1522,25 @@ PGresult *QgsPostgresConn::PQgetResult()
   return ::PQgetResult( mConn );
 }
 
-PGresult *QgsPostgresConn::PQprepare( const QString &stmtName, const QString &query, int nParams, const Oid *paramTypes )
+PGresult *QgsPostgresConn::PQprepare( const QString &stmtName, const QString &query, int nParams, const Oid *paramTypes, const QString &originatorClass, const QString &queryOrigin )
 {
   QMutexLocker locker( &mLock );
 
-  return ::PQprepare( mConn, stmtName.toUtf8(), query.toUtf8(), nParams, paramTypes );
+  std::unique_ptr<QgsDatabaseQueryLogWrapper> logWrapper = std::make_unique<QgsDatabaseQueryLogWrapper>( QStringLiteral( "PQprepare(%1): %2 " ).arg( stmtName, query ), mConnInfo, QStringLiteral( "postgres" ), originatorClass, queryOrigin );
+
+  PGresult *res { ::PQprepare( mConn, stmtName.toUtf8(), query.toUtf8(), nParams, paramTypes ) };
+
+  const int errorStatus = PQresultStatus( res );
+
+  if ( errorStatus != PGRES_TUPLES_OK )
+  {
+    logWrapper->setError( PQresultErrorMessage( res ) );
+  }
+
+  return res;
 }
 
-PGresult *QgsPostgresConn::PQexecPrepared( const QString &stmtName, const QStringList &params )
+PGresult *QgsPostgresConn::PQexecPrepared( const QString &stmtName, const QStringList &params, const QString &originatorClass, const QString &queryOrigin )
 {
   QMutexLocker locker( &mLock );
 
@@ -1462,7 +1558,16 @@ PGresult *QgsPostgresConn::PQexecPrepared( const QString &stmtName, const QStrin
       param[i] = qparam[i];
   }
 
-  PGresult *res = ::PQexecPrepared( mConn, stmtName.toUtf8(), params.size(), param, nullptr, nullptr, 0 );
+  std::unique_ptr<QgsDatabaseQueryLogWrapper> logWrapper = std::make_unique<QgsDatabaseQueryLogWrapper>( QStringLiteral( "PQexecPrepared(%1)" ).arg( stmtName ), mConnInfo, QStringLiteral( "postgres" ), originatorClass, queryOrigin );
+
+  PGresult *res { ::PQexecPrepared( mConn, stmtName.toUtf8(), params.size(), param, nullptr, nullptr, 0 ) };
+
+  const int errorStatus = PQresultStatus( res );
+
+  if ( errorStatus != PGRES_TUPLES_OK && errorStatus != PGRES_COMMAND_OK )
+  {
+    logWrapper->setError( PQresultErrorMessage( res ) );
+  }
 
   delete [] param;
 
@@ -1506,11 +1611,11 @@ bool QgsPostgresConn::begin()
   QMutexLocker locker( &mLock );
   if ( mTransaction )
   {
-    return PQexecNR( QStringLiteral( "SAVEPOINT transaction_savepoint" ) );
+    return LoggedPQexecNR( QStringLiteral( "QgsPostresConn" ), QStringLiteral( "SAVEPOINT transaction_savepoint" ) );
   }
   else
   {
-    return PQexecNR( QStringLiteral( "BEGIN" ) );
+    return LoggedPQexecNR( QStringLiteral( "QgsPostresConn" ), QStringLiteral( "BEGIN" ) );
   }
 }
 
@@ -1519,11 +1624,11 @@ bool QgsPostgresConn::commit()
   QMutexLocker locker( &mLock );
   if ( mTransaction )
   {
-    return PQexecNR( QStringLiteral( "RELEASE SAVEPOINT transaction_savepoint" ) );
+    return LoggedPQexecNR( QStringLiteral( "QgsPostresConn" ), QStringLiteral( "RELEASE SAVEPOINT transaction_savepoint" ) );
   }
   else
   {
-    return PQexecNR( QStringLiteral( "COMMIT" ) );
+    return LoggedPQexecNR( QStringLiteral( "QgsPostresConn" ), QStringLiteral( "COMMIT" ) );
   }
 }
 
@@ -1532,12 +1637,12 @@ bool QgsPostgresConn::rollback()
   QMutexLocker locker( &mLock );
   if ( mTransaction )
   {
-    return PQexecNR( QStringLiteral( "ROLLBACK TO SAVEPOINT transaction_savepoint" ) )
-           && PQexecNR( QStringLiteral( "RELEASE SAVEPOINT transaction_savepoint" ) );
+    return LoggedPQexecNR( QStringLiteral( "QgsPostresConn" ), QStringLiteral( "ROLLBACK TO SAVEPOINT transaction_savepoint" ) )
+           && LoggedPQexecNR( QStringLiteral( "QgsPostresConn" ), QStringLiteral( "RELEASE SAVEPOINT transaction_savepoint" ) );
   }
   else
   {
-    return PQexecNR( QStringLiteral( "ROLLBACK" ) );
+    return LoggedPQexecNR( QStringLiteral( "QgsPostresConn" ), QStringLiteral( "ROLLBACK" ) );
   }
 }
 
@@ -1706,15 +1811,15 @@ QList<QgsVectorDataProvider::NativeType> QgsPostgresConn::nativeTypes()
   QList<QgsVectorDataProvider::NativeType> types;
 
   types     // integer types
-      << QgsVectorDataProvider::NativeType( tr( "Whole number (smallint - 16bit)" ), QStringLiteral( "int2" ), QVariant::Int, -1, -1, 0, 0 )
-      << QgsVectorDataProvider::NativeType( tr( "Whole number (integer - 32bit)" ), QStringLiteral( "int4" ), QVariant::Int, -1, -1, 0, 0 )
-      << QgsVectorDataProvider::NativeType( tr( "Whole number (integer - 64bit)" ), QStringLiteral( "int8" ), QVariant::LongLong, -1, -1, 0, 0 )
-      << QgsVectorDataProvider::NativeType( tr( "Decimal number (numeric)" ), QStringLiteral( "numeric" ), QVariant::Double, 1, 20, 0, 20 )
-      << QgsVectorDataProvider::NativeType( tr( "Decimal number (decimal)" ), QStringLiteral( "decimal" ), QVariant::Double, 1, 20, 0, 20 )
+      << QgsVectorDataProvider::NativeType( tr( "Whole Number (smallint - 16bit)" ), QStringLiteral( "int2" ), QVariant::Int, -1, -1, 0, 0 )
+      << QgsVectorDataProvider::NativeType( tr( "Whole Number (integer - 32bit)" ), QStringLiteral( "int4" ), QVariant::Int, -1, -1, 0, 0 )
+      << QgsVectorDataProvider::NativeType( tr( "Whole Number (integer - 64bit)" ), QStringLiteral( "int8" ), QVariant::LongLong, -1, -1, 0, 0 )
+      << QgsVectorDataProvider::NativeType( tr( "Decimal Number (numeric)" ), QStringLiteral( "numeric" ), QVariant::Double, 1, 20, 0, 20 )
+      << QgsVectorDataProvider::NativeType( tr( "Decimal Number (decimal)" ), QStringLiteral( "decimal" ), QVariant::Double, 1, 20, 0, 20 )
 
       // floating point
-      << QgsVectorDataProvider::NativeType( tr( "Decimal number (real)" ), QStringLiteral( "real" ), QVariant::Double, -1, -1, -1, -1 )
-      << QgsVectorDataProvider::NativeType( tr( "Decimal number (double)" ), QStringLiteral( "double precision" ), QVariant::Double, -1, -1, -1, -1 )
+      << QgsVectorDataProvider::NativeType( tr( "Decimal Number (real)" ), QStringLiteral( "real" ), QVariant::Double, -1, -1, -1, -1 )
+      << QgsVectorDataProvider::NativeType( tr( "Decimal Number (double)" ), QStringLiteral( "double precision" ), QVariant::Double, -1, -1, -1, -1 )
 
       // string types
       << QgsVectorDataProvider::NativeType( tr( "Text, fixed length (char)" ), QStringLiteral( "char" ), QVariant::String, 1, 255, -1, -1 )
@@ -1723,22 +1828,22 @@ QList<QgsVectorDataProvider::NativeType> QgsPostgresConn::nativeTypes()
       << QgsVectorDataProvider::NativeType( tr( "Text, case-insensitive unlimited length (citext)" ), QStringLiteral( "citext" ), QVariant::String, -1, -1, -1, -1 )
 
       // date type
-      << QgsVectorDataProvider::NativeType( tr( "Date" ), QStringLiteral( "date" ), QVariant::Date, -1, -1, -1, -1 )
-      << QgsVectorDataProvider::NativeType( tr( "Time" ), QStringLiteral( "time" ), QVariant::Time, -1, -1, -1, -1 )
-      << QgsVectorDataProvider::NativeType( tr( "Date & Time" ), QStringLiteral( "timestamp without time zone" ), QVariant::DateTime, -1, -1, -1, -1 )
+      << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::Date ), QStringLiteral( "date" ), QVariant::Date, -1, -1, -1, -1 )
+      << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::Time ), QStringLiteral( "time" ), QVariant::Time, -1, -1, -1, -1 )
+      << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::DateTime ), QStringLiteral( "timestamp without time zone" ), QVariant::DateTime, -1, -1, -1, -1 )
 
       // complex types
       << QgsVectorDataProvider::NativeType( tr( "Map (hstore)" ), QStringLiteral( "hstore" ), QVariant::Map, -1, -1, -1, -1, QVariant::String )
-      << QgsVectorDataProvider::NativeType( tr( "Array of number (integer - 32bit)" ), QStringLiteral( "int4[]" ), QVariant::List, -1, -1, -1, -1, QVariant::Int )
-      << QgsVectorDataProvider::NativeType( tr( "Array of number (integer - 64bit)" ), QStringLiteral( "int8[]" ), QVariant::List, -1, -1, -1, -1, QVariant::LongLong )
-      << QgsVectorDataProvider::NativeType( tr( "Array of number (double)" ), QStringLiteral( "double precision[]" ), QVariant::List, -1, -1, -1, -1, QVariant::Double )
-      << QgsVectorDataProvider::NativeType( tr( "Array of text" ), QStringLiteral( "text[]" ), QVariant::StringList, -1, -1, -1, -1, QVariant::String )
+      << QgsVectorDataProvider::NativeType( tr( "Array of Number (integer - 32bit)" ), QStringLiteral( "int4[]" ), QVariant::List, -1, -1, -1, -1, QVariant::Int )
+      << QgsVectorDataProvider::NativeType( tr( "Array of Number (integer - 64bit)" ), QStringLiteral( "int8[]" ), QVariant::List, -1, -1, -1, -1, QVariant::LongLong )
+      << QgsVectorDataProvider::NativeType( tr( "Array of Number (double)" ), QStringLiteral( "double precision[]" ), QVariant::List, -1, -1, -1, -1, QVariant::Double )
+      << QgsVectorDataProvider::NativeType( tr( "Array of Text" ), QStringLiteral( "text[]" ), QVariant::StringList, -1, -1, -1, -1, QVariant::String )
 
       // boolean
-      << QgsVectorDataProvider::NativeType( tr( "Boolean" ), QStringLiteral( "bool" ), QVariant::Bool, -1, -1, -1, -1 )
+      << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::Bool ), QStringLiteral( "bool" ), QVariant::Bool, -1, -1, -1, -1 )
 
       // binary (bytea)
-      << QgsVectorDataProvider::NativeType( tr( "Binary object (bytea)" ), QStringLiteral( "bytea" ), QVariant::ByteArray, -1, -1, -1, -1 )
+      << QgsVectorDataProvider::NativeType( tr( "Binary Object (bytea)" ), QStringLiteral( "bytea" ), QVariant::ByteArray, -1, -1, -1, -1 )
       ;
 
   if ( pgVersion() >= 90200 )
@@ -1761,7 +1866,69 @@ void QgsPostgresConn::deduceEndian()
   // version 7.4, binary cursors return data in XDR whereas previous versions
   // return data in the endian of the server
 
-  QgsPostgresResult res( PQexec( QStringLiteral( "select regclass('pg_class')::oid" ) ) );
+  QgsPostgresResult resOID;
+  int queryCounter = 0;
+  int errorCounter = 0;
+  int oidStatus = 0;
+  int oidSelectSet = 1 << 0;
+  int oidBinaryCursorSet = 1 << 1;
+  qint64 oidSelect = 0;
+  qint64 oidBinaryCursor = 0;
+
+  if ( 0 == PQsendQuery( QStringLiteral(
+                           "SELECT regclass('pg_class')::oid AS oidselect;"
+                           "BEGIN;"
+                           "DECLARE oidcursor BINARY CURSOR FOR SELECT regclass('pg_class')::oid AS oidbinarycursor;"
+                           "FETCH FORWARD 1 FROM oidcursor;"
+                           "CLOSE oidcursor;"
+                           "COMMIT;" ) ) )
+    QgsDebugMsgLevel( QStringLiteral( "PQsendQuery(...) error %1" ).arg( PQerrorMessage() ), 2 );
+
+  for ( ;; )
+  {
+    // PQgetResult() must be called repeatedly until it returns a null pointer
+    resOID = PQgetResult();
+
+    if ( resOID.result() == nullptr )
+      break;
+
+    queryCounter++;
+    if ( resOID.PQresultStatus() == PGRES_FATAL_ERROR )
+    {
+      errorCounter++;
+      QgsDebugMsgLevel( QStringLiteral( "QUERY #%1 PGRES_FATAL_ERROR %2" )
+                        .arg( queryCounter )
+                        .arg( PQerrorMessage().trimmed() ), 2 );
+      continue;
+    }
+
+    if ( resOID.PQresultStatus() == PGRES_TUPLES_OK && resOID.PQnfields() && resOID.PQntuples() )
+    {
+      if ( resOID.PQfname( 0 ) == QLatin1String( "oidselect" ) )
+      {
+        oidSelect = resOID.PQgetvalue( 0, 0 ).toLongLong();
+        oidStatus |= oidSelectSet;
+      }
+      if ( resOID.PQfname( 0 ) == QLatin1String( "oidbinarycursor" ) )
+      {
+        oidBinaryCursor = getBinaryInt( resOID, 0, 0 );
+        oidStatus |= oidBinaryCursorSet;
+      }
+    }
+  }
+
+  if ( errorCounter == 0 && oidStatus == ( oidSelectSet | oidBinaryCursorSet ) )
+  {
+    mSwapEndian = mSwapEndian == ( oidSelect == oidBinaryCursor );
+    return;
+  }
+
+  QgsDebugMsgLevel( QStringLiteral( "Back to old deduceEndian(): PQstatus() - %1, queryCounter = %2, errorCounter = %3" )
+                    .arg( PQstatus() )
+                    .arg( queryCounter )
+                    .arg( errorCounter ), 2 );
+
+  QgsPostgresResult res( LoggedPQexec( QStringLiteral( "QgsPostresConn" ), QStringLiteral( "select regclass('pg_class')::oid" ) ) );
   QString oidValue = res.PQgetvalue( 0, 0 );
 
   QgsDebugMsgLevel( QStringLiteral( "Creating binary cursor" ), 2 );
@@ -1771,7 +1938,7 @@ void QgsPostgresConn::deduceEndian()
 
   QgsDebugMsgLevel( QStringLiteral( "Fetching a record and attempting to get check endian-ness" ), 2 );
 
-  res = PQexec( QStringLiteral( "fetch forward 1 from oidcursor" ) );
+  res = LoggedPQexec( QStringLiteral( "QgsPostresConn" ), QStringLiteral( "fetch forward 1 from oidcursor" ) );
 
   mSwapEndian = true;
   if ( res.PQntuples() > 0 )
@@ -1801,6 +1968,9 @@ void QgsPostgresConn::retrieveLayerTypes( QVector<QgsPostgresLayerProperty *> &l
 {
   QString table;
   QString query;
+
+  // Limit table row scan if useEstimatedMetadata
+  const QString tableScanLimit { useEstimatedMetadata ? QStringLiteral( " LIMIT %1" ).arg( GEOM_TYPE_SELECT_LIMIT ) : QString() };
 
   int i = 0;
   for ( auto *layerPropertyPtr : layerProperties )
@@ -1833,7 +2003,7 @@ void QgsPostgresConn::retrieveLayerTypes( QVector<QgsPostgresLayerProperty *> &l
       // SRID is already known
       if ( srid != std::numeric_limits<int>::min() )
       {
-        sql += QStringLiteral( "SELECT %1, array_agg( '%2:RASTER'::text )" )
+        sql += QStringLiteral( "SELECT %1, array_agg( '%2:RASTER:-1'::text )" )
                .arg( i - 1 )
                .arg( srid );
       }
@@ -1842,7 +2012,7 @@ void QgsPostgresConn::retrieveLayerTypes( QVector<QgsPostgresLayerProperty *> &l
         if ( useEstimatedMetadata )
         {
           sql = QStringLiteral( "SELECT %1, "
-                                "array_agg( srid || ':RASTER') "
+                                "array_agg(srid || ':RASTER:-1') "
                                 "FROM raster_columns "
                                 "WHERE r_raster_column = %2 AND r_table_schema = %3 AND r_table_name = %4" )
                 .arg( i - 1 )
@@ -1853,16 +2023,16 @@ void QgsPostgresConn::retrieveLayerTypes( QVector<QgsPostgresLayerProperty *> &l
         else
         {
           sql = QStringLiteral( "SELECT %1, "
-                                "array_agg( DISTINCT ST_SRID( %2 ) || ':RASTER' ) "
+                                "array_agg(DISTINCT st_srid(%2) || ':RASTER:-1') "
                                 "FROM %3 "
                                 "%2 IS NOT NULL "
-                                "%4 "   // SQL clause
-                                "LIMIT %5" )
+                                "%4"   // SQL clause
+                                "%5" )
                 .arg( i - 1 )
                 .arg( quotedIdentifier( layerProperty.geometryColName ) )
                 .arg( table )
                 .arg( layerProperty.sql.isEmpty() ? QString() : QStringLiteral( " AND %1" ).arg( layerProperty.sql ) )
-                .arg( GEOM_TYPE_SELECT_LIMIT );
+                .arg( tableScanLimit );
         }
       }
 
@@ -1874,11 +2044,11 @@ void QgsPostgresConn::retrieveLayerTypes( QVector<QgsPostgresLayerProperty *> &l
       // our estimation ignores that a where clause might restrict the feature type or srid
       if ( useEstimatedMetadata )
       {
-        table = QStringLiteral( "(SELECT %1 FROM %2 WHERE %3%1 IS NOT NULL LIMIT %4) AS t" )
+        table = QStringLiteral( "(SELECT %1 FROM %2 WHERE %3%1 IS NOT NULL%4) AS t" )
                 .arg( quotedIdentifier( layerProperty.geometryColName ),
                       table,
                       layerProperty.sql.isEmpty() ? QString() : QStringLiteral( " (%1) AND " ).arg( layerProperty.sql ) )
-                .arg( GEOM_TYPE_SELECT_LIMIT );
+                .arg( tableScanLimit );
       }
       else if ( !layerProperty.sql.isEmpty() )
       {
@@ -1911,20 +2081,36 @@ void QgsPostgresConn::retrieveLayerTypes( QVector<QgsPostgresLayerProperty *> &l
       QgsWkbTypes::Type type = layerProperty.types.value( 0, QgsWkbTypes::Unknown );
       if ( type == QgsWkbTypes::Unknown )
       {
-        sql += QStringLiteral( "UPPER(geometrytype(%1%2))" )
+        // Note that we would like to apply a "LIMIT GEOM_TYPE_SELECT_LIMIT"
+        // here, so that the previous "array_agg(DISTINCT" does not scan the
+        // full table. However SQL does not allow that.
+        // So we have to do a subselect on the table to add the LIMIT,
+        // see comment in the following code.
+        sql += QStringLiteral( "UPPER(geometrytype(%1%2))  || ':' || ST_Zmflag(%1%2)" )
                .arg( quotedIdentifier( layerProperty.geometryColName ),
                      castToGeometry ?  "::geometry" : "" );
       }
       else
       {
-        sql += QStringLiteral( "%1::text" )
+        sql += QStringLiteral( "%1::text  || ':-1'" )
                .arg( quotedValue( QgsPostgresConn::postgisWkbTypeName( type ) ) );
       }
 
 
       sql += QLatin1String( ") " );
 
-      sql += " FROM " + table;
+      if ( type == QgsWkbTypes::Unknown )
+      {
+        // Subselect to limit the "array_agg(DISTINCT", see previous comment.
+        sql += QStringLiteral( " FROM (SELECT %1 FROM %2%3) AS _unused" )
+               .arg( quotedIdentifier( layerProperty.geometryColName ) )
+               .arg( table )
+               .arg( tableScanLimit );
+      }
+      else
+      {
+        sql += " FROM " + table;
+      }
 
       QgsDebugMsgLevel( "Geometry types,srids and dims query: " + sql, 2 );
 
@@ -1934,7 +2120,7 @@ void QgsPostgresConn::retrieveLayerTypes( QVector<QgsPostgresLayerProperty *> &l
 
   QgsDebugMsgLevel( "Layer types,srids and dims query: " + query, 3 );
 
-  QgsPostgresResult res( PQexec( query ) );
+  QgsPostgresResult res( LoggedPQexec( QStringLiteral( "QgsPostresConn" ), query ) );
   if ( res.PQresultStatus() != PGRES_TUPLES_OK )
   {
     // TODO: print some error here ?
@@ -1978,9 +2164,28 @@ void QgsPostgresConn::retrieveLayerTypes( QVector<QgsPostgresLayerProperty *> &l
       if ( sridAndTypeString == "NULL" )
         continue;
 
-      QStringList sridAndType = sridAndTypeString.split( ':' );
-      int srid = sridAndType[0].toInt();
+      const QStringList sridAndType = sridAndTypeString.split( ':' );
+      Q_ASSERT( sridAndType.size() == 3 );
+      const int srid = sridAndType[0].toInt();
       QString typeString = sridAndType[1];
+      const int zmFlags = sridAndType[2].toInt();
+
+      switch ( zmFlags )
+      {
+        case 1:
+          typeString.append( 'M' );
+          break;
+        case 2:
+          typeString.append( 'Z' );
+          break;
+        case 3:
+          typeString.append( QStringLiteral( "ZM" ) );
+          break;
+        default:
+        case 0:
+        case -1:
+          break;
+      }
 
       auto type = QgsPostgresConn::wkbTypeFromPostgis( typeString );
       auto flatType = QgsWkbTypes::flatType( type );
@@ -2249,9 +2454,33 @@ QgsWkbTypes::Type QgsPostgresConn::wkbTypeFromPostgis( const QString &type )
   {
     return QgsWkbTypes::MultiPolygon;
   }
+  else if ( ( type == QLatin1String( "POLYHEDRALSURFACEZ" ) ) || ( type == QLatin1String( "TINZ" ) ) )
+  {
+    return QgsWkbTypes::MultiPolygonZ;
+  }
+  else if ( ( type == QLatin1String( "POLYHEDRALSURFACEM" ) ) || ( type == QLatin1String( "TINM" ) ) )
+  {
+    return QgsWkbTypes::MultiPolygonM;
+  }
+  else if ( ( type == QLatin1String( "POLYHEDRALSURFACEZM" ) ) || ( type == QLatin1String( "TINZM" ) ) )
+  {
+    return QgsWkbTypes::MultiPolygonZM;
+  }
   else if ( type == QLatin1String( "TRIANGLE" ) )
   {
     return QgsWkbTypes::Polygon;
+  }
+  else if ( type == QLatin1String( "TRIANGLEZ" ) )
+  {
+    return QgsWkbTypes::PolygonZ;
+  }
+  else if ( type == QLatin1String( "TRIANGLEM" ) )
+  {
+    return QgsWkbTypes::PolygonM;
+  }
+  else if ( type == QLatin1String( "TRIANGLEZM" ) )
+  {
+    return QgsWkbTypes::PolygonZM;
   }
   return QgsWkbTypes::parseType( type );
 }
@@ -2485,7 +2714,7 @@ QString QgsPostgresConn::currentDatabase() const
   QMutexLocker locker( &mLock );
   QString database;
   QString sql = "SELECT current_database()";
-  QgsPostgresResult res( PQexec( sql ) );
+  QgsPostgresResult res( LoggedPQexec( QStringLiteral( "QgsPostresConn" ), sql ) );
 
   if ( res.PQresultStatus() == PGRES_TUPLES_OK )
   {

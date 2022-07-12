@@ -23,6 +23,7 @@
 #include <QWidget>
 #include <memory>
 
+class QgsSettingsRegistryGui;
 class QgsEditorWidgetRegistry;
 class QgsShortcutsManager;
 class QgsLayerTreeEmbeddedWidgetRegistry;
@@ -30,6 +31,7 @@ class QgsMapLayerActionRegistry;
 class QgsSourceSelectProviderRegistry;
 class QgsNative;
 class QgsLayoutItemGuiRegistry;
+class QgsAnnotationItemGuiRegistry;
 class QgsWidgetStateHelper;
 class QgsProcessingGuiRegistry;
 class QgsProcessingRecentAlgorithmLog;
@@ -40,6 +42,11 @@ class QgsProjectStorageGuiRegistry;
 class QgsNumericFormatGuiRegistry;
 class QgsCodeEditorColorSchemeRegistry;
 class QgsMessageBar;
+class QgsSubsetStringEditorProviderRegistry;
+class QgsProviderSourceWidgetProviderRegistry;
+class QgsRelationWidgetRegistry;
+class QgsMapToolShapeRegistry;
+class QgsHistoryProviderRegistry;
 
 /**
  * \ingroup gui
@@ -82,6 +89,12 @@ class GUI_EXPORT QgsGui : public QObject
     SIP_SKIP static QgsNative *nativePlatformInterface();
 
     /**
+     * Returns the gui's settings registry, used for managing gui settings.
+     * \since QGIS 3.22
+     */
+    static QgsSettingsRegistryGui *settingsRegistryGui() SIP_KEEPREFERENCE;
+
+    /**
      * Returns the global editor widget registry, used for managing all known edit widget factories.
      */
     static QgsEditorWidgetRegistry *editorWidgetRegistry() SIP_KEEPREFERENCE;
@@ -110,6 +123,13 @@ class GUI_EXPORT QgsGui : public QObject
      * Returns the global layout item GUI registry, used for registering the GUI behavior of layout items.
      */
     static QgsLayoutItemGuiRegistry *layoutItemGuiRegistry() SIP_KEEPREFERENCE;
+
+    /**
+     * Returns the global annotation item GUI registry, used for registering the GUI behavior of annotation items.
+     *
+     * \since QGIS 3.22
+     */
+    static QgsAnnotationItemGuiRegistry *annotationItemGuiRegistry() SIP_KEEPREFERENCE;
 
     /**
      * Returns the global processing gui registry, used for registering the GUI behavior of processing algorithms.
@@ -153,6 +173,37 @@ class GUI_EXPORT QgsGui : public QObject
      * \since QGIS 3.10
      */
     static QgsProviderGuiRegistry *providerGuiRegistry() SIP_KEEPREFERENCE;
+
+    /**
+     * Returns the registry of subset string editors of data providers
+     * \since QGIS 3.18
+     */
+    static QgsSubsetStringEditorProviderRegistry *subsetStringEditorProviderRegistry() SIP_KEEPREFERENCE;
+
+    /**
+     * Returns the registry of provider source widget providers.
+     * \since QGIS 3.18
+     */
+    static QgsProviderSourceWidgetProviderRegistry *sourceWidgetProviderRegistry() SIP_KEEPREFERENCE;
+
+    /**
+     * Returns the global relation widget registry, used for managing all known relation widget factories.
+    * \since QGIS 3.18
+     */
+    static QgsRelationWidgetRegistry *relationWidgetRegistry() SIP_KEEPREFERENCE;
+
+    /**
+     * Returns the registry of shape map tools
+     * \note Not available in Python bindings
+    * \since QGIS 3.26
+     */
+    static QgsMapToolShapeRegistry *mapToolShapeRegistry() SIP_SKIP;
+
+    /**
+     * Returns the global history provider registry, used for tracking history providers.
+     * \since QGIS 3.24
+     */
+    static QgsHistoryProviderRegistry *historyProviderRegistry() SIP_KEEPREFERENCE;
 
     /**
      * Register the widget to allow its position to be automatically saved and restored when open and closed.
@@ -240,6 +291,7 @@ class GUI_EXPORT QgsGui : public QObject
 
     QgsGui();
 
+    QgsSettingsRegistryGui *mSettingsRegistryGui = nullptr;
     QgsProviderGuiRegistry *mProviderGuiRegistry = nullptr;
     QgsWidgetStateHelper *mWidgetStateHelper = nullptr;
     QgsNative *mNative = nullptr;
@@ -249,12 +301,18 @@ class GUI_EXPORT QgsGui : public QObject
     QgsLayerTreeEmbeddedWidgetRegistry *mLayerTreeEmbeddedWidgetRegistry = nullptr;
     QgsMapLayerActionRegistry *mMapLayerActionRegistry = nullptr;
     QgsLayoutItemGuiRegistry *mLayoutItemGuiRegistry = nullptr;
+    QgsAnnotationItemGuiRegistry *mAnnotationItemGuiRegistry = nullptr;
     QgsProcessingGuiRegistry *mProcessingGuiRegistry = nullptr;
     QgsProcessingRecentAlgorithmLog *mProcessingRecentAlgorithmLog = nullptr;
     QgsNumericFormatGuiRegistry *mNumericFormatGuiRegistry = nullptr;
     QgsDataItemGuiProviderRegistry *mDataItemGuiProviderRegistry = nullptr;
     QgsCodeEditorColorSchemeRegistry *mCodeEditorColorSchemeRegistry = nullptr;
     QgsProjectStorageGuiRegistry *mProjectStorageGuiRegistry = nullptr;
+    QgsSubsetStringEditorProviderRegistry *mSubsetStringEditorProviderRegistry = nullptr;
+    QgsProviderSourceWidgetProviderRegistry *mProviderSourceWidgetProviderRegistry = nullptr;
+    QgsRelationWidgetRegistry *mRelationEditorRegistry = nullptr;
+    QgsMapToolShapeRegistry *mShapeMapToolRegistry = nullptr;
+    QgsHistoryProviderRegistry *mHistoryProviderRegistry = nullptr;
     std::unique_ptr< QgsWindowManagerInterface > mWindowManager;
 
 #ifdef SIP_RUN

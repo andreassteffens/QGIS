@@ -28,12 +28,17 @@
 #include "nlohmann/json.hpp"
 
 #include <QUrl>
+#include <QUrlQuery>
 
 QgsRectangle QgsServerApiUtils::parseBbox( const QString &bbox )
 {
-  const auto parts { bbox.split( ',', QString::SplitBehavior::SkipEmptyParts ) };
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+  const QStringList parts { bbox.split( ',', QString::SplitBehavior::SkipEmptyParts ) };
+#else
+  const QStringList parts { bbox.split( ',', Qt::SplitBehaviorFlags::SkipEmptyParts ) };
+#endif
   // Note: Z is ignored
-  auto ok { true };
+  bool ok { true };
   if ( parts.count() == 4 ||  parts.count() == 6 )
   {
     const auto hasZ { parts.count() == 6 };
@@ -62,13 +67,15 @@ QgsRectangle QgsServerApiUtils::parseBbox( const QString &bbox )
   return QgsRectangle();
 }
 
-QList< QgsVectorLayerServerProperties::WmsDimensionInfo > QgsServerApiUtils::temporalDimensions( const QgsVectorLayer *layer )
+QList< QgsMapLayerServerProperties::WmsDimensionInfo > QgsServerApiUtils::temporalDimensions( const QgsVectorLayer *layer )
 {
-  QList< QgsVectorLayerServerProperties::WmsDimensionInfo > dimensions { layer->serverProperties()->wmsDimensions() };
+
+  const QgsMapLayerServerProperties *serverProperties = layer->serverProperties();
+  QList< QgsMapLayerServerProperties::WmsDimensionInfo > dimensions { serverProperties->wmsDimensions() };
   // Filter only date and time
   dimensions.erase( std::remove_if( dimensions.begin(),
                                     dimensions.end(),
-                                    [ ]( QgsVectorLayerServerProperties::WmsDimensionInfo & dim )
+                                    [ ]( QgsMapLayerServerProperties::WmsDimensionInfo & dim )
   {
     return dim.name.toLower() != QStringLiteral( "time" )
            && dim.name.toLower() != QStringLiteral( "date" ) ;
@@ -82,7 +89,7 @@ QList< QgsVectorLayerServerProperties::WmsDimensionInfo > QgsServerApiUtils::tem
     {
       if ( f.isDateOrTime() )
       {
-        dimensions.append( QgsVectorLayerServerProperties::WmsDimensionInfo( f.type() == QVariant::DateTime ?
+        dimensions.append( QgsMapLayerServerProperties::WmsDimensionInfo( f.type() == QVariant::DateTime ?
                            QStringLiteral( "time" ) :
                            QStringLiteral( "date" ), f.name() ) );
         break;
@@ -280,7 +287,7 @@ QgsExpression QgsServerApiUtils::temporalFilterExpression( const QgsVectorLayer 
     {
       QgsDateRange dateInterval { QgsServerApiUtils::parseTemporalDateInterval( interval ) };
 
-      for ( const auto &dimension : qgis::as_const( dimensions ) )
+      for ( const auto &dimension : std::as_const( dimensions ) )
       {
 
         // Determine the field type from the dimension name "time"/"date"
@@ -316,7 +323,7 @@ QgsExpression QgsServerApiUtils::temporalFilterExpression( const QgsVectorLayer 
     else // try datetime
     {
       QgsDateTimeRange dateTimeInterval { QgsServerApiUtils::parseTemporalDateTimeInterval( interval ) };
-      for ( const auto &dimension : qgis::as_const( dimensions ) )
+      for ( const auto &dimension : std::as_const( dimensions ) )
       {
 
         // Determine the field type from the dimension name "time"/"date"
@@ -365,7 +372,7 @@ QgsExpression QgsServerApiUtils::temporalFilterExpression( const QgsVectorLayer 
   else // single value
   {
 
-    for ( const auto &dimension : qgis::as_const( dimensions ) )
+    for ( const auto &dimension : std::as_const( dimensions ) )
     {
       // Determine the field type from the dimension name "time"/"date"
       const bool fieldIsDateTime { dimension.name.toLower() == QLatin1String( "time" ) };
@@ -450,7 +457,7 @@ json QgsServerApiUtils::layerExtent( const QgsVectorLayer *layer )
 json QgsServerApiUtils::temporalExtent( const QgsVectorLayer *layer )
 {
   // Helper to get min/max from a dimension
-  auto range = [ & ]( const QgsVectorLayerServerProperties::WmsDimensionInfo & dimInfo ) -> QgsDateTimeRange
+  auto range = [ & ]( const QgsMapLayerServerProperties::WmsDimensionInfo & dimInfo ) -> QgsDateTimeRange
   {
     QgsDateTimeRange result;
     // min
@@ -459,29 +466,38 @@ json QgsServerApiUtils::temporalExtent( const QgsVectorLayer *layer )
     {
       return result;
     }
-    QDateTime min { layer->minimumValue( fieldIdx ).toDateTime() };
-    QDateTime max { layer->maximumValue( fieldIdx ).toDateTime() };
+
+    QVariant minVal;
+    QVariant maxVal;
+    layer->minimumAndMaximumValue( fieldIdx, minVal, maxVal );
+
+    QDateTime min { minVal.toDateTime() };
+    QDateTime max { maxVal.toDateTime() };
     if ( ! dimInfo.endFieldName.isEmpty() )
     {
       fieldIdx = layer->fields().lookupField( dimInfo.endFieldName );
       if ( fieldIdx >= 0 )
       {
-        QDateTime minEnd { layer->minimumValue( fieldIdx ).toDateTime() };
-        QDateTime maxEnd { layer->maximumValue( fieldIdx ).toDateTime() };
+        QVariant minVal;
+        QVariant maxVal;
+        layer->minimumAndMaximumValue( fieldIdx, minVal, maxVal );
+
+        QDateTime minEnd { minVal.toDateTime() };
+        QDateTime maxEnd { maxVal.toDateTime() };
         if ( minEnd.isValid() )
         {
-          min = std::min<QDateTime>( min, layer->minimumValue( fieldIdx ).toDateTime() );
+          min = std::min<QDateTime>( min, minEnd );
         }
         if ( maxEnd.isValid() )
         {
-          max = std::max<QDateTime>( max, layer->maximumValue( fieldIdx ).toDateTime() );
+          max = std::max<QDateTime>( max, maxEnd );
         }
       }
     }
     return { min, max };
   };
 
-  const QList<QgsVectorLayerServerProperties::WmsDimensionInfo> dimensions { QgsServerApiUtils::temporalDimensions( layer ) };
+  const QList<QgsMapLayerServerProperties::WmsDimensionInfo> dimensions { QgsServerApiUtils::temporalDimensions( layer ) };
   if ( dimensions.isEmpty() )
   {
     return nullptr;
@@ -530,7 +546,7 @@ json QgsServerApiUtils::temporalExtent( const QgsVectorLayer *layer )
     catch ( std::exception &ex )
     {
       const QString errorMessage { QStringLiteral( "Error creating temporal extent: %1" ).arg( ex.what() ) };
-      QgsMessageLog::logMessage( errorMessage, QStringLiteral( "Server" ), Qgis::Critical );
+      QgsMessageLog::logMessage( errorMessage, QStringLiteral( "Server" ), Qgis::MessageLevel::Critical );
       throw  QgsServerApiInternalServerError( errorMessage );
     }
   }
@@ -545,7 +561,6 @@ QVariantList QgsServerApiUtils::temporalExtentList( const QgsVectorLayer *layer 
 
 QgsCoordinateReferenceSystem QgsServerApiUtils::parseCrs( const QString &bboxCrs )
 {
-  QgsCoordinateReferenceSystem crs;
   // We get this:
   // http://www.opengis.net/def/crs/OGC/1.3/CRS84
   // We want this:
@@ -553,11 +568,11 @@ QgsCoordinateReferenceSystem QgsServerApiUtils::parseCrs( const QString &bboxCrs
   const auto parts { QUrl( bboxCrs ).path().split( '/' ) };
   if ( parts.count() == 6 )
   {
-    return crs.fromOgcWmsCrs( QStringLiteral( "urn:ogc:def:crs:%1:%2:%3" ).arg( parts[3], parts[4], parts[5] ) );
+    return QgsCoordinateReferenceSystem::fromOgcWmsCrs( QStringLiteral( "urn:ogc:def:crs:%1:%2:%3" ).arg( parts[3], parts[4], parts[5] ) );
   }
   else
   {
-    return crs;
+    return QgsCoordinateReferenceSystem();
   }
 }
 
@@ -604,12 +619,12 @@ QString QgsServerApiUtils::crsToOgcUri( const QgsCoordinateReferenceSystem &crs 
     }
     else
     {
-      QgsMessageLog::logMessage( QStringLiteral( "Error converting published CRS to URI %1: (not OGC or EPSG)" ).arg( crs.authid() ), QStringLiteral( "Server" ), Qgis::Critical );
+      QgsMessageLog::logMessage( QStringLiteral( "Error converting published CRS to URI %1: (not OGC or EPSG)" ).arg( crs.authid() ), QStringLiteral( "Server" ), Qgis::MessageLevel::Critical );
     }
   }
   else
   {
-    QgsMessageLog::logMessage( QStringLiteral( "Error converting published CRS to URI: %1" ).arg( crs.authid() ), QStringLiteral( "Server" ), Qgis::Critical );
+    QgsMessageLog::logMessage( QStringLiteral( "Error converting published CRS to URI: %1" ).arg( crs.authid() ), QStringLiteral( "Server" ), Qgis::MessageLevel::Critical );
   }
   return QString();
 }

@@ -23,10 +23,13 @@
 #include "qgsproject.h"
 #include "qgsexpressioncontext.h"
 #include "qgsfeaturerequest.h"
-#include "qgsmaplayerlistutils.h"
 #include "qgsexception.h"
 #include "qgsprocessingfeedback.h"
 #include "qgsprocessingutils.h"
+
+
+#include <QThread>
+#include <QPointer>
 
 class QgsProcessingLayerPostProcessorInterface;
 
@@ -51,6 +54,17 @@ class CORE_EXPORT QgsProcessingContext
       Unused = 1 << 0, //!< Temporary unused entry
     };
     Q_DECLARE_FLAGS( Flags, Flag )
+
+    /**
+     * Logging level for algorithms to use when pushing feedback messages.
+     *
+     * \since QGIS 3.20
+     */
+    enum LogLevel
+    {
+      DefaultLevel = 0, //!< Default logging level
+      Verbose, //!< Verbose logging
+    };
 
     /**
      * Constructor for QgsProcessingContext.
@@ -85,6 +99,7 @@ class CORE_EXPORT QgsProcessingContext
       mEllipsoid = other.mEllipsoid;
       mDistanceUnit = other.mDistanceUnit;
       mAreaUnit = other.mAreaUnit;
+      mLogLevel = other.mLogLevel;
     }
 
     /**
@@ -216,6 +231,22 @@ class CORE_EXPORT QgsProcessingContext
      * \since QGIS 3.16
      */
     void setAreaUnit( QgsUnitTypes::AreaUnit areaUnit );
+
+    /**
+     * Returns the current time range to use for temporal operations.
+     *
+     * \see setCurrentTimeRange()
+     * \since QGIS 3.18
+     */
+    QgsDateTimeRange currentTimeRange() const;
+
+    /**
+     * Sets the \a current time range to use for temporal operations.
+     *
+     * \see currentTimeRange()
+     * \since QGIS 3.18
+     */
+    void setCurrentTimeRange( const QgsDateTimeRange &currentTimeRange );
 
     /**
      * Returns a reference to the layer store used for storing temporary layers during
@@ -610,6 +641,47 @@ class CORE_EXPORT QgsProcessingContext
      */
     void setPreferredRasterFormat( const QString &format ) { mPreferredRasterFormat = format; }
 
+    /**
+     * Returns the logging level for algorithms to use when pushing feedback messages to users.
+     *
+     * \see setLogLevel()
+     * \since QGIS 3.20
+     */
+    LogLevel logLevel() const;
+
+    /**
+     * Sets the logging \a level for algorithms to use when pushing feedback messages to users.
+     *
+     * \see logLevel()
+     * \since QGIS 3.20
+     */
+    void setLogLevel( LogLevel level );
+
+    /**
+     * Exports the context's settings to a variant map.
+     *
+     * \since QGIS 3.24
+     */
+    QVariantMap exportToMap() const;
+
+    /**
+     * Flags controlling the results given by asQgisProcessArguments().
+     *
+     * \since QGIS 3.24
+     */
+    enum class ProcessArgumentFlag : int
+    {
+      IncludeProjectPath = 1 << 0, //!< Include the associated project path argument
+    };
+    Q_DECLARE_FLAGS( ProcessArgumentFlags, ProcessArgumentFlag )
+
+    /**
+     * Returns list of the equivalent qgis_process arguments representing the settings from the context.
+     *
+     * \since QGIS 3.24
+     */
+    QStringList asQgisProcessArguments( QgsProcessingContext::ProcessArgumentFlags flags = QgsProcessingContext::ProcessArgumentFlags() ) const;
+
   private:
 
     QgsProcessingContext::Flags mFlags = QgsProcessingContext::Flags();
@@ -619,6 +691,8 @@ class CORE_EXPORT QgsProcessingContext
     QString mEllipsoid;
     QgsUnitTypes::DistanceUnit mDistanceUnit = QgsUnitTypes::DistanceUnknownUnit;
     QgsUnitTypes::AreaUnit mAreaUnit = QgsUnitTypes::AreaUnknownUnit;
+
+    QgsDateTimeRange mCurrentTimeRange;
 
     //! Temporary project owned by the context, used for storing temporarily loaded map layers
     QgsMapLayerStore tempLayerStore;
@@ -637,12 +711,15 @@ class CORE_EXPORT QgsProcessingContext
     QString mPreferredVectorFormat;
     QString mPreferredRasterFormat;
 
+    LogLevel mLogLevel = DefaultLevel;
+
 #ifdef SIP_RUN
     QgsProcessingContext( const QgsProcessingContext &other );
 #endif
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS( QgsProcessingContext::Flags )
+Q_DECLARE_OPERATORS_FOR_FLAGS( QgsProcessingContext::ProcessArgumentFlags )
 
 
 /**

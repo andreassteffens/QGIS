@@ -56,7 +56,7 @@ QgsExpressionSelectionDialog::QgsExpressionSelectionDialog( QgsVectorLayer *laye
   mButtonSelect->addAction( mActionSelectIntersect );
   mButtonSelect->setDefaultAction( mActionSelect );
 
-  QgsExpressionContext context( QgsExpressionContextUtils::globalProjectLayerScopes( mLayer ) );
+  const QgsExpressionContext context( QgsExpressionContextUtils::globalProjectLayerScopes( mLayer ) );
   mExpressionBuilder->initWithLayer( layer, context, QStringLiteral( "selection" ) );
   mExpressionBuilder->setExpressionText( startText );
 
@@ -101,7 +101,7 @@ void QgsExpressionSelectionDialog::setMapCanvas( QgsMapCanvas *canvas )
 void QgsExpressionSelectionDialog::mActionSelect_triggered()
 {
   mLayer->selectByExpression( mExpressionBuilder->expressionText(),
-                              QgsVectorLayer::SetSelection );
+                              Qgis::SelectBehavior::SetSelection );
   pushSelectedFeaturesMessage();
   saveRecent();
 }
@@ -109,7 +109,7 @@ void QgsExpressionSelectionDialog::mActionSelect_triggered()
 void QgsExpressionSelectionDialog::mActionAddToSelection_triggered()
 {
   mLayer->selectByExpression( mExpressionBuilder->expressionText(),
-                              QgsVectorLayer::AddToSelection );
+                              Qgis::SelectBehavior::AddToSelection );
   pushSelectedFeaturesMessage();
   saveRecent();
 }
@@ -117,7 +117,7 @@ void QgsExpressionSelectionDialog::mActionAddToSelection_triggered()
 void QgsExpressionSelectionDialog::mActionSelectIntersect_triggered()
 {
   mLayer->selectByExpression( mExpressionBuilder->expressionText(),
-                              QgsVectorLayer::IntersectSelection );
+                              Qgis::SelectBehavior::IntersectSelection );
   pushSelectedFeaturesMessage();
   saveRecent();
 }
@@ -125,7 +125,7 @@ void QgsExpressionSelectionDialog::mActionSelectIntersect_triggered()
 void QgsExpressionSelectionDialog::mActionRemoveFromSelection_triggered()
 {
   mLayer->selectByExpression( mExpressionBuilder->expressionText(),
-                              QgsVectorLayer::RemoveFromSelection );
+                              Qgis::SelectBehavior::RemoveFromSelection );
   pushSelectedFeaturesMessage();
   saveRecent();
 }
@@ -135,19 +135,18 @@ void QgsExpressionSelectionDialog::pushSelectedFeaturesMessage()
   if ( !mMessageBar )
     return;
 
-  const int timeout = QgsSettings().value( QStringLiteral( "qgis/messageTimeout" ), 5 ).toInt();
   const int count = mLayer->selectedFeatureCount();
   if ( count > 0 )
   {
     mMessageBar->pushMessage( QString(),
                               tr( "%n matching feature(s) selected", "matching features", count ),
-                              Qgis::Info, timeout );
+                              Qgis::MessageLevel::Info );
   }
   else
   {
     mMessageBar->pushMessage( QString(),
                               tr( "No matching features found" ),
-                              Qgis::Warning, timeout );
+                              Qgis::MessageLevel::Info );
   }
 }
 
@@ -156,11 +155,11 @@ void QgsExpressionSelectionDialog::mButtonZoomToFeatures_clicked()
   if ( mExpressionBuilder->expressionText().isEmpty() || !mMapCanvas )
     return;
 
-  QgsExpressionContext context( QgsExpressionContextUtils::globalProjectLayerScopes( mLayer ) );
+  const QgsExpressionContext context( QgsExpressionContextUtils::globalProjectLayerScopes( mLayer ) );
 
-  QgsFeatureRequest request = QgsFeatureRequest().setFilterExpression( mExpressionBuilder->expressionText() )
-                              .setExpressionContext( context )
-                              .setNoAttributes();
+  const QgsFeatureRequest request = QgsFeatureRequest().setFilterExpression( mExpressionBuilder->expressionText() )
+                                    .setExpressionContext( context )
+                                    .setNoAttributes();
 
   QgsFeatureIterator features = mLayer->getFeatures( request );
 
@@ -170,18 +169,16 @@ void QgsExpressionSelectionDialog::mButtonZoomToFeatures_clicked()
   int featureCount = 0;
   while ( features.nextFeature( feat ) )
   {
-    QgsGeometry geom = feat.geometry();
+    const QgsGeometry geom = feat.geometry();
     if ( geom.isNull() || geom.constGet()->isEmpty() )
       continue;
 
-    QgsRectangle r = mMapCanvas->mapSettings().layerExtentToOutputExtent( mLayer, geom.boundingBox() );
+    const QgsRectangle r = mMapCanvas->mapSettings().layerExtentToOutputExtent( mLayer, geom.boundingBox() );
     bbox.combineExtentWith( r );
     featureCount++;
   }
   features.close();
 
-  QgsSettings settings;
-  int timeout = settings.value( QStringLiteral( "qgis/messageTimeout" ), 5 ).toInt();
   if ( featureCount > 0 )
   {
     mMapCanvas->zoomToFeatureExtent( bbox );
@@ -189,16 +186,14 @@ void QgsExpressionSelectionDialog::mButtonZoomToFeatures_clicked()
     {
       mMessageBar->pushMessage( QString(),
                                 tr( "Zoomed to %n matching feature(s)", "number of matching features", featureCount ),
-                                Qgis::Info,
-                                timeout );
+                                Qgis::MessageLevel::Info );
     }
   }
   else if ( mMessageBar )
   {
     mMessageBar->pushMessage( QString(),
                               tr( "No matching features found" ),
-                              Qgis::Info,
-                              timeout );
+                              Qgis::MessageLevel::Info );
   }
   saveRecent();
 }

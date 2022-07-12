@@ -51,7 +51,7 @@ class CORE_EXPORT QgsMultiPolygon: public QgsMultiSurface
     /**
      * Returns the polygon with the specified \a index.
      *
-     * An IndexError will be raised if no polygon with the specified index exists.
+     * \throws IndexError if no polygon with the specified index exists.
      *
      * \since QGIS 3.16
      */
@@ -107,7 +107,7 @@ class CORE_EXPORT QgsMultiPolygon: public QgsMultiSurface
      * \note Not available in Python. Objects will be automatically be converted to the appropriate target type.
      * \since QGIS 3.0
      */
-    inline const QgsMultiPolygon *cast( const QgsAbstractGeometry *geom ) const
+    inline static const QgsMultiPolygon *cast( const QgsAbstractGeometry *geom )
     {
       if ( geom && QgsWkbTypes::flatType( geom->wkbType() ) == QgsWkbTypes::MultiPolygon )
         return static_cast<const QgsMultiPolygon *>( geom );

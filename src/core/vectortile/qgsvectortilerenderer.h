@@ -23,6 +23,8 @@
 #include "qgstiles.h"
 
 class QgsRenderContext;
+class QgsReadWriteContext;
+class QgsProject;
 
 //! Features of a vector tile, grouped by sub-layer names (key of the map)
 typedef QMap<QString, QVector<QgsFeature> > QgsVectorTileFeatures SIP_SKIP;
@@ -38,7 +40,9 @@ class CORE_EXPORT QgsVectorTileRendererData
 {
   public:
     //! Constructs the object
-    explicit QgsVectorTileRendererData( QgsTileXYZ id ): mId( id ) {}
+    explicit QgsVectorTileRendererData( QgsTileXYZ id )
+      : mId( id )
+    {}
 
     //! Returns coordinates of the tile
     QgsTileXYZ id() const { return mId; }

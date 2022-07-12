@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """QGIS Unit tests for QgsServer API.
 
+From build dir, run: ctest -R PyQgsServerApi -V
+
 .. note:: This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
@@ -34,7 +36,17 @@ from qgis.server import (
     QgsServerApiUtils,
     QgsServiceRegistry
 )
-from qgis.core import QgsProject, QgsRectangle, QgsVectorLayerServerProperties, QgsFeatureRequest
+
+from qgis.core import (
+    QgsProject,
+    QgsRectangle,
+    QgsVectorLayerServerProperties,
+    QgsFeatureRequest,
+    QgsVectorLayer,
+    QgsFeature,
+    QgsGeometry,
+)
+
 from qgis.PyQt import QtCore
 
 from qgis.testing import unittest
@@ -52,17 +64,17 @@ class QgsServerAPIUtilsTest(QgsServerTestBase):
     def test_parse_bbox(self):
         bbox = QgsServerApiUtils.parseBbox(
             '8.203495,44.901482,8.203497,44.901484')
-        self.assertEquals(bbox.xMinimum(), 8.203495)
-        self.assertEquals(bbox.yMinimum(), 44.901482)
-        self.assertEquals(bbox.xMaximum(), 8.203497)
-        self.assertEquals(bbox.yMaximum(), 44.901484)
+        self.assertEqual(bbox.xMinimum(), 8.203495)
+        self.assertEqual(bbox.yMinimum(), 44.901482)
+        self.assertEqual(bbox.xMaximum(), 8.203497)
+        self.assertEqual(bbox.yMaximum(), 44.901484)
 
         bbox = QgsServerApiUtils.parseBbox(
             '8.203495,44.901482,100,8.203497,44.901484,120')
-        self.assertEquals(bbox.xMinimum(), 8.203495)
-        self.assertEquals(bbox.yMinimum(), 44.901482)
-        self.assertEquals(bbox.xMaximum(), 8.203497)
-        self.assertEquals(bbox.yMaximum(), 44.901484)
+        self.assertEqual(bbox.xMinimum(), 8.203495)
+        self.assertEqual(bbox.yMinimum(), 44.901482)
+        self.assertEqual(bbox.xMaximum(), 8.203497)
+        self.assertEqual(bbox.yMaximum(), 44.901484)
 
         bbox = QgsServerApiUtils.parseBbox('something_wrong_here')
         self.assertTrue(bbox.isEmpty())
@@ -89,12 +101,12 @@ class QgsServerAPIUtilsTest(QgsServerTestBase):
 
         crs = QgsServerApiUtils.parseCrs(
             'http://www.opengis.net/def/crs/EPSG/9.6.2/4326')
-        self.assertEquals(crs.postgisSrid(), 4326)
+        self.assertEqual(crs.postgisSrid(), 4326)
 
         crs = QgsServerApiUtils.parseCrs(
             'http://www.opengis.net/def/crs/EPSG/9.6.2/3857')
         self.assertTrue(crs.isValid())
-        self.assertEquals(crs.postgisSrid(), 3857)
+        self.assertEqual(crs.postgisSrid(), 3857)
 
         crs = QgsServerApiUtils.parseCrs(
             'http://www.opengis.net/something_wrong_here')
@@ -639,6 +651,28 @@ class QgsServerAPITest(QgsServerAPITestBase):
                 encoded_crs))
         self.compareApi(
             request, project, 'test_wfs3_collections_items_testlayer_èé_bbox_3857.json')
+
+    def test_wfs3_collection_items_bbox_25832(self):
+        """Test WFS3 API bbox with reprojection"""
+
+        project = QgsProject()
+        vl = QgsVectorLayer("Point?crs=EPSG:25832&field=fldint:integer",
+                            "testlayer25832", "memory")
+
+        f = QgsFeature(vl.fields())
+        f.setAttribute(0, 1)
+        f.setGeometry(QgsGeometry.fromWkt('point(361774 4963545)'))
+        vl.dataProvider().addFeatures((f,))
+        project.addMapLayers([vl])
+
+        project.writeEntry("WFSLayers", "/", (vl.id(),))
+        project.writeEntry("WMSCrsList", "/", ("EPSG:25832", "EPSG:4326",))
+
+        request = QgsBufferServerRequest(
+            'http://server.qgis.org/wfs3/collections/testlayer25832/items?bbox=7.16305252070271603,44.75906320523620963,7.3418755610416051,44.87555723151492515')
+
+        self.compareApi(request, project,
+                        'test_wfs3_collections_items_testlayer25832_bbox.json')
 
     def test_wfs3_static_handler(self):
         """Test static handler"""
@@ -1306,9 +1340,9 @@ class QgsServerAPITest(QgsServerAPITestBase):
             body = bytes(response.body()).decode('utf8')
             # print(body)
             for exp in expected:
-                self.assertTrue(exp in body)
+                self.assertIn(exp, body)
             for unexp in unexpected:
-                self.assertFalse(unexp in body)
+                self.assertNotIn(unexp, body)
 
         def _interval(project_path, interval):
             project.read(project_path)

@@ -92,11 +92,11 @@ void QgsTinInterpolator::initialize()
   }
 
   //get number of features if we use a progress bar
-  int nFeatures = 0;
-  int nProcessedFeatures = 0;
+  long long nFeatures = 0;
+  long long nProcessedFeatures = 0;
   if ( mFeedback )
   {
-    for ( const LayerData &layer :  qgis::as_const( mLayerData ) )
+    for ( const LayerData &layer :  std::as_const( mLayerData ) )
     {
       if ( layer.source )
       {
@@ -108,7 +108,7 @@ void QgsTinInterpolator::initialize()
   const QgsCoordinateReferenceSystem crs = !mLayerData.empty() ? mLayerData.at( 0 ).source->sourceCrs() : QgsCoordinateReferenceSystem();
 
   QgsFeature f;
-  for ( const LayerData &layer : qgis::as_const( mLayerData ) )
+  for ( const LayerData &layer : std::as_const( mLayerData ) )
   {
     if ( layer.source )
     {
@@ -145,14 +145,14 @@ void QgsTinInterpolator::initialize()
 
   if ( mInterpolation == CloughTocher )
   {
-    CloughTocherInterpolator *ctInterpolator = new CloughTocherInterpolator();
     NormVecDecorator *dec = dynamic_cast<NormVecDecorator *>( mTriangulation );
     if ( dec )
     {
+      auto ctInterpolator = std::make_unique<CloughTocherInterpolator>();
       dec->estimateFirstDerivatives( mFeedback );
       ctInterpolator->setTriangulation( dec );
-      dec->setTriangleInterpolator( ctInterpolator );
-      mTriangleInterpolator = ctInterpolator;
+      mTriangleInterpolator = ctInterpolator.release();
+      dec->setTriangleInterpolator( mTriangleInterpolator );
     }
   }
   else //linear

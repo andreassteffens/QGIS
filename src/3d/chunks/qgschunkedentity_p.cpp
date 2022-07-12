@@ -19,6 +19,7 @@
 #include <QVector4D>
 #include <Qt3DRender/QObjectPicker>
 #include <Qt3DRender/QPickTriangleEvent>
+#include <Qt3DRender/QBuffer>
 
 #include "qgs3dutils.h"
 #include "qgschunkboundsentity_p.h"
@@ -28,6 +29,8 @@
 #include "qgstessellatedpolygongeometry.h"
 
 #include "qgseventtracing.h"
+
+#include <queue>
 
 ///@cond PRIVATE
 
@@ -70,14 +73,14 @@ static float screenSpaceError( QgsChunkNode *node, const QgsChunkedEntity::Scene
   return sse;
 }
 
-QgsChunkedEntity::QgsChunkedEntity( const QgsAABB &rootBbox, float rootError, float tau, int maxLevel, QgsChunkLoaderFactory *loaderFactory, bool ownsFactory, Qt3DCore::QNode *parent )
+QgsChunkedEntity::QgsChunkedEntity( float tau, QgsChunkLoaderFactory *loaderFactory, bool ownsFactory, int primitiveBudget, Qt3DCore::QNode *parent )
   : Qt3DCore::QEntity( parent )
   , mTau( tau )
-  , mMaxLevel( maxLevel )
   , mChunkLoaderFactory( loaderFactory )
   , mOwnsFactory( ownsFactory )
+  , mPrimitivesBudget( primitiveBudget )
 {
-  mRootNode = new QgsChunkNode( 0, 0, 0, rootBbox, rootError );
+  mRootNode = loaderFactory->createRootNode();
   mChunkLoaderQueue = new QgsChunkList;
   mReplacementQueue = new QgsChunkList;
 }
@@ -129,6 +132,13 @@ void QgsChunkedEntity::update( const SceneState &state )
   if ( !mIsValid )
     return;
 
+  // Let's start the update by removing from loader queue chunks that
+  // would get frustum culled if loaded (outside of the current view
+  // of the camera). Removing them keeps the loading queue shorter,
+  // and we avoid loading chunks that we only wanted for a short period
+  // of time when camera was moving.
+  pruneLoaderQueue( state );
+
   QElapsedTimer t;
   t.start();
 
@@ -143,37 +153,53 @@ void QgsChunkedEntity::update( const SceneState &state )
 
   int enabled = 0, disabled = 0, unloaded = 0;
 
-  Q_FOREACH ( QgsChunkNode *node, mActiveNodes )
+  for ( QgsChunkNode *node : std::as_const( mActiveNodes ) )
   {
     if ( activeBefore.contains( node ) )
+    {
       activeBefore.remove( node );
+    }
     else
     {
+      if ( !node->entity() )
+      {
+        QgsDebugMsg( "Active node has null entity - this should never happen!" );
+        continue;
+      }
       node->entity()->setEnabled( true );
       ++enabled;
     }
   }
 
   // disable those that were active but will not be anymore
-  Q_FOREACH ( QgsChunkNode *node, activeBefore )
+  for ( QgsChunkNode *node : activeBefore )
   {
+    if ( !node->entity() )
+    {
+      QgsDebugMsg( "Active node has null entity - this should never happen!" );
+      continue;
+    }
     node->entity()->setEnabled( false );
     ++disabled;
   }
 
+  double usedGpuMemory = QgsChunkedEntity::calculateEntityGpuMemorySize( this );
+
   // unload those that are over the limit for replacement
   // TODO: what to do when our cache is too small and nodes are being constantly evicted + loaded again
-  while ( mReplacementQueue->count() > mMaxLoadedChunks )
+  while ( usedGpuMemory > mGpuMemoryLimit )
   {
     QgsChunkListEntry *entry = mReplacementQueue->takeLast();
+    usedGpuMemory -= QgsChunkedEntity::calculateEntityGpuMemorySize( entry->chunk->entity() );
     entry->chunk->unloadChunk();  // also deletes the entry
+    mActiveNodes.removeOne( entry->chunk );
     ++unloaded;
   }
 
   if ( mBboxesEntity )
   {
     QList<QgsAABB> bboxes;
-    Q_FOREACH ( QgsChunkNode *n, mActiveNodes )
+    for ( QgsChunkNode *n : std::as_const( mActiveNodes ) )
       bboxes << n->bbox();
     mBboxesEntity->setBoxes( bboxes );
   }
@@ -186,7 +212,13 @@ void QgsChunkedEntity::update( const SceneState &state )
   if ( pendingJobsCount() != oldJobsCount )
     emit pendingJobsCountChanged();
 
-//  qDebug() << "update: active " << mActiveNodes.count() << " enabled " << enabled << " disabled " << disabled << " | culled " << mFrustumCulled << " | loading " << mChunkLoaderQueue->count() << " loaded " << mReplacementQueue->count() << " | unloaded " << unloaded << " elapsed " << t.elapsed() << "ms";
+  QgsDebugMsgLevel( QStringLiteral( "update: active %1 enabled %2 disabled %3 | culled %4 | loading %5 loaded %6 | unloaded %7 elapsed %8ms" ).arg( mActiveNodes.count() )
+                    .arg( enabled )
+                    .arg( disabled )
+                    .arg( mFrustumCulled )
+                    .arg( mReplacementQueue->count() )
+                    .arg( unloaded )
+                    .arg( t.elapsed() ), 2 );
 }
 
 void QgsChunkedEntity::setShowBoundingBoxes( bool enabled )
@@ -207,7 +239,7 @@ void QgsChunkedEntity::setShowBoundingBoxes( bool enabled )
 
 void QgsChunkedEntity::updateNodes( const QList<QgsChunkNode *> &nodes, QgsChunkQueueJobFactory *updateJobFactory )
 {
-  Q_FOREACH ( QgsChunkNode *node, nodes )
+  for ( QgsChunkNode *node : nodes )
   {
     if ( node->state() == QgsChunkNode::QueuedForUpdate )
     {
@@ -230,63 +262,208 @@ void QgsChunkedEntity::updateNodes( const QList<QgsChunkNode *> &nodes, QgsChunk
   startJobs();
 }
 
+void QgsChunkedEntity::pruneLoaderQueue( const SceneState &state )
+{
+  QList<QgsChunkNode *> toRemoveFromLoaderQueue;
+
+  // Step 1: collect all entries from chunk loader queue that would get frustum culled
+  // (i.e. they are outside of the current view of the camera) and therefore loading
+  // such chunks would be probably waste of time.
+  QgsChunkListEntry *e = mChunkLoaderQueue->first();
+  while ( e )
+  {
+    Q_ASSERT( e->chunk->state() == QgsChunkNode::QueuedForLoad || e->chunk->state() == QgsChunkNode::QueuedForUpdate );
+    if ( Qgs3DUtils::isCullable( e->chunk->bbox(), state.viewProjectionMatrix ) )
+    {
+      toRemoveFromLoaderQueue.append( e->chunk );
+    }
+    e = e->next;
+  }
+
+  // Step 2: remove collected chunks from the loading queue
+  for ( QgsChunkNode *n : toRemoveFromLoaderQueue )
+  {
+    mChunkLoaderQueue->takeEntry( n->loaderQueueEntry() );
+    if ( n->state() == QgsChunkNode::QueuedForLoad )
+    {
+      n->cancelQueuedForLoad();
+    }
+    else  // queued for update
+    {
+      n->cancelQueuedForUpdate();
+      mReplacementQueue->takeEntry( n->replacementQueueEntry() );
+      n->unloadChunk();
+    }
+  }
+
+  if ( !toRemoveFromLoaderQueue.isEmpty() )
+  {
+    QgsDebugMsgLevel( QStringLiteral( "Pruned %1 chunks in loading queue" ).arg( toRemoveFromLoaderQueue.count() ), 2 );
+  }
+}
+
+
 int QgsChunkedEntity::pendingJobsCount() const
 {
   return mChunkLoaderQueue->count() + mActiveJobs.count();
 }
 
-
-void QgsChunkedEntity::update( QgsChunkNode *node, const SceneState &state )
+struct ResidencyRequest
 {
-  if ( Qgs3DUtils::isCullable( node->bbox(), state.viewProjectionMatrix ) )
+  QgsChunkNode *node = nullptr;
+  float dist = 0.0;
+  int level = -1;
+  ResidencyRequest() = default;
+  ResidencyRequest(
+    QgsChunkNode *n,
+    float d,
+    int l )
+    : node( n )
+    , dist( d )
+    , level( l )
+  {}
+};
+
+struct
+{
+  bool operator()( const ResidencyRequest &request, const ResidencyRequest &otherRequest ) const
   {
-    ++mFrustumCulled;
-    return;
+    if ( request.level == otherRequest.level )
+      return request.dist > otherRequest.dist;
+    return request.level > otherRequest.level;
   }
+} ResidencyRequestSorter;
 
-  node->ensureAllChildrenExist();
+void QgsChunkedEntity::update( QgsChunkNode *root, const SceneState &state )
+{
+  QSet<QgsChunkNode *> nodes;
+  QVector<ResidencyRequest> residencyRequests;
 
-  // make sure all nodes leading to children are always loaded
-  // so that zooming out does not create issues
-  requestResidency( node );
-
-  if ( !node->entity() )
+  using slotItem = std::pair<QgsChunkNode *, float>;
+  auto cmp_funct = []( const slotItem & p1, const slotItem & p2 )
   {
-    // this happens initially when root node is not ready yet
-    return;
-  }
-
-  //qDebug() << node->tileX() << "|" << node->tileY() << "|" << node->tileZ() << "  " << mTau << "  " << screenSpaceError(node, state);
-
-  if ( mTau > 0 && screenSpaceError( node, state ) <= mTau )
+    return p1.second <= p2.second;
+  };
+  int renderedCount = 0;
+  std::priority_queue<slotItem, std::vector<slotItem>, decltype( cmp_funct )> pq( cmp_funct );
+  pq.push( std::make_pair( root, screenSpaceError( root, state ) ) );
+  while ( !pq.empty() && renderedCount <= mPrimitivesBudget )
   {
-    // acceptable error for the current chunk - let's render it
+    slotItem s = pq.top();
+    pq.pop();
+    QgsChunkNode *node = s.first;
 
-    mActiveNodes << node;
-  }
-  else if ( node->allChildChunksResident( mCurrentTime ) )
-  {
-    // error is not acceptable and children are ready to be used - recursive descent
-
-    QgsChunkNode *const *children = node->children();
-    for ( int i = 0; i < 4; ++i )
-      update( children[i], state );
-  }
-  else
-  {
-    // error is not acceptable but children are not ready either - still use parent but request children
-
-    mActiveNodes << node;
-
-    if ( node->level() < mMaxLevel )
+    if ( Qgs3DUtils::isCullable( node->bbox(), state.viewProjectionMatrix ) )
     {
-      QgsChunkNode *const *children = node->children();
-      for ( int i = 0; i < 4; ++i )
-        requestResidency( children[i] );
+      ++mFrustumCulled;
+      continue;
+    }
+
+    // ensure we have child nodes (at least skeletons) available, if any
+    if ( node->childCount() == -1 )
+      node->populateChildren( mChunkLoaderFactory->createChildren( node ) );
+
+    // make sure all nodes leading to children are always loaded
+    // so that zooming out does not create issues
+    double dist = node->bbox().center().distanceToPoint( state.cameraPos );
+    residencyRequests.push_back( ResidencyRequest( node, dist, node->level() ) );
+
+    if ( !node->entity() )
+    {
+      // this happens initially when root node is not ready yet
+      continue;
+    }
+    bool becomesActive = false;
+
+    // QgsDebugMsgLevel( QStringLiteral( "%1|%2|%3  %4  %5" ).arg( node->tileId().x ).arg( node->tileId().y ).arg( node->tileId().z ).arg( mTau ).arg( screenSpaceError( node, state ) ), 2 );
+    if ( node->childCount() == 0 )
+    {
+      // there's no children available for this node, so regardless of whether it has an acceptable error
+      // or not, it's the best we'll ever get...
+      becomesActive = true;
+    }
+    else if ( mTau > 0 && screenSpaceError( node, state ) <= mTau )
+    {
+      // acceptable error for the current chunk - let's render it
+      becomesActive = true;
+    }
+    else
+    {
+      // This chunk does not have acceptable error (it does not provide enough detail)
+      // so we'll try to use its children. The exact logic depends on whether the entity
+      // has additive strategy. With additive strategy, child nodes should be rendered
+      // in addition to the parent nodes (rather than child nodes replacing parent entirely)
+
+      if ( mAdditiveStrategy )
+      {
+        // Logic of the additive strategy:
+        // - children that are not loaded will get requested to be loaded
+        // - children that are already loaded get recursively visited
+        becomesActive = true;
+
+        QgsChunkNode *const *children = node->children();
+        for ( int i = 0; i < node->childCount(); ++i )
+        {
+          if ( children[i]->entity() || !children[i]->hasData() )
+          {
+            // chunk is resident - let's visit it recursively
+            pq.push( std::make_pair( children[i], screenSpaceError( children[i], state ) ) );
+          }
+          else
+          {
+            // chunk is not yet resident - let's try to load it
+            if ( Qgs3DUtils::isCullable( children[i]->bbox(), state.viewProjectionMatrix ) )
+              continue;
+
+            double dist = children[i]->bbox().center().distanceToPoint( state.cameraPos );
+            residencyRequests.push_back( ResidencyRequest( children[i], dist, children[i]->level() ) );
+          }
+        }
+      }
+      else
+      {
+        // Logic of the replace strategy:
+        // - if we have all children loaded, we use them instead of the parent node
+        // - if we do not have all children loaded, we request to load them and keep using the parent for the time being
+        if ( node->allChildChunksResident( mCurrentTime ) )
+        {
+          QgsChunkNode *const *children = node->children();
+          for ( int i = 0; i < node->childCount(); ++i )
+            pq.push( std::make_pair( children[i], screenSpaceError( children[i], state ) ) );
+        }
+        else
+        {
+          becomesActive = true;
+
+          QgsChunkNode *const *children = node->children();
+          for ( int i = 0; i < node->childCount(); ++i )
+          {
+            double dist = children[i]->bbox().center().distanceToPoint( state.cameraPos );
+            residencyRequests.push_back( ResidencyRequest( children[i], dist, children[i]->level() ) );
+          }
+        }
+      }
+    }
+
+    if ( becomesActive )
+    {
+      mActiveNodes << node;
+      // if we are not using additive strategy we need to make sure the parent primitives are not counted
+      if ( !mAdditiveStrategy && node->parent() && nodes.contains( node->parent() ) )
+      {
+        nodes.remove( node->parent() );
+        renderedCount -= mChunkLoaderFactory->primitivesCount( node->parent() );
+      }
+      renderedCount += mChunkLoaderFactory->primitivesCount( node );
+      nodes.insert( node );
     }
   }
-}
 
+  // sort nodes by their level and their distance from the camera
+  std::sort( residencyRequests.begin(), residencyRequests.end(), ResidencyRequestSorter );
+  for ( const auto &request : residencyRequests )
+    requestResidency( request.node );
+}
 
 void QgsChunkedEntity::requestResidency( QgsChunkNode *node )
 {
@@ -535,6 +712,21 @@ void QgsChunkedEntity::onPickEvent( Qt3DRender::QPickEvent *event )
   {
     emit pickedObject( event, fid );
   }
+}
+
+double QgsChunkedEntity::calculateEntityGpuMemorySize( Qt3DCore::QEntity *entity )
+{
+  long long usedGpuMemory = 0;
+  for ( Qt3DRender::QBuffer *buffer : entity->findChildren<Qt3DRender::QBuffer *>() )
+  {
+    usedGpuMemory += buffer->data().size();
+  }
+  for ( Qt3DRender::QTexture2D *tex : entity->findChildren<Qt3DRender::QTexture2D *>() )
+  {
+    // TODO : lift the assumption that the texture is RGBA
+    usedGpuMemory += tex->width() * tex->height() * 4;
+  }
+  return usedGpuMemory / 1024.0 / 1024.0;
 }
 
 /// @endcond

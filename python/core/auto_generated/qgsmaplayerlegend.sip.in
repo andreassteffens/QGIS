@@ -14,8 +14,8 @@
 
 class QgsMapLayerLegend : QObject
 {
-%Docstring
-The QgsMapLayerLegend class is abstract interface for implementations
+%Docstring(signature="appended")
+The :py:class:`QgsMapLayerLegend` class is abstract interface for implementations
 of legends for one map layer.
 
 .. versionadded:: 2.6
@@ -68,6 +68,13 @@ Create new legend implementation for raster layer
 Create new legend implementation for mesh layer
 %End
 
+    static QgsMapLayerLegend *defaultPointCloudLegend( QgsPointCloudLayer *layer ) /Factory/;
+%Docstring
+Create new legend implementation for a point cloud ``layer``.
+
+.. versionadded:: 3.18
+%End
+
   signals:
     void itemsChanged();
 %Docstring
@@ -78,7 +85,7 @@ Emitted when existing items/nodes got invalid and should be replaced by new ones
 
 class QgsMapLayerLegendUtils
 {
-%Docstring
+%Docstring(signature="appended")
 Miscellaneous utility functions for handling of map layer legend
 
 .. versionadded:: 2.6
@@ -140,7 +147,7 @@ symbol width or height from :py:class:`QgsLegendSettings`.
 
     static void setLegendNodeCustomSymbol( QgsLayerTreeLayer *nodeLayer, int originalIndex, const QgsSymbol *symbol );
 %Docstring
-Sets a custom legend ``symbol`` size for the legend node belonging to ``nodeLayer`` at the specified ``originalIndex``.
+Sets a custom legend ``symbol`` for the legend node belonging to ``nodeLayer`` at the specified ``originalIndex``.
 
 If ``symbol`` is non-``None``, it will be used in place of the default symbol when rendering
 the legend node.
@@ -163,6 +170,37 @@ Caller takes ownership of the returned symbol.
 
 .. versionadded:: 3.14
 %End
+
+    static void setLegendNodeColorRampSettings( QgsLayerTreeLayer *nodeLayer, int originalIndex, const QgsColorRampLegendNodeSettings *settings );
+%Docstring
+Sets a custom legend color ramp ``settings`` for the legend node belonging to ``nodeLayer`` at the specified ``originalIndex``.
+
+If the corresponding legend node is not a :py:class:`QgsColorRampLegendNode` then calling this method will have no effect.
+
+If ``settings`` is non-``None``, they will be used in place of the default settigns when rendering
+the legend node.
+
+.. seealso:: :py:func:`legendNodeColorRampSettings`
+
+.. versionadded:: 3.18
+%End
+
+    static QgsColorRampLegendNodeSettings *legendNodeColorRampSettings( QgsLayerTreeLayer *nodeLayer, int originalIndex ) /Factory/;
+%Docstring
+Returns the custom legend color ramp settings for the legend node belonging to ``nodeLayer`` at the specified ``originalIndex``.
+
+If the corresponding legend node is not a :py:class:`QgsColorRampLegendNode` then calling this method will return ``None``.
+
+If the returned value is non-``None``, they will be used in place of the default settings when rendering
+the legend node.
+
+Caller takes ownership of the returned settings.
+
+.. seealso:: :py:func:`setLegendNodeColorRampSettings`
+
+.. versionadded:: 3.18
+%End
+
 
     static void setLegendNodeColumnBreak( QgsLayerTreeLayer *nodeLayer, int originalIndex, bool columnBreakBeforeNode );
 %Docstring
@@ -193,7 +231,7 @@ update according to layer node's custom properties (order of items, user labels 
 
 class QgsDefaultVectorLayerLegend : QgsMapLayerLegend
 {
-%Docstring
+%Docstring(signature="appended")
 Default legend implementation for vector layers
 
 .. versionadded:: 2.6
@@ -221,6 +259,22 @@ may have extra text rendered on top. The content of labels and their style is co
 by :py:func:`~QgsDefaultVectorLayerLegend.textOnSymbolContent` and :py:func:`~QgsDefaultVectorLayerLegend.textOnSymbolTextFormat`.
 
 .. versionadded:: 3.2
+%End
+
+    bool showLabelLegend() const;
+%Docstring
+Returns whether the legend for the labeling is shown
+
+.. versionadded:: 3.20
+%End
+
+    void setShowLabelLegend( bool enabled );
+%Docstring
+Sets if a legend for the labeling should be shown
+
+:param enabled: true to show label legend entries
+
+.. versionadded:: 3.20
 %End
 
     QgsTextFormat textOnSymbolTextFormat() const;
@@ -265,7 +319,7 @@ the keys are rule keys of legend items, the values are labels to be shown.
 
 class QgsDefaultRasterLayerLegend : QgsMapLayerLegend
 {
-%Docstring
+%Docstring(signature="appended")
 Default legend implementation for raster layers
 
 .. versionadded:: 2.6
@@ -285,7 +339,7 @@ Default legend implementation for raster layers
 
 class QgsDefaultMeshLayerLegend : QgsMapLayerLegend
 {
-%Docstring
+%Docstring(signature="appended")
 Default legend implementation for mesh layers
 
 .. versionadded:: 3.4
@@ -298,6 +352,28 @@ Default legend implementation for mesh layers
     explicit QgsDefaultMeshLayerLegend( QgsMeshLayer *ml );
 %Docstring
 Creates an instance for the given mesh layer
+%End
+
+    virtual QList<QgsLayerTreeModelLegendNode *> createLayerTreeModelLegendNodes( QgsLayerTreeLayer *nodeLayer ) /Factory/;
+
+
+};
+
+class QgsDefaultPointCloudLayerLegend : QgsMapLayerLegend
+{
+%Docstring(signature="appended")
+Default legend implementation for point cloud layers
+
+.. versionadded:: 3.18
+%End
+
+%TypeHeaderCode
+#include "qgsmaplayerlegend.h"
+%End
+  public:
+    explicit QgsDefaultPointCloudLayerLegend( QgsPointCloudLayer *layer );
+%Docstring
+Creates an instance for the given point cloud layer
 %End
 
     virtual QList<QgsLayerTreeModelLegendNode *> createLayerTreeModelLegendNodes( QgsLayerTreeLayer *nodeLayer ) /Factory/;

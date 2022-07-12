@@ -1,6 +1,5 @@
 set(MDAL_SRCS
   qgsmdalprovider.cpp
-  qgsmdaldataitems.cpp
 )
 
 if (WITH_GUI)
@@ -28,6 +27,7 @@ if (WITH_INTERNAL_MDAL)
   include_directories(
     ${CMAKE_SOURCE_DIR}/external/mdal
     ${CMAKE_SOURCE_DIR}/external/mdal/api
+    ${CMAKE_SOURCE_DIR}/external/mdal/3rdparty
   )
 
   set(MDAL_LIB_SRCS
@@ -40,6 +40,7 @@ if (WITH_INTERNAL_MDAL)
     ${CMAKE_SOURCE_DIR}/external/mdal/mdal_logger.cpp
     ${CMAKE_SOURCE_DIR}/external/mdal/mdal_logger.hpp
     ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_driver.cpp
+    ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_dynamic_driver.cpp
     ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_2dm.cpp
     ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_ascii_dat.cpp
     ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_binary_dat.cpp
@@ -47,6 +48,7 @@ if (WITH_INTERNAL_MDAL)
     ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_esri_tin.cpp
     ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_xms_tin.cpp
     ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_ply.cpp
+    ${CMAKE_SOURCE_DIR}/external/mdal/3rdparty/libplyxx/libplyxx.cpp
   )
 
   set(MDAL_LIB_HDRS
@@ -57,6 +59,7 @@ if (WITH_INTERNAL_MDAL)
     ${CMAKE_SOURCE_DIR}/external/mdal/mdal_memory_data_model.hpp
     ${CMAKE_SOURCE_DIR}/external/mdal/mdal_driver_manager.hpp
     ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_driver.hpp
+    ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_dynamic_driver.hpp
     ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_2dm.hpp
     ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_ascii_dat.hpp
     ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_binary_dat.hpp
@@ -64,6 +67,10 @@ if (WITH_INTERNAL_MDAL)
     ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_esri_tin.hpp
     ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_xms_tin.hpp
     ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_ply.hpp
+    ${CMAKE_SOURCE_DIR}/external/mdal/3rdparty/libplyxx.h
+    ${CMAKE_SOURCE_DIR}/external/mdal/3rdparty/libplyxx/libplyxx_internal.h
+    ${CMAKE_SOURCE_DIR}/external/mdal/3rdparty/textio.h
+    ${CMAKE_SOURCE_DIR}/external/nlohmann/json.hpp
   )
 
   if(HDF5_FOUND)
@@ -79,7 +86,6 @@ if (WITH_INTERNAL_MDAL)
       ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_hec2d.hpp
       ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_flo2d.hpp
     )
-    set(MDAL_DEPS ${MDAL_DEPS} )
     set (HAVE_HDF5 TRUE)
   endif()
 
@@ -102,10 +108,12 @@ if (WITH_INTERNAL_MDAL)
     set(MDAL_LIB_SRCS ${MDAL_LIB_SRCS}
       ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_gdal.cpp
       ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_gdal_grib.cpp
+      ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_h2i.cpp
     )
     set(MDAL_LIB_HDRS ${MDAL_LIB_HDRS}
       ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_gdal.hpp
       ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_gdal_grib.hpp
+      ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_h2i.hpp
     )
     set (HAVE_GDAL TRUE)
   endif()
@@ -151,6 +159,7 @@ if (WITH_INTERNAL_MDAL)
 
 
   # create mdal_config.h
+  set (BUILD_PLY TRUE)
   configure_file(${CMAKE_SOURCE_DIR}/external/mdal/cmake_templates/mdal_config.hpp.in ${CMAKE_BINARY_DIR}/mdal_config.hpp)
   include_directories(${CMAKE_BINARY_DIR})
 
@@ -168,66 +177,62 @@ endif()
 ########################################################
 
 include_directories (
-  ${CMAKE_SOURCE_DIR}/src/core
-  ${CMAKE_SOURCE_DIR}/src/core/mesh
-  ${CMAKE_SOURCE_DIR}/src/core/expression
-  ${CMAKE_SOURCE_DIR}/src/core/geometry
-  ${CMAKE_SOURCE_DIR}/src/core/metadata
-  ${CMAKE_SOURCE_DIR}/src/core/symbology
-  ${CMAKE_SOURCE_DIR}/src/gui
-  ${CMAKE_SOURCE_DIR}/src/gui/auth
-  ${CMAKE_SOURCE_DIR}/external
-  ${CMAKE_SOURCE_DIR}/external/nlohmann
 
-  ${CMAKE_BINARY_DIR}/src/core
-  ${CMAKE_BINARY_DIR}/src/gui
   ${CMAKE_BINARY_DIR}/src/ui
 )
 
-add_library (mdalprovider MODULE ${MDAL_SRCS} ${MDAL_LIB_SRCS} ${MDAL_LIB_HDRS})
+add_library (provider_mdal MODULE ${MDAL_SRCS} ${MDAL_LIB_SRCS} ${MDAL_LIB_HDRS})
 
-target_link_libraries (mdalprovider
+# require c++17
+target_compile_features(provider_mdal PRIVATE cxx_std_17)
+
+target_link_libraries (provider_mdal
   qgis_core
   ${MDAL_LIBRARY}
 )
 
+if (WITH_INTERNAL_MDAL)
+  target_link_libraries(provider_mdal ${CMAKE_DL_LIBS})
+endif()
+
 if (WITH_GUI)
-  target_link_libraries (mdalprovider
+  target_link_libraries (provider_mdal
     qgis_gui
   )
-  add_dependencies(mdalprovider ui)
+  add_dependencies(provider_mdal ui)
 endif()
 
 if (HDF5_FOUND)
-  target_include_directories(mdalprovider PRIVATE ${HDF5_INCLUDE_DIRS})
-  target_link_libraries(mdalprovider ${HDF5_C_LIBRARIES} )
+  target_include_directories(provider_mdal PRIVATE ${HDF5_INCLUDE_DIRS})
+  target_link_libraries(provider_mdal ${HDF5_C_LIBRARIES} )
+  target_compile_definitions(provider_mdal PRIVATE ${HDF5_DEFINITIONS})
 endif()
 
 if (GDAL_FOUND)
-  target_include_directories(mdalprovider PRIVATE ${GDAL_INCLUDE_DIR})
-  target_link_libraries(mdalprovider ${GDAL_LIBRARY} )
+  target_include_directories(provider_mdal PRIVATE ${GDAL_INCLUDE_DIR})
+  target_link_libraries(provider_mdal ${GDAL_LIBRARY} )
 endif()
 
 if (NETCDF_FOUND)
-  target_include_directories(mdalprovider PRIVATE ${NETCDF_INCLUDE_DIR})
-  target_link_libraries(mdalprovider ${NETCDF_LIBRARY} )
+  target_include_directories(provider_mdal PRIVATE ${NETCDF_INCLUDE_DIR})
+  target_link_libraries(provider_mdal ${NETCDF_LIBRARY} )
 endif()
 
 if (LIBXML2_FOUND)
-  target_include_directories(mdalprovider PRIVATE ${LIBXML2_INCLUDE_DIR})
-  target_link_libraries(mdalprovider ${LIBXML2_LIBRARIES} )
-  target_compile_definitions(mdalprovider PRIVATE ${LIBXML2_DEFINITIONS})
+  target_include_directories(provider_mdal PRIVATE ${LIBXML2_INCLUDE_DIR})
+  target_link_libraries(provider_mdal ${LIBXML2_LIBRARIES} )
+  target_compile_definitions(provider_mdal PRIVATE ${LIBXML2_DEFINITIONS})
 endif()
 
 # clang-tidy
 if(CLANG_TIDY_EXE)
   set_target_properties(
-    mdalprovider PROPERTIES
+    provider_mdal PROPERTIES
     CXX_CLANG_TIDY "${DO_CLANG_TIDY}"
   )
 endif()
 
-install(TARGETS mdalprovider
+install(TARGETS provider_mdal
   RUNTIME DESTINATION ${QGIS_PLUGIN_DIR}
   LIBRARY DESTINATION ${QGIS_PLUGIN_DIR})
 

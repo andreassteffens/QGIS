@@ -30,6 +30,8 @@
 #include "qgis.h"
 #include "qgslogger.h"
 #include "qgsdatasourceuri.h"
+#include "qgsvectordataprovider.h"
+#include "qgsdbquerylog.h"
 
 #include <QSqlDatabase>
 #include <QSqlQuery>
@@ -53,7 +55,7 @@ struct QgsOracleLayerProperty
 
   int size() const { Q_ASSERT( types.size() == srids.size() ); return types.size(); }
 
-  bool operator==( const QgsOracleLayerProperty &other )
+  bool operator==( const QgsOracleLayerProperty &other ) const
   {
     return types == other.types && srids == other.srids && ownerName == other.ownerName &&
            tableName == other.tableName && geometryColName == other.geometryColName &&
@@ -111,6 +113,28 @@ struct QgsOracleLayerProperty
 #endif
 };
 
+
+#include "qgsconfig.h"
+constexpr int sOracleConQueryLogFilePrefixLength = CMAKE_SOURCE_DIR[sizeof( CMAKE_SOURCE_DIR ) - 1] == '/' ? sizeof( CMAKE_SOURCE_DIR ) + 1 : sizeof( CMAKE_SOURCE_DIR );
+#define LoggedExec(_class, query) execLogged( query, true, nullptr, _class, QString(QString( __FILE__ ).mid( sOracleConQueryLogFilePrefixLength ) + ':' + QString::number( __LINE__ ) + " (" + __FUNCTION__ + ")") )
+#define LoggedExecPrivate(_class, query, sql, params ) execLogged( query, sql, params, _class, QString(QString( __FILE__ ).mid( sOracleConQueryLogFilePrefixLength ) + ':' + QString::number( __LINE__ ) + " (" + __FUNCTION__ + ")") )
+
+
+/**
+ * Wraps acquireConnection() and releaseConnection() from a QgsOracleConnPool.
+ * This can be used to ensure a connection is correctly released when scope ends
+ */
+class QgsPoolOracleConn
+{
+    class QgsOracleConn *mConn;
+  public:
+    QgsPoolOracleConn( const QString &connInfo );
+    ~QgsPoolOracleConn();
+
+    class QgsOracleConn *get() const { return mConn; }
+};
+
+
 class QgsOracleConn : public QObject
 {
     Q_OBJECT
@@ -141,6 +165,7 @@ class QgsOracleConn : public QObject
     static QString quotedValue( const QVariant &value, QVariant::Type type = QVariant::Invalid );
 
     bool exec( const QString &query, bool logError = true, QString *errorMessage = nullptr );
+    bool execLogged( const QString &sql, bool logError = true, QString *errorMessage = nullptr, const QString &originatorClass = QString(), const QString &queryOrigin = QString() );
 
     bool begin( QSqlDatabase &db );
     bool commit( QSqlDatabase &db );
@@ -184,9 +209,37 @@ class QgsOracleConn : public QObject
      */
     int version();
 
+    /**
+     * Returns a list of supported native types for this connection.
+     * \since QGIS 3.18
+     */
+    QList<QgsVectorDataProvider::NativeType> nativeTypes();
+
+    /**
+     * Returns spatial index name for column \a geometryColumn in table \a tableName from
+     * schema/user \a ownerName.
+     * Returns an empty string if there is no spatial index
+     * \a isValid is updated with TRUE if the returned index is valid
+     * \since QGIS 3.18
+     */
+    QString getSpatialIndexName( const QString &ownerName, const QString &tableName, const QString &geometryColumn, bool &isValid );
+
+    /**
+     * Create a spatial index for for column \a geometryColumn in table \a tableName from
+     * schema/user \a ownerName.
+     * Returns created index name. An empty string is returned if the creation has failed.
+     * \note We assume that the sdo_geom_metadata table is already correctly populated before creating
+     * the index. If not, the index creation would failed.
+     */
+    QString createSpatialIndex( const QString &ownerName, const QString &tableName, const QString &geometryColumn );
+
+    /**
+     * Returns list of defined primary keys for \a tableName table in \a ownerName schema/user
+     */
+    QStringList getPrimaryKeys( const QString &ownerName, const QString &tableName );
+
     static const int sGeomTypeSelectLimit;
 
-    static QString displayStringForWkbType( QgsWkbTypes::Type wkbType );
     static QgsWkbTypes::Type wkbTypeFromDatabase( int gtype );
 
     static QString databaseTypeFilter( const QString &alias, QString geomCol, QgsWkbTypes::Type wkbType );
@@ -209,11 +262,14 @@ class QgsOracleConn : public QObject
 
     operator QSqlDatabase() { return mDatabase; }
 
+    static QString getLastExecutedQuery( const QSqlQuery &query );
+
   private:
     explicit QgsOracleConn( QgsDataSourceUri uri, bool transaction );
     ~QgsOracleConn() override;
 
     bool exec( QSqlQuery &qry, const QString &sql, const QVariantList &params );
+    bool execLogged( QSqlQuery &qry, const QString &sql, const QVariantList &params, const QString &originatorClass = QString(), const QString &queryOrigin = QString() );
 
     //! reference count
     int mRef;
@@ -236,6 +292,9 @@ class QgsOracleConn : public QObject
     static QMap<QString, QgsOracleConn *> sConnections;
     static int snConnections;
     static QMap<QString, QDateTime> sBrokenConnections;
+
+    // Connection URI string representation for query logger
+    QString mConnInfo;
 };
 
 #endif

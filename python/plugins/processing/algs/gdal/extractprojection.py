@@ -88,7 +88,7 @@ class ExtractProjection(GdalAlgorithm):
                                             context)
         raster = self.parameterAsRasterLayer(parameters, self.INPUT,
                                              context)
-        if not raster.dataProvider().name() == 'gdal':
+        if raster.dataProvider().name() != 'gdal':
             raise QgsProcessingException(self.tr('This algorithm can '
                                                  'only be used with '
                                                  'GDAL raster layers'))
@@ -110,7 +110,7 @@ class ExtractProjection(GdalAlgorithm):
             crs = tmp.ExportToWkt()
             tmp = None
 
-            with open(outFileName + '.prj', 'wt') as prj:
+            with open(outFileName + '.prj', 'wt', encoding='utf-8') as prj:
                 prj.write(crs)
             results[self.PRJ_FILE] = outFileName + '.prj'
         else:

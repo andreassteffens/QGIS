@@ -12,8 +12,8 @@
 
 class QgsMapLayerProxyModel : QSortFilterProxyModel
 {
-%Docstring
-The QgsMapLayerProxyModel class provides an easy to use model to display the list of layers in widgets.
+%Docstring(signature="appended")
+The :py:class:`QgsMapLayerProxyModel` class provides an easy to use model to display the list of layers in widgets.
 
 .. versionadded:: 2.3
 %End
@@ -35,20 +35,23 @@ The QgsMapLayerProxyModel class provides an easy to use model to display the lis
       WritableLayer,
       MeshLayer,
       VectorTileLayer,
-      All
+      PointCloudLayer,
+      AnnotationLayer,
+      All,
+      SpatialLayer
     };
     typedef QFlags<QgsMapLayerProxyModel::Filter> Filters;
 
 
     explicit QgsMapLayerProxyModel( QObject *parent /TransferThis/ = 0 );
 %Docstring
-QgsMapLayerProxModel creates a proxy model with a QgsMapLayerModel as source model.
+:py:class:`QgsMapLayerProxModel` creates a proxy model with a :py:class:`QgsMapLayerModel` as source model.
 It can be used to filter the layers list in a widget.
 %End
 
     QgsMapLayerModel *sourceLayerModel() const;
 %Docstring
-layerModel returns the QgsMapLayerModel used in this QSortFilterProxyModel
+layerModel returns the :py:class:`QgsMapLayerModel` used in this QSortFilterProxyModel
 %End
 
     QgsMapLayerProxyModel *setFilters( QgsMapLayerProxyModel::Filters filters );
@@ -67,6 +70,15 @@ Returns the filter flags which affect how layers are filtered within the model.
 .. seealso:: :py:func:`setFilters`
 
 .. versionadded:: 2.3
+%End
+
+    void setProject( QgsProject *project );
+%Docstring
+Sets the ``project`` from which map layers are shown.
+
+If ``project`` is ``None`` then :py:func:`QgsProject.instance()` will be used.
+
+.. versionadded:: 3.24
 %End
 
     static bool layerMatchesFilters( const QgsMapLayer *layer, const Filters &filters );
@@ -88,7 +100,7 @@ An empty list indicates that no filter by allowlist should be performed.
 .. seealso:: :py:func:`setExceptedLayerList`
 
 .. deprecated::
-   use setLayerAllowList()
+   use :py:func:`~QgsMapLayerProxyModel.setLayerAllowList`
 %End
 
     void setLayerAllowlist( const QList<QgsMapLayer *> &layers );
@@ -116,7 +128,7 @@ An empty list indicates that no filtering by allowlist should be performed.
 .. seealso:: :py:func:`exceptedLayerList`
 
 .. deprecated::
-   use layerAllowlist() instead
+   use :py:func:`~QgsMapLayerProxyModel.layerAllowlist` instead
 %End
 
     QList<QgsMapLayer *> layerAllowlist();

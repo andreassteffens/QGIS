@@ -32,6 +32,7 @@
 #include <QObject>
 #include <QtTest/QSignalSpy>
 #include "qgstest.h"
+#include "qgsfillsymbol.h"
 
 class TestQgsLayoutAtlas : public QObject
 {
@@ -87,7 +88,7 @@ void TestQgsLayoutAtlas::initTestCase()
   QgsApplication::initQgis();
 
   //create maplayers from testdata and add to layer registry
-  QFileInfo vectorFileInfo( QStringLiteral( TEST_DATA_DIR ) + "/france_parts.shp" );
+  const QFileInfo vectorFileInfo( QStringLiteral( TEST_DATA_DIR ) + "/france_parts.shp" );
   mVectorLayer = new QgsVectorLayer( vectorFileInfo.filePath(),
                                      vectorFileInfo.completeBaseName(),
                                      QStringLiteral( "ogr" ) );
@@ -108,7 +109,7 @@ void TestQgsLayoutAtlas::cleanupTestCase()
   delete mVectorLayer;
   QgsApplication::exitQgis();
 
-  QString myReportFile = QDir::tempPath() + "/qgistest.html";
+  const QString myReportFile = QDir::tempPath() + "/qgistest.html";
   QFile myFile( myReportFile );
   if ( myFile.open( QIODevice::WriteOnly | QIODevice::Append ) )
   {
@@ -122,13 +123,13 @@ void TestQgsLayoutAtlas::init()
 {
   //create composition with composer map
 
-  QgsCoordinateReferenceSystem crs( QStringLiteral( "EPSG:2154" ) );
+  const QgsCoordinateReferenceSystem crs( QStringLiteral( "EPSG:2154" ) );
   QgsProject::instance()->setCrs( crs );
   mLayout = new QgsPrintLayout( QgsProject::instance() );
   mLayout->initializeDefaults();
 
   // fix the renderer, fill with green
-  QgsStringMap props;
+  QVariantMap props;
   props.insert( QStringLiteral( "color" ), QStringLiteral( "0,127,0" ) );
   props.insert( QStringLiteral( "outline_color" ), QStringLiteral( "0,0,0" ) );
   QgsFillSymbol *fillSymbol = QgsFillSymbol::createSimple( props );
@@ -156,7 +157,7 @@ void TestQgsLayoutAtlas::init()
   mOverview->setExtent( QgsRectangle( 49670.718, 6415139.086, 699672.519, 7065140.887 ) );
 
   // set the fill symbol of the overview map
-  QgsStringMap props2;
+  QVariantMap props2;
   props2.insert( QStringLiteral( "color" ), QStringLiteral( "127,0,0,127" ) );
   props2.insert( QStringLiteral( "outline_color" ), QStringLiteral( "0,0,0" ) );
   QgsFillSymbol *fillSymbol2 = QgsFillSymbol::createSimple( props2 );
@@ -166,7 +167,11 @@ void TestQgsLayoutAtlas::init()
   mLabel1 = new QgsLayoutItemLabel( mLayout );
   mLayout->addLayoutItem( mLabel1 );
   mLabel1->setText( QStringLiteral( "[% \"NAME_1\" %] area" ) );
-  mLabel1->setFont( QgsFontUtils::getStandardTestFont() );
+  QgsTextFormat format;
+  format.setFont( QgsFontUtils::getStandardTestFont() );
+  format.setSize( 12 );
+  format.setSizeUnit( QgsUnitTypes::RenderPoints );
+  mLabel1->setTextFormat( format );
   mLabel1->setMarginX( 1 );
   mLabel1->setMarginY( 1 );
   //need to explicitly set width, since expression hasn't been evaluated against
@@ -177,14 +182,14 @@ void TestQgsLayoutAtlas::init()
   mLabel2 = new QgsLayoutItemLabel( mLayout );
   mLayout->addLayoutItem( mLabel2 );
   mLabel2->setText( QStringLiteral( "# [%@atlas_featurenumber || ' / ' || @atlas_totalfeatures%]" ) );
-  mLabel2->setFont( QgsFontUtils::getStandardTestFont() );
+  mLabel2->setTextFormat( format );
   mLabel2->attemptSetSceneRect( QRectF( 150, 200, 60, 15 ) );
   mLabel2->setMarginX( 1 );
   mLabel2->setMarginY( 1 );
 
 
-  qDebug() << "header label font: " << mLabel1->font().toString() << " exactMatch:" << mLabel1->font().exactMatch();
-  qDebug() << "feature number label font: " << mLabel2->font().toString() << " exactMatch:" << mLabel2->font().exactMatch();
+  qDebug() << "header label font: " << mLabel1->textFormat().font().toString() << " exactMatch:" << mLabel1->textFormat().font().exactMatch();
+  qDebug() << "feature number label font: " << mLabel2->textFormat().font().toString() << " exactMatch:" << mLabel2->textFormat().font().exactMatch();
 }
 
 void TestQgsLayoutAtlas::cleanup()
@@ -201,7 +206,7 @@ void TestQgsLayoutAtlas::filename()
   for ( int fi = 0; fi < mAtlas->count(); ++fi )
   {
     mAtlas->seekTo( fi );
-    QString expected = QStringLiteral( "output_%1" ).arg( ( int )( fi + 1 ) );
+    const QString expected = QStringLiteral( "output_%1" ).arg( ( int )( fi + 1 ) );
     QCOMPARE( mAtlas->currentFilename(), expected );
   }
   mAtlas->endRender();
@@ -391,10 +396,10 @@ void TestQgsLayoutAtlas::test_signals()
   mAtlas->setSortFeatures( false );
   mAtlas->setFilterFeatures( false );
 
-  QSignalSpy spyRenderBegun( mAtlas, &QgsLayoutAtlas::renderBegun );
-  QSignalSpy spyRenderEnded( mAtlas, &QgsLayoutAtlas::renderEnded );
-  QSignalSpy spyFeatureChanged( mAtlas, &QgsLayoutAtlas::featureChanged );
-  QSignalSpy spyPreparedForAtlas( mAtlasMap, &QgsLayoutItemMap::preparedForAtlas );
+  const QSignalSpy spyRenderBegun( mAtlas, &QgsLayoutAtlas::renderBegun );
+  const QSignalSpy spyRenderEnded( mAtlas, &QgsLayoutAtlas::renderEnded );
+  const QSignalSpy spyFeatureChanged( mAtlas, &QgsLayoutAtlas::featureChanged );
+  const QSignalSpy spyPreparedForAtlas( mAtlasMap, &QgsLayoutItemMap::preparedForAtlas );
   mAtlas->beginRender();
 
   QCOMPARE( spyRenderBegun.count(), 1 );
@@ -416,7 +421,7 @@ void TestQgsLayoutAtlas::test_remove_layer()
   mAtlas->setCoverageLayer( mVectorLayer2 );
   mAtlas->setEnabled( true );
 
-  QSignalSpy spyToggled( mAtlas, SIGNAL( toggled( bool ) ) );
+  const QSignalSpy spyToggled( mAtlas, SIGNAL( toggled( bool ) ) );
 
   //remove coverage layer while atlas is enabled
   QgsProject::instance()->removeMapLayer( mVectorLayer2->id() );
@@ -437,7 +442,7 @@ void TestQgsLayoutAtlas::context()
   mAtlas->setCoverageLayer( vl2.get() );
   mAtlas->setEnabled( true );
 
-  QgsExpressionContext context = mAtlas->createExpressionContext();
+  const QgsExpressionContext context = mAtlas->createExpressionContext();
   QVERIFY( context.hasVariable( QStringLiteral( "project_title" ) ) );
   QVERIFY( context.hasVariable( QStringLiteral( "layout_name" ) ) );
   QVERIFY( context.hasVariable( QStringLiteral( "atlas_totalfeatures" ) ) );

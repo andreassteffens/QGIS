@@ -58,7 +58,7 @@ int QgsBasicNumericFormat::sortKey()
 
 QString QgsBasicNumericFormat::formatDouble( double value, const QgsNumericFormatContext &context ) const
 {
-  QChar decimal = mDecimalSeparator.isNull() ? context.decimalSeparator() : mDecimalSeparator;
+  const QChar decimal = mDecimalSeparator.isNull() ? context.decimalSeparator() : mDecimalSeparator;
   std::basic_stringstream<wchar_t> os;
   os.imbue( std::locale( os.getloc(), new formatter( mThousandsSeparator.isNull() ? context.thousandsSeparator() : mThousandsSeparator,
                          mShowThousandsSeparator,
@@ -70,20 +70,24 @@ QString QgsBasicNumericFormat::formatDouble( double value, const QgsNumericForma
     {
       case DecimalPlaces:
         os << std::fixed << std::setprecision( mNumberDecimalPlaces );
-        os << value;
+        if ( qgsDoubleNear( value, 0 ) )
+          os << 0.0;
+        else
+          os << value;
+
         break;
 
       case SignificantFigures:
       {
         if ( qgsDoubleNear( value, 0 ) )
         {
-          os << std::fixed << std::setprecision( mNumberDecimalPlaces - 1 ) << value;
+          os << std::fixed << std::setprecision( mNumberDecimalPlaces - 1 ) << 0.0;
         }
         else
         {
           // digits before decimal point
           const int d = std::floor( std::log10( value < 0 ? -value : value ) ) + 1;
-          double order = std::pow( 10.0, mNumberDecimalPlaces - d );
+          const double order = std::pow( 10.0, mNumberDecimalPlaces - d );
           os << std::fixed << std::setprecision( std::max( mNumberDecimalPlaces - d, 0 ) ) << std::round( value * order ) / order;
         }
         break;
@@ -93,7 +97,10 @@ QString QgsBasicNumericFormat::formatDouble( double value, const QgsNumericForma
   else
   {
     os << std::scientific << std::setprecision( mNumberDecimalPlaces );
-    os << value;
+    if ( qgsDoubleNear( value, 0 ) )
+      os << 0.0;
+    else
+      os << value;
   }
 
   QString res = QString::fromStdWString( os.str() );
@@ -119,7 +126,7 @@ QString QgsBasicNumericFormat::formatDouble( double value, const QgsNumericForma
     if ( res.at( trimPoint ) == decimal )
       trimPoint--;
 
-    QString original = res;
+    const QString original = res;
     res.truncate( trimPoint + 1 );
     if ( mUseScientific )
       res += original.mid( ePoint );
@@ -135,7 +142,7 @@ QgsNumericFormat *QgsBasicNumericFormat::clone() const
 
 QgsNumericFormat *QgsBasicNumericFormat::create( const QVariantMap &configuration, const QgsReadWriteContext &context ) const
 {
-  std::unique_ptr< QgsBasicNumericFormat > res = qgis::make_unique< QgsBasicNumericFormat >();
+  std::unique_ptr< QgsBasicNumericFormat > res = std::make_unique< QgsBasicNumericFormat >();
   res->setConfiguration( configuration, context );
   return res.release();
 }

@@ -21,6 +21,9 @@
 
 #include "qgssettings.h"
 #include "qgsoraclenewconnection.h"
+#include "qgsprovidermetadata.h"
+#include "qgsproviderregistry.h"
+#include "qgsoracleproviderconnection.h"
 #include "qgsdatasourceuri.h"
 #include "qgsoracletablemodel.h"
 #include "qgsoracleconnpool.h"
@@ -55,11 +58,17 @@ QgsOracleNewConnection::QgsOracleNewConnection( QWidget *parent, const QString &
     txtDatabase->setText( settings.value( key + QStringLiteral( "/database" ) ).toString() );
     txtHost->setText( settings.value( key + QStringLiteral( "/host" ) ).toString() );
     QString port = settings.value( key + QStringLiteral( "/port" ) ).toString();
-    if ( port.length() == 0 )
+
+    // User can set database without host and port, meaning he is using a service (tnsnames.ora)
+    // if he sets host, port has to be set also (and vice versa)
+    // https://github.com/qgis/QGIS/issues/38979
+    if ( port.length() == 0
+         && ( !txtHost->text().isEmpty() || txtDatabase->text().isEmpty() ) )
     {
       port = QStringLiteral( "1521" );
     }
     txtPort->setText( port );
+
     txtOptions->setText( settings.value( key + QStringLiteral( "/dboptions" ) ).toString() );
     txtWorkspace->setText( settings.value( key + QStringLiteral( "/dbworkspace" ) ).toString() );
     txtSchema->setText( settings.value( key + QStringLiteral( "/schema" ) ).toString() );
@@ -156,6 +165,19 @@ void QgsOracleNewConnection::accept()
   settings.setValue( baseKey + QStringLiteral( "/dbworkspace" ), txtWorkspace->text() );
   settings.setValue( baseKey + QStringLiteral( "/schema" ), txtSchema->text() );
 
+  QVariantMap configuration;
+  configuration.insert( "geometryColumnsOnly", cb_geometryColumnsOnly->isChecked() );
+  configuration.insert( "allowGeometrylessTables", cb_allowGeometrylessTables->isChecked() );
+  configuration.insert( "onlyExistingTypes", cb_onlyExistingTypes->isChecked() ? QStringLiteral( "true" ) : QStringLiteral( "false" ) );
+  configuration.insert( "saveUsername", mAuthSettings->storeUsernameIsChecked( ) ? "true" : "false" );
+  configuration.insert( "savePassword", mAuthSettings->storePasswordIsChecked( ) && !hasAuthConfigID ? "true" : "false" );
+
+  QgsProviderMetadata *providerMetadata = QgsProviderRegistry::instance()->providerMetadata( QStringLiteral( "oracle" ) );
+  QgsOracleProviderConnection *providerConnection =  static_cast<QgsOracleProviderConnection *>( providerMetadata->createConnection( txtName->text() ) );
+  providerConnection->setUri( QgsOracleConn::connUri( txtName->text() ).uri( false ) );
+  providerConnection->setConfiguration( configuration );
+  providerMetadata->saveConnection( providerConnection, txtName->text() );
+
   QDialog::accept();
 }
 
@@ -177,14 +199,14 @@ void QgsOracleNewConnection::testConnection()
   {
     // Database successfully opened; we can now issue SQL commands.
     bar->pushMessage( tr( "Connection to %1 was successful." ).arg( txtName->text() ),
-                      Qgis::Info );
+                      Qgis::MessageLevel::Info );
     // free connection resources
     QgsOracleConnPool::instance()->releaseConnection( conn );
   }
   else
   {
     bar->pushMessage( tr( "Connection failed - consult message log for details." ),
-                      Qgis::Warning );
+                      Qgis::MessageLevel::Warning );
   }
 }
 

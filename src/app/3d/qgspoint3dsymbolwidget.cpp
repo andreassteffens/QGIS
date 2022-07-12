@@ -25,6 +25,7 @@
 #include "qgssymbollayer.h"
 #include "qgssymbollayerutils.h"
 #include "qgsphongmaterialsettings.h"
+#include "qgsmarkersymbol.h"
 
 QgsPoint3DSymbolWidget::QgsPoint3DSymbolWidget( QWidget *parent )
   : Qgs3DSymbolWidget( parent )
@@ -58,7 +59,7 @@ QgsPoint3DSymbolWidget::QgsPoint3DSymbolWidget( QWidget *parent )
   cboShape->addItem( tr( "3D Model" ), QgsPoint3DSymbol::Model );
   cboShape->addItem( tr( "Billboard" ), QgsPoint3DSymbol::Billboard );
 
-  btnChangeSymbol->setSymbolType( QgsSymbol::Marker );
+  btnChangeSymbol->setSymbolType( Qgis::SymbolType::Marker );
   btnChangeSymbol->setDialogTitle( tr( "Billboard symbol" ) );
 
   QgsPoint3DSymbol defaultSymbol;
@@ -74,33 +75,17 @@ QgsPoint3DSymbolWidget::QgsPoint3DSymbolWidget( QWidget *parent )
   for ( QDoubleSpinBox *spinBox : constSpinWidgets )
     connect( spinBox, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), this, &QgsPoint3DSymbolWidget::changed );
   connect( lineEditModel, &QgsAbstractFileContentSourceLineEdit::sourceChanged, this, &QgsPoint3DSymbolWidget::changed );
-  connect( cbOverwriteMaterial, static_cast<void ( QCheckBox::* )( int )>( &QCheckBox::stateChanged ), this, &QgsPoint3DSymbolWidget::onOverwriteMaterialChecked );
   connect( widgetMaterial, &QgsMaterialWidget::changed, this, &QgsPoint3DSymbolWidget::changed );
   connect( btnChangeSymbol, static_cast<void ( QgsSymbolButton::* )( )>( &QgsSymbolButton::changed ), this, &QgsPoint3DSymbolWidget::changed );
 
   // Sync between billboard height and TY
   connect( spinBillboardHeight, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), spinTY,  &QDoubleSpinBox::setValue );
   connect( spinTY, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), spinBillboardHeight,  &QDoubleSpinBox::setValue );
-
-  widgetMaterial->setTechnique( QgsMaterialSettingsRenderingTechnique::InstancedPoints );
 }
 
 Qgs3DSymbolWidget *QgsPoint3DSymbolWidget::create( QgsVectorLayer * )
 {
   return new QgsPoint3DSymbolWidget();
-}
-
-void QgsPoint3DSymbolWidget::onOverwriteMaterialChecked( int state )
-{
-  if ( state == Qt::Checked )
-  {
-    widgetMaterial->setEnabled( true );
-  }
-  else
-  {
-    widgetMaterial->setEnabled( false );
-  }
-  emit changed();
 }
 
 void QgsPoint3DSymbolWidget::setSymbol( const QgsAbstract3DSymbol *symbol, QgsVectorLayer *layer )
@@ -112,10 +97,10 @@ void QgsPoint3DSymbolWidget::setSymbol( const QgsAbstract3DSymbol *symbol, QgsVe
   cboAltClamping->setCurrentIndex( static_cast<int>( pointSymbol->altitudeClamping() ) );
 
   QVariantMap vm = pointSymbol->shapeProperties();
-  int index = cboShape->findData( pointSymbol->shape() );
+  const int index = cboShape->findData( pointSymbol->shape() );
   cboShape->setCurrentIndex( index != -1 ? index : 1 );  // use cylinder by default if shape is not set
-  widgetMaterial->setEnabled( true );
   QgsMaterialSettingsRenderingTechnique technique = QgsMaterialSettingsRenderingTechnique::InstancedPoints;
+  bool forceNullMaterial = false;
   switch ( cboShape->currentIndex() )
   {
     case 0:  // sphere
@@ -143,9 +128,11 @@ void QgsPoint3DSymbolWidget::setSymbol( const QgsAbstract3DSymbol *symbol, QgsVe
     case 6:  // 3d model
     {
       lineEditModel->setSource( vm[QStringLiteral( "model" )].toString() );
-      bool overwriteMaterial = vm[QStringLiteral( "overwriteMaterial" )].toBool();
-      widgetMaterial->setEnabled( overwriteMaterial );
-      cbOverwriteMaterial->setChecked( overwriteMaterial );
+      // "overwriteMaterial" is a legacy setting indicating that non-null material should be used
+      forceNullMaterial = ( vm.contains( QStringLiteral( "overwriteMaterial" ) ) && !vm[QStringLiteral( "overwriteMaterial" )].toBool() )
+                          || !pointSymbol->material()
+                          || pointSymbol->material()->type() == QLatin1String( "null" );
+      technique = QgsMaterialSettingsRenderingTechnique::TrianglesFromModel;
       break;
     }
     case 7:  // billboard
@@ -160,22 +147,27 @@ void QgsPoint3DSymbolWidget::setSymbol( const QgsAbstract3DSymbol *symbol, QgsVe
   widgetMaterial->setSettings( pointSymbol->material(), layer );
   widgetMaterial->setTechnique( technique );
 
+  if ( forceNullMaterial )
+  {
+    widgetMaterial->setType( QStringLiteral( "null" ) );
+  }
+
   // decompose the transform matrix
   // assuming the last row has values [0 0 0 1]
   // see https://math.stackexchange.com/questions/237369/given-this-transformation-matrix-how-do-i-decompose-it-into-translation-rotati
   QMatrix4x4 m = pointSymbol->transform();
   float *md = m.data();  // returns data in column-major order
-  float sx = QVector3D( md[0], md[1], md[2] ).length();
-  float sy = QVector3D( md[4], md[5], md[6] ).length();
-  float sz = QVector3D( md[8], md[9], md[10] ).length();
+  const float sx = QVector3D( md[0], md[1], md[2] ).length();
+  const float sy = QVector3D( md[4], md[5], md[6] ).length();
+  const float sz = QVector3D( md[8], md[9], md[10] ).length();
   float rd[9] =
   {
     md[0] / sx, md[4] / sy, md[8] / sz,
     md[1] / sx, md[5] / sy, md[9] / sz,
     md[2] / sx, md[6] / sy, md[10] / sz,
   };
-  QMatrix3x3 rot3x3( rd ); // takes data in row-major order
-  QVector3D rot = QQuaternion::fromRotationMatrix( rot3x3 ).toEulerAngles();
+  const QMatrix3x3 rot3x3( rd ); // takes data in row-major order
+  const QVector3D rot = QQuaternion::fromRotationMatrix( rot3x3 ).toEulerAngles();
 
   spinBillboardHeight->setValue( md[13] );
   spinTX->setValue( md[12] );
@@ -192,7 +184,7 @@ void QgsPoint3DSymbolWidget::setSymbol( const QgsAbstract3DSymbol *symbol, QgsVe
 QgsAbstract3DSymbol *QgsPoint3DSymbolWidget::symbol()
 {
   QVariantMap vm;
-  std::unique_ptr< QgsPoint3DSymbol > sym = qgis::make_unique< QgsPoint3DSymbol >();
+  std::unique_ptr< QgsPoint3DSymbol > sym = std::make_unique< QgsPoint3DSymbol >();
   sym->setBillboardSymbol( static_cast<QgsMarkerSymbol *>( QgsSymbol::defaultSymbol( QgsWkbTypes::PointGeometry ) ) );
   switch ( cboShape->currentIndex() )
   {
@@ -220,23 +212,22 @@ QgsAbstract3DSymbol *QgsPoint3DSymbolWidget::symbol()
       break;
     case 6:  // 3d model
       vm[QStringLiteral( "model" )] = lineEditModel->source();
-      vm[QStringLiteral( "overwriteMaterial" )] = cbOverwriteMaterial->isChecked();
       break;
     case 7:  // billboard
       sym->setBillboardSymbol( btnChangeSymbol->clonedSymbol<QgsMarkerSymbol>() );
       break;
   }
 
-  QQuaternion rot( QQuaternion::fromEulerAngles( spinRX->value(), spinRY->value(), spinRZ->value() ) );
-  QVector3D sca( spinSX->value(), spinSY->value(), spinSZ->value() );
-  QVector3D tra( spinTX->value(), spinTY->value(), spinTZ->value() );
+  const QQuaternion rot( QQuaternion::fromEulerAngles( spinRX->value(), spinRY->value(), spinRZ->value() ) );
+  const QVector3D sca( spinSX->value(), spinSY->value(), spinSZ->value() );
+  const QVector3D tra( spinTX->value(), spinTY->value(), spinTZ->value() );
 
   QMatrix4x4 tr;
   tr.translate( tra );
   tr.scale( sca );
   tr.rotate( rot );
 
-  sym->setAltitudeClamping( static_cast<Qgs3DTypes::AltitudeClamping>( cboAltClamping->currentIndex() ) );
+  sym->setAltitudeClamping( static_cast<Qgis::AltitudeClamping>( cboAltClamping->currentIndex() ) );
   sym->setShape( static_cast<QgsPoint3DSymbol::Shape>( cboShape->itemData( cboShape->currentIndex() ).toInt() ) );
   sym->setShapeProperties( vm );
   sym->setMaterial( widgetMaterial->settings() );
@@ -258,10 +249,9 @@ void QgsPoint3DSymbolWidget::onShapeChanged()
              << labelTopRadius << spinTopRadius
              << labelBottomRadius << spinBottomRadius
              << labelLength << spinLength
-             << labelModel << lineEditModel << cbOverwriteMaterial
+             << labelModel << lineEditModel
              << labelBillboardHeight << spinBillboardHeight << labelBillboardSymbol << btnChangeSymbol;
 
-  widgetMaterial->setEnabled( true );
   materialsGroupBox->show();
   transformationWidget->show();
   QList<QWidget *> activeWidgets;
@@ -287,8 +277,8 @@ void QgsPoint3DSymbolWidget::onShapeChanged()
       activeWidgets << labelRadius << spinRadius << labelMinorRadius << spinMinorRadius;
       break;
     case 6:  // 3d model
-      activeWidgets << labelModel << lineEditModel << cbOverwriteMaterial;
-      widgetMaterial->setEnabled( cbOverwriteMaterial->isChecked() );
+      activeWidgets << labelModel << lineEditModel;
+      technique = QgsMaterialSettingsRenderingTechnique::TrianglesFromModel;
       break;
     case 7:  // billboard
       activeWidgets << labelBillboardHeight << spinBillboardHeight << labelBillboardSymbol << btnChangeSymbol;
@@ -300,6 +290,12 @@ void QgsPoint3DSymbolWidget::onShapeChanged()
   }
 
   widgetMaterial->setTechnique( technique );
+
+  if ( cboShape->currentIndex() == 6 )
+  {
+    // going from different shape -> model resets the material to the null type
+    widgetMaterial->setType( QStringLiteral( "null" ) );
+  }
 
   const auto constAllWidgets = allWidgets;
   for ( QWidget *w : constAllWidgets )

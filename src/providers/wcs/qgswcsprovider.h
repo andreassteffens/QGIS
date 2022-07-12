@@ -187,7 +187,10 @@ class QgsWcsProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
     QString lastErrorFormat() override;
     QString name() const override;
     QString description() const override;
+    QgsRasterDataProvider::ProviderCapabilities providerCapabilities() const override;
     QList<QgsColorRampShader::ColorRampItem> colorTable( int bandNo )const override;
+
+    static QString providerKey();
 
     int colorInterpretation( int bandNo ) const override;
 
@@ -257,6 +260,9 @@ class QgsWcsProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
 
     //! Time (temporalDomain), optional
     QString mTime;
+
+    //! Specified bounding box
+    QString mBBOX;
 
     //! Format of coverage to be used in request
     QString mFormat;
@@ -443,8 +449,12 @@ class QgsWcsProviderMetadata final: public QgsProviderMetadata
 {
   public:
     QgsWcsProviderMetadata();
+    QIcon icon() const override;
     QgsWcsProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
     QList<QgsDataItemProvider *> dataItemProviders() const override;
+    QVariantMap decodeUri( const QString &uri ) const override;
+    QString encodeUri( const QVariantMap &parts ) const override;
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
 };
 
 #endif

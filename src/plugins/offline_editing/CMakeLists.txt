@@ -18,15 +18,22 @@ set (offline_editing_plugin_RCCS  offline_editing_plugin.qrc)
 ########################################################
 # Build
 
-QT5_WRAP_UI(offline_editing_plugin_UIS_H ${offline_editing_plugin_UIS})
+if (WITH_QT6)
+  QT6_WRAP_UI(offline_editing_plugin_UIS_H ${offline_editing_plugin_UIS})
+else()
+  QT5_WRAP_UI(offline_editing_plugin_UIS_H ${offline_editing_plugin_UIS})
+endif()
 
-add_library (offlineeditingplugin MODULE
+add_library (plugin_offlineediting MODULE
   ${offline_editing_plugin_SRCS}
   ${offline_editing_plugin_RCCS}
   ${offline_editing_plugin_UIS_H}
 )
 
-target_link_libraries(offlineeditingplugin
+# require c++17
+target_compile_features(plugin_offlineediting PRIVATE cxx_std_17)
+
+target_link_libraries(plugin_offlineediting
   qgis_core
   qgis_gui
   ${SPATIALITE_LIBRARY}
@@ -38,31 +45,15 @@ include_directories(SYSTEM
 )
 
 include_directories(
-  ${CMAKE_SOURCE_DIR}/src/core
-  ${CMAKE_SOURCE_DIR}/src/core/expression
-  ${CMAKE_SOURCE_DIR}/src/core/geometry
-  ${CMAKE_SOURCE_DIR}/src/core/metadata
-  ${CMAKE_SOURCE_DIR}/src/core/labeling
-  ${CMAKE_SOURCE_DIR}/src/core/layertree
-  ${CMAKE_SOURCE_DIR}/src/core/raster
-  ${CMAKE_SOURCE_DIR}/src/core/symbology
-  ${CMAKE_SOURCE_DIR}/src/core/effects
-  ${CMAKE_SOURCE_DIR}/src/core/textrenderer
-  ${CMAKE_SOURCE_DIR}/src/gui
-  ${CMAKE_SOURCE_DIR}/src/gui/layertree
   ${CMAKE_SOURCE_DIR}/src/plugins
-  ${CMAKE_SOURCE_DIR}/external
-  ${CMAKE_SOURCE_DIR}/external/nlohmann
 
-  ${CMAKE_BINARY_DIR}/src/core
-  ${CMAKE_BINARY_DIR}/src/gui
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 ########################################################
 # Install
 
-install(TARGETS offlineeditingplugin
+install(TARGETS plugin_offlineediting
 	RUNTIME DESTINATION ${QGIS_PLUGIN_DIR}
 	LIBRARY DESTINATION ${QGIS_PLUGIN_DIR}
 )

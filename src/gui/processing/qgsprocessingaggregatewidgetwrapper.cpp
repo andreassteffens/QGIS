@@ -21,6 +21,7 @@
 #include <QPushButton>
 #include <QStandardItemModel>
 #include <QToolButton>
+#include <QItemSelectionModel>
 
 #include "qgspanelwidget.h"
 
@@ -106,8 +107,10 @@ QVariant QgsProcessingAggregatePanelWidget::value() const
     QVariantMap def;
     def.insert( QStringLiteral( "name" ), aggregate.field.name() );
     def.insert( QStringLiteral( "type" ), static_cast< int >( aggregate.field.type() ) );
+    def.insert( QStringLiteral( "type_name" ), aggregate.field.typeName() );
     def.insert( QStringLiteral( "length" ), aggregate.field.length() );
     def.insert( QStringLiteral( "precision" ), aggregate.field.precision() );
+    def.insert( QStringLiteral( "sub_type" ), static_cast< int >( aggregate.field.subType() ) );
     def.insert( QStringLiteral( "input" ), aggregate.source );
     def.insert( QStringLiteral( "aggregate" ), aggregate.aggregate );
     def.insert( QStringLiteral( "delimiter" ), aggregate.delimiter );
@@ -128,11 +131,13 @@ void QgsProcessingAggregatePanelWidget::setValue( const QVariant &value )
   for ( const QVariant &field : fields )
   {
     const QVariantMap map = field.toMap();
-    QgsField f( map.value( QStringLiteral( "name" ) ).toString(),
-                static_cast< QVariant::Type >( map.value( QStringLiteral( "type" ), QVariant::Invalid ).toInt() ),
-                QVariant::typeToName( static_cast< QVariant::Type >( map.value( QStringLiteral( "type" ), QVariant::Invalid ).toInt() ) ),
-                map.value( QStringLiteral( "length" ), 0 ).toInt(),
-                map.value( QStringLiteral( "precision" ), 0 ).toInt() );
+    const QgsField f( map.value( QStringLiteral( "name" ) ).toString(),
+                      static_cast< QVariant::Type >( map.value( QStringLiteral( "type" ), QVariant::Invalid ).toInt() ),
+                      map.value( QStringLiteral( "type_name" ), QVariant::typeToName( static_cast< QVariant::Type >( map.value( QStringLiteral( "type" ), QVariant::Invalid ).toInt() ) ) ).toString(),
+                      map.value( QStringLiteral( "length" ), 0 ).toInt(),
+                      map.value( QStringLiteral( "precision" ), 0 ).toInt(),
+                      QString(),
+                      static_cast< QVariant::Type >( map.value( QStringLiteral( "sub_type" ), QVariant::Invalid ).toInt() ) );
 
     QgsAggregateMappingModel::Aggregate aggregate;
     aggregate.field = f;
@@ -171,7 +176,7 @@ void QgsProcessingAggregatePanelWidget::addField()
 {
   const int rowCount = mModel->rowCount();
   mModel->appendField( QgsField( QStringLiteral( "new_field" ) ) );
-  QModelIndex index = mModel->index( rowCount, 0 );
+  const QModelIndex index = mModel->index( rowCount, 0 );
   mFieldsView->selectionModel()->select(
     index,
     QItemSelectionModel::SelectionFlags(
@@ -247,7 +252,7 @@ QgsProcessingAggregateParameterDefinitionWidget::QgsProcessingAggregateParameter
 
 QgsProcessingParameterDefinition *QgsProcessingAggregateParameterDefinitionWidget::createParameter( const QString &name, const QString &description, QgsProcessingParameterDefinition::Flags flags ) const
 {
-  auto param = qgis::make_unique< QgsProcessingParameterAggregate >( name, description, mParentLayerComboBox->currentData().toString() );
+  auto param = std::make_unique< QgsProcessingParameterAggregate >( name, description, mParentLayerComboBox->currentData().toString() );
   param->setFlags( flags );
   return param.release();
 }
@@ -333,7 +338,7 @@ void QgsProcessingAggregateWidgetWrapper::setParentLayerWrapperValue( const QgsA
 
   if ( !context )
   {
-    tmpContext = qgis::make_unique< QgsProcessingContext >();
+    tmpContext = std::make_unique< QgsProcessingContext >();
     context = tmpContext.get();
   }
 

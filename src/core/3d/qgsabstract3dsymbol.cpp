@@ -40,7 +40,7 @@ void QgsAbstract3DSymbol::initPropertyDefinitions()
   if ( !sPropertyDefinitions.isEmpty() )
     return;
 
-  QString origin = QStringLiteral( "symbol3d" );
+  const QString origin = QStringLiteral( "symbol3d" );
 
   sPropertyDefinitions = QgsPropertiesDefinition
   {
@@ -52,8 +52,13 @@ void QgsAbstract3DSymbol::initPropertyDefinitions()
 
 bool QgsAbstract3DSymbol::exportGeometries( Qgs3DSceneExporter *exporter, Qt3DCore::QEntity *entity, const QString &objectNamePrefix ) const
 {
-  Q_UNUSED( exporter );
-  Q_UNUSED( entity );
-  Q_UNUSED( objectNamePrefix );
+  Q_UNUSED( exporter )
+  Q_UNUSED( entity )
+  Q_UNUSED( objectNamePrefix )
   return false;
+}
+
+void QgsAbstract3DSymbol::setDefaultPropertiesFromLayer( const QgsVectorLayer * )
+{
+
 }

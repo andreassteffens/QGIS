@@ -18,7 +18,8 @@
 #include "qgssymbollayerutils.h"
 #include "qgsapplication.h"
 #include "qgsimagecache.h"
-#include <Qt3DExtras/QDiffuseMapMaterial>
+#include "qgsimagetexture.h"
+#include <Qt3DExtras/QDiffuseSpecularMaterial>
 #include <Qt3DExtras/QPhongMaterial>
 #include <Qt3DRender/QPaintedTextureImage>
 #include <Qt3DRender/QTexture>
@@ -37,10 +38,12 @@ bool QgsPhongTexturedMaterialSettings::supportsTechnique( QgsMaterialSettingsRen
   switch ( technique )
   {
     case QgsMaterialSettingsRenderingTechnique::Triangles:
+    case QgsMaterialSettingsRenderingTechnique::TrianglesDataDefined: //technique is supported but color can't be datadefined
       return true;
 
     case QgsMaterialSettingsRenderingTechnique::Points:
     case QgsMaterialSettingsRenderingTechnique::TrianglesWithFixedTexture:
+    case QgsMaterialSettingsRenderingTechnique::TrianglesFromModel:
     case QgsMaterialSettingsRenderingTechnique::InstancedPoints:
     case QgsMaterialSettingsRenderingTechnique::Lines:
       return false;
@@ -63,7 +66,7 @@ float QgsPhongTexturedMaterialSettings::textureRotation() const
   return mTextureRotation;
 }
 
-void QgsPhongTexturedMaterialSettings::readXml( const QDomElement &elem, const QgsReadWriteContext & )
+void QgsPhongTexturedMaterialSettings::readXml( const QDomElement &elem, const QgsReadWriteContext &context )
 {
   mAmbient = QgsSymbolLayerUtils::decodeColor( elem.attribute( QStringLiteral( "ambient" ), QStringLiteral( "25,25,25" ) ) );
   mSpecular = QgsSymbolLayerUtils::decodeColor( elem.attribute( QStringLiteral( "specular" ), QStringLiteral( "255,255,255" ) ) );
@@ -71,9 +74,11 @@ void QgsPhongTexturedMaterialSettings::readXml( const QDomElement &elem, const Q
   mDiffuseTexturePath = elem.attribute( QStringLiteral( "diffuse_texture_path" ), QString() );
   mTextureScale = elem.attribute( QStringLiteral( "texture_scale" ), QString( "1.0" ) ).toFloat();
   mTextureRotation = elem.attribute( QStringLiteral( "texture-rotation" ), QString( "0.0" ) ).toFloat();
+
+  QgsAbstractMaterialSettings::readXml( elem, context );
 }
 
-void QgsPhongTexturedMaterialSettings::writeXml( QDomElement &elem, const QgsReadWriteContext & ) const
+void QgsPhongTexturedMaterialSettings::writeXml( QDomElement &elem, const QgsReadWriteContext &context ) const
 {
   elem.setAttribute( QStringLiteral( "ambient" ), QgsSymbolLayerUtils::encodeColor( mAmbient ) );
   elem.setAttribute( QStringLiteral( "specular" ), QgsSymbolLayerUtils::encodeColor( mSpecular ) );
@@ -81,29 +86,9 @@ void QgsPhongTexturedMaterialSettings::writeXml( QDomElement &elem, const QgsRea
   elem.setAttribute( QStringLiteral( "diffuse_texture_path" ), mDiffuseTexturePath );
   elem.setAttribute( QStringLiteral( "texture_scale" ), mTextureScale );
   elem.setAttribute( QStringLiteral( "texture-rotation" ), mTextureRotation );
+
+  QgsAbstractMaterialSettings::writeXml( elem, context );
 }
-
-///@cond PRIVATE
-class QgsQImageTextureImage : public Qt3DRender::QPaintedTextureImage
-{
-  public:
-    QgsQImageTextureImage( const QImage &image, Qt3DCore::QNode *parent = nullptr )
-      : Qt3DRender::QPaintedTextureImage( parent )
-      , mImage( image )
-    {
-      setSize( mImage.size() );
-    }
-
-    void paint( QPainter *painter ) override
-    {
-      painter->drawImage( mImage.rect(), mImage, mImage.rect() );
-    }
-
-  private:
-
-    QImage mImage;
-
-};
 
 ///@endcond
 Qt3DRender::QMaterial *QgsPhongTexturedMaterialSettings::toMaterial( QgsMaterialSettingsRenderingTechnique technique, const QgsMaterialContext &context ) const
@@ -114,21 +99,33 @@ Qt3DRender::QMaterial *QgsPhongTexturedMaterialSettings::toMaterial( QgsMaterial
     case QgsMaterialSettingsRenderingTechnique::InstancedPoints:
     case QgsMaterialSettingsRenderingTechnique::Points:
     case QgsMaterialSettingsRenderingTechnique::TrianglesWithFixedTexture:
+    case QgsMaterialSettingsRenderingTechnique::TrianglesFromModel:
+    case QgsMaterialSettingsRenderingTechnique::TrianglesDataDefined:
     {
       bool fitsInCache = false;
-      QImage textureSourceImage = QgsApplication::imageCache()->pathAsImage( mDiffuseTexturePath, QSize(), true, 1.0, fitsInCache );
+      const QImage textureSourceImage = QgsApplication::imageCache()->pathAsImage( mDiffuseTexturePath, QSize(), true, 1.0, fitsInCache );
       ( void )fitsInCache;
 
       if ( !textureSourceImage.isNull() )
       {
-        Qt3DExtras::QDiffuseMapMaterial *material = new Qt3DExtras::QDiffuseMapMaterial;
+        QgsImageTexture *textureImage = new QgsImageTexture( textureSourceImage );
+        Qt3DExtras::QDiffuseSpecularMaterial *material = new Qt3DExtras::QDiffuseSpecularMaterial;
 
-        QgsQImageTextureImage *textureImage = new QgsQImageTextureImage( textureSourceImage );
-        material->diffuse()->addTextureImage( textureImage );
+        Qt3DRender::QTexture2D *texture = new Qt3DRender::QTexture2D();
+        texture->addTextureImage( textureImage );
 
-        material->diffuse()->wrapMode()->setX( Qt3DRender::QTextureWrapMode::Repeat );
-        material->diffuse()->wrapMode()->setY( Qt3DRender::QTextureWrapMode::Repeat );
-        material->diffuse()->wrapMode()->setZ( Qt3DRender::QTextureWrapMode::Repeat );
+        texture->wrapMode()->setX( Qt3DRender::QTextureWrapMode::Repeat );
+        texture->wrapMode()->setY( Qt3DRender::QTextureWrapMode::Repeat );
+        texture->wrapMode()->setZ( Qt3DRender::QTextureWrapMode::Repeat );
+
+        texture->setSamples( 4 );
+
+        texture->setGenerateMipMaps( true );
+        texture->setMagnificationFilter( Qt3DRender::QTexture2D::Linear );
+        texture->setMinificationFilter( Qt3DRender::QTexture2D::Linear );
+
+        material->setDiffuse( QVariant::fromValue( texture ) );
+
         material->setSpecular( mSpecular );
         material->setAmbient( mAmbient );
         material->setShininess( mShininess );

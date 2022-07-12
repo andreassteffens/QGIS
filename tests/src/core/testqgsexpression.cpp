@@ -35,7 +35,8 @@
 #include "qgsexpressionnodeimpl.h"
 #include "qgsvectorlayerutils.h"
 #include "qgsexpressioncontextutils.h"
-
+#include "qgsexpressionutils.h"
+#include <geos_c.h>
 
 static void _parseAndEvalExpr( int arg )
 {
@@ -64,6 +65,7 @@ class TestQgsExpression: public QObject
     QgsVectorLayer *mChildLayer2 = nullptr; // relation with composite keys
     QgsVectorLayer *mChildLayer = nullptr;
     QgsRasterLayer *mRasterLayer = nullptr;
+    QgsMeshLayer *mMeshLayer = nullptr;
 
   private slots:
 
@@ -122,21 +124,30 @@ class TestQgsExpression: public QObject
                                          rasterFileInfo.completeBaseName() );
       QgsProject::instance()->addMapLayer( mRasterLayer );
 
+      QString meshFileName = testDataDir + "/mesh/quad_flower.2dm";
+      mMeshLayer = new QgsMeshLayer( meshFileName, "mesh layer", "mdal" );
+      mMeshLayer->updateTriangularMesh();
+      QgsProject::instance()->addMapLayer( mMeshLayer );
+
       // test memory layer for get_feature tests
-      mMemoryLayer = new QgsVectorLayer( QStringLiteral( "Point?field=col1:integer&field=col2:string" ), QStringLiteral( "test" ), QStringLiteral( "memory" ) );
+      mMemoryLayer = new QgsVectorLayer( QStringLiteral( "Point?field=col1:integer&field=col2:string&field=datef:date(0,0)" ), QStringLiteral( "test" ), QStringLiteral( "memory" ) );
       QVERIFY( mMemoryLayer->isValid() );
       QgsFeature f1( mMemoryLayer->dataProvider()->fields(), 1 );
       f1.setAttribute( QStringLiteral( "col1" ), 10 );
       f1.setAttribute( QStringLiteral( "col2" ), "test1" );
+      f1.setAttribute( QStringLiteral( "datef" ), QDate( 2021, 9, 23 ) );
       QgsFeature f2( mMemoryLayer->dataProvider()->fields(), 2 );
       f2.setAttribute( QStringLiteral( "col1" ), 11 );
       f2.setAttribute( QStringLiteral( "col2" ), "test2" );
+      f2.setAttribute( QStringLiteral( "datef" ), QDate( 2022, 9, 23 ) );
       QgsFeature f3( mMemoryLayer->dataProvider()->fields(), 3 );
       f3.setAttribute( QStringLiteral( "col1" ), 3 );
       f3.setAttribute( QStringLiteral( "col2" ), "test3" );
+      f3.setAttribute( QStringLiteral( "datef" ), QDate( 2021, 9, 23 ) );
       QgsFeature f4( mMemoryLayer->dataProvider()->fields(), 4 );
       f4.setAttribute( QStringLiteral( "col1" ), 41 );
       f4.setAttribute( QStringLiteral( "col2" ), "test4" );
+      f4.setAttribute( QStringLiteral( "datef" ), QDate( 2022, 9, 23 ) );
       mMemoryLayer->dataProvider()->addFeatures( QgsFeatureList() << f1 << f2 << f3 << f4 );
       QgsProject::instance()->addMapLayer( mMemoryLayer );
 
@@ -254,6 +265,40 @@ class TestQgsExpression: public QObject
       rel_ck.addFieldPair( QStringLiteral( "name" ), QStringLiteral( "col4" ) );
       QVERIFY( rel_ck.isValid() );
       QgsProject::instance()->relationManager()->addRelation( rel_ck );
+    }
+
+    void evalMeshElement()
+    {
+      QgsExpressionContext context;
+      context.appendScope( QgsExpressionContextUtils::meshExpressionScope( QgsMesh::Vertex ) );
+      context.lastScope()->setVariable( QStringLiteral( "_mesh_vertex_index" ), 2 );
+      context.lastScope()->setVariable( QStringLiteral( "_mesh_layer" ), QVariant::fromValue( mMeshLayer ) );
+
+      QgsExpression expression( QStringLiteral( "$vertex_x" ) );
+      QCOMPARE( expression.evaluate( &context ).toDouble(), 2500.0 );
+
+      expression = QgsExpression( QStringLiteral( "$vertex_y" ) );
+      QCOMPARE( expression.evaluate( &context ).toDouble(), 2500.0 );
+
+      expression = QgsExpression( QStringLiteral( "$vertex_z" ) );
+      QCOMPARE( expression.evaluate( &context ).toDouble(), 800.0 );
+
+      expression = QgsExpression( QStringLiteral( "$vertex_index" ) );
+      QCOMPARE( expression.evaluate( &context ).toInt(), 2 );
+
+      expression = QgsExpression( QStringLiteral( "$vertex_as_point" ) );
+      QVariant out = expression.evaluate( &context );
+      QgsGeometry outGeom = out.value<QgsGeometry>();
+      QgsGeometry geom( new QgsPoint( 2500, 2500, 800 ) );
+      QCOMPARE( geom.equals( outGeom ), true );
+
+      context.appendScope( QgsExpressionContextUtils::meshExpressionScope( QgsMesh::Face ) );
+      context.lastScope()->setVariable( QStringLiteral( "_mesh_face_index" ), 2 );
+      expression = QgsExpression( QStringLiteral( "$face_area" ) );
+      QCOMPARE( expression.evaluate( &context ).toDouble(), 250000 );
+
+      expression = QgsExpression( QStringLiteral( "$face_index" ) );
+      QCOMPARE( expression.evaluate( &context ).toInt(), 2 );
     }
 
     void cleanupTestCase()
@@ -474,6 +519,77 @@ class TestQgsExpression: public QObject
       QCOMPARE( res, result );
       QCOMPARE( exp.dump(), dump );
     }
+
+    void  represent_attributes()
+    {
+
+      QgsVectorLayer layer { QStringLiteral( "Point?field=col1:integer&field=col2:string" ), QStringLiteral( "test_represent_attributes" ), QStringLiteral( "memory" ) };
+      QVERIFY( layer.isValid() );
+      QgsFeature f1( layer.dataProvider()->fields(), 1 );
+      f1.setAttribute( QStringLiteral( "col1" ), 1 );
+      f1.setAttribute( QStringLiteral( "col2" ), "test1" );
+      QgsFeature f2( layer.dataProvider()->fields(), 2 );
+      f2.setAttribute( QStringLiteral( "col1" ), 2 );
+      f2.setAttribute( QStringLiteral( "col2" ), "test2" );
+      layer.dataProvider()->addFeatures( QgsFeatureList() << f1 << f2 );
+
+      QVariantMap config;
+      QVariantMap map;
+      map.insert( QStringLiteral( "one" ), QStringLiteral( "1" ) );
+      map.insert( QStringLiteral( "two" ), QStringLiteral( "2" ) );
+
+      config.insert( QStringLiteral( "map" ), map );
+      layer.setEditorWidgetSetup( 0, QgsEditorWidgetSetup( QStringLiteral( "ValueMap" ), config ) );
+
+      QgsExpressionContext context( { QgsExpressionContextUtils::layerScope( &layer ) } );
+      context.setFeature( f2 );
+      QgsExpression expression( "represent_attributes()" );
+
+      if ( expression.hasParserError() )
+        qDebug() << expression.parserErrorString();
+      QVERIFY( !expression.hasParserError() );
+
+      expression.prepare( &context );
+
+      QVariantMap result { expression.evaluate( &context ).toMap() };
+
+      QCOMPARE( result.value( QStringLiteral( "col1" ) ).toString(), QStringLiteral( "two" ) );
+      QCOMPARE( result.value( QStringLiteral( "col2" ) ).toString(), QStringLiteral( "test2" ) );
+
+      QgsExpressionContext context2( { QgsExpressionContextUtils::layerScope( &layer ) } );
+      context2.setFeature( f2 );
+      expression = QgsExpression( "represent_attributes($currentfeature)" );
+
+      result = expression.evaluate( &context2 ).toMap();
+
+      QVERIFY( !expression.hasEvalError() );
+
+      QCOMPARE( result.value( QStringLiteral( "col1" ) ).toString(), QStringLiteral( "two" ) );
+      QCOMPARE( result.value( QStringLiteral( "col2" ) ).toString(), QStringLiteral( "test2" ) );
+
+      QgsProject::instance()->addMapLayer( &layer, false, false );
+      QgsExpressionContext context3;
+      context3.setFeature( f2 );
+      expression = QgsExpression( "represent_attributes('test_represent_attributes', $currentfeature)" );
+
+      result = expression.evaluate( &context3 ).toMap();
+
+      QVERIFY( !expression.hasEvalError() );
+
+      QCOMPARE( result.value( QStringLiteral( "col1" ) ).toString(), QStringLiteral( "two" ) );
+      QCOMPARE( result.value( QStringLiteral( "col2" ) ).toString(), QStringLiteral( "test2" ) );
+
+      // Test the cached value
+      QCOMPARE( context3.cachedValue( QStringLiteral( "repvalfcnval:%1:%2:%3" ).arg( layer.id(), QStringLiteral( "col1" ), QStringLiteral( "2" ) ) ).toString(),  QStringLiteral( "two" ) );
+
+      // Test errors
+      QgsProject::instance()->removeMapLayer( layer.id() );
+      expression = QgsExpression( "represent_attributes('test_represent_attributes', $currentfeature)" );
+      QgsExpressionContext context4;
+      result = expression.evaluate( &context4 ).toMap();
+      QVERIFY( expression.hasEvalError() );
+
+    };
 
     void represent_value()
     {
@@ -764,7 +880,10 @@ class TestQgsExpression: public QObject
       QTest::newRow( "like 2" ) << "'hello' like '_el%'" << false << QVariant( 1 );
       QTest::newRow( "like 3" ) << "'hello' like 'lo'" << false << QVariant( 0 );
       QTest::newRow( "like 4" ) << "'hello' like '%LO'" << false << QVariant( 0 );
+      QTest::newRow( "like 5" ) << "'QGIS' like '%G%'" << false << QVariant( 1 );
+      QTest::newRow( "like 6" ) << "'[testing]' like '[testing%'" << false << QVariant( 1 );
       QTest::newRow( "ilike" ) << "'hello' ilike '%LO'" << false << QVariant( 1 );
+      QTest::newRow( "ilike with dot" ) << "'QGIS .123' ilike 'qgis .123'" << false << QVariant( 1 );
       // the \\\\ is like \\ in the interface
       QTest::newRow( "like escape 1" ) << "'1%' like '1\\\\%'" << false << QVariant( 1 );
       QTest::newRow( "like escape 2" ) << "'1_' like '1\\\\%'" << false << QVariant( 0 );
@@ -813,6 +932,9 @@ class TestQgsExpression: public QObject
       QTest::newRow( "round(1234.554,2) - round down" ) << "round(1234.554,2)" << false << QVariant( 1234.55 );
       QTest::newRow( "round(1234.6) - round up to int" ) << "round(1234.6)" << false << QVariant( 1235 );
       QTest::newRow( "round(1234.4) - round down to int" ) << "round(1234.4)" << false << QVariant( 1234 );
+      QTest::newRow( "round('1234.434', 1) - round string down to 1 decimal" ) << "round('1234.434', 1)" << false << QVariant( 1234.4 );
+      QTest::newRow( "round('1234.434') - round string down to int" ) << "round('1234.434')" << false << QVariant( 1234 );
+      QTest::newRow( "round('not number') - round not a number" ) << "round('not number')" << true << QVariant();
       QTest::newRow( "max(1)" ) << "max(1)" << false << QVariant( 1. );
       QTest::newRow( "max(1,3.5,-2.1)" ) << "max(1,3.5,-2.1)" << false << QVariant( 3.5 );
       QTest::newRow( "max(3.5,-2.1,1)" ) << "max(3.5,-2.1,1)" << false << QVariant( 3.5 );
@@ -877,6 +999,12 @@ class TestQgsExpression: public QObject
       QTest::newRow( "geom_to_wkb not geom" ) << "geom_to_wkt(geom_from_wkb(geom_to_wkb('a')))" << true << QVariant();
       QTest::newRow( "geom_from_wkb not geom" ) << "geom_to_wkt(geom_from_wkb(make_point(4,5)))" << true << QVariant();
       QTest::newRow( "geom_from_wkb null" ) << "geom_to_wkt(geom_from_wkb(NULL))" << false << QVariant();
+      QTest::newRow( "geometry_type not geom" ) << "geometry_type('g')" << true << QVariant();
+      QTest::newRow( "geometry_type null" ) << "geometry_type(NULL)" << false << QVariant();
+      QTest::newRow( "geometry_type point" ) << "geometry_type(geom_from_wkt('POINT(1 2)'))" << false << QVariant( QStringLiteral( "Point" ) );
+      QTest::newRow( "geometry_type polygon" ) << "geometry_type(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1))'))" << false << QVariant( QStringLiteral( "Polygon" ) );
+      QTest::newRow( "geometry_type line" ) << "geometry_type(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2)'))" << false << QVariant( QStringLiteral( "Line" ) );
+      QTest::newRow( "geometry_type multipoint" ) << "geometry_type(geom_from_wkt('MULTIPOINT((0 1),(0 0))'))" << false << QVariant( QStringLiteral( "Point" ) );
       QTest::newRow( "num_points" ) << "num_points(geom_from_wkt('GEOMETRYCOLLECTION(LINESTRING(0 0, 1 0),POINT(6 5))'))" << false << QVariant( 3 );
       QTest::newRow( "num_interior_rings not geom" ) << "num_interior_rings('g')" << true << QVariant();
       QTest::newRow( "num_interior_rings null" ) << "num_interior_rings(NULL)" << false << QVariant();
@@ -941,6 +1069,14 @@ class TestQgsExpression: public QObject
       QTest::newRow( "length line" ) << "length(geom_from_wkt('LINESTRING(0 0, 4 0)'))" << false << QVariant( 4.0 );
       QTest::newRow( "length polygon" ) << "length(geom_from_wkt('POLYGON((0 0, 4 0, 4 2, 0 2, 0 0))'))" << false << QVariant();
       QTest::newRow( "length point" ) << "length(geom_from_wkt('POINT(0 0)'))" << false << QVariant();
+      QTest::newRow( "length empty line" ) << "length(geom_from_wkt('LINESTRING EMPTY'))" << false << QVariant( 0.0 );
+      QTest::newRow( "length3D lineZ" ) << "length3D(geom_from_wkt('LINESTRINGZ(0 0 0, 3 0 4)'))" << false << QVariant( 5.0 );
+      QTest::newRow( "length3D line" ) << "length3D(geom_from_wkt('LINESTRING(0 0, 4 0)'))" << false << QVariant( 4.0 );
+      QTest::newRow( "length3D polygon" ) << "length3D(geom_from_wkt('POLYGON((0 0, 4 0, 4 2, 0 2, 0 0))'))" << false << QVariant();
+      QTest::newRow( "length3D point" ) << "length3D(geom_from_wkt('POINT(0 0)'))" << false << QVariant();
+      QTest::newRow( "length3D empty linez" ) << "length3D(geom_from_wkt('LINESTRINGZ EMPTY'))" << false << QVariant( 0.0 );
+      QTest::newRow( "length3D empty line" ) << "length3D(geom_from_wkt('LINESTRING EMPTY'))" << false << QVariant( 0.0 );
+      QTest::newRow( "length3D multiline" ) << "length3D(geom_from_wkt('MULTILINESTRINGZ((0 0 0, 3 0 4),(10 0 0, 13 0 4))'))" << false << QVariant( 10.0 );
       QTest::newRow( "area polygon" ) << "area(geom_from_wkt('POLYGON((0 0, 4 0, 4 2, 0 2, 0 0))'))" << false << QVariant( 8.0 );
       QTest::newRow( "area line" ) << "area(geom_from_wkt('LINESTRING(0 0, 4 0)'))" << false << QVariant();
       QTest::newRow( "area point" ) << "area(geom_from_wkt('POINT(0 0)'))" << false << QVariant();
@@ -980,6 +1116,18 @@ class TestQgsExpression: public QObject
       QTest::newRow( "force_rhr polygon" ) << "geom_to_wkt(force_rhr(geometry:=geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1))')))" << false << QVariant( "Polygon ((-1 -1, 0 2, 4 2, 4 0, -1 -1))" );
       QTest::newRow( "force_rhr multipolygon" ) << "geom_to_wkt(force_rhr(geometry:=geom_from_wkt('MULTIPOLYGON(Polygon((-1 -1, 4 0, 4 2, 0 2, -1 -1)),Polygon((100 100, 200 100, 200 200, 100 200, 100 100)))')))" << false << QVariant( "MultiPolygon (((-1 -1, 0 2, 4 2, 4 0, -1 -1)),((100 100, 100 200, 200 200, 200 100, 100 100)))" );
       QTest::newRow( "force_rhr line" ) << "geom_to_wkt(force_rhr(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2)')))" << false << QVariant( "LineString (0 0, 1 1, 2 2)" );
+      QTest::newRow( "force_polygon_ccw not geom" ) << "force_polygon_ccw('g')" << true << QVariant();
+      QTest::newRow( "force_polygon_ccw null" ) << "force_polygon_ccw(NULL)" << false << QVariant();
+      QTest::newRow( "force_polygon_ccw point" ) << "geom_to_wkt(force_polygon_ccw(geom_from_wkt('POINT(1 2)')))" << false << QVariant( "Point (1 2)" );
+      QTest::newRow( "force_polygon_ccw polygon" ) << "geom_to_wkt(force_polygon_ccw(geometry:=geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1))')))" << false << QVariant( "Polygon ((-1 -1, 4 0, 4 2, 0 2, -1 -1))" );
+      QTest::newRow( "force_polygon_ccw multipolygon" ) << "geom_to_wkt(force_polygon_ccw(geometry:=geom_from_wkt('MULTIPOLYGON(Polygon((-1 -1, 4 0, 4 2, 0 2, -1 -1)),Polygon((100 100, 200 100, 200 200, 100 200, 100 100)))')))" << false << QVariant( "MultiPolygon (((-1 -1, 4 0, 4 2, 0 2, -1 -1)),((100 100, 200 100, 200 200, 100 200, 100 100)))" );
+      QTest::newRow( "force_polygon_ccw line" ) << "geom_to_wkt(force_polygon_ccw(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2)')))" << false << QVariant( "LineString (0 0, 1 1, 2 2)" );
+      QTest::newRow( "force_polygon_cw not geom" ) << "force_polygon_cw('g')" << true << QVariant();
+      QTest::newRow( "force_polygon_cw null" ) << "force_polygon_cw(NULL)" << false << QVariant();
+      QTest::newRow( "force_polygon_cw point" ) << "geom_to_wkt(force_polygon_cw(geom_from_wkt('POINT(1 2)')))" << false << QVariant( "Point (1 2)" );
+      QTest::newRow( "force_polygon_cw polygon" ) << "geom_to_wkt(force_polygon_cw(geometry:=geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1))')))" << false << QVariant( "Polygon ((-1 -1, 0 2, 4 2, 4 0, -1 -1))" );
+      QTest::newRow( "force_polygon_cw multipolygon" ) << "geom_to_wkt(force_polygon_cw(geometry:=geom_from_wkt('MULTIPOLYGON(Polygon((-1 -1, 4 0, 4 2, 0 2, -1 -1)),Polygon((100 100, 200 100, 200 200, 100 200, 100 100)))')))" << false << QVariant( "MultiPolygon (((-1 -1, 0 2, 4 2, 4 0, -1 -1)),((100 100, 100 200, 200 200, 200 100, 100 100)))" );
+      QTest::newRow( "force_polygon_cw line" ) << "geom_to_wkt(force_polygon_cw(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2)')))" << false << QVariant( "LineString (0 0, 1 1, 2 2)" );
       QTest::newRow( "boundary not geom" ) << "boundary('g')" << true << QVariant();
       QTest::newRow( "boundary null" ) << "boundary(NULL)" << false << QVariant();
       QTest::newRow( "boundary point" ) << "boundary(geom_from_wkt('POINT(1 2)'))" << false << QVariant();
@@ -1003,13 +1151,22 @@ class TestQgsExpression: public QObject
       QTest::newRow( "tapered_buffer not geom" ) << "tapered_buffer('g', 1, 2, 8)" << true << QVariant();
       QTest::newRow( "tapered_buffer null" ) << "tapered_buffer(NULL, 1, 2, 8)" << false << QVariant();
       QTest::newRow( "tapered_buffer point" ) << "geom_to_wkt(tapered_buffer(geometry:=geom_from_wkt('POINT(1 2)'),start_width:=1,end_width:=2,segments:=10))" << true << QVariant();
-      QTest::newRow( "tapered_buffer line" ) << "geom_to_wkt(tapered_buffer(geometry:=geom_from_wkt('LineString(0 0, 10 0)'),start_width:=1,end_width:=2,segments:=3))" << false << QVariant( QStringLiteral( "MultiPolygon (((-0 -0.5, -0.25 -0.4330127, -0.4330127 -0.25, -0.5 0, -0.4330127 0.25, -0.25 0.4330127, 0 0.5, 10 1, 10.5 0.8660254, 10.8660254 0.5, 11 -0, 10.8660254 -0.5, 10.5 -0.8660254, 10 -1, -0 -0.5)))" ) );
-      QTest::newRow( "tapered_buffer line 2" ) << "geom_to_wkt(tapered_buffer(geometry:=geom_from_wkt('LineString(0 0, 10 0)'),start_width:=2,end_width:=1,segments:=3))" << false << QVariant( QStringLiteral( "MultiPolygon (((-0 -1, -0.5 -0.8660254, -0.8660254 -0.5, -1 0, -0.8660254 0.5, -0.5 0.8660254, 0 1, 10 0.5, 10.25 0.4330127, 10.4330127 0.25, 10.5 -0, 10.4330127 -0.25, 10.25 -0.4330127, 10 -0.5, -0 -1)))" ) );
+#if GEOS_VERSION_MAJOR>3 || ( GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR>=9 )
+      QTest::newRow( "tapered_buffer line" ) << "geom_to_wkt(tapered_buffer(geometry:=geom_from_wkt('LineString(0 0, 10 0)'),start_width:=1,end_width:=2,segments:=3))" << false << QVariant( QStringLiteral( "MultiPolygon (((-0.25 -0.4330127, -0.4330127 -0.25, -0.5 0, -0.4330127 0.25, -0.25 0.4330127, 0 0.5, 10 1, 10.5 0.8660254, 10.8660254 0.5, 11 0, 10.8660254 -0.5, 10.5 -0.8660254, 10 -1, 0 -0.5, -0.25 -0.4330127)))" ) );
+      QTest::newRow( "tapered_buffer line 2" ) << "geom_to_wkt(tapered_buffer(geometry:=geom_from_wkt('LineString(0 0, 10 0)'),start_width:=2,end_width:=1,segments:=3))" << false << QVariant( QStringLiteral( "MultiPolygon (((-0.5 -0.8660254, -0.8660254 -0.5, -1 0, -0.8660254 0.5, -0.5 0.8660254, 0 1, 10 0.5, 10.25 0.4330127, 10.4330127 0.25, 10.5 0, 10.4330127 -0.25, 10.25 -0.4330127, 10 -0.5, 0 -1, -0.5 -0.8660254)))" ) );
+#else
+      QTest::newRow( "tapered_buffer line" ) << "geom_to_wkt(tapered_buffer(geometry:=geom_from_wkt('LineString(0 0, 10 0)'),start_width:=1,end_width:=2,segments:=3))" << false << QVariant( QStringLiteral( "MultiPolygon (((0 -0.5, -0.25 -0.4330127, -0.4330127 -0.25, -0.5 0, -0.4330127 0.25, -0.25 0.4330127, 0 0.5, 10 1, 10.5 0.8660254, 10.8660254 0.5, 11 0, 10.8660254 -0.5, 10.5 -0.8660254, 10 -1, 0 -0.5)))" ) );
+      QTest::newRow( "tapered_buffer line 2" ) << "geom_to_wkt(tapered_buffer(geometry:=geom_from_wkt('LineString(0 0, 10 0)'),start_width:=2,end_width:=1,segments:=3))" << false << QVariant( QStringLiteral( "MultiPolygon (((0 -1, -0.5 -0.8660254, -0.8660254 -0.5, -1 0, -0.8660254 0.5, -0.5 0.8660254, 0 1, 10 0.5, 10.25 0.4330127, 10.4330127 0.25, 10.5 0, 10.4330127 -0.25, 10.25 -0.4330127, 10 -0.5, 0 -1)))" ) );
+#endif
       QTest::newRow( "buffer_by_m not geom" ) << "buffer_by_m('g', 8)" << true << QVariant();
       QTest::newRow( "buffer_by_m null" ) << "buffer_by_m(NULL, 8)" << false << QVariant();
       QTest::newRow( "buffer_by_m point" ) << "geom_to_wkt(buffer_by_m(geometry:=geom_from_wkt('POINT(1 2)'),segments:=10))" << true << QVariant();
       QTest::newRow( "buffer_by_m line" ) << "geom_to_wkt(buffer_by_m(geometry:=geom_from_wkt('LineString(0 0, 10 0)'),segments:=3))" << false << QVariant( QStringLiteral( "GeometryCollection EMPTY" ) );
-      QTest::newRow( "buffer_by_m linem" ) << "geom_to_wkt(buffer_by_m(geometry:=geom_from_wkt('LineStringM(0 0 1, 10 0 2)'),segments:=3))" << false << QVariant( QStringLiteral( "MultiPolygon (((-0 -0.5, -0.25 -0.4330127, -0.4330127 -0.25, -0.5 0, -0.4330127 0.25, -0.25 0.4330127, 0 0.5, 10 1, 10.5 0.8660254, 10.8660254 0.5, 11 -0, 10.8660254 -0.5, 10.5 -0.8660254, 10 -1, -0 -0.5)))" ) );
+#if GEOS_VERSION_MAJOR>3 || ( GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR>=9 )
+      QTest::newRow( "buffer_by_m linem" ) << "geom_to_wkt(buffer_by_m(geometry:=geom_from_wkt('LineStringM(0 0 1, 10 0 2)'),segments:=3))" << false << QVariant( QStringLiteral( "MultiPolygon (((-0.25 -0.4330127, -0.4330127 -0.25, -0.5 0, -0.4330127 0.25, -0.25 0.4330127, 0 0.5, 10 1, 10.5 0.8660254, 10.8660254 0.5, 11 0, 10.8660254 -0.5, 10.5 -0.8660254, 10 -1, 0 -0.5, -0.25 -0.4330127)))" ) );
+#else
+      QTest::newRow( "buffer_by_m linem" ) << "geom_to_wkt(buffer_by_m(geometry:=geom_from_wkt('LineStringM(0 0 1, 10 0 2)'),segments:=3))" << false << QVariant( QStringLiteral( "MultiPolygon (((0 -0.5, -0.25 -0.4330127, -0.4330127 -0.25, -0.5 0, -0.4330127 0.25, -0.25 0.4330127, 0 0.5, 10 1, 10.5 0.8660254, 10.8660254 0.5, 11 0, 10.8660254 -0.5, 10.5 -0.8660254, 10 -1, 0 -0.5)))" ) );
+#endif
       QTest::newRow( "single_sided_buffer not geom" ) << "single_sided_buffer('g', 5)" << true << QVariant();
       QTest::newRow( "single_sided_buffer null" ) << "single_sided_buffer(NULL, 5)" << false << QVariant();
       QTest::newRow( "single_sided_buffer point" ) << "single_sided_buffer(geom_from_wkt('POINT(1 2)'),5)" << false << QVariant();
@@ -1259,6 +1416,85 @@ class TestQgsExpression: public QObject
       QTest::newRow( "rotate line fixed multi point" ) << "geom_to_wkt(rotate(geom_from_wkt('LineString(0 0, 10 0, 10 10)'),90, geom_from_wkt('MULTIPOINT((-5 -3))')))" << false << QVariant( "LineString (-2 -8, -2 -18, 8 -18)" );
       QTest::newRow( "rotate line fixed multi point multiple" ) << "geom_to_wkt(rotate(geom_from_wkt('LineString(0 0, 10 0, 10 10)'),90, geom_from_wkt('MULTIPOINT(-5 -3,1 2)')))" << true << QVariant();
       QTest::newRow( "rotate polygon centroid" ) << "geom_to_wkt(rotate(geom_from_wkt('Polygon((0 0, 10 0, 10 10, 0 0))'),-90))" << false << QVariant( "Polygon ((10 0, 10 10, 0 10, 10 0))" );
+      QTest::newRow( "rotate multiline centroid, not per part" ) << "geom_to_wkt(rotate(geom_from_wkt('MultiLineString((0 0, 10 0, 10 10), (12 0, 12 12))'),90))" << false << QVariant( "MultiLineString ((0 12, 0 2, 10 2),(0 0, 12 0))" );
+      QTest::newRow( "rotate multiline centroid, per part" ) << "geom_to_wkt(rotate(geom_from_wkt('MultiLineString((0 0, 10 0, 10 10), (12 0, 12 12))'),90, per_part:=true))" << false << QVariant( "MultiLineString ((0 10, 0 0, 10 0),(6 6, 18 6))" );
+      // per part switch is ignored if explicit center is set
+      QTest::newRow( "rotate multiline explicit center, per part" ) << "geom_to_wkt(rotate(geom_from_wkt('MultiLineString((0 0, 10 0, 10 10), (12 0, 12 12))'),90, make_point(5,2), per_part:=true))" << false << QVariant( "MultiLineString ((3 7, 3 -3, 13 -3),(3 -5, 15 -5))" );
+      QTest::newRow( "scale not geom" ) << "scale('g', 1.2, 0.8)" << true << QVariant();
+      QTest::newRow( "scale null" ) << "scale(NULL, 1.2, 0.8)" << false << QVariant();
+      QTest::newRow( "scale point" ) << "geom_to_wkt(scale(geom_from_wkt('POINT( 20 10)'), 1.2, 0.8, geom_from_wkt('POINT( 30 15)')))" << false << QVariant( "Point (18 11)" );
+      QTest::newRow( "scale line centroid" ) << "geom_to_wkt(scale(geom_from_wkt('LineString(0 0, 10 0, 10 10)'),1.2, 0.8))" << false << QVariant( "LineString (-1 1, 11 1, 11 9)" );
+      QTest::newRow( "scale line fixed point" ) << "geom_to_wkt(scale(geom_from_wkt('LineString(0 0, 10 0, 10 10)'),1.2, 0.8, make_point(5, 2)))" << false << QVariant( "LineString (-1 0.4, 11 0.4, 11 8.4)" );
+      QTest::newRow( "scale line fixed point not geom" ) << "geom_to_wkt(scale(geom_from_wkt('LineString(0 0, 10 0, 10 10)'),1.2, 0.8, 'a'))" << true << QVariant();
+      QTest::newRow( "scale line fixed point not point" ) << "geom_to_wkt(scale(geom_from_wkt('LineString(0 0, 10 0, 10 10)'),1.2, 0.8, geom_from_wkt('LineString(0 0, 10 0, 10 10)')))" << true << QVariant();
+      QTest::newRow( "scale line fixed multi point" ) << "geom_to_wkt(scale(geom_from_wkt('LineString(0 0, 10 0, 10 10)'),1.2, 0.8, geom_from_wkt('MULTIPOINT((-5 -3))')))" << false << QVariant( "LineString (1 -0.6, 13 -0.6, 13 7.4)" );
+      QTest::newRow( "scale line fixed multi point multiple" ) << "geom_to_wkt(scale(geom_from_wkt('LineString(0 0, 10 0, 10 10)'),1.2, 0.8, geom_from_wkt('MULTIPOINT(-5 -3,1 2)')))" << true << QVariant();
+      QTest::newRow( "scale polygon centroid" ) << "geom_to_wkt(scale(geom_from_wkt('Polygon((0 0, 10 0, 10 10, 0 0))'), 1.2, 0.8))" << false << QVariant( "Polygon ((-1 1, 11 1, 11 9, -1 1))" );
+      QTest::newRow( "affine_transform not geom" ) << "affine_transform('g', 0, 0, 0, 0, 0, 0)" << true << QVariant();
+      QTest::newRow( "affine_transform null" ) << "affine_transform(NULL, 0, 0, 0, 0, 0, 0)" << false << QVariant();
+      QTest::newRow( "affine_transform point XYZM" ) << "geom_to_wkt(affine_transform(geom_from_wkt('POINT(2 2 2 2)'), 2, 2, 180, 0, 1, 1, 1, 2, 2))" << false << QVariant( "PointZM (2 0 5 5)" );
+      QTest::newRow( "affine_transform point with negative scale" ) << "geom_to_wkt(affine_transform(geom_from_wkt('POINT(1 1)'), 0, 0, 90, -2, -2))" << false << QVariant( "Point (2 -2)" );
+      QTest::newRow( "affine_transform line XY" ) << "geom_to_wkt(affine_transform(geom_from_wkt('LINESTRING(1 0, 2 0)'), 0, 0, 90, 2, 1))" << false << QVariant( "LineString (0 2, 0 4)" );
+      QTest::newRow( "affine_transform polygon XYZ" ) << "geom_to_wkt(affine_transform(geom_from_wkt('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'), 0, 0, -90, 0.5, 0.5))" << false << QVariant( "Polygon ((0 0, 0.5 0, 0.5 -0.5, 0 -0.5, 0 0))" );
+      QTest::newRow( "affine_transform point XY with translation on ZM" ) << "geom_to_wkt(affine_transform(geom_from_wkt('POINT(1 1)'), 0, 0, 0, 1, 1, 3, 4))" << false << QVariant( "PointZM (1 1 3 4)" );
+      QTest::newRow( "triangular_wave not geom" ) << "triangular_wave('g', 1, 2)" << true << QVariant();
+      QTest::newRow( "triangular_wave null" ) << "triangular_wave(NULL, 1, 2)" << false << QVariant();
+      QTest::newRow( "triangular_wave point" ) << "geom_to_wkt(triangular_wave(make_point(1,2), 1, 2))" << false << QVariant( "Point (1 2)" );
+      QTest::newRow( "triangular_wave geometry" ) << "geom_to_wkt(triangular_wave(geom_from_wkt('LINESTRING(1 1, 10 1)'), 5, 1))" << false << QVariant( "LineString (1 1, 2.125 2, 4.375 0, 6.625 2, 8.875 0, 10 1)" );
+      QTest::newRow( "triangular_wave_randomized not geom" ) << "triangular_wave_randomized('g', 1, 2, 3, 4)" << true << QVariant();
+      QTest::newRow( "triangular_wave_randomized null" ) << "triangular_wave_randomized(NULL, 1, 2, 3, 4)" << false << QVariant();
+      QTest::newRow( "triangular_wave_randomized point" ) << "geom_to_wkt(triangular_wave_randomized(make_point(1,2), 1, 2, 3, 4))" << false << QVariant( "Point (1 2)" );
+      QTest::newRow( "triangular_wave_randomized geometry" ) << "geom_to_wkt(triangular_wave_randomized(geom_from_wkt('LINESTRING(1 1, 10 1)'), 2, 3, 0.5, 1, 1), 1)" << false << QVariant( "LineString (1 1, 1.7 2, 2.8 0, 3.9 1.7, 5.1 0.2, 6.6 1.9, 7.7 0.2, 9 1.6, 10 1)" );
+      QTest::newRow( "square_wave not geom" ) << "square_wave('g', 1, 2)" << true << QVariant();
+      QTest::newRow( "square_wave null" ) << "square_wave(NULL, 1, 2)" << false << QVariant();
+      QTest::newRow( "square_wave point" ) << "geom_to_wkt(square_wave(make_point(1,2), 1, 2))" << false << QVariant( "Point (1 2)" );
+      QTest::newRow( "square_wave geometry" ) << "geom_to_wkt(square_wave(geom_from_wkt('LINESTRING(1 1, 10 1)'), 5, 1))" << false << QVariant( "LineString (1 1, 1 2, 3.25 2, 3.25 0, 5.5 0, 5.5 2, 7.75 2, 7.75 0, 10 0, 10 1)" );
+      QTest::newRow( "square_wave_randomized not geom" ) << "square_wave_randomized('g', 1, 2, 3, 4)" << true << QVariant();
+      QTest::newRow( "square_wave_randomized null" ) << "square_wave_randomized(NULL, 1, 2, 3, 4)" << false << QVariant();
+      QTest::newRow( "square_wave_randomized point" ) << "geom_to_wkt(square_wave_randomized(make_point(1,2), 1, 2, 3, 4))" << false << QVariant( "Point (1 2)" );
+      QTest::newRow( "square_wave_randomized geometry" ) << "geom_to_wkt(square_wave_randomized(geom_from_wkt('LINESTRING(1 1, 10 1)'), 2, 3, 0.5, 1, 1), 1)" << false << QVariant( "LineString (1 1, 1 2, 2.5 2, 2.5 0.4, 4 0.4, 4 1.6, 5.2 1.6, 5.2 0.3, 6.5 0.3, 6.5 2, 7.9 2, 7.9 0.3, 9.2 0.3, 9.2 1.7, 10 1.7, 10 1)" );
+      QTest::newRow( "wave not geom" ) << "wave('g', 1, 2)" << true << QVariant();
+      QTest::newRow( "wave null" ) << "wave(NULL, 1, 2)" << false << QVariant();
+      QTest::newRow( "wave point" ) << "geom_to_wkt(wave(make_point(1,2), 1, 2))" << false << QVariant( "Point (1 2)" );
+      QTest::newRow( "wave geometry" ) << "left(geom_to_wkt(wave(geom_from_wkt('LINESTRING(1 1, 10 1)'), 5, 1), 1), 100)" << false << QVariant( "LineString (1 1, 1.1 0.9, 1.2 0.7, 1.3 0.6, 1.4 0.4, 1.6 0.3, 1.7 0.2, 1.8 0.1, 1.9 0.1, 2 0, 2.1 0," );
+      QTest::newRow( "wave_randomized not geom" ) << "wave_randomized('g', 1, 2, 3, 4)" << true << QVariant();
+      QTest::newRow( "wave_randomized null" ) << "wave_randomized(NULL, 1, 2, 3, 4)" << false << QVariant();
+      QTest::newRow( "wave_randomized point" ) << "geom_to_wkt(wave_randomized(make_point(1,2), 1, 2, 3, 4))" << false << QVariant( "Point (1 2)" );
+      QTest::newRow( "wave_randomized geometry" ) << "left(geom_to_wkt(wave_randomized(geom_from_wkt('LINESTRING(1 1, 10 1)'), 2, 3, 0.5, 1, 1), 1), 100)" << false << QVariant( "LineString (1 1, 1.1 0.9, 1.1 0.7, 1.2 0.6, 1.3 0.4, 1.4 0.3, 1.4 0.2, 1.5 0.1, 1.6 0.1, 1.7 0, 1.7 " );
+      QTest::newRow( "apply_dash_pattern not geom" ) << "apply_dash_pattern('g', array(1, 2))" << true << QVariant();
+      QTest::newRow( "apply_dash_pattern null" ) << "apply_dash_pattern(NULL, array(1, 2))" << false << QVariant();
+      QTest::newRow( "apply_dash_pattern point" ) << "geom_to_wkt(apply_dash_pattern(make_point(1,2), array(1, 2)))" << false << QVariant( "Point (1 2)" );
+      QTest::newRow( "apply_dash_pattern bad pattern" ) << "apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(1, 'a'))" << true << QVariant();
+      QTest::newRow( "apply_dash_pattern bad pattern 2" ) << "apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(1, 2, 3))" << true << QVariant();
+      QTest::newRow( "apply_dash_pattern bad pattern 3" ) << "apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), 3)" << true << QVariant();
+      QTest::newRow( "apply_dash_pattern bad rule 1" ) << "apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(1,2), 'bad')" << true << QVariant();
+      QTest::newRow( "apply_dash_pattern bad rule 2" ) << "apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(1,2), 'full_dash', 'bad')" << true << QVariant();
+      QTest::newRow( "apply_dash_pattern bad rule 3" ) << "apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(1,2), 'full_dash', 'full_dash', 'bad')" << true << QVariant();
+      QTest::newRow( "apply_dash_pattern bad rule 4" ) << "apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(1,2), 'full_dash', 'full_dash', 'both', 'a')" << true << QVariant();
+      QTest::newRow( "apply_dash_pattern geometry" ) << "geom_to_wkt(apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(3, 1)))" << false << QVariant( "MultiLineString ((1 1, 4 1),(5 1, 8 1),(9 1, 10 1, 10 1))" );
+      QTest::newRow( "apply_dash_pattern polygon" ) << "geom_to_wkt(apply_dash_pattern(geom_from_wkt('POLYGON((1 1, 10 1, 10 10, 1 10, 1 1))'), array(3, 1)))" << false << QVariant( "MultiLineString ((1 1, 4 1),(5 1, 8 1),(9 1, 10 1, 10 3),(10 4, 10 7),(10 8, 10 10, 9 10),(8 10, 5 10),(4 10, 1 10),(1 9, 1 6),(1 5, 1 2),(1 1, 1 1, 1 1))" );
+      QTest::newRow( "apply_dash_pattern geometry rule 1" ) << "geom_to_wkt(apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(3, 1), start_rule:='full_dash'))" << false << QVariant( "MultiLineString ((1 1, 4 1),(5 1, 8 1),(9 1, 10 1, 10 1))" );
+      QTest::newRow( "apply_dash_pattern geometry rule 2" ) << "geom_to_wkt(apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(3, 1), start_rule:='half_dash'))" << false << QVariant( "MultiLineString ((1 1, 2.5 1),(3.5 1, 6.5 1),(7.5 1, 10 1, 10 1))" );
+      QTest::newRow( "apply_dash_pattern geometry rule 3" ) << "geom_to_wkt(apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(3, 1), start_rule:='full_gap'))" << false << QVariant( "MultiLineString ((2 1, 5 1),(6 1, 9 1),(10 1, 10 1, 10 1))" );
+      QTest::newRow( "apply_dash_pattern geometry rule 4" ) << "geom_to_wkt(apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(3, 1), start_rule:='half_gap'))" << false << QVariant( "MultiLineString ((1.5 1, 4.5 1),(5.5 1, 8.5 1),(9.5 1, 10 1, 10 1))" );
+      QTest::newRow( "apply_dash_pattern geometry end rule 1" ) << "geom_to_wkt(apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(3, 1), end_rule:='full_dash'))" << false << QVariant( "MultiLineString ((1 1, 3.45454545 1),(4.27272727 1, 6.72727273 1),(7.54545455 1, 10 1))" );
+      QTest::newRow( "apply_dash_pattern geometry end rule 2" ) << "geom_to_wkt(apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(3, 1), end_rule:='half_dash'))" << false << QVariant( "MultiLineString ((1 1, 3.84210526 1),(4.78947368 1, 7.63157895 1),(8.57894737 1, 10 1, 10 1))" );
+      QTest::newRow( "apply_dash_pattern geometry end rule 3" ) << "geom_to_wkt(apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(3, 1), end_rule:='full_gap'))" << false << QVariant( "MultiLineString ((1 1, 4.375 1),(5.5 1, 8.875 1),(10 1, 10 1, 10 1))" );
+      QTest::newRow( "apply_dash_pattern geometry end rule 4" ) << "geom_to_wkt(apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(3, 1), end_rule:='half_gap'))" << false << QVariant( "MultiLineString ((1 1, 4.6 1),(5.8 1, 9.4 1))" );
+      QTest::newRow( "apply_dash_pattern geometry adjust 1" ) << "geom_to_wkt(apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(3, 1), end_rule:='full_dash', adjustment:='both'))" << false << QVariant( "MultiLineString ((1 1, 3.45454545 1),(4.27272727 1, 6.72727273 1),(7.54545455 1, 10 1))" );
+      QTest::newRow( "apply_dash_pattern geometry adjust 2" ) << "geom_to_wkt(apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(3, 1), end_rule:='full_dash', adjustment:='dash'))" << false << QVariant( "MultiLineString ((1 1, 3.33333333 1),(4.33333333 1, 6.66666667 1),(7.66666667 1, 10 1))" );
+      QTest::newRow( "apply_dash_pattern geometry adjust 3" ) << "geom_to_wkt(apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(3, 1), end_rule:='full_dash', adjustment:='gap'))" << false << QVariant( "MultiLineString ((1 1, 4 1),(4 1, 7 1),(7 1, 10 1),(10 1, 10 1, 10 1))" );
+      QTest::newRow( "apply_dash_pattern geometry pattern offset" ) << "geom_to_wkt(apply_dash_pattern(geom_from_wkt('LINESTRING(1 1, 10 1)'), array(3, 1), pattern_offset:=3))" << false << QVariant( "MultiLineString ((2 1, 5 1),(6 1, 9 1),(10 1, 10 1, 10 1))" );
+      QTest::newRow( "densify_by_count not geom" ) << "densify_by_count('g', 3)" << true << QVariant();
+      QTest::newRow( "densify_by_count null" ) << "densify_by_count(NULL, 3)" << false << QVariant();
+      QTest::newRow( "densify_by_count point" ) << "geom_to_wkt(densify_by_count(make_point(1,2),3))" << false << QVariant( "Point (1 2)" );
+      QTest::newRow( "densify_by_count geometry" ) << "geom_to_wkt(densify_by_count(geom_from_wkt('LINESTRING(1 1, 10 1)'), 3))" << false << QVariant( "LineString (1 1, 3.25 1, 5.5 1, 7.75 1, 10 1)" );
+      QTest::newRow( "densify_by_count polygon" ) << "geom_to_wkt(densify_by_count(geom_from_wkt('POLYGON((1 1, 10 1, 10 10, 1 10, 1 1))'), 2))" << false << QVariant( "Polygon ((1 1, 4 1, 7 1, 10 1, 10 4, 10 7, 10 10, 7 10, 4 10, 1 10, 1 7, 1 4, 1 1))" );
+      QTest::newRow( "densify_by_distance not geom" ) << "densify_by_distance('g', 3)" << true << QVariant();
+      QTest::newRow( "densify_by_distance null" ) << "densify_by_distance(NULL, 3)" << false << QVariant();
+      QTest::newRow( "densify_by_distance point" ) << "geom_to_wkt(densify_by_distance(make_point(1,2),3))" << false << QVariant( "Point (1 2)" );
+      QTest::newRow( "densify_by_distance geometry" ) << "geom_to_wkt(densify_by_distance(geom_from_wkt('LINESTRING(1 1, 10 1)'), 4))" << false << QVariant( "LineString (1 1, 4 1, 7 1, 10 1)" );
+      QTest::newRow( "densify_by_distance polygon" ) << "geom_to_wkt(densify_by_distance(geom_from_wkt('POLYGON((1 1, 10 1, 10 10, 1 10, 1 1))'), 2))" << false << QVariant( "Polygon ((1 1, 2.8 1, 4.6 1, 6.4 1, 8.2 1, 10 1, 10 2.8, 10 4.6, 10 6.4, 10 8.2, 10 10, 8.2 10, 6.4 10, 4.6 10, 2.8 10, 1 10, 1 8.2, 1 6.4, 1 4.6, 1 2.8, 1 1))" );
       QTest::newRow( "is_multipart true" ) << "is_multipart(geom_from_wkt('MULTIPOINT ((0 0),(1 1),(2 2))'))" << false << QVariant( true );
       QTest::newRow( "is_multipart false" ) << "is_multipart(geom_from_wkt('POINT (0 0)'))" << false << QVariant( false );
       QTest::newRow( "is_multipart false empty geometry" ) << "is_multipart(geom_from_wkt('POINT EMPTY'))" << false << QVariant( false );
@@ -1288,22 +1524,46 @@ class TestQgsExpression: public QObject
       QTest::newRow( "m_min line M NaN" ) << "m_min(make_line(geom_from_wkt('PointZM (0 0 0 nan)'),geom_from_wkt('PointZM (1 1 1 2)')))" << false << QVariant( );
       QTest::newRow( "m_min line" ) << "m_min(make_line(make_point_m(0,0,1),make_point_m(-1,-1,2),make_point_m(-2,-2,0)))" << false << QVariant( 0.0 );
       QTest::newRow( "main angle polygon" ) << "round(main_angle( geom_from_wkt('POLYGON((0 0,2 9,9 2,0 0))')))" << false << QVariant( 77 );
+      QTest::newRow( "main angle polygon edge case" ) << "round(main_angle( geom_from_wkt('POLYGON((353542.63843526 378974.92373469, 353544.95808017 378975.73690545, 353545.27173175 378974.84218528, 353542.95208684 378974.02901451, 353542.63843526 378974.92373469))')))" << false << QVariant( 71 );
       QTest::newRow( "main angle multi polygon" ) << "round(main_angle( geom_from_wkt('MULTIPOLYGON(((0 0,3 10,1 10,1 6,0 0)))')))" << false << QVariant( 17 );
       QTest::newRow( "main angle point" ) << "main_angle( geom_from_wkt('POINT (1.5 0.5)') )" << true << QVariant();
       QTest::newRow( "main angle line" ) << "round(main_angle( geom_from_wkt('LINESTRING (-1 2, 9 12)') ))" << false << QVariant( 45 );
       QTest::newRow( "main angle not geom" ) << "main_angle('g')" << true << QVariant();
       QTest::newRow( "main angle null" ) << "main_angle(NULL)" << false << QVariant();
+      QTest::newRow( "main angle edge case 2" ) << "round(main_angle( geom_from_wkt('MULTIPOLYGON(((-57 -30, -56.5 -30, -56 -30, -55.5 -30, -55.5 -29.6667, -55.5 -29.333, -55.5 -29, -56 -29, -56.5 -29, -57 -29, -57 -29.3333, -57 -29.6666, -57 -30)))')))" << false << QVariant( 90 );
+      QTest::newRow( "sinuosity not geom" ) << "sinuosity('g')" << true << QVariant();
+      QTest::newRow( "sinuosity null" ) << "sinuosity(NULL)" << false << QVariant();
+      QTest::newRow( "sinuosity point" ) << "sinuosity(geom_from_wkt('POINT(1 2)'))" << true << QVariant();
+      QTest::newRow( "sinuosity multi linestring" ) << "sinuosity(geom_from_wkt('MULTILINESTRING( (0 0, 1 1), (2 2, 3 3) )'))" << true << QVariant();
+      QTest::newRow( "sinuosity linestring" ) << "round(sinuosity(geom_from_wkt('LINESTRING(2 0, 2 2, 3 2, 3 3)')), 3)" << false << QVariant( 1.265 );
+      QTest::newRow( "sinuosity linestring" ) << "sinuosity(geom_from_wkt('LINESTRING( 3 1, 5 1)'))" << false << QVariant( 1.0 );
+      QTest::newRow( "sinuosity closed linestring" ) << "sinuosity(geom_from_wkt('LINESTRING( 3 1, 5 1, 2 2, 3 1)'))" << false << QVariant( std::numeric_limits<double>::quiet_NaN() );
+      QTest::newRow( "sinuosity circularstring" ) << "round(sinuosity(geom_from_wkt('CircularString (20 30, 50 30, 50 90)')), 3)" << false << QVariant( 1.571 );
+      QTest::newRow( "sinuosity closed circularstring" ) << "sinuosity(geom_from_wkt('CircularString (20 30, 50 30, 20 30)'))" << false << QVariant( std::numeric_limits<double>::quiet_NaN() );
+      QTest::newRow( "straight_distance_2d not geom" ) << "straight_distance_2d('g')" << true << QVariant();
+      QTest::newRow( "straight_distance_2d null" ) << "straight_distance_2d(NULL)" << false << QVariant();
+      QTest::newRow( "straight_distance_2d point" ) << "straight_distance_2d(geom_from_wkt('POINT(1 2)'))" << true << QVariant();
+      QTest::newRow( "straight_distance_2d multi linestring" ) << "straight_distance_2d(geom_from_wkt('MULTILINESTRING( (0 0, 1 1), (2 2, 3 3) )'))" << true << QVariant();
+      QTest::newRow( "straight_distance_2d multi linestring with single part" ) << "straight_distance_2d(geom_from_wkt('MULTILINESTRING( (0 0, 0 1) ) )'))" << false << QVariant( 1.0 );
+      QTest::newRow( "straight_distance_2d linestring" ) << "straight_distance_2d(geom_from_wkt('LINESTRING(1 0, 4 4)'))" << false << QVariant( 5.0 );
+      QTest::newRow( "straight_distance_2d linestring" ) << "round(straight_distance_2d(geom_from_wkt('LINESTRING(1 4, 3 5, 5 0)')), 3)" << false << QVariant( 5.657 );
+      QTest::newRow( "straight_distance_2d closed linestring" ) << "straight_distance_2d(geom_from_wkt('LINESTRING(2 2, 3 6, 2 2)'))" << false << QVariant( 0.0 );
+      QTest::newRow( "straight_distance_2d circularstring" ) << "round(straight_distance_2d(geom_from_wkt('CircularString (20 30, 50 30, 10 50)')), 3)" << false << QVariant( 22.361 );
+      QTest::newRow( "roundness not geom" ) << "roundness('r')" << true << QVariant();
+      QTest::newRow( "roundness null" ) << "roundness(NULL)" << false << QVariant();
+      QTest::newRow( "roundness not polygon" ) << "roundness(geom_from_wkt('POINT(1 2)'))" << true << QVariant();
+      QTest::newRow( "roundness polygon" ) << "round(roundness(geom_from_wkt('POLYGON(( 0 0, 0 1, 1 1, 1 0, 0 0))')), 3)" << false << QVariant( 0.785 );
+      QTest::newRow( "roundness single part multi polygon" ) << "round(roundness(geom_from_wkt('MULTIPOLYGON (((0 0, 0 1, 1 1, 1 0, 0 0)))')), 3)" << false << QVariant( 0.785 );
+      QTest::newRow( "roundness multi polygon" ) << "round(roundness(geom_from_wkt('MULTIPOLYGON( ((0 0, 0 1, 1 1, 1 0, 0 0)), ((5 2, 4 9, 5 9, 6 5, 5 2)) )')))" << true << QVariant();
+      QTest::newRow( "roundness thin polygon" ) << "roundness(geom_from_wkt('POLYGON(( 0 0, 0.5 0, 1 0, 0.6 0, 0 0))'))" << false << QVariant( 0.0 );
+      QTest::newRow( "roundness circle polygon" ) << "roundness(geom_from_wkt('CurvePolygon (CompoundCurve (CircularString (0 0, 0 1, 1 1, 1 0, 0 0)))'))" << false << QVariant( 1.0 );
 
       // string functions
       QTest::newRow( "format_number" ) << "format_number(1999.567,2)" << false << QVariant( "1,999.57" );
       QTest::newRow( "format_number large" ) << "format_number(9000000.0,0)" << false << QVariant( "9,000,000" );
       QTest::newRow( "format_number many decimals" ) << "format_number(123.45600,4)" << false << QVariant( "123.4560" );
       QTest::newRow( "format_number no decimals" ) << "format_number(1999.567,0)" << false << QVariant( "2,000" );
-#if QT_VERSION >= QT_VERSION_CHECK( 5, 12, 0 )
       QTest::newRow( "format_number language parameter" ) << "format_number(123457.00,2,'fr')" << false << QVariant( "123\u202F457,00" );
-#else
-      QTest::newRow( "format_number language parameter" ) << "format_number(123457.00,2,'fr')" << false << QVariant( "123\u00A0457,00" );
-#endif
       QTest::newRow( "lower" ) << "lower('HeLLo')" << false << QVariant( "hello" );
       QTest::newRow( "upper" ) << "upper('HeLLo')" << false << QVariant( "HELLO" );
       QTest::newRow( "length" ) << "length('HeLLo')" << false << QVariant( 5 );
@@ -1313,6 +1573,7 @@ class TestQgsExpression: public QObject
       QTest::newRow( "replace (unbalanced array, before > after)" ) << "replace('12345', array('1','2','3'), array('6','7'))" << true << QVariant();
       QTest::newRow( "replace (unbalanced array, before < after)" ) << "replace('12345', array('1','2'), array('6','7','8'))" << true << QVariant();
       QTest::newRow( "replace (map)" ) << "replace('APP SHOULD ROCK',map('APP','QGIS','SHOULD','DOES'))" << false << QVariant( "QGIS DOES ROCK" );
+      QTest::newRow( "replace (map with overlapping keys)" ) << "replace('11111',map('1','small','11','large'))" << false << QVariant( "largelargesmall" );
       QTest::newRow( "regexp_replace" ) << "regexp_replace('HeLLo','[eL]+', '-')" << false << QVariant( "H-o" );
       QTest::newRow( "regexp_replace greedy" ) << "regexp_replace('HeLLo','(?<=H).*L', '-')" << false << QVariant( "H-o" );
       QTest::newRow( "regexp_replace non greedy" ) << "regexp_replace('HeLLo','(?<=H).*?L', '-')" << false << QVariant( "H-Lo" );
@@ -1370,6 +1631,12 @@ class TestQgsExpression: public QObject
       QTest::newRow( "array_to_string fail passing non-array" ) << "array_to_string('non-array',',')" << true << QVariant();
       QTest::newRow( "array_unique" ) << "array_to_string(array_distinct(array('hello','world','world','hello')))" << false << QVariant( "hello,world" );
       QTest::newRow( "array_unique fail passing non-array" ) << "array_distinct('non-array')" << true << QVariant();
+      QTest::newRow( "array_replace" ) << "array_replace(array('H','e','L','L','o'), 'L', 'x')" << false << QVariant( QVariantList() << "H" << "e" << "x" << "x" << "o" );
+      QTest::newRow( "array_replace (array replaced by array)" ) << "array_replace(array(3,2,1), array(1,2,3), array(7,8,9))" << false << QVariant( QVariantList() << 9 << 8 << 7 );
+      QTest::newRow( "array_replace (arrayreplaced by string)" ) << "array_replace(array(1,2,3,4,5), array(2,4), '')" << false << QVariant( QVariantList() << 1 << "" << 3 << "" << 5 );
+      QTest::newRow( "array_replace (unbalanced array, before > after)" ) << "array_replace(array(1,2,3,4,5), array(1,2,3), array(6,7))" << true << QVariant();
+      QTest::newRow( "array_replace (unbalanced array, before < after)" ) << "array_replace(array(1,2,3,4,5), array(1,2), array(6,7,8))" << true << QVariant();
+      QTest::newRow( "array_replace (map)" ) << "array_replace(array('APP','SHOULD','ROCK'),map('APP','QGIS','SHOULD','DOES'))" << false << QVariant( QVariantList() << "QGIS" << "DOES" << "ROCK" );
 
       //fuzzy matching
       QTest::newRow( "levenshtein" ) << "levenshtein('kitten','sitting')" << false << QVariant( 3 );
@@ -1609,6 +1876,15 @@ class TestQgsExpression: public QObject
       QTest::newRow( "layer_property attribution with metadata" ) << QStringLiteral( "array_to_string(layer_property('%1','attribution'))" ).arg( mPointsLayerMetadata->name() ) << false << QVariant( "right1,right2" );
 
       QTest::newRow( "decode_uri shp path" ) << QStringLiteral( "array_last(string_to_array(replace(decode_uri('%1', 'path'), '\\\\', '/'), '/'))" ).arg( mPointsLayer->name() ) << false << QVariant( "points.shp" );
+      QTest::newRow( "layer_property path vector" ) << QStringLiteral( "file_name(layer_property('%1','path'))" ).arg( mPointsLayer->name() ) << false << QVariant( "points.shp" );
+      QTest::newRow( "layer_property path raster" ) << QStringLiteral( "file_name(layer_property('%1','path'))" ).arg( mRasterLayer->id() ) << false << QVariant( "tenbytenraster.asc" );
+
+      // Mime type
+      QTest::newRow( "mime_type empty" ) << QStringLiteral( "mime_type('')" ) << false << QVariant( "application/x-zerosize" );
+      QTest::newRow( "mime_type ascii" ) << QStringLiteral( "mime_type('TEXT')" ) << false << QVariant( "text/plain" );
+      QTest::newRow( "mime_type gif" ) << QStringLiteral( "mime_type(from_base64('R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAIAOw=='))" ) << false << QVariant( "image/gif" );
+      QTest::newRow( "mime_type pdf" ) << QStringLiteral( "mime_type(from_base64('JVBERi0xLgp0cmFpbGVyPDwvUm9vdDw8L1BhZ2VzPDwvS2lkc1s8PC9NZWRpYUJveFswIDAgMyAzXT4+XT4+Pj4+Pg=='))" ) << false << QVariant( "application/pdf" );
+      QTest::newRow( "mime_type html" ) << QStringLiteral( "mime_type('<html><body></body></html>')" ) << false << QVariant( "text/html" );
 
       // raster_statistic tests
       QTest::newRow( "raster_statistic no layer" ) << "raster_statistic('',1,'min')" << false << QVariant();
@@ -1659,40 +1935,109 @@ class TestQgsExpression: public QObject
       QTest::newRow( "array_last(array('a', 'b', 'c'))" ) << QStringLiteral( "array_last(array('a', 'b', 'c'))" ) << false << QVariant( "c" );
       QTest::newRow( "array_last(array())" ) << QStringLiteral( "array_last(array())" ) << false << QVariant();
 
+      // array_min, array_max, array_mean, array_median, array_majority, array_minority, array_sum
+      QTest::newRow( "array_min('forty two')" ) << QStringLiteral( "array_min('forty two')" ) << true << QVariant();
+      QTest::newRow( "array_min(42)" ) << QStringLiteral( "array_min(42)" ) << true << QVariant();
+      QTest::newRow( "array_min(array())" ) << QStringLiteral( "array_min(array())" ) << false << QVariant();
+      QTest::newRow( "array_min(array(-1, 0, 1, 2))" ) << QStringLiteral( "array_min(array(-1, 0, 1, 2))" ) << false << QVariant( -1 );
+      QTest::newRow( "array_min(array(make_date(2020,12,11),make_date(2020,12,12),make_date(2020,12,13)))" ) << QStringLiteral( "array_min(array(make_date(2020,12,11),make_date(2020,12,12),make_date(2020,12,13)))" ) << false << QVariant( QDate( 2020, 12, 11 ) );
+      QTest::newRow( "array_max('forty two')" ) << QStringLiteral( "array_max('forty two')" ) << true << QVariant();
+      QTest::newRow( "array_max(42)" ) << QStringLiteral( "array_max(42)" ) << true << QVariant();
+      QTest::newRow( "array_max(array())" ) << QStringLiteral( "array_max(array())" ) << false << QVariant();
+      QTest::newRow( "array_max(array(-1, 0, 1, 2))" ) << QStringLiteral( "array_max(array(-1, 0, 1, 2))" ) << false << QVariant( 2 );
+      QTest::newRow( "array_max(array(make_date(2020,12,11),make_date(2020,12,12),make_date(2020,12,13)))" ) << QStringLiteral( "array_max(array(make_date(2020,12,11),make_date(2020,12,12),make_date(2020,12,13)))" ) << false << QVariant( QDate( 2020, 12, 13 ) );
+      QTest::newRow( "array_mean('forty two')" ) << QStringLiteral( "array_mean('forty two')" ) << true << QVariant();
+      QTest::newRow( "array_mean(42)" ) << QStringLiteral( "array_mean(42)" ) << true << QVariant();
+      QTest::newRow( "array_mean(array())" ) << QStringLiteral( "array_mean(array())" ) << false << QVariant();
+      QTest::newRow( "array_mean(array(0,1,7,66.6,135.4))" ) << QStringLiteral( "array_mean(array(0,1,7,66.6,135.4))" ) << false << QVariant( 42.0 );
+      QTest::newRow( "array_mean(array(0,84,'a','b','c'))" ) << QStringLiteral( "array_mean(array(0,84,'a','b','c'))" ) << false << QVariant( 42.0 );
+      QTest::newRow( "array_median('forty two')" ) << QStringLiteral( "array_median('forty two')" ) << true << QVariant();
+      QTest::newRow( "array_median(42)" ) << QStringLiteral( "array_median(42)" ) << true << QVariant();
+      QTest::newRow( "array_median(array())" ) << QStringLiteral( "array_median(array())" ) << false << QVariant();
+      QTest::newRow( "array_median(array(0,1,42,42,43))" ) << QStringLiteral( "array_median(array(0,1,42,42,43))" ) << false << QVariant( 42 );
+      QTest::newRow( "array_median(array(0,0,1,2,2,42,'a','b'))" ) << QStringLiteral( "array_median(array(0,0,1,2,2,42,'a','b'))" ) << false << QVariant( 1.5 );
+      QTest::newRow( "array_majority('forty two')" ) << QStringLiteral( "array_majority('forty two')" ) << true << QVariant();
+      QTest::newRow( "array_majority(42)" ) << QStringLiteral( "array_majority(42)" ) << true << QVariant();
+      QTest::newRow( "array_majority(array())" ) << QStringLiteral( "array_majority(array())" ) << false << QVariant( QVariantList() );
+      QTest::newRow( "array_majority(array(0,1,42,42,43), 'all')" ) << QStringLiteral( "array_majority(array(0,1,42,42,43), 'all')" ) << false << QVariant( QVariantList() << 42 );
+      QTest::newRow( "array_majority(array(0,1,43,'a','a','b'), 'all')" ) << QStringLiteral( "array_majority(array(0,1,43,'a','a','b'), 'all')" ) << false << QVariant( QVariantList() << "a" );
+      QTest::newRow( "array_majority(array(0,1,42,42,43,1)" ) << QStringLiteral( "array_sort(array_majority(array(0,1,42,42,43,1)))" ) << false << QVariant( QVariantList() << 1 << 42 );
+      QTest::newRow( "array_majority(array(0,1,42,42,43), 'any')" ) << QStringLiteral( "array_majority(array(0,1,42,42,43), 'any')" ) << false << QVariant( 42 );
+      QTest::newRow( "array_majority(array(0,1,1,2,2,42), 'median')" ) << QStringLiteral( "array_majority(array(0,1,1,2,2,42), 'median')" ) << false << QVariant( 1.5 );
+      QTest::newRow( "array_majority(array(0,1,1,2,2,42,'a','b'), 'median')" ) << QStringLiteral( "array_majority(array(0,1,1,2,2,42,'a','b'), 'median')" ) << false << QVariant( 1.5 );
+      QTest::newRow( "array_majority(array(0,1,2,42,'a','b','a'), 'median')" ) << QStringLiteral( "array_majority(array(0,1,2,42,'a','b','a'), 'median')" ) << false << QVariant();
+      QTest::newRow( "array_majority(array(0,1,42,42,43), 'real_majority')" ) << QStringLiteral( "array_majority(array(0,1,42,42,43), 'real_majority')" ) << false << QVariant();
+      QTest::newRow( "array_majority(array(0,1,42,42,43,42), 'real_majority')" ) << QStringLiteral( "array_majority(array(0,1,42,42,43,42), 'real_majority')" ) << false << QVariant();
+      QTest::newRow( "array_majority(array(0,1,42,42,43,42,42), 'real_majority')" ) << QStringLiteral( "array_majority(array(0,1,42,42,43,42,42), 'real_majority')" ) << false << QVariant( 42 );
+      QTest::newRow( "array_minority('forty two')" ) << QStringLiteral( "array_minority('forty two')" ) << true << QVariant();
+      QTest::newRow( "array_minority(42)" ) << QStringLiteral( "array_minority(42)" ) << true << QVariant();
+      QTest::newRow( "array_minority(array())" ) << QStringLiteral( "array_minority(array())" ) << false << QVariant( QVariantList() );
+      QTest::newRow( "array_minority(array(0,42,42), 'all')" ) << QStringLiteral( "array_minority(array(0,42,42), 'all')" ) << false << QVariant( QVariantList() << 0 );
+      QTest::newRow( "array_minority(array(42,42,'a'), 'all')" ) << QStringLiteral( "array_minority(array(42,42,'a'), 'all')" ) << false << QVariant( QVariantList() << "a" );
+      QTest::newRow( "array_minority(array(0,1,42,42))" ) << QStringLiteral( "array_sort(array_minority(array(0,1,42,42)))" ) << false << QVariant( QVariantList() << 0 << 1 );
+      QTest::newRow( "array_minority(array(0,42,42), 'any')" ) << QStringLiteral( "array_minority(array(0,42,42), 'any')" ) << false << QVariant( 0 );
+      QTest::newRow( "array_minority(array(1,2,3,3), 'median')" ) << QStringLiteral( "array_minority(array(1,2,3,3), 'median')" ) << false << QVariant( 1.5 );
+      QTest::newRow( "array_minority(array(1,2,3,3,'a'), 'median')" ) << QStringLiteral( "array_minority(array(1,2,3,3,'a'), 'median')" ) << false << QVariant( 1.5 );
+      QTest::newRow( "array_minority(array(1,1,3,3,'a'), 'median')" ) << QStringLiteral( "array_minority(array(1,1,3,3,'a'), 'median')" ) << false << QVariant();
+      QTest::newRow( "array_minority(array(0,1,42,42,43), 'real_minority')" ) << QStringLiteral( "array_sort(array_minority(array(0,1,42,42,43), 'real_minority'))" ) << false << QVariant( QVariantList() << 0 << 1 << 42 << 43 );
+      QTest::newRow( "array_minority(array(0,1,42,42,43,42), 'real_minority')" ) << QStringLiteral( "array_sort(array_minority(array(0,1,42,42,43,42), 'real_minority'))" ) << false << QVariant( QVariantList() << 0 << 1 << 42 << 43 );
+      QTest::newRow( "array_minority(array(0,1,42,42,43,42,42), 'real_minority')" ) << QStringLiteral( "array_sort(array_minority(array(0,1,42,42,43,42,42), 'real_minority'))" ) << false << QVariant( QVariantList() << 0 << 1 << 43 );
+      QTest::newRow( "array_sum('forty two')" ) << QStringLiteral( "array_sum('forty two')" ) << true << QVariant();
+      QTest::newRow( "array_sum(42)" ) << QStringLiteral( "array_sum(42)" ) << true << QVariant();
+      QTest::newRow( "array_sum(array())" ) << QStringLiteral( "array_sum(array())" ) << false << QVariant();
+      QTest::newRow( "array_sum(array('a','b','c'))" ) << QStringLiteral( "array_sum(array('a','b','c'))" ) << false << QVariant();
+      QTest::newRow( "array_sum(array(0,1,39.4,1.6,'a'))" ) << QStringLiteral( "array_sum(array(0,1,39.4,1.6,'a'))" ) << false << QVariant( 42.0 );
+
       // file functions
       QTest::newRow( "base_file_name(5)" ) << QStringLiteral( "base_file_name(5)" ) << false << QVariant( "5" );
       QTest::newRow( "base_file_name(NULL)" ) << QStringLiteral( "base_file_name(NULL)" ) << false << QVariant();
       QTest::newRow( "base_file_name('/home/qgis/test.qgs')" ) << QStringLiteral( "base_file_name('/home/qgis/test.qgs')" ) << false << QVariant( "test" );
       QTest::newRow( "base_file_name(points.shp)" ) << QStringLiteral( "base_file_name('%1/points.shp')" ).arg( TEST_DATA_DIR ) << false << QVariant( "points" );
+      QTest::newRow( "base_file_name(map layer)" ) << QStringLiteral( "base_file_name('%1')" ).arg( mPointsLayer->id() ) << false << QVariant( "points" );
+      QTest::newRow( "base_file_name(not path)" ) << QStringLiteral( "base_file_name(make_point(1,2))" ) << true << QVariant();
       QTest::newRow( "file_exists(NULL)" ) << QStringLiteral( "file_exists(NULL)" ) << false << QVariant();
       QTest::newRow( "file_exists('/home/qgis/test.qgs')" ) << QStringLiteral( "file_exists('/home/qgis/test.qgs')" ) << false << QVariant( false );
       QTest::newRow( "file_exists(points.shp)" ) << QStringLiteral( "file_exists('%1/points.shp')" ).arg( TEST_DATA_DIR ) << false << QVariant( true );
+      QTest::newRow( "file_exists(map layer)" ) << QStringLiteral( "file_exists('%1')" ).arg( mPointsLayer->id() ) << false << QVariant( true );
+      QTest::newRow( "file_exists(not path)" ) << QStringLiteral( "file_exists(make_point(1,2))" ) << true << QVariant();
       QTest::newRow( "file_name(5)" ) << QStringLiteral( "file_name(5)" ) << false << QVariant( "5" );
       QTest::newRow( "file_name(NULL)" ) << QStringLiteral( "file_name(NULL)" ) << false << QVariant();
       QTest::newRow( "file_name('/home/qgis/test.qgs')" ) << QStringLiteral( "file_name('/home/qgis/test.qgs')" ) << false << QVariant( "test.qgs" );
       QTest::newRow( "file_name(points.shp)" ) << QStringLiteral( "file_name('%1/points.shp')" ).arg( TEST_DATA_DIR ) << false << QVariant( "points.shp" );
+      QTest::newRow( "file_name(map layer)" ) << QStringLiteral( "file_name('%1')" ).arg( mPointsLayer->id() ) << false << QVariant( "points.shp" );
+      QTest::newRow( "file_name(not path)" ) << QStringLiteral( "file_name(make_point(1,2))" ) << true << QVariant();
       QTest::newRow( "file_path(5)" ) << QStringLiteral( "file_path(5)" ) << false << QVariant( "." );
       QTest::newRow( "file_path(NULL)" ) << QStringLiteral( "file_path(NULL)" ) << false << QVariant();
       QTest::newRow( "file_path('/home/qgis/test.qgs')" ) << QStringLiteral( "file_path('/home/qgis/test.qgs')" ) << false << QVariant( "/home/qgis" );
       QTest::newRow( "file_path(points.shp)" ) << QStringLiteral( "file_path('%1/points.shp')" ).arg( TEST_DATA_DIR ) << false << QVariant( TEST_DATA_DIR );
+      QTest::newRow( "file_path(map layer)" ) << QStringLiteral( "file_path('%1')" ).arg( mPointsLayer->id() ) << false << QVariant( TEST_DATA_DIR );
+      QTest::newRow( "file_path(not path)" ) << QStringLiteral( "file_path(make_point(1,2))" ) << true << QVariant();
       QTest::newRow( "file_size(5)" ) << QStringLiteral( "file_size(5)" ) << false << QVariant( 0LL );
       QTest::newRow( "file_size(NULL)" ) << QStringLiteral( "file_size(NULL)" ) << false << QVariant();
       QTest::newRow( "file_size('/home/qgis/test.qgs')" ) << QStringLiteral( "file_size('/home/qgis/test.qgs')" ) << false << QVariant( 0LL );
       QTest::newRow( "file_size(points.shp)" ) << QStringLiteral( "file_size('%1/points.shp')" ).arg( TEST_DATA_DIR ) << false << QVariant( 576LL );
+      QTest::newRow( "file_size(map layer)" ) << QStringLiteral( "file_size('%1')" ).arg( mPointsLayer->id() ) << false << QVariant( 576LL );
+      QTest::newRow( "file_size(not path)" ) << QStringLiteral( "file_size(make_point(1,2))" ) << true << QVariant();
       QTest::newRow( "file_suffix(5)" ) << QStringLiteral( "file_suffix(5)" ) << false << QVariant( "" );
       QTest::newRow( "file_suffix(NULL)" ) << QStringLiteral( "file_suffix(NULL)" ) << false << QVariant();
       QTest::newRow( "file_suffix('/home/qgis/test.qgs')" ) << QStringLiteral( "file_suffix('/home/qgis/test.qgs')" ) << false << QVariant( "qgs" );
       QTest::newRow( "file_suffix(points.shp)" ) << QStringLiteral( "file_suffix('%1/points.shp')" ).arg( TEST_DATA_DIR ) << false << QVariant( "shp" );
+      QTest::newRow( "file_suffix(map layer)" ) << QStringLiteral( "file_suffix('%1')" ).arg( mPointsLayer->id() ) << false << QVariant( "shp" );
+      QTest::newRow( "file_suffix(not path)" ) << QStringLiteral( "file_suffix(make_point(1,2))" ) << true << QVariant();
       QTest::newRow( "is_directory(5)" ) << QStringLiteral( "is_directory(5)" ) << false << QVariant( false );
       QTest::newRow( "is_directory(NULL)" ) << QStringLiteral( "is_directory(NULL)" ) << false << QVariant();
       QTest::newRow( "is_directory('/home/qgis/test.qgs')" ) << QStringLiteral( "is_directory('/home/qgis/test.qgs')" ) << false << QVariant( false );
       QTest::newRow( "is_directory(points.shp)" ) << QStringLiteral( "is_directory('%1/points.shp')" ).arg( TEST_DATA_DIR ) << false << QVariant( false );
       QTest::newRow( "is_directory(valid)" ) << QStringLiteral( "is_directory('%1')" ).arg( TEST_DATA_DIR ) << false << QVariant( true );
+      QTest::newRow( "is_directory(map layer)" ) << QStringLiteral( "is_directory('%1')" ).arg( mPointsLayer->id() ) << false << QVariant( false );
+      QTest::newRow( "is_directory(not path)" ) << QStringLiteral( "is_directory(make_point(1,2))" ) << true << QVariant();
       QTest::newRow( "is_file(5)" ) << QStringLiteral( "is_file(5)" ) << false << QVariant( false );
       QTest::newRow( "is_file(NULL)" ) << QStringLiteral( "is_file(NULL)" ) << false << QVariant();
       QTest::newRow( "is_file('/home/qgis/test.qgs')" ) << QStringLiteral( "is_file('/home/qgis/test.qgs')" ) << false << QVariant( false );
       QTest::newRow( "is_file(points.shp)" ) << QStringLiteral( "is_file('%1/points.shp')" ).arg( TEST_DATA_DIR ) << false << QVariant( true );
       QTest::newRow( "is_file(valid)" ) << QStringLiteral( "is_file('%1')" ).arg( TEST_DATA_DIR ) << false << QVariant( false );
+      QTest::newRow( "is_file(map layer)" ) << QStringLiteral( "is_file('%1')" ).arg( mPointsLayer->id() ) << false << QVariant( true );
+      QTest::newRow( "is_file(not path)" ) << QStringLiteral( "is_file(make_point(1,2))" ) << true << QVariant();
 
       // hash functions
       QTest::newRow( "md5(NULL)" ) << QStringLiteral( "md5(NULL)" ) << false << QVariant();
@@ -1711,21 +2056,74 @@ class TestQgsExpression: public QObject
       QTest::newRow( "hash('QGIS', 'sha3_256')" ) << QStringLiteral( "hash('QGIS', 'sha3_256')" ) << false << QVariant( "540f7354b6b8a6e735f2845250f15f4f3ba4f666c55574d9e9354575de0e980f" );
       QTest::newRow( "hash('QGIS', 'sha3_384')" ) << QStringLiteral( "hash('QGIS', 'sha3_384')" ) << false << QVariant( "96052da1e77679e9a65f60d7ead961b287977823144786386eb43647b0901fd8516fa6f1b9d243fb3f28775e6dde6107" );
       QTest::newRow( "hash('QGIS', 'sha3_512')" ) << QStringLiteral( "hash('QGIS', 'sha3_512')" ) << false << QVariant( "900d079dc69761da113980253aa8ac0414a8bd6d09879a916228f8743707c4758051c98445d6b8945ec854ff90655005e02aceb0a2ffc6a0ebf818745d665349" );
-#if QT_VERSION >= QT_VERSION_CHECK( 5, 9, 2 )
       QTest::newRow( "hash('QGIS', 'keccak_224')" ) << QStringLiteral( "hash('QGIS', 'keccak_224')" ) << false << QVariant( "5b0ce6acef8b0a121d4ac4f3eaa8503c799ad4e26a3392d1fb201478" );
       QTest::newRow( "hash('QGIS', 'keccak_256')" ) << QStringLiteral( "hash('QGIS', 'keccak_256')" ) << false << QVariant( "991c520aa6815392de24087f61b2ae0fd56abbfeee4a8ca019c1011d327c577e" );
       QTest::newRow( "hash('QGIS', 'keccak_384')" ) << QStringLiteral( "hash('QGIS', 'keccak_384')" ) << false << QVariant( "c57a3aed9d856fa04e5eeee9b62b6e027cca81ba574116d3cc1f0d48a1ef9e5886ff463ea8d0fac772ee473bf92f810d" );
       QTest::newRow( "hash('QGIS', 'keccak_512')" ) << QStringLiteral( "hash('QGIS', 'keccak_512')" ) << false << QVariant( "6f0f751776b505e317de222508fa5d3ed7099d8f07c74fed54ccee6e7cdc6b89b4a085e309f2ee5210c942bbeb142bdfe48f84f912e0f3f41bdbf47110c2d344" );
-#endif
       QTest::newRow( "to_base64 NULL" ) << QStringLiteral( "to_base64(NULL)" ) << false << QVariant();
       QTest::newRow( "to_base64" ) << QStringLiteral( "to_base64('QGIS')" ) << false << QVariant( "UUdJUw==" );
       QTest::newRow( "from_base64 NULL" ) << QStringLiteral( "from_base64(NULL)" ) << false << QVariant();
       QTest::newRow( "from_base64" ) << QStringLiteral( "from_base64('UUdJUw==')" ) << false << QVariant( QByteArray( QString( "QGIS" ).toLocal8Bit() ) );
-    }
+      QTest::newRow( "uuid()" ) << QStringLiteral( "regexp_match( uuid(), '({[a-zA-Z\\\\d]{8}\\\\-[a-zA-Z\\\\d]{4}\\\\-[a-zA-Z\\\\d]{4}\\\\-[a-zA-Z\\\\d]{4}\\\\-[a-zA-Z\\\\d]{12}})')" ) << false << QVariant( 1 );
+      QTest::newRow( "$uuid alias" ) << QStringLiteral( "regexp_match( $uuid, '({[a-zA-Z\\\\d]{8}\\\\-[a-zA-Z\\\\d]{4}\\\\-[a-zA-Z\\\\d]{4}\\\\-[a-zA-Z\\\\d]{4}\\\\-[a-zA-Z\\\\d]{12}})')" ) << false << QVariant( 1 );
+      QTest::newRow( "uuid('WithBraces')" ) << QStringLiteral( "regexp_match( uuid('WithBraces'), '({[a-zA-Z\\\\d]{8}\\\\-[a-zA-Z\\\\d]{4}\\\\-[a-zA-Z\\\\d]{4}\\\\-[a-zA-Z\\\\d]{4}\\\\-[a-zA-Z\\\\d]{12}})')" ) << false << QVariant( 1 );
+      QTest::newRow( "uuid('WithoutBraces')" ) << QStringLiteral( "regexp_match( uuid('WithoutBraces'), '([a-zA-Z\\\\d]{8}\\\\-[a-zA-Z\\\\d]{4}\\\\-[a-zA-Z\\\\d]{4}\\\\-[a-zA-Z\\\\d]{4}\\\\-[a-zA-Z\\\\d]{12})')" ) << false << QVariant( 1 );
+      QTest::newRow( "uuid('Id128')" ) << QStringLiteral( "regexp_match( uuid('Id128'), '([a-zA-Z\\\\d]{32})')" ) << false << QVariant( 1 );
+      QTest::newRow( "uuid('invalid-format')" ) << QStringLiteral( "regexp_match( uuid('invalid-format'), '({[a-zA-Z\\\\d]{8}\\\\-[a-zA-Z\\\\d]{4}\\\\-[a-zA-Z\\\\d]{4}\\\\-[a-zA-Z\\\\d]{4}\\\\-[a-zA-Z\\\\d]{12}})')" ) << false << QVariant( 1 );
 
+      //exif functions
+      QString testDataDir = QStringLiteral( TEST_DATA_DIR ) + '/';
+      QTest::newRow( "exif number" ) << QStringLiteral( "exif('%1photos/0997.JPG','Exif.GPSInfo.GPSAltitude')" ).arg( testDataDir ) << false << QVariant( 422.19101123595505 );
+      QTest::newRow( "exif number from map" ) << QStringLiteral( "exif('%1photos/0997.JPG')['Exif.GPSInfo.GPSAltitude']" ).arg( testDataDir ) << false << QVariant( 422.19101123595505 );
+      QTest::newRow( "exif date" ) << QStringLiteral( "exif('%1photos/0997.JPG','Exif.Image.DateTime')" ).arg( testDataDir ) << false << QVariant( QDateTime( QDate( 2018, 3, 16 ), QTime( 12, 19, 19 ) ) );
+      QTest::newRow( "exif date from map" ) << QStringLiteral( "exif('%1photos/0997.JPG')['Exif.Image.DateTime']" ).arg( testDataDir ) << false << QVariant( QDateTime( QDate( 2018, 3, 16 ), QTime( 12, 19, 19 ) ) );
+      QTest::newRow( "exif bad tag" ) << QStringLiteral( "exif('%1photos/0997.JPG','bad tag')" ).arg( testDataDir ) << false << QVariant();
+      QTest::newRow( "exif bad file path" ) << QStringLiteral( "exif('bad path','Exif.Image.DateTime')" ) << false << QVariant();
+      QTest::newRow( "exif_geotag" ) << QStringLiteral( "geom_to_wkt(exif_geotag('%1photos/0997.JPG'))" ).arg( testDataDir ) << false << QVariant( "PointZ (149.27516667 -37.2305 422.19101124)" );
+      QTest::newRow( "exif_geotag bad file path" ) << QStringLiteral( "geom_to_wkt(exif_geotag('bad path'))" ).arg( testDataDir ) << false << QVariant( "Point EMPTY" );
+
+      // Form encoding tests
+      QTest::newRow( "url_encode" ) << QStringLiteral( "url_encode(map())" ).arg( testDataDir ) << false << QVariant( "" );
+      QTest::newRow( "url_encode" ) << QStringLiteral( "url_encode(map('a b', 'a b', 'c &% d', 'c &% d'))" ).arg( testDataDir ) << false << QVariant( "a%20b=a%20b&c%20%26%25%20d=c%20%26%25%20d" );
+      QTest::newRow( "url_encode" ) << QStringLiteral( "url_encode(map('a&+b', 'a and plus b', 'a=b', 'a equals b'))" ).arg( testDataDir ) << false << QVariant( "a%26+b=a%20and%20plus%20b&a%3Db=a%20equals%20b" );
+
+      // Between
+      QTest::newRow( "between chars" ) << QStringLiteral( "'b' between 'a' AND 'c'" ) << false << QVariant( true );
+      QTest::newRow( "between chars false" ) << QStringLiteral( "'c' between 'a' AND 'b'" ) << false << QVariant( false );
+      QTest::newRow( "not between chars" ) << QStringLiteral( "'b' not between 'a' AND 'c'" ) << false << QVariant( false );
+      QTest::newRow( "not between chars true" ) << QStringLiteral( "'a' not between 'b' AND 'c'" ) << false << QVariant( true );
+      QTest::newRow( "between chars bounds" ) << QStringLiteral( "'b' between 'b' AND 'c'" ) << false << QVariant( true );
+      QTest::newRow( "not between chars bounds" ) << QStringLiteral( "'b' not between 'b' AND 'c'" ) << false << QVariant( false );
+      QTest::newRow( "between strings" ) << QStringLiteral( "'ab' between 'aa' AND 'ac'" ) << false << QVariant( true );
+      QTest::newRow( "not between strings" ) << QStringLiteral( "'ab' not between 'aa' AND 'ac'" ) << false << QVariant( false );
+      QTest::newRow( "between ints" ) << QStringLiteral( "1 between 0 AND 2" ) << false << QVariant( true );
+      QTest::newRow( "not between ints" ) << QStringLiteral( "1 not between 0 AND 2" ) << false << QVariant( false );
+      QTest::newRow( "between floats" ) << QStringLiteral( "1.01 between 1.0 AND 1.02" ) << false << QVariant( true );
+      QTest::newRow( "not between floats" ) << QStringLiteral( "1.01 not between 1.0 AND 1.02" ) << false << QVariant( false );
+      QTest::newRow( "between date" ) << QStringLiteral( "make_date(2010,9,8) between make_date(2009,9,8) AND make_date(2011,9,8)" ) << false << QVariant( true );
+      QTest::newRow( "not between date" ) << QStringLiteral( "make_date(2010,9,8) not between make_date(2009,9,8) AND make_date(2011,9,8)" ) << false << QVariant( false );
+      QTest::newRow( "between time" ) << QStringLiteral( "make_time(10,10,10) between make_time(9,10,10) AND make_time(11,10,10)" ) << false << QVariant( true );
+      QTest::newRow( "not between time" ) << QStringLiteral( "make_time(10,10,10) not between make_time(9,10,10) AND make_time(11,10,10)" ) << false << QVariant( false );
+      QTest::newRow( "between datetime" ) << QStringLiteral( "make_datetime(9,10,10,1,1,1) between make_datetime(9,10,10,1,1,0) AND make_datetime(9,10,10,1,1,2)" ) << false << QVariant( true );
+      QTest::newRow( "not between datetime" ) << QStringLiteral( "make_datetime(9,10,10,1,1,1) not between make_datetime(9,10,10,1,1,0) AND make_datetime(9,10,10,1,1,2)" ) << false << QVariant( false );
+      QTest::newRow( "between nulls" ) << QStringLiteral( "'b' between NULL AND 'c'" ) << false << QVariant( );
+      QTest::newRow( "between nulls 2" ) << QStringLiteral( "'b' between NULL AND NULL" ) << false << QVariant( );
+      QTest::newRow( "between nulls 3" ) << QStringLiteral( "NULL between 'a' AND 'c'" ) << false << QVariant( );
+      QTest::newRow( "between nulls 4" ) << QStringLiteral( "'b' between 'a' AND NULL" ) << false << QVariant( );
+      QTest::newRow( "between nulls 5" ) << QStringLiteral( "NULL between NULL AND NULL" ) << false << QVariant( );
+      QTest::newRow( "not between nulls " ) << QStringLiteral( "'c' between NULL AND 'b'" ) << false << QVariant( false );
+      // Test NULL -> TRUE
+      QTest::newRow( "not between nulls TRUE" ) << QStringLiteral( "'a' not between 'b' AND NULL" ) << false << QVariant( true );
+      QTest::newRow( "not between nulls TRUE 2" ) << QStringLiteral( "'c' not between NULL AND 'b'" ) << false << QVariant( true );
+      // Test NULL -> FALSE
+      QTest::newRow( "between nulls FALSE" ) << QStringLiteral( "'c' between NULL AND 'b'" ) << false << QVariant( false );
+      QTest::newRow( "between nulls FALSE 2" ) << QStringLiteral( "'a' between 'b' AND NULL" ) << false << QVariant( false );
+    }
 
     void run_evaluation_test( QgsExpression &exp, bool evalError, QVariant &expected )
     {
+      QLocale::setDefault( QLocale::c() );
+
       if ( exp.hasParserError() )
         qDebug() << exp.parserErrorString();
       QCOMPARE( exp.hasParserError(), false );
@@ -1963,14 +2361,14 @@ class TestQgsExpression: public QObject
       QTest::newRow( "get_feature 1" ) << "get_feature('test','col1',10)" << true << 1;
       QTest::newRow( "get_feature 2" ) << "get_feature('test','col2','test1')" << true << 1;
       QTest::newRow( "get_feature 3" ) << "get_feature('test','col1',11)" << true << 2;
-      QTest::newRow( "get_feature 4" ) << "get_feature('test','col2','test2')" << true << 2;
+      QTest::newRow( "get_feature 4" ) << "get_feature('test',attribute:= 'col2',value:='test2')" << true << 2;
       QTest::newRow( "get_feature 5" ) << "get_feature('test','col1',3)" << true << 3;
       QTest::newRow( "get_feature 6" ) << "get_feature('test','col2','test3')" << true << 3;
-      QTest::newRow( "get_feature 7" ) << "get_feature('test','col1',41)" << true << 4;
+      QTest::newRow( "get_feature 7" ) << "get_feature('test',attribute:= 'col1',value:= 41)" << true << 4;
       QTest::newRow( "get_feature 8" ) << "get_feature('test','col2','test4')" << true << 4;
 
       //by layer id
-      QTest::newRow( "get_feature 3" ) << QStringLiteral( "get_feature('%1','col1',11)" ).arg( mMemoryLayer->id() ) << true << 2;
+      QTest::newRow( "get_feature 3" ) << QStringLiteral( "get_feature('%1',attribute:= 'col1',value:= 11)" ).arg( mMemoryLayer->id() ) << true << 2;
       QTest::newRow( "get_feature 4" ) << QStringLiteral( "get_feature('%1','col2','test2')" ).arg( mMemoryLayer->id() ) << true << 2;
 
       //no matching features
@@ -1981,6 +2379,17 @@ class TestQgsExpression: public QObject
 
       // get_feature_by_id
       QTest::newRow( "get_feature_by_id" ) << "get_feature_by_id('test', 1)" << true << 1;
+
+      // multi-param
+      QTest::newRow( "get_feature multi1" ) << "get_feature('test',attribute:= map('col1','11','col2','test2'))" << true << 2;
+      QTest::newRow( "get_feature multi2" ) << "get_feature('test',attribute:= map('col1',3,'col2','test3'))" << true << 3;
+      QTest::newRow( "get_feature multi2" ) << "get_feature('test',map('col1','41','datef',to_date('2022-09-23')))" << true << 4;
+
+      // multi-param no match
+      QTest::newRow( "get_feature no match-multi1" ) << "get_feature('test',attribute:= map('col1','col2'),value:='no match!')" << false << -1;
+      QTest::newRow( "get_feature no match-multi2" ) << "get_feature('test',map('col2','10','col4','test3'))" << false << -1;
+      QTest::newRow( "get_feature no match-multi2" ) << "get_feature('test',map('col1',10,'datef',to_date('2021-09-24')))" << false << -1;
+
     }
 
     void eval_get_feature()
@@ -2547,7 +2956,7 @@ class TestQgsExpression: public QObject
       QSet<QString> refCols = exp.referencedColumns();
       // make sure we have lower case
       QSet<QString> refColsSet;
-      Q_FOREACH ( const QString &col, refCols )
+      for ( const QString &col : refCols )
         refColsSet.insert( col.toLower() );
 
       QCOMPARE( refColsSet, expectedCols );
@@ -2686,12 +3095,13 @@ class TestQgsExpression: public QObject
       QTest::addColumn<bool>( "evalError" );
       QTest::addColumn<QVariant>( "result" );
 
-      QgsPointXY point( 123, 456 );
+      QgsPoint point( 123, 456, 789 );
       QgsPolylineXY line;
       line << QgsPointXY( 1, 1 ) << QgsPointXY( 4, 2 ) << QgsPointXY( 3, 1 );
 
-      QTest::newRow( "geom x" ) << "$x" << QgsGeometry::fromPointXY( point ) << false << QVariant( 123. );
-      QTest::newRow( "geom y" ) << "$y" << QgsGeometry::fromPointXY( point ) << false << QVariant( 456. );
+      QTest::newRow( "geom x" ) << "$x" << QgsGeometry( std::make_unique<QgsPoint>( point ) ) << false << QVariant( 123. );
+      QTest::newRow( "geom y" ) << "$y" << QgsGeometry( std::make_unique<QgsPoint>( point ) ) << false << QVariant( 456. );
+      QTest::newRow( "geom z" ) << "$z" << QgsGeometry( std::make_unique<QgsPoint>( point ) ) << false << QVariant( 789. );
       QTest::newRow( "geom xat" ) << "xat(-1)" << QgsGeometry::fromPolylineXY( line ) << false << QVariant( 3. );
       QTest::newRow( "geom yat" ) << "yat(1)" << QgsGeometry::fromPolylineXY( line ) << false << QVariant( 2. );
       QTest::newRow( "null geometry" ) << "$geometry" << QgsGeometry() << false << QVariant();
@@ -2717,16 +3127,42 @@ class TestQgsExpression: public QObject
       QCOMPARE( out, result );
     }
 
+    void testGeometryFromContext()
+    {
+      QgsExpressionContext context;
+
+      QgsExpression exp( QStringLiteral( "geom_to_wkt($geometry)" ) );
+      QCOMPARE( exp.evaluate( &context ).toString(), QString() );
+
+      // the $geometry function refers to the feature's geometry usually
+      QgsFeature feature;
+      feature.setGeometry( QgsGeometry::fromPointXY( QgsPointXY( 3, 4 ) ) );
+      context.setFeature( feature );
+
+      QCOMPARE( exp.evaluate( &context ).toString(), QStringLiteral( "Point (3 4)" ) );
+
+      // the $geometry function should prefer to get the geometry directly from the context if it's available
+      context.setGeometry( QgsGeometry::fromPointXY( QgsPointXY( 1, 2 ) ) );
+      QCOMPARE( exp.evaluate( &context ).toString(), QStringLiteral( "Point (1 2)" ) );
+
+      context.scope( 0 )->removeGeometry();
+      QCOMPARE( exp.evaluate( &context ).toString(), QStringLiteral( "Point (3 4)" ) );
+    }
+
     void eval_geometry_calc()
     {
       QgsPolylineXY polyline, polygon_ring;
+      QgsPolyline polylineZ;
       polyline << QgsPointXY( 0, 0 ) << QgsPointXY( 10, 0 );
+      polylineZ << QgsPoint( 0, 0, 0 ) << QgsPoint( 3, 0, 4 );
       polygon_ring << QgsPointXY( 2, 1 ) << QgsPointXY( 10, 1 ) << QgsPointXY( 10, 6 ) << QgsPointXY( 2, 6 ) << QgsPointXY( 2, 1 );
       QgsPolygonXY polygon;
       polygon << polygon_ring;
-      QgsFeature fPolygon, fPolyline;
+      QgsFeature fPolygon, fPolyline, fPolylineZ;
       QgsGeometry polylineGeom = QgsGeometry::fromPolylineXY( polyline );
       fPolyline.setGeometry( polylineGeom );
+      QgsGeometry polylineZGeom = QgsGeometry::fromPolyline( polylineZ );
+      fPolylineZ.setGeometry( polylineZGeom );
       QgsGeometry polygonGeom = QgsGeometry::fromPolygonXY( polygon );
       fPolygon.setGeometry( polygonGeom );
 
@@ -2843,6 +3279,11 @@ class TestQgsExpression: public QObject
       QgsExpression exp13( QStringLiteral( "perimeter($geometry)" ) );
       QVariant vPerimeterPoly = exp13.evaluate( &context );
       QCOMPARE( vPerimeterPoly.toDouble(), 26.0 );
+
+      context.setFeature( fPolylineZ );
+      QgsExpression exp14( QStringLiteral( "length3D($geometry)" ) );
+      QVariant vLengthLineZ = exp14.evaluate( &context );
+      QCOMPARE( vLengthLineZ.toDouble(), 5.0 );
     }
 
     void geom_calculator()
@@ -2879,7 +3320,7 @@ class TestQgsExpression: public QObject
       QgsExpression expArea2( QStringLiteral( "$area" ) );
       expArea2.setGeomCalculator( &da );
       vArea = expArea2.evaluate( &context );
-      expected = 1005721496.780085;
+      expected = 1005755617.819134;
       QGSCOMPARENEAR( vArea.toDouble(), expected, 1.0 );
       // test unit conversion
       expArea2.setAreaUnits( QgsUnitTypes::AreaSquareMeters ); //default units should be square meters
@@ -2889,7 +3330,7 @@ class TestQgsExpression: public QObject
       vArea = expArea2.evaluate( &context );
       QGSCOMPARENEAR( vArea.toDouble(), expected, 1.0 );
       expArea2.setAreaUnits( QgsUnitTypes::AreaSquareMiles );
-      expected = 388.311241;
+      expected = 388.324415;
       vArea = expArea2.evaluate( &context );
       QGSCOMPARENEAR( vArea.toDouble(), expected, 0.001 );
 
@@ -3202,6 +3643,14 @@ class TestQgsExpression: public QObject
       QTest::newRow( "buffer" ) << "buffer( $geometry, 1.0, 3)" << geom << false << true << geom.buffer( 1.0, 3 );
       geom = QgsGeometry::fromPolygonXY( polygon );
       QTest::newRow( "buffer" ) << "buffer( $geometry, 2.0)" << geom << false << true << geom.buffer( 2.0, 8 );
+      geom = QgsGeometry::fromPolygonXY( polygon );
+      QTest::newRow( "buffer flat cap" ) << "buffer( $geometry, 2.0, cap:='flat' )" << geom << false << true << geom.buffer( 2.0, 8, Qgis::EndCapStyle::Flat, Qgis::JoinStyle::Round, 2 );
+      geom = QgsGeometry::fromPolygonXY( polygon );
+      QTest::newRow( "buffer square cap" ) << "buffer( $geometry, 2.0, cap:='SQUARE' )" << geom << false << true << geom.buffer( 2.0, 8, Qgis::EndCapStyle::Square, Qgis::JoinStyle::Round, 2 );
+      geom = QgsGeometry::fromPolygonXY( polygon );
+      QTest::newRow( "buffer bevel join" ) << "buffer( $geometry, 2.0, join:='bevel' )" << geom << false << true << geom.buffer( 2.0, 8, Qgis::EndCapStyle::Round, Qgis::JoinStyle::Bevel, 2 );
+      geom = QgsGeometry::fromPolygonXY( polygon );
+      QTest::newRow( "buffer miter join" ) << "buffer( $geometry, 2.0, join:='MITER', miter_limit:=5 )" << geom << false << true << geom.buffer( 2.0, 8, Qgis::EndCapStyle::Round, Qgis::JoinStyle::Miter, 5 );
 
       QgsPointXY point1( 10, 20 );
       QgsPointXY point2( 30, 20 );
@@ -3257,6 +3706,8 @@ class TestQgsExpression: public QObject
 
       QCOMPARE( out.canConvert<QgsGeometry>(), true );
       QgsGeometry outGeom = out.value<QgsGeometry>();
+      outGeom.normalize();
+      result.normalize();
       QVERIFY( compareWkt( outGeom.asWkt(), result.asWkt() ) );
     }
 
@@ -3334,6 +3785,22 @@ class TestQgsExpression: public QObject
       builderExpected << QVariant();
       QCOMPARE( QgsExpression( "array('hello', 'world', NULL)" ).evaluate( &context ), QVariant( builderExpected ) );
 
+      // operators
+      QCOMPARE( QgsExpression( "\"strings\" = array('one', 'two')" ).evaluate( &context ), QVariant( true ) );
+      QCOMPARE( QgsExpression( "\"strings\" = array('two', 'one')" ).evaluate( &context ), QVariant( false ) );
+      QCOMPARE( QgsExpression( "\"strings\" = array('one')" ).evaluate( &context ), QVariant( false ) );
+      QCOMPARE( QgsExpression( "\"strings\" = array('one', 'two', 'three')" ).evaluate( &context ), QVariant( false ) );
+      QCOMPARE( QgsExpression( "\"strings\" = 'one'" ).evaluate( &context ), QVariant() );
+      QCOMPARE( QgsExpression( "\"strings\" = 5" ).evaluate( &context ), QVariant() );
+      QCOMPARE( QgsExpression( "array('one', 'two') = \"strings\"" ).evaluate( &context ), QVariant( true ) );
+      QCOMPARE( QgsExpression( "array('two', 'one') = \"strings\"" ).evaluate( &context ), QVariant( false ) );
+      QCOMPARE( QgsExpression( "array('one') = \"strings\"" ).evaluate( &context ), QVariant( false ) );
+      QCOMPARE( QgsExpression( "array('one', 'two', 'three') = \"strings\"" ).evaluate( &context ), QVariant( false ) );
+      QCOMPARE( QgsExpression( "\"strings\" <> array('one', 'two')" ).evaluate( &context ), QVariant( false ) );
+      QCOMPARE( QgsExpression( "\"strings\" <> array('two', 'one')" ).evaluate( &context ), QVariant( true ) );
+      QCOMPARE( QgsExpression( "\"strings\" <> array('one')" ).evaluate( &context ), QVariant( true ) );
+      QCOMPARE( QgsExpression( "\"strings\" <> array('one', 'two', 'three')" ).evaluate( &context ), QVariant( true ) );
+
       QCOMPARE( QgsExpression( "array_length(\"strings\")" ).evaluate( &context ), QVariant( 2 ) );
 
       QCOMPARE( QgsExpression( "array_all(array(1,2,3), array(2,3))" ).evaluate( &context ), QVariant( true ) );
@@ -3344,12 +3811,17 @@ class TestQgsExpression: public QObject
       QCOMPARE( QgsExpression( "array_contains(\"strings\", 'two')" ).evaluate( &context ), QVariant( true ) );
       QCOMPARE( QgsExpression( "array_contains(\"strings\", 'three')" ).evaluate( &context ), QVariant( false ) );
 
+      QCOMPARE( QgsExpression( "array_count(array(1,2,1), 1)" ).evaluate( &context ), QVariant( 2 ) );
+      QCOMPARE( QgsExpression( "array_count(array(1,2,1), 2)" ).evaluate( &context ), QVariant( 1 ) );
+      QCOMPARE( QgsExpression( "array_count(array(1,2,1), 3)" ).evaluate( &context ), QVariant( 0 ) );
+
       QCOMPARE( QgsExpression( "array_find(\"strings\", 'two')" ).evaluate( &context ), QVariant( 1 ) );
       QCOMPARE( QgsExpression( "array_find(\"strings\", 'three')" ).evaluate( &context ), QVariant( -1 ) );
 
       QCOMPARE( QgsExpression( "array_get(\"strings\", 1)" ).evaluate( &context ), QVariant( "two" ) );
       QCOMPARE( QgsExpression( "array_get(\"strings\", 2)" ).evaluate( &context ), QVariant() );
-      QCOMPARE( QgsExpression( "array_get(\"strings\", -1)" ).evaluate( &context ), QVariant() );
+      QCOMPARE( QgsExpression( "array_get(\"strings\", -1)" ).evaluate( &context ), QVariant( "two" ) );
+      QCOMPARE( QgsExpression( "array_get(\"strings\", -4)" ).evaluate( &context ), QVariant() );
 
       QStringList appendExpected = array;
       appendExpected << QStringLiteral( "three" );
@@ -3366,10 +3838,18 @@ class TestQgsExpression: public QObject
       QStringList removeAtExpected = array;
       removeAtExpected.removeAt( 0 );
       QCOMPARE( QgsExpression( "array_remove_at(\"strings\", 0)" ).evaluate( &context ), QVariant( removeAtExpected ) );
+      QCOMPARE( QgsExpression( "array_remove_at(\"strings\", -2)" ).evaluate( &context ), QVariant( removeAtExpected ) );
+      QCOMPARE( QgsExpression( "array_remove_at(\"strings\", -4)" ).evaluate( &context ), QVariant( array ) );
+      QCOMPARE( QgsExpression( "array_remove_at(\"strings\", 4)" ).evaluate( &context ), QVariant( array ) );
+      QCOMPARE( QgsExpression( "array_remove_at(\"strings\", -40)" ).evaluate( &context ), QVariant( array ) );
 
       QStringList removeAllExpected;
       removeAllExpected << QStringLiteral( "a" ) << QStringLiteral( "b" ) << QStringLiteral( "d" );
       QCOMPARE( QgsExpression( "array_remove_all(array('a', 'b', 'c', 'd', 'c'), 'c')" ).evaluate( &context ), QVariant( removeAllExpected ) );
+
+      QVariantList prioritizeExpected;
+      prioritizeExpected << 5 << 2 << 1 << 8;
+      QCOMPARE( QgsExpression( "array_prioritize(array(1, 8, 2, 5), array(5, 4, 2, 1, 3, 8))" ).evaluate( &context ), QVariant( prioritizeExpected ) );
 
       QStringList concatExpected = array;
       concatExpected << QStringLiteral( "a" ) << QStringLiteral( "b" ) << QStringLiteral( "c" );
@@ -3381,6 +3861,8 @@ class TestQgsExpression: public QObject
 
       QVariantList filterExpected = QVariantList() << QStringLiteral( "A: a" ) << QStringLiteral( "A: d" );
       QCOMPARE( QgsExpression( "array_filter(array:=array('A: a', 'B: b', 'C: c', 'A: d'), expression:=substr(@element, 1, 2) = 'A:')" ).evaluate( &context ), QVariant( filterExpected ) );
+      QVariantList filterExpectedLimit = QVariantList() << QStringLiteral( "A: a" );
+      QCOMPARE( QgsExpression( "array_filter(array:=array('A: a', 'B: b', 'C: c', 'A: d'), expression:=substr(@element, 1, 2) = 'A:', limit:=1)" ).evaluate( &context ), QVariant( filterExpectedLimit ) );
 
       QCOMPARE( QgsExpression( "array_intersect(array('1', '2', '3', '4'), array('4', '0', '2', '5'))" ).evaluate( &context ), QVariant( true ) );
       QCOMPARE( QgsExpression( "array_intersect(array('1', '2', '3', '4'), array('0', '5'))" ).evaluate( &context ), QVariant( false ) );
@@ -3425,7 +3907,9 @@ class TestQgsExpression: public QObject
 
       QCOMPARE( QgsExpression( "array_get(\"ints\", 1)" ).evaluate( &context ), QVariant( -2 ) );
       QCOMPARE( QgsExpression( "array_get(\"ints\", 2)" ).evaluate( &context ), QVariant() );
-      QCOMPARE( QgsExpression( "array_get(\"ints\", -1)" ).evaluate( &context ), QVariant() );
+      QCOMPARE( QgsExpression( "array_get(\"ints\", -1)" ).evaluate( &context ), QVariant( -2 ) );
+      QCOMPARE( QgsExpression( "array_get(\"ints\", -2)" ).evaluate( &context ), QVariant( 1 ) );
+      QCOMPARE( QgsExpression( "array_get(\"ints\", -3)" ).evaluate( &context ), QVariant() );
 
       QVariantList appendExpected = array;
       appendExpected << 3;
@@ -3442,6 +3926,10 @@ class TestQgsExpression: public QObject
       QVariantList removeAtExpected = array;
       removeAtExpected.removeAt( 0 );
       QCOMPARE( QgsExpression( "array_remove_at(\"ints\", 0)" ).evaluate( &context ), QVariant( removeAtExpected ) );
+      QCOMPARE( QgsExpression( "array_remove_at(\"ints\", -2)" ).evaluate( &context ), QVariant( removeAtExpected ) );
+      QCOMPARE( QgsExpression( "array_remove_at(\"ints\", -5)" ).evaluate( &context ), QVariant( array ) );
+      QCOMPARE( QgsExpression( "array_remove_at(\"ints\", 5)" ).evaluate( &context ), QVariant( array ) );
+      QCOMPARE( QgsExpression( "array_remove_at(\"ints\", -50)" ).evaluate( &context ), QVariant( array ) );
 
       QVariantList removeAllExpected;
       removeAllExpected << 1 << 2 << 4;
@@ -3473,6 +3961,8 @@ class TestQgsExpression: public QObject
 
       QVariantList filterExpected = QVariantList() << 1 << 2;
       QCOMPARE( QgsExpression( "array_filter(array(1, 2, 4), @element < 3)" ).evaluate( &context ), QVariant( filterExpected ) );
+      QVariantList filterExpectedLimit = QVariantList() << 1;
+      QCOMPARE( QgsExpression( "array_filter(array(1, 2, 4), @element < 3, 1)" ).evaluate( &context ), QVariant( filterExpectedLimit ) );
 
       QgsExpression badArray( QStringLiteral( "array_get('not an array', 0)" ) );
       QCOMPARE( badArray.evaluate( &context ), QVariant() );
@@ -3599,6 +4089,11 @@ class TestQgsExpression: public QObject
       QCOMPARE( badMap.evaluate( &context ), QVariant() );
       QVERIFY( badMap.hasEvalError() );
       QCOMPARE( badMap.evalErrorString(), QString( "Cannot convert 'not a map' to map" ) );
+
+      QCOMPARE( QgsExpression( QStringLiteral( "map_prefix_keys(map('1', 'one', '2', 'two'), 'prefix-')" ) ).evaluate( &context ), QVariantMap( {{ "prefix-1", "one" }, { "prefix-2", "two" }} ) );
+      QCOMPARE( QgsExpression( QStringLiteral( "map_prefix_keys(map(), 'prefix-')" ) ).evaluate( &context ), QVariantMap() );
+      QCOMPARE( QgsExpression( QStringLiteral( "map_prefix_keys([], 'prefix-')" ) ).evaluate( &context ), QVariant() );
+
     }
 
     void expression_from_expression_data()
@@ -3641,6 +4136,7 @@ class TestQgsExpression: public QObject
       QCOMPARE( QgsExpression::quotedValue( QVariant(), QVariant::String ), QString( "NULL" ) );
       QVariantList array = QVariantList() << QVariant( 1 ) << QVariant( "a" ) << QVariant();
       QCOMPARE( QgsExpression::quotedValue( array ), QString( "array( 1, 'a', NULL )" ) );
+      QCOMPARE( QgsExpression::quotedValue( QStringList( { QStringLiteral( "abc" ), QStringLiteral( "def" )} ) ), QString( "array( 'abc', 'def' )" ) );
     }
 
     void reentrant()
@@ -3670,6 +4166,60 @@ class TestQgsExpression: public QObject
       QCOMPARE( QgsExpression( "\"foo bar\"" ).isField(), true );
       QCOMPARE( QgsExpression( "sqrt(foo)" ).isField(), false );
       QCOMPARE( QgsExpression( "foo + bar" ).isField(), false );
+    }
+
+    void test_expressionToLayerFieldIndex()
+    {
+      std::unique_ptr layer = std::make_unique< QgsVectorLayer >( QStringLiteral( "Point" ), QStringLiteral( "test" ), QStringLiteral( "memory" ) );
+      layer->dataProvider()->addAttributes( { QgsField( QStringLiteral( "field1" ), QVariant::String ),
+                                              QgsField( QStringLiteral( "another FIELD" ), QVariant::String ) } );
+      layer->updateFields();
+
+      QCOMPARE( QgsExpression::expressionToLayerFieldIndex( "", layer.get() ), -1 );
+      QCOMPARE( QgsExpression::expressionToLayerFieldIndex( "42", layer.get() ), -1 );
+      QCOMPARE( QgsExpression::expressionToLayerFieldIndex( "foo", layer.get() ), -1 );
+      QCOMPARE( QgsExpression::expressionToLayerFieldIndex( "\"foo bar\"", layer.get() ), -1 );
+      QCOMPARE( QgsExpression::expressionToLayerFieldIndex( "sqrt(foo)", layer.get() ), -1 );
+      QCOMPARE( QgsExpression::expressionToLayerFieldIndex( "foo + bar", layer.get() ), -1 );
+      QCOMPARE( QgsExpression::expressionToLayerFieldIndex( "field1", layer.get() ), 0 );
+      QCOMPARE( QgsExpression::expressionToLayerFieldIndex( "FIELD1", layer.get() ), 0 );
+      QCOMPARE( QgsExpression::expressionToLayerFieldIndex( "\"field1\"", layer.get() ), 0 );
+      QCOMPARE( QgsExpression::expressionToLayerFieldIndex( "\"FIELD1\"", layer.get() ), 0 );
+      QCOMPARE( QgsExpression::expressionToLayerFieldIndex( "  (  \"field1\"   )   ", layer.get() ), 0 );
+      QCOMPARE( QgsExpression::expressionToLayerFieldIndex( "another FIELD", layer.get() ), 1 );
+      QCOMPARE( QgsExpression::expressionToLayerFieldIndex( "ANOTHER field", layer.get() ), 1 );
+      QCOMPARE( QgsExpression::expressionToLayerFieldIndex( "  ANOTHER field  ", layer.get() ), 1 );
+      QCOMPARE( QgsExpression::expressionToLayerFieldIndex( "\"another field\"", layer.get() ), 1 );
+      QCOMPARE( QgsExpression::expressionToLayerFieldIndex( "\"ANOTHER FIELD\"", layer.get() ), 1 );
+      QCOMPARE( QgsExpression::expressionToLayerFieldIndex( "  (  \"ANOTHER FIELD\"   )   ", layer.get() ), 1 );
+    }
+
+    void test_quoteFieldExpression()
+    {
+      std::unique_ptr layer = std::make_unique< QgsVectorLayer >( QStringLiteral( "Point" ), QStringLiteral( "test" ), QStringLiteral( "memory" ) );
+      layer->dataProvider()->addAttributes( { QgsField( QStringLiteral( "field1" ), QVariant::String ),
+                                              QgsField( QStringLiteral( "another FIELD" ), QVariant::String ) } );
+      layer->updateFields();
+
+      QCOMPARE( QgsExpression::quoteFieldExpression( QString(), layer.get() ), QString() );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QString(), nullptr ), QString() );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QStringLiteral( "42" ), layer.get() ), QStringLiteral( "42" ) );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QStringLiteral( "foo" ), layer.get() ), QStringLiteral( "foo" ) );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QStringLiteral( "foo" ), nullptr ), QStringLiteral( "foo" ) );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QStringLiteral( "\"foo bar\"" ), layer.get() ), QStringLiteral( "\"foo bar\"" ) );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QStringLiteral( "sqrt(foo)" ), layer.get() ), QStringLiteral( "sqrt(foo)" ) );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QStringLiteral( "foo + bar" ), layer.get() ), QStringLiteral( "foo + bar" ) );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QStringLiteral( "field1" ), layer.get() ), QStringLiteral( "\"field1\"" ) );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QStringLiteral( "FIELD1" ), layer.get() ), QStringLiteral( "\"field1\"" ) );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QStringLiteral( "\"field1\"" ), layer.get() ), QStringLiteral( "\"field1\"" ) );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QStringLiteral( "\"FIELD1\"" ), layer.get() ), QStringLiteral( "\"FIELD1\"" ) );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QStringLiteral( "  (  \"field1\"   )   " ), layer.get() ), QStringLiteral( "  (  \"field1\"   )   " ) );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QStringLiteral( "another FIELD" ), layer.get() ), QStringLiteral( "\"another FIELD\"" ) );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QStringLiteral( "ANOTHER field" ), layer.get() ), QStringLiteral( "\"another FIELD\"" ) );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QStringLiteral( "  ANOTHER field  " ), layer.get() ), QStringLiteral( "\"another FIELD\"" ) );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QStringLiteral( "\"another field\"" ), layer.get() ), QStringLiteral( "\"another field\"" ) );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QStringLiteral( "\"ANOTHER FIELD\"" ), layer.get() ), QStringLiteral( "\"ANOTHER FIELD\"" ) );
+      QCOMPARE( QgsExpression::quoteFieldExpression( QStringLiteral( "  (  \"ANOTHER FIELD\"   )   " ), layer.get() ), QStringLiteral( "  (  \"ANOTHER FIELD\"   )   " ) );
     }
 
     void test_implicitSharing()
@@ -3787,6 +4337,84 @@ class TestQgsExpression: public QObject
       QCOMPARE( result.toString(), QString( "f2" ) );
     }
 
+    void testExpressionUtilsMapLayerRetrieval()
+    {
+      QgsExpression exp;
+      // NULL value
+      QgsMapLayer *res = QgsExpressionUtils::getMapLayer( QVariant(), &exp );
+      QVERIFY( !res );
+      QVERIFY( !exp.hasEvalError() );
+
+      // value which CANNOT be a map layer
+      res = QgsExpressionUtils::getMapLayer( QVariant( 5 ), &exp );
+      QVERIFY( !res );
+#if 0
+      // TODO probably **should** raise an eval error for this situation?
+      QVERIFY( exp.hasEvalError() );
+#endif
+
+      // with weak map layer pointer
+      exp = QgsExpression();
+      QgsWeakMapLayerPointer weakPointer( mPointsLayer );
+      res = QgsExpressionUtils::getMapLayer( QVariant::fromValue( weakPointer ), &exp );
+      QCOMPARE( res, mPointsLayer );
+      QVERIFY( !exp.hasEvalError() );
+
+      // with raw map layer pointer
+      exp = QgsExpression();
+      res = QgsExpressionUtils::getMapLayer( QVariant::fromValue( mPointsLayer ), &exp );
+      QCOMPARE( res, mPointsLayer );
+      QVERIFY( !exp.hasEvalError() );
+
+      // with layer id
+      exp = QgsExpression();
+      res = QgsExpressionUtils::getMapLayer( mPointsLayer->id(), &exp );
+      QCOMPARE( res, mPointsLayer );
+      QVERIFY( !exp.hasEvalError() );
+
+      // with layer name
+      exp = QgsExpression();
+      res = QgsExpressionUtils::getMapLayer( mPointsLayer->name(), &exp );
+      QCOMPARE( res, mPointsLayer );
+      QVERIFY( !exp.hasEvalError() );
+
+      // with string which is neither id or name
+      exp = QgsExpression();
+      res = QgsExpressionUtils::getMapLayer( QStringLiteral( "xxxA" ), &exp );
+      QVERIFY( !res );
+#if 0
+      // TODO -- probably should flag an error here?
+      QVERIFY( !exp.hasEvalError() );
+#endif
+    }
+
+    void testGetFilePathValue()
+    {
+      QgsExpression exp;
+      // NULL value
+      QString path = QgsExpressionUtils::getFilePathValue( QVariant(), &exp );
+      QVERIFY( path.isEmpty() );
+      QVERIFY( !exp.hasEvalError() );
+
+      // value which CANNOT be a file path
+      path = QgsExpressionUtils::getFilePathValue( QVariant::fromValue( QgsGeometry() ), &exp );
+      QVERIFY( path.isEmpty() );
+      QVERIFY( exp.hasEvalError() );
+      QCOMPARE( exp.evalErrorString(), QStringLiteral( "Cannot convert value to a file path" ) );
+
+      // good value
+      exp = QgsExpression();
+      path = QgsExpressionUtils::getFilePathValue( QVariant::fromValue( QStringLiteral( "/home/me/mine.txt" ) ), &exp );
+      QCOMPARE( path, QStringLiteral( "/home/me/mine.txt" ) );
+      QVERIFY( !exp.hasEvalError() );
+
+      // with map layer pointer -- should use layer path
+      exp = QgsExpression();
+      path = QgsExpressionUtils::getFilePathValue( QVariant::fromValue( mPointsLayer ), &exp );
+      QCOMPARE( path, QStringLiteral( TEST_DATA_DIR ) + QStringLiteral( "/points.shp" ) );
+      QVERIFY( !exp.hasEvalError() );
+    }
+
     void test_env()
     {
       QgsExpressionContext context;
@@ -3831,6 +4459,8 @@ class TestQgsExpression: public QObject
     {
       QCOMPARE( QgsExpression::formatPreviewString( QVariant( "hello" ) ), QStringLiteral( "'hello'" ) );
       QCOMPARE( QgsExpression::formatPreviewString( QVariant( QVariantMap() ) ), QStringLiteral( "{}" ) );
+      QCOMPARE( QgsExpression::formatPreviewString( QVariant( QDateTime( QDate( 2020, 3, 4 ), QTime( 12, 13, 14 ), Qt::UTC ) ) ), QStringLiteral( "<i>&lt;datetime: 2020-03-04 12:13:14 (UTC)&gt;</i>" ) );
+      QCOMPARE( QgsExpression::formatPreviewString( QVariant( QDateTime( QDate( 2020, 3, 4 ), QTime( 12, 13, 14 ), Qt::OffsetFromUTC, 3600 ) ) ), QStringLiteral( "<i>&lt;datetime: 2020-03-04 12:13:14 (UTC+01:00)&gt;</i>" ) );
 
       QVariantMap map;
       map[QStringLiteral( "1" )] = "One";
@@ -3848,6 +4478,41 @@ class TestQgsExpression: public QObject
       QCOMPARE( QgsExpression::formatPreviewString( QVariant( stringList ) ),
                 QStringLiteral( "[ 'One', 'Two', 'A very long string that is going to be tr… ]" ) );
     }
+
+    void test_formatPreviewStringWithLocale()
+    {
+      const QVariant t_int( 12345 );
+      QVariant t_uint( QVariant::UInt );
+      t_uint = 12345;
+      QVariant t_long( QVariant::LongLong );
+      t_long = 12345;
+      QVariant t_ulong( QVariant::ULongLong );
+      t_ulong = 12345;
+      const QVariant t_float( 12345.001F );
+      const QVariant t_double( 12345.001 );
+
+      QLocale::setDefault( QLocale::English );
+
+      QCOMPARE( QgsExpression::formatPreviewString( t_int ), QStringLiteral( "12,345" ) );
+      QCOMPARE( QgsExpression::formatPreviewString( t_uint ), QStringLiteral( "12,345" ) );
+      QCOMPARE( QgsExpression::formatPreviewString( t_long ), QStringLiteral( "12,345" ) );
+      QCOMPARE( QgsExpression::formatPreviewString( t_ulong ), QStringLiteral( "12,345" ) );
+      QCOMPARE( QgsExpression::formatPreviewString( t_float ), QStringLiteral( "12,345.0009765625" ) );
+      QCOMPARE( QgsExpression::formatPreviewString( t_double ), QStringLiteral( "12,345.001" ) );
+
+      QLocale::setDefault( QLocale::Italian );
+
+      QCOMPARE( QgsExpression::formatPreviewString( t_int ), QStringLiteral( "12.345" ) );
+      QCOMPARE( QgsExpression::formatPreviewString( t_uint ), QStringLiteral( "12.345" ) );
+      QCOMPARE( QgsExpression::formatPreviewString( t_long ), QStringLiteral( "12.345" ) );
+      QCOMPARE( QgsExpression::formatPreviewString( t_ulong ), QStringLiteral( "12.345" ) );
+      QCOMPARE( QgsExpression::formatPreviewString( t_float ), QStringLiteral( "12.345,0009765625" ) );
+      QCOMPARE( QgsExpression::formatPreviewString( t_double ), QStringLiteral( "12.345,001" ) );
+
+      QLocale::setDefault( QLocale::English );
+
+    }
+
 
     void test_nowStatic()
     {
@@ -4069,6 +4734,13 @@ class TestQgsExpression: public QObject
       QTest::addColumn<QStringList>( "input" );
       QTest::addColumn<bool>( "expected" );
       QTest::addColumn<QString>( "expression" );
+      QTest::newRow( "OR conditions mixed IN" ) << ( QStringList() << QStringLiteral( "field = 'value' OR field IN( 'value2', 'value3' )" ) ) << true << "\"field\" IN ('value','value2','value3')";
+      QTest::newRow( "OR conditions non literal" ) << ( QStringList() << QStringLiteral( "field = 'value' OR field = 'value2' OR field = var('qgis_version')" ) ) << false << QString();
+      QTest::newRow( "OR conditions mixed IN reverse" ) << ( QStringList() << QStringLiteral( "field IN ('value','value2') OR field = 'value3'" ) ) << true << "\"field\" IN ('value','value2','value3')";
+      QTest::newRow( "OR conditions mixed IN different fields" ) << ( QStringList() << QStringLiteral( "field2 IN ('value','value2') OR field = 'value3'" ) ) << false << QString();
+      QTest::newRow( "OR conditions" ) << ( QStringList() << QStringLiteral( "field = 'value' OR field = 'value2'" ) ) << true << "\"field\" IN ('value','value2')";
+      QTest::newRow( "OR conditions different fields" ) << ( QStringList() << QStringLiteral( "field = 'value' OR field2 = 'value2'" ) ) << false << QString();
+      QTest::newRow( "OR conditions three" ) << ( QStringList() << QStringLiteral( "field = 'value' OR field = 'value2' OR field = 'value3'" ) ) << true << "\"field\" IN ('value','value2','value3')";
       QTest::newRow( "empty" ) << QStringList() << false << QString();
       QTest::newRow( "invalid" ) << ( QStringList() << QStringLiteral( "a=" ) ) << false << QString();
       QTest::newRow( "not equality" ) << ( QStringList() << QStringLiteral( "field <> 'value'" ) ) << false << "\"field\"";
@@ -4102,6 +4774,265 @@ class TestQgsExpression: public QObject
       }
     }
 
+    void testPrecomputedNodesWithIntrospectionFunctions()
+    {
+      QgsFields fields;
+      fields.append( QgsField( QStringLiteral( "first_field" ), QVariant::Int ) );
+      fields.append( QgsField( QStringLiteral( "second_field" ), QVariant::Int ) );
+
+      QgsExpression exp( QStringLiteral( "attribute(@static_feature, concat('second','_',@field_name_part_var)) + x(geometry( @static_feature ))" ) );
+      // initially this expression requires all attributes -- we can't determine the referenced columns in advance
+      QCOMPARE( exp.referencedColumns(), QSet<QString>() << QgsFeatureRequest::ALL_ATTRIBUTES );
+      QCOMPARE( exp.referencedAttributeIndexes( fields ), QSet< int >() << 0 << 1 );
+      QCOMPARE( exp.referencedFunctions(), QSet<QString>() << QStringLiteral( "attribute" ) << QStringLiteral( "concat" ) << QStringLiteral( "geometry" ) << QStringLiteral( "x" ) << QStringLiteral( "var" ) );
+      QCOMPARE( exp.referencedVariables(), QSet<QString>() << QStringLiteral( "field_name_part_var" ) << QStringLiteral( "static_feature" ) );
+
+      // prepare the expression using static variables
+      QgsExpressionContext context;
+      std::unique_ptr< QgsExpressionContextScope > scope = std::make_unique< QgsExpressionContextScope >();
+      scope->setVariable( QStringLiteral( "field_name_part_var" ), QStringLiteral( "field" ), true );
+
+      // this feature gets added as a static variable, to emulate eg the @atlas_feature variable
+      QgsFeature feature( fields );
+      feature.setAttributes( QgsAttributes() << 5 << 10 );
+      feature.setGeometry( QgsGeometry::fromPointXY( QgsPointXY( 27, 42 ) ) );
+      scope->setVariable( QStringLiteral( "static_feature" ), feature, true );
+
+      context.appendScope( scope.release() );
+
+      QVERIFY( exp.prepare( & context ) );
+      // because all parts of the expression are static, the root node should have a cached static value!
+      QVERIFY( exp.rootNode()->hasCachedStaticValue() );
+      QCOMPARE( exp.rootNode()->cachedStaticValue().toInt(), 37 );
+
+      // referenced columns should be empty -- we don't need ANY columns to evaluate this expression
+      QVERIFY( exp.referencedColumns().empty() );
+      QVERIFY( exp.referencedAttributeIndexes( fields ).empty() );
+      // in contrast, referencedFunctions() and referencedVariables() should NOT be affected by pre-compiled nodes
+      // as these methods are used for introspection purposes only...
+      QCOMPARE( exp.referencedFunctions(), QSet<QString>() << QStringLiteral( "attribute" ) << QStringLiteral( "concat" ) << QStringLiteral( "geometry" ) << QStringLiteral( "x" ) << QStringLiteral( "var" ) );
+      QCOMPARE( exp.referencedVariables(), QSet<QString>() << QStringLiteral( "field_name_part_var" ) << QStringLiteral( "static_feature" ) );
+
+      // secondary test - this one uses a mix of pre-computable nodes and non-pre-computable nodes
+      QgsExpression exp2( QStringLiteral( "(attribute(@static_feature, concat('second','_',@field_name_part_var)) + x(geometry( @static_feature ))) > \"another_field\"" ) );
+      QCOMPARE( exp2.referencedColumns(), QSet<QString>() << QgsFeatureRequest::ALL_ATTRIBUTES << QStringLiteral( "another_field" ) );
+      QCOMPARE( exp2.referencedFunctions(), QSet<QString>() << QStringLiteral( "attribute" ) << QStringLiteral( "concat" ) << QStringLiteral( "geometry" ) << QStringLiteral( "x" ) << QStringLiteral( "var" ) );
+      QCOMPARE( exp2.referencedVariables(), QSet<QString>() << QStringLiteral( "field_name_part_var" ) << QStringLiteral( "static_feature" ) );
+
+      QgsFields fields2;
+      fields2.append( QgsField( QStringLiteral( "another_field" ), QVariant::Int ) );
+      context.setFields( fields2 );
+
+      QVERIFY( exp2.prepare( & context ) );
+      // because NOT all parts of the expression are static, the root node should NOT have a cached static value!
+      QVERIFY( !exp2.rootNode()->hasCachedStaticValue() );
+
+      // but the only referenced column should be "another_field", because the first half of the expression with the "attribute" function is static and has been precomputed
+      QCOMPARE( exp2.referencedColumns(), QSet<QString>() << QStringLiteral( "another_field" ) );
+      QCOMPARE( exp2.referencedAttributeIndexes( fields2 ), QSet< int >() << 0 );
+      QCOMPARE( exp2.referencedFunctions(), QSet<QString>() << QStringLiteral( "attribute" ) << QStringLiteral( "concat" ) << QStringLiteral( "geometry" ) << QStringLiteral( "x" ) << QStringLiteral( "var" ) );
+      QCOMPARE( exp2.referencedVariables(), QSet<QString>() << QStringLiteral( "field_name_part_var" ) << QStringLiteral( "static_feature" ) );
+    }
+
+    void testPrecomputedNodesWithBinaryOperators()
+    {
+      QgsFields fields;
+      fields.append( QgsField( QStringLiteral( "first_field" ), QVariant::Int ) );
+      fields.append( QgsField( QStringLiteral( "second_field" ), QVariant::Int ) );
+
+      // OR operations:
+
+      // the result of this expression will always be true, regardless of the field value - so we can precompile it to a static node!
+      QgsExpression exp( QStringLiteral( "\"first_field\" or (true or false)" ) );
+
+      // prepare the expression using static variables
+      QgsExpressionContext context;
+      context.setFields( fields );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( exp.rootNode()->hasCachedStaticValue() );
+      QCOMPARE( exp.rootNode()->cachedStaticValue().toBool(), true );
+
+      // the result of this expression depends on the value of first_field, it can't be completely precompiled
+      exp = QgsExpression( QStringLiteral( "\"first_field\" or (true and false)" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( !exp.rootNode()->hasCachedStaticValue() );
+
+      // the result of this expression will always be true, regardless of the field value
+      exp = QgsExpression( QStringLiteral( "(true or false) or \"first_field\"" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( exp.rootNode()->hasCachedStaticValue() );
+      QCOMPARE( exp.rootNode()->cachedStaticValue().toBool(), true );
+
+      // the result of this expression depends on the value of first_field, it can't be completely precompiled
+      exp = QgsExpression( QStringLiteral( "(true and false) or \"first_field\"" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( !exp.rootNode()->hasCachedStaticValue() );
+
+      // AND operations:
+
+      // the result of this expression will always be false, regardless of the field value - so we can precompile it to a static node!
+      exp = QgsExpression( QStringLiteral( "\"first_field\" AND (true AND false)" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( exp.rootNode()->hasCachedStaticValue() );
+      QCOMPARE( exp.rootNode()->cachedStaticValue().toBool(), false );
+
+      // the result of this expression depends on the value of first_field, it can't be completely precompiled
+      exp = QgsExpression( QStringLiteral( "\"first_field\" AND (true or false)" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( !exp.rootNode()->hasCachedStaticValue() );
+
+      // the result of this expression will always be false, regardless of the field value
+      exp = QgsExpression( QStringLiteral( "(true and false) AND \"first_field\"" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( exp.rootNode()->hasCachedStaticValue() );
+      QCOMPARE( exp.rootNode()->cachedStaticValue().toBool(), false );
+
+      // the result of this expression depends on the value of first_field, it can't be completely precompiled
+      exp = QgsExpression( QStringLiteral( "(true or false) AND \"first_field\"" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( !exp.rootNode()->hasCachedStaticValue() );
+    }
+
+    void testPrecomputedNodesReplacedWithEffectiveNodes()
+    {
+      QgsFields fields;
+      fields.append( QgsField( QStringLiteral( "first_field" ), QVariant::Int ) );
+      fields.append( QgsField( QStringLiteral( "second_field" ), QVariant::Int ) );
+      fields.append( QgsField( QStringLiteral( "third_field" ), QVariant::Int ) );
+
+      QgsFeature f( fields );
+      f.setAttributes( QgsAttributes() << 11 << 20 << 300 );
+
+      QgsExpressionContext context;
+      context.setFields( fields );
+      context.setFeature( f );
+
+      // nothing we can do to optimize this expression
+      QgsExpression exp( QStringLiteral( "CASE WHEN \"first_field\" = 5 then \"second_field\" when \"first_field\" = 6 then \"second_field\" * 2 else \"second_field\" * 3 end" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( !exp.rootNode()->hasCachedStaticValue() );
+      QCOMPARE( exp.rootNode()->effectiveNode()->nodeType(), QgsExpressionNode::NodeType::ntCondition );
+      QCOMPARE( exp.evaluate( &context ).toInt(), 60 );
+
+      exp = QgsExpression( QStringLiteral( "CASE WHEN \"first_field\" = 5 then \"second_field\" when \"first_field\" = 11 then \"second_field\" * 2 else 77 end" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( !exp.rootNode()->hasCachedStaticValue() );
+      QCOMPARE( exp.rootNode()->effectiveNode()->nodeType(), QgsExpressionNode::NodeType::ntCondition );
+      QCOMPARE( exp.evaluate( &context ).toInt(), 40 );
+
+      // slightly more complex expression
+      exp = QgsExpression( QStringLiteral( "CASE WHEN (upper(\"first_field\") = 'AA') then \"second_field\" when \"first_field\" = 11 then \"second_field\" * 2 else \"second_field\" * 3 end" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( !exp.rootNode()->hasCachedStaticValue() );
+      QCOMPARE( exp.rootNode()->effectiveNode()->nodeType(), QgsExpressionNode::NodeType::ntCondition );
+      QCOMPARE( exp.evaluate( &context ).toInt(), 40 );
+
+      // first condition is non-static, second is static... still nothing we can do to optimize this one
+      exp = QgsExpression( QStringLiteral( "CASE WHEN (upper(\"first_field\") = 'AA') then \"second_field\" when 3 * 2 = 6 then \"second_field\" * 2 else \"second_field\" * 3 end" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( !exp.rootNode()->hasCachedStaticValue() );
+      QCOMPARE( exp.rootNode()->effectiveNode()->nodeType(), QgsExpressionNode::NodeType::ntCondition );
+      QCOMPARE( exp.evaluate( &context ).toInt(), 40 );
+
+      // first condition is static but false, second condition is non static ... can't optimize
+      exp = QgsExpression( QStringLiteral( "CASE WHEN 3 * 2 = 7 then \"second_field\" when \"second_field\" = 'B' then \"second_field\" * 2 else \"second_field\" * 3 end" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( !exp.rootNode()->hasCachedStaticValue() );
+      QCOMPARE( exp.rootNode()->effectiveNode()->nodeType(), QgsExpressionNode::NodeType::ntCondition );
+      QCOMPARE( exp.evaluate( &context ).toInt(), 60 );
+
+      // first condition is static but NULL, second condition is non static ... can't optimize
+      exp = QgsExpression( QStringLiteral( "CASE WHEN NULL then \"second_field\" when \"second_field\" = 'B' then \"second_field\" * 2 else \"second_field\" * 3 end" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( !exp.rootNode()->hasCachedStaticValue() );
+      QCOMPARE( exp.rootNode()->effectiveNode()->nodeType(), QgsExpressionNode::NodeType::ntCondition );
+      QCOMPARE( exp.evaluate( &context ).toInt(), 60 );
+
+      // first condition is static AND true, and THEN expression for this node is static -- yay, we CAN optimize this down to a static value for the whole node
+      exp = QgsExpression( QStringLiteral( "CASE WHEN 3 * 2 = 6 then 7 + 4 when \"second_field\" = 'B' then \"second_field\" * 2 else \"second_field\" * 3 end" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( exp.rootNode()->hasCachedStaticValue() );
+      QCOMPARE( exp.rootNode()->cachedStaticValue().toInt(), 11 );
+      QCOMPARE( exp.rootNode()->effectiveNode()->nodeType(), QgsExpressionNode::NodeType::ntCondition );
+      QCOMPARE( exp.evaluate( &context ).toInt(), 11 );
+
+      // first condition is static AND true, but THEN expression is non-static -- yay, we CAN still optimize this, because we will ALWAYS be returning the evaluated
+      // value for the THEN clause of the first condition, so we can effectively replace the entire node with the THEN expression of the first condition
+      exp = QgsExpression( QStringLiteral( "CASE WHEN 3 * 2 = 6 then \"first_field\" when \"second_field\" = 'B' then \"second_field\" * 2 else \"second_field\" * 3 end" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( !exp.rootNode()->hasCachedStaticValue() );
+      QCOMPARE( exp.rootNode()->effectiveNode()->nodeType(), QgsExpressionNode::NodeType::ntColumnRef );
+      QCOMPARE( qgis::down_cast< const QgsExpressionNodeColumnRef * >( exp.rootNode()->effectiveNode() )->name(), QStringLiteral( "first_field" ) );
+      QCOMPARE( exp.evaluate( &context ).toInt(), 11 );
+
+      // first condition is static AND false, second is static AND true, so we can effectively replace the entire node with the THEN expression of the second condition
+      exp = QgsExpression( QStringLiteral( "CASE WHEN 3 * 2 = 7 then \"first_field\" when 'B'='B' then \"second_field\" else \"third_field\" * 3 end" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( !exp.rootNode()->hasCachedStaticValue() );
+      QCOMPARE( exp.rootNode()->effectiveNode()->nodeType(), QgsExpressionNode::NodeType::ntColumnRef );
+      QCOMPARE( qgis::down_cast< const QgsExpressionNodeColumnRef * >( exp.rootNode()->effectiveNode() )->name(), QStringLiteral( "second_field" ) );
+      QCOMPARE( exp.evaluate( &context ).toInt(), 20 );
+
+      // first two conditions are static AND false, so we can effectively replace the entire node with the ELSE expression
+      exp = QgsExpression( QStringLiteral( "CASE WHEN 3 * 2 = 7 then \"first_field\" when 'B'='C' then \"second_field\" else \"third_field\" end" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( !exp.rootNode()->hasCachedStaticValue() );
+      QCOMPARE( exp.rootNode()->effectiveNode()->nodeType(), QgsExpressionNode::NodeType::ntColumnRef );
+      QCOMPARE( qgis::down_cast< const QgsExpressionNodeColumnRef * >( exp.rootNode()->effectiveNode() )->name(), QStringLiteral( "third_field" ) );
+      QCOMPARE( exp.evaluate( &context ).toInt(), 300 );
+
+      // slightly more complex -- second condition is static and TRUE, but uses a more complicated THEN node
+      exp = QgsExpression( QStringLiteral( "CASE WHEN 3 * 2 = 7 then \"first_field\" when 'B'='B' then upper(\"second_field\") || \"first_field\" else \"third_field\" * 3 end" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( !exp.rootNode()->hasCachedStaticValue() );
+      QCOMPARE( exp.rootNode()->effectiveNode()->nodeType(), QgsExpressionNode::NodeType::ntBinaryOperator );
+      QCOMPARE( qgis::down_cast< const QgsExpressionNodeBinaryOperator * >( exp.rootNode()->effectiveNode() )->opLeft()->nodeType(), QgsExpressionNode::NodeType::ntFunction );
+      QCOMPARE( qgis::down_cast< const QgsExpressionNodeBinaryOperator * >( exp.rootNode()->effectiveNode() )->opRight()->nodeType(), QgsExpressionNode::NodeType::ntColumnRef );
+      QCOMPARE( exp.evaluate( &context ).toInt(), 2011 );
+
+      // EVEN more complex -- second condition is static and TRUE, and uses a nested CASE as the THEN node
+      // the whole root node can be replaced by a column ref to "second_field"
+      exp = QgsExpression( QStringLiteral( "CASE WHEN 3 * 2 = 7 then \"first_field\" when 'B'='B' then ( CASE WHEN 3*3=11 then \"first_field\" ELSE \"second_field\" END) else \"third_field\" end" ) );
+      QVERIFY( exp.prepare( &context ) );
+      QVERIFY( !exp.rootNode()->hasCachedStaticValue() );
+      QCOMPARE( exp.rootNode()->effectiveNode()->nodeType(), QgsExpressionNode::NodeType::ntColumnRef );
+      QCOMPARE( qgis::down_cast< const QgsExpressionNodeColumnRef * >( exp.rootNode()->effectiveNode() )->name(), QStringLiteral( "second_field" ) );
+      QCOMPARE( exp.evaluate( &context ).toInt(), 20 );
+    }
+
+    void testExpressionUtilsToLocalizedString()
+    {
+      const QVariant t_int( 12346 );
+      QVariant t_uint( QVariant::UInt );
+      t_uint = 12346;
+      QVariant t_long( QVariant::LongLong );
+      t_long = 12346;
+      QVariant t_ulong( QVariant::ULongLong );
+      t_ulong = 12346;
+      const QVariant t_double( 123456.801 );
+
+      QLocale::setDefault( QLocale::English );
+
+      qDebug() << QVariant( 123456.801 ).toString();
+
+      QCOMPARE( QgsExpressionUtils::toLocalizedString( t_int ), QStringLiteral( "12,346" ) );
+      QCOMPARE( QgsExpressionUtils::toLocalizedString( t_uint ), QStringLiteral( "12,346" ) );
+      QCOMPARE( QgsExpressionUtils::toLocalizedString( t_long ), QStringLiteral( "12,346" ) );
+      QCOMPARE( QgsExpressionUtils::toLocalizedString( t_ulong ), QStringLiteral( "12,346" ) );
+      QCOMPARE( QgsExpressionUtils::toLocalizedString( t_double ), QStringLiteral( "123,456.801" ) );
+
+      QLocale::setDefault( QLocale::Italian );
+
+      QCOMPARE( QgsExpressionUtils::toLocalizedString( t_int ), QStringLiteral( "12.346" ) );
+      QCOMPARE( QgsExpressionUtils::toLocalizedString( t_uint ), QStringLiteral( "12.346" ) );
+      QCOMPARE( QgsExpressionUtils::toLocalizedString( t_long ), QStringLiteral( "12.346" ) );
+      QCOMPARE( QgsExpressionUtils::toLocalizedString( t_ulong ), QStringLiteral( "12.346" ) );
+      QCOMPARE( QgsExpressionUtils::toLocalizedString( t_double ), QStringLiteral( "123.456,801" ) );
+
+      QLocale::setDefault( QLocale::English );
+
+      QCOMPARE( QgsExpressionUtils::toLocalizedString( QString( "hello world" ) ), QStringLiteral( "hello world" ) );
+    }
 };
 
 QGSTEST_MAIN( TestQgsExpression )

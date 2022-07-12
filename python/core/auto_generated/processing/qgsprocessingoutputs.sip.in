@@ -13,7 +13,7 @@
 
 class QgsProcessingOutputDefinition
 {
-%Docstring
+%Docstring(signature="appended")
 
 Base class for the definition of processing outputs.
 
@@ -31,6 +31,8 @@ as generated layers or calculated values.
       sipType = sipType_QgsProcessingOutputVectorLayer;
     else if ( sipCpp->type() == QgsProcessingOutputRasterLayer::typeName() )
       sipType = sipType_QgsProcessingOutputRasterLayer;
+    else if ( sipCpp->type() == QgsProcessingOutputPointCloudLayer::typeName() )
+      sipType = sipType_QgsProcessingOutputPointCloudLayer;
     else if ( sipCpp->type() == QgsProcessingOutputMapLayer::typeName() )
       sipType = sipType_QgsProcessingOutputMapLayer;
     else if ( sipCpp->type() == QgsProcessingOutputMultipleLayers::typeName() )
@@ -122,18 +124,17 @@ Returns ``True`` if the output was automatically created when adding a parameter
 
 
 
-
 };
 
 typedef QList< const QgsProcessingOutputDefinition * > QgsProcessingOutputDefinitions;
 
 class QgsProcessingOutputMapLayer : QgsProcessingOutputDefinition
 {
-%Docstring
+%Docstring(signature="appended")
 A map layer output for processing algorithms, where layers may be either vector or raster.
 
 If the actual layer output type is known (e.g. always vector or always raster), use
-QgsProcessingOutputVectorLayer or QgsProcessingOutputRasterLayer instead.
+:py:class:`QgsProcessingOutputVectorLayer` or :py:class:`QgsProcessingOutputRasterLayer` instead.
 
 .. versionadded:: 3.0
 %End
@@ -155,12 +156,11 @@ Returns the type name for the output class.
 
     virtual QString type() const;
 
-
 };
 
 class QgsProcessingOutputVectorLayer : QgsProcessingOutputDefinition
 {
-%Docstring
+%Docstring(signature="appended")
 A vector layer output for processing algorithms.
 
 .. versionadded:: 3.0
@@ -200,7 +200,7 @@ Sets the layer ``type`` for the output layer.
 
 class QgsProcessingOutputRasterLayer : QgsProcessingOutputDefinition
 {
-%Docstring
+%Docstring(signature="appended")
 A raster layer output for processing algorithms.
 
 .. versionadded:: 3.0
@@ -221,20 +221,43 @@ Constructor for QgsProcessingOutputRasterLayer.
 Returns the type name for the output class.
 %End
     virtual QString type() const;
+};
 
+class QgsProcessingOutputPointCloudLayer : QgsProcessingOutputDefinition
+{
+%Docstring(signature="appended")
+A pointcloud layer output for processing algorithms.
 
+.. versionadded:: 3.24
+%End
+
+%TypeHeaderCode
+#include "qgsprocessingoutputs.h"
+%End
+  public:
+
+    QgsProcessingOutputPointCloudLayer( const QString &name, const QString &description = QString() );
+%Docstring
+Constructor for QgsProcessingOutputPointCloudLayer.
+%End
+
+    static QString typeName();
+%Docstring
+Returns the type name for the output class.
+%End
+    virtual QString type() const;
 };
 
 class QgsProcessingOutputMultipleLayers : QgsProcessingOutputDefinition
 {
-%Docstring
+%Docstring(signature="appended")
 A multi-layer output for processing algorithms which create map layers, when
 the number and nature of the output layers is not predefined.
 
 .. note::
 
-   Always prefer to explicitly define QgsProcessingOutputVectorLayer,
-   QgsProcessingOutputRasterLayer or QgsProcessingOutputMapLayer where possible. :py:class:`QgsProcessingOutputMultipleLayers`
+   Always prefer to explicitly define :py:class:`QgsProcessingOutputVectorLayer`,
+   :py:class:`QgsProcessingOutputRasterLayer` or :py:class:`QgsProcessingOutputMapLayer` where possible. :py:class:`QgsProcessingOutputMultipleLayers`
    should only ever be used when the number of output layers is not
    fixed - e.g. as a result of processing all layers in a specified
    folder.
@@ -258,12 +281,11 @@ Returns the type name for the output class.
 %End
     virtual QString type() const;
 
-
 };
 
 class QgsProcessingOutputHtml : QgsProcessingOutputDefinition
 {
-%Docstring
+%Docstring(signature="appended")
 A HTML file output for processing algorithms.
 
 .. versionadded:: 3.0
@@ -284,12 +306,11 @@ Constructor for QgsProcessingOutputHtml.
 Returns the type name for the output class.
 %End
     virtual QString type() const;
-
 };
 
 class QgsProcessingOutputNumber : QgsProcessingOutputDefinition
 {
-%Docstring
+%Docstring(signature="appended")
 A numeric output for processing algorithms.
 
 .. versionadded:: 3.0
@@ -314,7 +335,7 @@ Returns the type name for the output class.
 
 class QgsProcessingOutputString : QgsProcessingOutputDefinition
 {
-%Docstring
+%Docstring(signature="appended")
 A string output for processing algorithms.
 
 .. versionadded:: 3.0
@@ -335,12 +356,11 @@ Constructor for QgsProcessingOutputString.
 Returns the type name for the output class.
 %End
     virtual QString type() const;
-
 };
 
 class QgsProcessingOutputBoolean : QgsProcessingOutputDefinition
 {
-%Docstring
+%Docstring(signature="appended")
 A boolean output for processing algorithms.
 
 .. versionadded:: 3.8
@@ -365,7 +385,7 @@ Returns the type name for the output class.
 
 class QgsProcessingOutputFolder : QgsProcessingOutputDefinition
 {
-%Docstring
+%Docstring(signature="appended")
 A folder output for processing algorithms.
 
 .. versionadded:: 3.0
@@ -387,12 +407,11 @@ Constructor for QgsProcessingOutputFolder.
 Returns the type name for the output class.
 %End
     virtual QString type() const;
-
 };
 
 class QgsProcessingOutputFile : QgsProcessingOutputDefinition
 {
-%Docstring
+%Docstring(signature="appended")
 A file output for processing algorithms.
 
 .. versionadded:: 3.0
@@ -413,12 +432,11 @@ Constructor for QgsProcessingOutputFile.
 Returns the type name for the output class.
 %End
     virtual QString type() const;
-
 };
 
 class QgsProcessingOutputConditionalBranch : QgsProcessingOutputDefinition
 {
-%Docstring
+%Docstring(signature="appended")
 A conditional branch output for processing algorithms, which represents a possible model logic
 flow which branches out from this algorithm.
 
@@ -440,11 +458,7 @@ Constructor for QgsProcessingOutputConditionalBranch.
 Returns the type name for the output class.
 %End
     virtual QString type() const;
-
 };
-
-
-
 
 /************************************************************************
  * This file has been generated automatically from                      *

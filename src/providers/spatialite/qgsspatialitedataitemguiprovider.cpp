@@ -17,11 +17,17 @@
 #include "qgsspatialiteconnection.h"
 #include "qgsspatialitedataitems.h"
 #include "qgsspatialitesourceselect.h"
+#include "qgsproviderregistry.h"
+#include "qgsprovidermetadata.h"
+#include "qgsspatialiteproviderconnection.h"
 
 #include "qgsapplication.h"
 #include "qgsmessageoutput.h"
 #include "qgsmimedatautils.h"
 #include "qgssettings.h"
+#include "qgsvectorlayer.h"
+#include "qgsvectorlayerexporter.h"
+#include "qgsfileutils.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -31,20 +37,20 @@ void QgsSpatiaLiteDataItemGuiProvider::populateContextMenu( QgsDataItem *item, Q
 {
   if ( QgsSLRootItem *rootItem = qobject_cast< QgsSLRootItem * >( item ) )
   {
-    QAction *actionNew = new QAction( tr( "New Connection…" ), this );
+    QAction *actionNew = new QAction( tr( "New Connection…" ), menu );
     connect( actionNew, &QAction::triggered, this, [rootItem] { newConnection( rootItem ); } );
     menu->addAction( actionNew );
 
-    QAction *actionCreateDatabase = new QAction( tr( "Create Database…" ), this );
+    QAction *actionCreateDatabase = new QAction( tr( "Create Database…" ), menu );
     connect( actionCreateDatabase, &QAction::triggered, this, [rootItem] { createDatabase( rootItem ); } );
     menu->addAction( actionCreateDatabase );
   }
 
   if ( QgsSLConnectionItem *connItem = qobject_cast< QgsSLConnectionItem * >( item ) )
   {
-    QAction *actionDelete = new QAction( tr( "Delete" ), this );
-    connect( actionDelete, &QAction::triggered, this, [connItem] { deleteConnection( connItem ); } );
-    menu->addAction( actionDelete );
+    QAction *actionDeleteConnection = new QAction( tr( "Remove Connection" ), menu );
+    connect( actionDeleteConnection, &QAction::triggered, this, [connItem] { deleteConnection( connItem ); } );
+    menu->addAction( actionDeleteConnection );
   }
 }
 
@@ -57,7 +63,7 @@ bool QgsSpatiaLiteDataItemGuiProvider::deleteLayer( QgsLayerItem *item, QgsDataI
                                 QMessageBox::Yes | QMessageBox::No, QMessageBox::No ) != QMessageBox::Yes )
       return false;
 
-    QgsDataSourceUri uri( layerItem->uri() );
+    const QgsDataSourceUri uri( layerItem->uri() );
     QString errCause;
     if ( !SpatiaLiteUtils::deleteLayer( uri.database(), uri.table(), errCause ) )
     {
@@ -102,8 +108,8 @@ void QgsSpatiaLiteDataItemGuiProvider::newConnection( QgsDataItem *item )
 
 void QgsSpatiaLiteDataItemGuiProvider::createDatabase( QgsDataItem *item )
 {
-  QgsSettings settings;
-  QString lastUsedDir = settings.value( QStringLiteral( "UI/lastSpatiaLiteDir" ), QDir::homePath() ).toString();
+  const QgsSettings settings;
+  const QString lastUsedDir = settings.value( QStringLiteral( "UI/lastSpatiaLiteDir" ), QDir::homePath() ).toString();
 
   QString filename = QFileDialog::getSaveFileName( nullptr, tr( "New SpatiaLite Database File" ),
                      lastUsedDir,
@@ -111,11 +117,19 @@ void QgsSpatiaLiteDataItemGuiProvider::createDatabase( QgsDataItem *item )
   if ( filename.isEmpty() )
     return;
 
+  filename = QgsFileUtils::ensureFileNameHasExtension( filename, QStringList() << QStringLiteral( "sqlite" ) << QStringLiteral( "db" ) << QStringLiteral( "sqlite3" )
+             << QStringLiteral( "db3" ) << QStringLiteral( "s3db" ) );
+
   QString errCause;
   if ( SpatiaLiteUtils::createDb( filename, errCause ) )
   {
-    // add connection
-    settings.setValue( "/SpatiaLite/connections/" + QFileInfo( filename ).fileName() + "/sqlitepath", filename );
+    QgsProviderMetadata *providerMetadata = QgsProviderRegistry::instance()->providerMetadata( QStringLiteral( "spatialite" ) );
+    std::unique_ptr< QgsSpatiaLiteProviderConnection > providerConnection( qgis::down_cast<QgsSpatiaLiteProviderConnection *>( providerMetadata->createConnection( QStringLiteral( "dbname='%1'" ).arg( filename ), QVariantMap() ) ) );
+    if ( providerConnection )
+    {
+      const QFileInfo fi( filename );
+      providerMetadata->saveConnection( providerConnection.get(), fi.fileName() );
+    }
 
     item->refresh();
   }
@@ -127,12 +141,14 @@ void QgsSpatiaLiteDataItemGuiProvider::createDatabase( QgsDataItem *item )
 
 void QgsSpatiaLiteDataItemGuiProvider::deleteConnection( QgsDataItem *item )
 {
-  if ( QMessageBox::question( nullptr, QObject::tr( "Delete Connection" ),
-                              QObject::tr( "Are you sure you want to delete the connection to %1?" ).arg( item->name() ),
+  if ( QMessageBox::question( nullptr, QObject::tr( "Remove Connection" ),
+                              QObject::tr( "Are you sure you want to remove the connection to %1?" ).arg( item->name() ),
                               QMessageBox::Yes | QMessageBox::No, QMessageBox::No ) != QMessageBox::Yes )
     return;
 
-  QgsSpatiaLiteConnection::deleteConnection( item->name() );
+  QgsProviderMetadata *providerMetadata = QgsProviderRegistry::instance()->providerMetadata( QStringLiteral( "spatialite" ) );
+  providerMetadata->deleteConnection( item->name() );
+
   // the parent should be updated
   item->parent()->refreshConnections();
 }
@@ -150,7 +166,7 @@ bool QgsSpatiaLiteDataItemGuiProvider::handleDropConnectionItem( QgsSLConnection
   QStringList importResults;
   bool hasError = false;
 
-  QgsMimeDataUtils::UriList lst = QgsMimeDataUtils::decodeUriList( data );
+  const QgsMimeDataUtils::UriList lst = QgsMimeDataUtils::decodeUriList( data );
   const auto constLst = lst;
   for ( const QgsMimeDataUtils::Uri &u : constLst )
   {
@@ -181,9 +197,9 @@ bool QgsSpatiaLiteDataItemGuiProvider::handleDropConnectionItem( QgsSLConnection
       } );
 
       // when an error occurs:
-      connect( exportTask.get(), &QgsVectorLayerExporterTask::errorOccurred, connItem, [ = ]( int error, const QString & errorMessage )
+      connect( exportTask.get(), &QgsVectorLayerExporterTask::errorOccurred, connItem, [ = ]( Qgis::VectorExportResult error, const QString & errorMessage )
       {
-        if ( error != QgsVectorLayerExporter::ErrUserCanceled )
+        if ( error != Qgis::VectorExportResult::UserCanceled )
         {
           QgsMessageOutput *output = QgsMessageOutput::createMessageOutput();
           output->setTitle( tr( "Import to SpatiaLite database" ) );

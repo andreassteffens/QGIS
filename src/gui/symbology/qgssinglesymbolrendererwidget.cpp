@@ -23,6 +23,7 @@
 #include "qgsvectorlayer.h"
 
 #include "qgssymbolselectordialog.h"
+#include "qgsmarkersymbol.h"
 
 #include <QMenu>
 
@@ -47,7 +48,10 @@ QgsSingleSymbolRendererWidget::QgsSingleSymbolRendererWidget( QgsVectorLayer *la
     QgsSymbol *symbol = QgsSymbol::defaultSymbol( mLayer->geometryType() );
 
     if ( symbol )
-      mRenderer = qgis::make_unique< QgsSingleSymbolRenderer >( symbol );
+      mRenderer = std::make_unique< QgsSingleSymbolRenderer >( symbol );
+
+    if ( renderer )
+      renderer->copyRendererData( mRenderer.get() );
   }
 
   // load symbol from it
@@ -68,7 +72,7 @@ QgsSingleSymbolRendererWidget::QgsSingleSymbolRendererWidget( QgsVectorLayer *la
 
   mActionLevels = advMenu->addAction( tr( "Symbol Levels…" ) );
   connect( mActionLevels, &QAction::triggered, this, &QgsSingleSymbolRendererWidget::showSymbolLevels );
-  if ( mSingleSymbol && mSingleSymbol->type() == QgsSymbol::Marker )
+  if ( mSingleSymbol && mSingleSymbol->type() == Qgis::SymbolType::Marker )
   {
     QAction *actionDdsLegend = advMenu->addAction( tr( "Data-defined Size Legend…" ) );
     connect( actionDdsLegend, &QAction::triggered, this, &QgsSingleSymbolRendererWidget::dataDefinedSizeLegend );
@@ -111,6 +115,12 @@ void QgsSingleSymbolRendererWidget::disableSymbolLevels()
 void QgsSingleSymbolRendererWidget::setSymbolLevels( const QList<QgsLegendSymbolItem> &levels, bool enabled )
 {
   mSingleSymbol.reset( levels.at( 0 ).symbol()->clone() );
+  if ( !enabled )
+  {
+    // remove the renderer symbol levels flag (if present), as we don't symbol levels automatically re-enabling when other changes
+    // are made to the symbol
+    mSingleSymbol->setFlags( mSingleSymbol->flags() & ~Qgis::SymbolFlags( Qgis::SymbolFlag::RendererShouldUseSymbolLevels ) );
+  }
   mRenderer->setSymbol( mSingleSymbol->clone() );
   mRenderer->setUsingSymbolLevels( enabled );
   mSelector->loadSymbol( mSingleSymbol.get() );
@@ -121,6 +131,10 @@ void QgsSingleSymbolRendererWidget::changeSingleSymbol()
 {
   // update symbol from the GUI
   mRenderer->setSymbol( mSingleSymbol->clone() );
+
+  if ( mSingleSymbol->flags() & Qgis::SymbolFlag::RendererShouldUseSymbolLevels )
+    mRenderer->setUsingSymbolLevels( true );
+
   emit widgetChanged();
 }
 

@@ -56,6 +56,19 @@ class CORE_EXPORT QgsHueSaturationFilter : public QgsRasterInterface
     void setSaturation( int saturation );
     int saturation() const { return mSaturation; }
 
+    /**
+     * Sets whether the filter will invert colors.
+     * \param invertColors Set to TRUE to invert colors.
+     * \since QGIS 3.22
+     */
+    void setInvertColors( bool invertColors ) { mInvertColors = invertColors; }
+
+    /**
+     * Returns TRUE if the filter inverts colors.
+     * \since QGIS 3.22
+     */
+    bool invertColors() const { return mInvertColors; }
+
     void setGrayscaleMode( QgsHueSaturationFilter::GrayscaleMode grayscaleMode ) { mGrayscaleMode = grayscaleMode; }
     QgsHueSaturationFilter::GrayscaleMode grayscaleMode() const { return mGrayscaleMode; }
 
@@ -75,7 +88,7 @@ class CORE_EXPORT QgsHueSaturationFilter : public QgsRasterInterface
     //! Process a change in saturation and update resultant HSL & RGB values
     void processSaturation( int &r, int &g, int &b, int &h, int &s, int &l );
     //! Process a colorization and update resultant HSL & RGB values
-    void processColorization( int &r, int &g, int &b, int &h, int &s, int &l );
+    void processColorization( int &r, int &g, int &b, int &h, int &s, int &l ) const;
 
     //! Current saturation value. Range: -100 (desaturated) ... 0 (no change) ... 100 (increased)
     int mSaturation = 0;
@@ -83,6 +96,8 @@ class CORE_EXPORT QgsHueSaturationFilter : public QgsRasterInterface
 
     //! Current grayscale mode
     QgsHueSaturationFilter::GrayscaleMode mGrayscaleMode = QgsHueSaturationFilter::GrayscaleOff;
+
+    bool mInvertColors = false;
 
     //! Colorize settings
     bool mColorizeOn = false;

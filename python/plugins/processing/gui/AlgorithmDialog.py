@@ -22,6 +22,7 @@ __date__ = 'August 2012'
 __copyright__ = '(C) 2012, Victor Olaya'
 
 from pprint import pformat
+import datetime
 import time
 
 from qgis.PyQt.QtCore import QCoreApplication
@@ -36,10 +37,11 @@ from qgis.core import (Qgis,
                        QgsProxyProgressTask,
                        QgsProcessingFeatureSourceDefinition)
 from qgis.gui import (QgsGui,
-                      QgsProcessingAlgorithmDialogBase)
+                      QgsProcessingAlgorithmDialogBase,
+                      QgsProcessingParametersGenerator,
+                      QgsProcessingContextGenerator)
 from qgis.utils import iface
 
-from processing.core.ProcessingLog import ProcessingLog
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.core.ProcessingResults import resultsList
 from processing.gui.ParametersPanel import ParametersPanel
@@ -62,6 +64,8 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
 
         self.context = None
         self.feedback = None
+        self.history_log_id = None
+        self.history_details = {}
 
         self.setAlgorithm(alg)
         self.setMainWidget(self.getParametersPanel(alg, self))
@@ -108,19 +112,69 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
     def setParameters(self, parameters):
         self.mainWidget().setParameters(parameters)
 
-    def createProcessingParameters(self):
+    def flag_invalid_parameter_value(self, message: str, widget):
+        """
+        Highlights a parameter with an invalid value
+        """
+        try:
+            self.buttonBox().accepted.connect(lambda w=widget:
+                                              w.setPalette(QPalette()))
+            palette = widget.palette()
+            palette.setColor(QPalette.Base, QColor(255, 255, 0))
+            widget.setPalette(palette)
+        except:
+            pass
+        self.messageBar().clearWidgets()
+        self.messageBar().pushMessage("", self.tr("Wrong or missing parameter value: {0}").format(
+            message),
+            level=Qgis.Warning, duration=5)
+
+    def flag_invalid_output_extension(self, message: str, widget):
+        """
+        Highlights a parameter with an invalid output extension
+        """
+        try:
+            self.buttonBox().accepted.connect(lambda w=widget:
+                                              w.setPalette(QPalette()))
+            palette = widget.palette()
+            palette.setColor(QPalette.Base, QColor(255, 255, 0))
+            widget.setPalette(palette)
+        except:
+            pass
+        self.messageBar().clearWidgets()
+        self.messageBar().pushMessage("", message,
+                                      level=Qgis.Warning, duration=5)
+
+    def createProcessingParameters(self, flags=QgsProcessingParametersGenerator.Flags()):
         if self.mainWidget() is None:
             return {}
-        else:
-            return self.mainWidget().createProcessingParameters()
+
+        try:
+            return self.mainWidget().createProcessingParameters(flags)
+        except AlgorithmDialogBase.InvalidParameterValue as e:
+            self.flag_invalid_parameter_value(e.parameter.description(), e.widget)
+        except AlgorithmDialogBase.InvalidOutputExtension as e:
+            self.flag_invalid_output_extension(e.message, e.widget)
+        return {}
+
+    def processingContext(self):
+        if self.context is None:
+            self.feedback = self.createFeedback()
+            self.context = dataobjects.createContext(self.feedback)
+            self.context.setLogLevel(self.logLevel())
+        return self.context
 
     def runAlgorithm(self):
         self.feedback = self.createFeedback()
         self.context = dataobjects.createContext(self.feedback)
+        self.context.setLogLevel(self.logLevel())
 
         checkCRS = ProcessingConfig.getSetting(ProcessingConfig.WARN_UNMATCHING_CRS)
         try:
-            parameters = self.createProcessingParameters()
+            # messy as all heck, but we don't want to call the dialog's implementation of
+            # createProcessingParameters as we want to catch the exceptions raised by the
+            # parameter panel instead...
+            parameters = {} if self.mainWidget() is None else self.mainWidget().createProcessingParameters()
 
             if checkCRS and not self.algorithm().validateInputCrs(parameters, self.context):
                 reply = QMessageBox.question(self, self.tr("Unmatching CRS's"),
@@ -154,7 +208,11 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
             if self.algorithm().provider().warningMessage():
                 self.feedback.reportError(self.algorithm().provider().warningMessage())
 
-            self.setProgressText(QCoreApplication.translate('AlgorithmDialog', 'Processing algorithm…'))
+            self.feedback.pushInfo(
+                QCoreApplication.translate('AlgorithmDialog', 'Algorithm started at: {}').format(
+                    datetime.datetime.now().replace(microsecond=0).isoformat()
+                )
+            )
 
             self.setInfo(
                 QCoreApplication.translate('AlgorithmDialog', '<b>Algorithm \'{0}\' starting&hellip;</b>').format(
@@ -169,6 +227,28 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
             self.feedback.pushInfo('')
             start_time = time.time()
 
+            def elapsed_time(start_time, result):
+                delta_t = time.time() - start_time
+                hours = int(delta_t / 3600)
+                minutes = int((delta_t % 3600) / 60)
+                seconds = delta_t - hours * 3600 - minutes * 60
+
+                str_hours = [self.tr("hour"), self.tr("hours")][hours > 1]
+                str_minutes = [self.tr("minute"), self.tr("minutes")][minutes > 1]
+                str_seconds = [self.tr("second"), self.tr("seconds")][seconds != 1]
+
+                if hours > 0:
+                    elapsed = '{0} {1:0.2f} {2} ({3} {4} {5} {6} {7:0.0f} {2})'.format(
+                        result, delta_t, str_seconds, hours, str_hours, minutes, str_minutes, seconds)
+                elif minutes > 0:
+                    elapsed = '{0} {1:0.2f} {2} ({3} {4} {5:0.0f} {2})'.format(
+                        result, delta_t, str_seconds, minutes, str_minutes, seconds)
+                else:
+                    elapsed = '{0} {1:0.2f} {2}'.format(
+                        result, delta_t, str_seconds)
+
+                return(elapsed)
+
             if self.iterateParam:
                 # Make sure the Log tab is visible before executing the algorithm
                 try:
@@ -180,30 +260,43 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
                 self.cancelButton().setEnabled(self.algorithm().flags() & QgsProcessingAlgorithm.FlagCanCancel)
                 if executeIterating(self.algorithm(), parameters, self.iterateParam, self.context, self.feedback):
                     self.feedback.pushInfo(
-                        self.tr('Execution completed in {0:0.2f} seconds').format(time.time() - start_time))
+                        self.tr(elapsed_time(start_time, 'Execution completed in')))
                     self.cancelButton().setEnabled(False)
                     self.finish(True, parameters, self.context, self.feedback)
                 else:
                     self.cancelButton().setEnabled(False)
                     self.resetGui()
             else:
-                command = self.algorithm().asPythonCommand(parameters, self.context)
-                if command:
-                    ProcessingLog.addToLog(command)
+                self.history_details = {
+                    'python_command': self.algorithm().asPythonCommand(parameters, self.context),
+                    'algorithm_id': self.algorithm().id(),
+                    'parameters': self.algorithm().asMap(parameters, self.context)
+                }
+                process_command, command_ok = self.algorithm().asQgisProcessCommand(parameters, self.context)
+                if command_ok:
+                    self.history_details['process_command'] = process_command
+                self.history_log_id, _ = QgsGui.historyProviderRegistry().addEntry('processing', self.history_details)
+
                 QgsGui.instance().processingRecentAlgorithmLog().push(self.algorithm().id())
                 self.cancelButton().setEnabled(self.algorithm().flags() & QgsProcessingAlgorithm.FlagCanCancel)
 
                 def on_complete(ok, results):
                     if ok:
                         self.feedback.pushInfo(
-                            self.tr('Execution completed in {0:0.2f} seconds').format(time.time() - start_time))
+                            self.tr(elapsed_time(start_time, 'Execution completed in')))
                         self.feedback.pushInfo(self.tr('Results:'))
                         r = {k: v for k, v in results.items() if k not in ('CHILD_RESULTS', 'CHILD_INPUTS')}
                         self.feedback.pushCommandInfo(pformat(r))
                     else:
                         self.feedback.reportError(
-                            self.tr('Execution failed after {0:0.2f} seconds').format(time.time() - start_time))
+                            self.tr(elapsed_time(start_time, 'Execution failed after')))
                     self.feedback.pushInfo('')
+
+                    if self.history_log_id is not None:
+                        # can't deepcopy this!
+                        self.history_details['results'] = {k: v for k, v in results.items() if k != 'CHILD_INPUTS'}
+
+                        QgsGui.historyProviderRegistry().updateEntry(self.history_log_id, self.history_details)
 
                     if self.feedback_dialog is not None:
                         self.feedback_dialog.close()
@@ -244,30 +337,9 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
                     on_complete(ok, results)
 
         except AlgorithmDialogBase.InvalidParameterValue as e:
-            try:
-                self.buttonBox().accepted.connect(lambda e=e:
-                                                  e.widget.setPalette(QPalette()))
-                palette = e.widget.palette()
-                palette.setColor(QPalette.Base, QColor(255, 255, 0))
-                e.widget.setPalette(palette)
-            except:
-                pass
-            self.messageBar().clearWidgets()
-            self.messageBar().pushMessage("", self.tr("Wrong or missing parameter value: {0}").format(
-                e.parameter.description()),
-                level=Qgis.Warning, duration=5)
+            self.flag_invalid_parameter_value(e.parameter.description(), e.widget)
         except AlgorithmDialogBase.InvalidOutputExtension as e:
-            try:
-                self.buttonBox().accepted.connect(lambda e=e:
-                                                  e.widget.setPalette(QPalette()))
-                palette = e.widget.palette()
-                palette.setColor(QPalette.Base, QColor(255, 255, 0))
-                e.widget.setPalette(palette)
-            except:
-                pass
-            self.messageBar().clearWidgets()
-            self.messageBar().pushMessage("", e.message,
-                                          level=Qgis.Warning, duration=5)
+            self.flag_invalid_output_extension(e.message, e.widget)
 
     def finish(self, successful, result, context, feedback, in_place=False):
         keepOpen = not successful or ProcessingConfig.getSetting(ProcessingConfig.KEEP_DIALOG_OPEN)

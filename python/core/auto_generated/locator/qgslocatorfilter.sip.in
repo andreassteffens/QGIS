@@ -13,8 +13,8 @@
 
 class QgsLocatorResult
 {
-%Docstring
-Encapsulates properties of an individual matching result found by a QgsLocatorFilter.
+%Docstring(signature="appended")
+Encapsulates properties of an individual matching result found by a :py:class:`QgsLocatorFilter`.
 
 .. versionadded:: 3.0
 %End
@@ -39,7 +39,7 @@ Constructor for QgsLocatorResult.
 %Docstring
 Returns the ``userData``.
 
-.. versionadded:: 3.16.2
+.. versionadded:: 3.18
 %End
 
     QgsLocatorFilter *filter;
@@ -83,7 +83,7 @@ normally.
 
 class QgsLocatorFilter : QObject
 {
-%Docstring
+%Docstring(signature="appended")
 Abstract base class for filters which collect locator results.
 
 .. note::
@@ -138,6 +138,13 @@ Returns the unique name for the filter. This should be an untranslated string id
 Returns a translated, user-friendly name for the filter.
 
 .. seealso:: :py:func:`name`
+%End
+
+    virtual QString description() const;
+%Docstring
+Returns a translated, description for the filter.
+
+.. versionadded:: 3.20
 %End
 
     virtual QgsLocatorFilter::Flags flags() const;
@@ -303,7 +310,7 @@ custom configuration widget.
    :py:func:`~QgsLocatorFilter.hasConfigWidget` must return ``True`` to indicate that the filter supports configuration.
 %End
 
-    void logMessage( const QString &message, Qgis::MessageLevel level = Qgis::Info );
+    void logMessage( const QString &message, Qgis::MessageLevel level = Qgis::MessageLevel::Info );
 %Docstring
 Logs a ``message`` to the log panel
 
@@ -315,6 +322,27 @@ Logs a ``message`` to the log panel
 .. versionadded:: 3.2
 %End
 
+    int fetchResultsDelay() const;
+%Docstring
+Returns the delay (in milliseconds) for the filter to wait prior to fetching results.
+
+.. seealso:: :py:func:`setFetchResultsDelay`
+
+.. versionadded:: 3.18
+%End
+
+    void setFetchResultsDelay( int delay );
+%Docstring
+Sets a ``delay`` (in milliseconds) for the filter to wait prior to fetching results.
+
+.. seealso:: :py:func:`fetchResultsDelay`
+
+.. note::
+
+   If the locator filter has a FastFlag, this value is ignored.
+
+.. versionadded:: 3.18
+%End
 
   signals:
 

@@ -33,6 +33,10 @@ class QgsProviderGuiMetadata;
 class QgsDataItemGuiProvider;
 class QgsSourceSelectProvider;
 class QgsProjectStorageGuiProvider;
+class QgsSubsetStringEditorProvider;
+class QgsProviderSourceWidgetProvider;
+class QgsMapLayerConfigWidgetFactory;
+class QgsMapLayer;
 
 /**
  * \ingroup gui
@@ -86,6 +90,29 @@ class GUI_EXPORT QgsProviderGuiRegistry
      */
     virtual QList<QgsProjectStorageGuiProvider *> projectStorageGuiProviders( const QString &providerKey ) SIP_FACTORY;
 
+    /**
+     * Returns all subset string editor providers registered in provider with \a providerKey
+     * \note Ownership of providers is passed to the caller.
+     * \since QGIS 3.18
+     */
+    virtual QList<QgsSubsetStringEditorProvider *> subsetStringEditorProviders( const QString &providerKey ) SIP_FACTORY;
+
+    /**
+     * Returns all source widget providers registered in provider with \a providerKey
+     * \note Ownership of providers is passed to the caller.
+     * \since QGIS 3.18
+     */
+    virtual QList<QgsProviderSourceWidgetProvider *> sourceWidgetProviders( const QString &providerKey ) SIP_FACTORY;
+
+    /**
+     * Returns all map layer config widget factories associated with the registered providers.
+     *
+     * The optional \a layer argument can be used to only return factories which support the specified layer.
+     *
+     * \since QGIS 3.20
+     */
+    virtual QList<const QgsMapLayerConfigWidgetFactory *> mapLayerConfigWidgetFactories( QgsMapLayer *layer = nullptr );
+
     //! Type for data provider metadata associative container
     SIP_SKIP typedef std::map<QString, QgsProviderGuiMetadata *> GuiProviders;
 
@@ -93,7 +120,7 @@ class GUI_EXPORT QgsProviderGuiRegistry
 
     /**
      * Loads the dynamic plugins on the given path
-     * When QGIS is compiled with FORCE_STATIC_PROVIDERS,
+     * When QGIS is compiled with FORCE_STATIC_LIBS,
      * the function is no-op
      */
     void loadDynamicProviders( const QString &pluginPath );

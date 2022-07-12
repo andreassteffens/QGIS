@@ -26,6 +26,7 @@
 #include "qgsfeature.h"
 #include "qgsabstractmetadatabase.h"
 #include "qgspolygon.h"
+#include "qgscoordinatereferencesystem.h"
 
 #define SIP_NO_FILE
 
@@ -304,7 +305,7 @@ class CORE_EXPORT QgsAbstractGeoPdfExporter
     /**
      * Returns the last error message encountered during the export.
      */
-    QString errorMessage() { return mErrorMessage; }
+    QString errorMessage() const { return mErrorMessage; }
 
     /**
      * Returns a file path to use for temporary files required for GeoPDF creation.

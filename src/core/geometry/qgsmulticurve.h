@@ -45,7 +45,7 @@ class CORE_EXPORT QgsMultiCurve: public QgsGeometryCollection
     /**
      * Returns the curve with the specified \a index.
      *
-     * An IndexError will be raised if no curve with the specified index exists.
+     * \throws IndexError if no curve with the specified index exists.
      *
      * \since QGIS 3.16
      */
@@ -103,12 +103,12 @@ class CORE_EXPORT QgsMultiCurve: public QgsGeometryCollection
      * \note Not available in Python. Objects will be automatically be converted to the appropriate target type.
      * \since QGIS 3.0
      */
-    inline const QgsMultiCurve *cast( const QgsAbstractGeometry *geom ) const
+    inline static const QgsMultiCurve *cast( const QgsAbstractGeometry *geom )
     {
       if ( !geom )
         return nullptr;
 
-      QgsWkbTypes::Type flatType = QgsWkbTypes::flatType( geom->wkbType() );
+      const QgsWkbTypes::Type flatType = QgsWkbTypes::flatType( geom->wkbType() );
       if ( flatType == QgsWkbTypes::MultiCurve
            || flatType == QgsWkbTypes::MultiLineString )
         return static_cast<const QgsMultiCurve *>( geom );

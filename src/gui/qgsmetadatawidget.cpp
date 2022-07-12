@@ -15,7 +15,6 @@
  *                                                                         *
  ***************************************************************************/
 
-#include <QtWidgets>
 #include <QIcon>
 #include <QPushButton>
 #include <QComboBox>
@@ -184,11 +183,11 @@ QgsAbstractMetadataBase *QgsMetadataWidget::metadata()
   switch ( mMode )
   {
     case LayerMetadata:
-      md = qgis::make_unique< QgsLayerMetadata >();
+      md = std::make_unique< QgsLayerMetadata >();
       break;
 
     case ProjectMetadata:
-      md = qgis::make_unique< QgsProjectMetadata >();
+      md = std::make_unique< QgsProjectMetadata >();
       break;
 
   }
@@ -216,7 +215,7 @@ void QgsMetadataWidget::fillSourceFromLayer()
 
 void QgsMetadataWidget::addVocabulary()
 {
-  int row = tabKeywords->rowCount();
+  const int row = tabKeywords->rowCount();
   tabKeywords->setRowCount( row + 1 );
   QTableWidgetItem *pCell = nullptr;
 
@@ -244,7 +243,7 @@ void QgsMetadataWidget::addLicence()
   QString newLicence = QInputDialog::getItem( this, tr( "New Licence" ), tr( "New Licence" ), parseLicenses(), 0, true );
   if ( tabLicenses->findItems( newLicence, Qt::MatchExactly ).isEmpty() )
   {
-    int row = tabLicenses->rowCount();
+    const int row = tabLicenses->rowCount();
     tabLicenses->setRowCount( row + 1 );
     QTableWidgetItem *pCell = new QTableWidgetItem( newLicence );
     tabLicenses->setItem( row, 0, pCell );
@@ -288,7 +287,7 @@ void QgsMetadataWidget::removeSelectedRight()
 
 void QgsMetadataWidget::addConstraint()
 {
-  int row = mConstraintsModel->rowCount();
+  const int row = mConstraintsModel->rowCount();
   mConstraintsModel->setItem( row, 0, new QStandardItem( tr( "undefined %1" ).arg( row + 1 ) ) );
   mConstraintsModel->setItem( row, 1, new QStandardItem( tr( "undefined %1" ).arg( row + 1 ) ) );
 }
@@ -336,7 +335,7 @@ void QgsMetadataWidget::crsChanged()
 
 void QgsMetadataWidget::addAddress()
 {
-  int row = tabAddresses->rowCount();
+  const int row = tabAddresses->rowCount();
   tabAddresses->setRowCount( row + 1 );
   QTableWidgetItem *pCell = nullptr;
 
@@ -384,7 +383,7 @@ void QgsMetadataWidget::fillCrsFromProvider()
 
 void QgsMetadataWidget::addLink()
 {
-  int row = mLinksModel->rowCount();
+  const int row = mLinksModel->rowCount();
   mLinksModel->setItem( row, 0, new QStandardItem( tr( "undefined %1" ).arg( row + 1 ) ) );
   mLinksModel->setItem( row, 1, new QStandardItem() );
   mLinksModel->setItem( row, 2, new QStandardItem() );
@@ -549,7 +548,7 @@ void QgsMetadataWidget::setUiFromMetadata()
     const QList<QgsLayerMetadata::Constraint> &constraints = layerMetadata->constraints();
     for ( const QgsLayerMetadata::Constraint &constraint : constraints )
     {
-      int row = mConstraintsModel->rowCount();
+      const int row = mConstraintsModel->rowCount();
       mConstraintsModel->setItem( row, 0, new QStandardItem( constraint.type ) );
       mConstraintsModel->setItem( row, 1, new QStandardItem( constraint.constraint ) );
     }
@@ -627,7 +626,7 @@ void QgsMetadataWidget::setUiFromMetadata()
   mLinksModel->setRowCount( 0 );
   for ( const QgsAbstractMetadataBase::Link &link : links )
   {
-    int row = mLinksModel->rowCount();
+    const int row = mLinksModel->rowCount();
     mLinksModel->setItem( row, 0, new QStandardItem( link.name ) );
     mLinksModel->setItem( row, 1, new QStandardItem( link.type ) );
     mLinksModel->setItem( row, 2, new QStandardItem( link.url ) );
@@ -784,11 +783,11 @@ bool QgsMetadataWidget::checkMetadata()
   switch ( mMode )
   {
     case LayerMetadata:
-      validator = qgis::make_unique< QgsNativeMetadataValidator>();
+      validator = std::make_unique< QgsNativeMetadataValidator>();
       break;
 
     case ProjectMetadata:
-      validator = qgis::make_unique< QgsNativeProjectMetadataValidator>();
+      validator = std::make_unique< QgsNativeProjectMetadataValidator>();
       break;
   }
 
@@ -798,7 +797,7 @@ bool QgsMetadataWidget::checkMetadata()
   QString errors;
   if ( !results )
   {
-    for ( const QgsAbstractMetadataBaseValidator::ValidationResult &result : qgis::as_const( validationResults ) )
+    for ( const QgsAbstractMetadataBaseValidator::ValidationResult &result : std::as_const( validationResults ) )
     {
       errors += QLatin1String( "<b>" ) % result.section;
       if ( ! result._identifier().isNull() )
@@ -1029,7 +1028,7 @@ void QgsMetadataWidget::updatePanel()
     QList<QTableWidgetItem *> categories = tabKeywords->findItems( QStringLiteral( "gmd:topicCategory" ), Qt::MatchExactly );
     if ( !categories.isEmpty() )
     {
-      int row = categories.at( 0 )->row();
+      const int row = categories.at( 0 )->row();
       mCategoriesModel->setStringList( tabKeywords->item( row, 1 )->text().split( ',' ) );
     }
     else
@@ -1108,6 +1107,7 @@ void QgsMetadataWidget::removeSelectedCategories()
   mDefaultCategoriesModel->sort( 0 );
 }
 
+///@cond PRIVATE
 LinkItemDelegate::LinkItemDelegate( QObject *parent )
   : QStyledItemDelegate( parent )
 {
@@ -1163,3 +1163,4 @@ QWidget *ConstraintItemDelegate::createEditor( QWidget *parent, const QStyleOpti
 
   return QStyledItemDelegate::createEditor( parent, option, index );
 }
+///@endcond

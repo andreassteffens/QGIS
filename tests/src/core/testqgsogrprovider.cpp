@@ -26,6 +26,7 @@
 #include <qgsnetworkaccessmanager.h>
 
 #include <QObject>
+#include <QThread>
 
 #include <cpl_conv.h>
 
@@ -48,6 +49,7 @@ class TestQgsOgrProvider : public QObject
     void decodeUri();
     void encodeUri();
     void testThread();
+    void testCsvFeatureAddition();
 
   private:
     QString mTestDataDir;
@@ -74,7 +76,7 @@ void TestQgsOgrProvider::initTestCase()
 void TestQgsOgrProvider::cleanupTestCase()
 {
   QgsApplication::exitQgis();
-  QString myReportFile = QDir::tempPath() + "/qgistest.html";
+  const QString myReportFile = QDir::tempPath() + "/qgistest.html";
   QFile myFile( myReportFile );
   if ( myFile.open( QIODevice::WriteOnly | QIODevice::Append ) )
   {
@@ -96,7 +98,7 @@ void TestQgsOgrProvider::setupProxy()
     settings.setValue( QStringLiteral( "proxy/proxyPassword" ), QStringLiteral( "password" ) );
     settings.setValue( QStringLiteral( "proxy/proxyExcludedUrls" ), QStringLiteral( "http://www.myhost.com|http://www.myotherhost.com" ) );
     QgsNetworkAccessManager::instance()->setupDefaultProxyAndCache();
-    QgsVectorLayer vl( mTestDataDir + '/' + QStringLiteral( "lines.shp" ), QStringLiteral( "proxy_test" ), QLatin1String( "ogr" ) );
+    const QgsVectorLayer vl( mTestDataDir + '/' + QStringLiteral( "lines.shp" ), QStringLiteral( "proxy_test" ), QLatin1String( "ogr" ) );
     QVERIFY( vl.isValid() );
     const char *proxyConfig = CPLGetConfigOption( "GDAL_HTTP_PROXY", nullptr );
     QCOMPARE( proxyConfig, "myproxyhostname.com:1234" );
@@ -112,7 +114,7 @@ void TestQgsOgrProvider::setupProxy()
     settings.setValue( QStringLiteral( "proxy/proxyUser" ), QStringLiteral( "username" ) );
     settings.remove( QStringLiteral( "proxy/proxyPassword" ) );
     QgsNetworkAccessManager::instance()->setupDefaultProxyAndCache();
-    QgsVectorLayer vl( mTestDataDir + '/' + QStringLiteral( "lines.shp" ), QStringLiteral( "proxy_test" ), QLatin1String( "ogr" ) );
+    const QgsVectorLayer vl( mTestDataDir + '/' + QStringLiteral( "lines.shp" ), QStringLiteral( "proxy_test" ), QLatin1String( "ogr" ) );
     QVERIFY( vl.isValid() );
     const char *proxyConfig = CPLGetConfigOption( "GDAL_HTTP_PROXY", nullptr );
     QCOMPARE( proxyConfig, "myproxyhostname.com" );
@@ -125,11 +127,12 @@ void TestQgsOgrProvider::setupProxy()
 void TestQgsOgrProvider::decodeUri()
 {
   auto parts( QgsProviderRegistry::instance()->decodeUri( QStringLiteral( "ogr" ), QStringLiteral( "MySQL:database_name,host=localhost,port=3306 authcfg='f8wwfx8'" ) ) );
-  QCOMPARE( parts.size(), 4 );
+  QCOMPARE( parts.size(), 5 );
   QCOMPARE( parts.value( QStringLiteral( "databaseName" ) ).toString(), QString( "database_name" ) );
   QVERIFY( parts.value( QStringLiteral( "layerName" ) ).toString().isEmpty() );
   QVERIFY( !parts.value( QStringLiteral( "layerId" ) ).isValid() );
-  QCOMPARE( parts.value( QStringLiteral( "path" ) ).toString(), QString( "MySQL:database_name,host=localhost,port=3306 authcfg='f8wwfx8'" ) );
+  QCOMPARE( parts.value( QStringLiteral( "path" ) ).toString(), QString( "MySQL:database_name,host=localhost,port=3306" ) );
+  QCOMPARE( parts.value( QStringLiteral( "authcfg" ) ).toString(), QString( "f8wwfx8" ) );
   QCOMPARE( QgsProviderRegistry::instance()->encodeUri( QStringLiteral( "ogr" ), parts ), QStringLiteral( "MySQL:database_name,host=localhost,port=3306 authcfg='f8wwfx8'" ) );
 
   parts = QgsProviderRegistry::instance()->decodeUri( QStringLiteral( "ogr" ), QStringLiteral( "MYSQL:westholland,user=root,password=psv9570,port=3306,tables=bedrijven" ) );
@@ -231,6 +234,11 @@ void TestQgsOgrProvider::decodeUri()
   parts = QgsProviderRegistry::instance()->decodeUri( QStringLiteral( "ogr" ), QStringLiteral( "/path/to/a/geopackage.gpkg|option:FOO=BAR|option:FOO2=BAR2" ) );
   QCOMPARE( parts.value( QStringLiteral( "path" ) ).toString(), QString( "/path/to/a/geopackage.gpkg" ) );
   QCOMPARE( parts.value( QStringLiteral( "openOptions" ) ).toStringList(), QStringList() << QStringLiteral( "FOO=BAR" ) << QStringLiteral( "FOO2=BAR2" ) );
+
+  // test authcfg with vsicurl URI
+  parts = QgsProviderRegistry::instance()->decodeUri( QStringLiteral( "ogr" ), QStringLiteral( "/vsicurl/https://www.qgis.org/dataset.gpkg authcfg='1234567'" ) );
+  QCOMPARE( parts.value( QStringLiteral( "path" ) ).toString(), QString( "/vsicurl/https://www.qgis.org/dataset.gpkg" ) );
+  QCOMPARE( parts.value( QStringLiteral( "authcfg" ) ).toString(), QString( "1234567" ) );
 }
 
 void TestQgsOgrProvider::encodeUri()
@@ -262,6 +270,12 @@ void TestQgsOgrProvider::encodeUri()
   parts.insert( QStringLiteral( "path" ), QStringLiteral( "/home/user/test.gpkg" ) );
   parts.insert( QStringLiteral( "openOptions" ), QStringList() << QStringLiteral( "FOO=BAR" ) << QStringLiteral( "FOO2=BAR2" ) );
   QCOMPARE( QgsProviderRegistry::instance()->encodeUri( QStringLiteral( "ogr" ), parts ), QStringLiteral( "/home/user/test.gpkg|option:FOO=BAR|option:FOO2=BAR2" ) );
+
+  // test authcfg with vsicurl
+  parts.clear();
+  parts.insert( QStringLiteral( "path" ), QStringLiteral( "/vsicurl/https://www.qgis.org/dataset.gpkg" ) );
+  parts.insert( QStringLiteral( "authcfg" ), QStringLiteral( "1234567" ) );
+  QCOMPARE( QgsProviderRegistry::instance()->encodeUri( QStringLiteral( "ogr" ), parts ), QStringLiteral( "/vsicurl/https://www.qgis.org/dataset.gpkg authcfg='1234567'" ) );
 }
 
 class ReadVectorLayer : public QThread
@@ -328,7 +342,7 @@ void TestQgsOgrProvider::testThread()
   QWaitCondition waitForVlCreation;
   QWaitCondition waitForProcessEvents;
 
-  QString filePath = mTestDataDir + '/' + QStringLiteral( "lines.shp" );
+  const QString filePath = mTestDataDir + '/' + QStringLiteral( "lines.shp" );
   QThread *thread = new ReadVectorLayer( filePath, mutex, waitForVlCreation, waitForProcessEvents );
 
   thread->start();
@@ -349,6 +363,48 @@ void TestQgsOgrProvider::testThread()
   thread->wait();
   qInstallMessageHandler( 0 );
 
+}
+
+void TestQgsOgrProvider::testCsvFeatureAddition()
+{
+  const QString csvFilename = QDir::tempPath() + "/csvfeatureadditiontest.csv";
+  QFile csvFile( csvFilename );
+  if ( csvFile.open( QIODevice::WriteOnly | QIODevice::Truncate ) )
+  {
+    QTextStream textStream( &csvFile );
+    textStream << QLatin1String( "col1,col2,col3\n0,0,\"csv0\"\n" );
+    csvFile.close();
+  }
+
+  QgsVectorLayer *csvLayer = new QgsVectorLayer( csvFilename, QStringLiteral( "csv" ) );
+  QVERIFY( csvLayer->isValid() );
+  QCOMPARE( csvLayer->featureCount(), 1 );
+
+  QgsFeature f1( csvLayer->fields() );
+  f1.setAttribute( 0, 1 );
+  f1.setAttribute( 1, 1 );
+  f1.setAttribute( 2, QLatin1String( "csv1" ) );
+  QgsFeature f2( csvLayer->fields() );
+  f2.setAttribute( 0, 2 );
+  f2.setAttribute( 1, 2 );
+  f2.setAttribute( 2, QLatin1String( "csv2" ) );
+
+  QgsFeatureList features;
+  features << f1 << f2;
+  csvLayer->dataProvider()->addFeatures( features );
+  QCOMPARE( features.at( 0 ).id(), 2 );
+  QCOMPARE( features.at( 1 ).id(), 3 );
+
+  csvLayer->setSubsetString( QStringLiteral( "col1 = '2'" ) );
+  QCOMPARE( csvLayer->featureCount(), 1 );
+
+  features.clear();
+  features << f1;
+  csvLayer->dataProvider()->addFeatures( features );
+  QCOMPARE( features.at( 0 ).id(), 4 );
+
+  delete csvLayer;
+  QFile::remove( csvFilename );
 }
 
 

@@ -44,9 +44,10 @@ class QgsAttributeTableFilterModel: QSortFilterProxyModel, QgsFeatureModel
 Make sure, the master model is already loaded, so the selection will get synchronized.
 
 :param parent: parent object (owner)
-:param sourceModel: The QgsAttributeTableModel to use as source (mostly referred to as master model)
+:param sourceModel: The :py:class:`QgsAttributeTableModel` to use as source (mostly referred to as master model)
 :param canvas: The mapCanvas. Used to identify the currently visible features.
 %End
+
 
     void setSourceModel( QgsAttributeTableModel *sourceModel );
 %Docstring
@@ -56,6 +57,7 @@ Set the attribute table model that backs this model
 
 .. versionadded:: 2.0
 %End
+
 
     void setSelectedOnTop( bool selectedOnTop );
 %Docstring
@@ -201,11 +203,13 @@ Returns -1 if none is defined.
     virtual int columnCount( const QModelIndex &parent ) const;
 
 
-    void setAttributeTableConfig( const QgsAttributeTableConfig &config );
+    void setAttributeTableConfig( const QgsAttributeTableConfig &config);
 %Docstring
 Set the attribute table configuration to control which fields are shown,
 in which order they are shown as well as if and where an action column
 is shown.
+
+:param config: attribute table config
 %End
 
     void setFilterExpression( const QgsExpression &expression, const QgsExpressionContext &context );
@@ -275,7 +279,7 @@ Is called upon every change of the visible extents on the map canvas.
 When a change is signalled, the filter is updated and invalidated if needed.
 
 .. deprecated:: QGIS 3.10.3
-   - made private as reloadVisible()
+   - made private as :py:func:`~QgsAttributeTableFilterModel.reloadVisible`
 %End
 
     void filterFeatures();

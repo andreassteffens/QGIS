@@ -67,7 +67,7 @@
 </template>
 
 <script>
-const uuidv4 = require("uuid/v4");
+import { v4 as uuidv4 } from 'uuid';
 export default {
   name: "AttributeTable",
   props: {
@@ -181,7 +181,7 @@ export default {
           filter = `&${this.filterField.value}=${this.filterText}`;
         }
         fetch(
-          `/project/${this.project.id}/wfs3/collections/${this.typename}/items.json?limit=5&offset=${offset}${sorting}${filter}`
+          `./project/${this.project.id}/wfs3/collections/${this.typename}/items.json?limit=5&offset=${offset}${sorting}${filter}`
         )
           .then(response => {
             if (!response) {

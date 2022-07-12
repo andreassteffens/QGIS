@@ -105,6 +105,8 @@ checkDock::~checkDock()
   // delete errors in list
   deleteErrors();
   delete mErrorListModel;
+
+  mTest->deleteLater();
 }
 
 void checkDock::clearVertexMarkers()
@@ -159,8 +161,8 @@ void checkDock::parseErrorListByLayer( const QString &layerId )
 
   while ( it != mErrorList.end() )
   {
-    FeatureLayer fl1 = ( *it )->featurePairs().first();
-    FeatureLayer fl2 = ( *it )->featurePairs()[1];
+    const FeatureLayer fl1 = ( *it )->featurePairs().first();
+    const FeatureLayer fl2 = ( *it )->featurePairs()[1];
     if ( fl1.layer == layer || fl2.layer == layer )
     {
       it = mErrorList.erase( it );
@@ -179,8 +181,8 @@ void checkDock::parseErrorListByFeature( int featureId )
 
   while ( it != mErrorList.end() )
   {
-    FeatureLayer fl1 = ( *it )->featurePairs().first();
-    FeatureLayer fl2 = ( *it )->featurePairs()[1];
+    const FeatureLayer fl1 = ( *it )->featurePairs().first();
+    const FeatureLayer fl2 = ( *it )->featurePairs()[1];
     if ( fl1.feature.id() == featureId || fl2.feature.id() == featureId )
     {
       it = mErrorList.erase( it );
@@ -201,7 +203,7 @@ void checkDock::configure()
 
 void checkDock::errorListClicked( const QModelIndex &index )
 {
-  int row = index.row();
+  const int row = index.row();
   QgsRectangle r = mErrorList.at( row )->boundingBox();
   r.scale( 1.5 );
   QgsMapCanvas *canvas = qgsInterface->mapCanvas();
@@ -225,7 +227,7 @@ void checkDock::errorListClicked( const QModelIndex &index )
 
   fl.layer->getFeatures( QgsFeatureRequest().setFilterFid( fl.feature.id() ) ).nextFeature( f );
   g = f.geometry();
-  if ( g.isNull() )
+  if ( g.isNull() && mErrorList.at( row )->name() != QObject::tr( "gaps" ) )
   {
     QgsMessageLog::logMessage( tr( "Invalid first geometry" ), tr( "Topology plugin" ) );
     QMessageBox::information( this, tr( "Topology test" ), tr( "Feature not found in the layer.\nThe layer has probably changed.\nRun topology check again." ) );
@@ -258,7 +260,7 @@ void checkDock::errorListClicked( const QModelIndex &index )
 
   fl.layer->getFeatures( QgsFeatureRequest().setFilterFid( fl.feature.id() ) ).nextFeature( f );
   g = f.geometry();
-  if ( g.isNull() )
+  if ( g.isNull() && mErrorList.at( row )->name() != QObject::tr( "gaps" ) )
   {
     QgsMessageLog::logMessage( tr( "Invalid second geometry" ), tr( "Topology plugin" ) );
     QMessageBox::information( this, tr( "Topology test" ), tr( "Feature not found in the layer.\nThe layer has probably changed.\nRun topology check again." ) );
@@ -298,8 +300,8 @@ void checkDock::errorListClicked( const QModelIndex &index )
 
 void checkDock::fix()
 {
-  int row = mErrorTableView->currentIndex().row();
-  QString fixName = mFixBox->currentText();
+  const int row = mErrorTableView->currentIndex().row();
+  const QString fixName = mFixBox->currentText();
 
   if ( row == -1 )
     return;
@@ -315,7 +317,7 @@ void checkDock::fix()
     mErrorList.removeAt( row );
     mErrorListModel->resetModel();
     //parseErrorListByFeature();
-    mComment->setText( tr( "%1 errors were found" ).arg( mErrorList.count() ) );
+    mComment->setText( tr( "%n error(s) were found", nullptr, mErrorList.count() ) );
     qgsInterface->mapCanvas()->refresh();
   }
   else
@@ -331,9 +333,9 @@ void checkDock::runTests( ValidateType type )
     if ( mTest->testCanceled() )
       break;
 
-    QString testName = mTestTable->item( i, 0 )->text();
-    QString layer1Str = mTestTable->item( i, 3 )->text();
-    QString layer2Str = mTestTable->item( i, 4 )->text();
+    const QString testName = mTestTable->item( i, 0 )->text();
+    const QString layer1Str = mTestTable->item( i, 3 )->text();
+    const QString layer2Str = mTestTable->item( i, 4 )->text();
 
     // test if layer1 is in the registry
     if ( !( ( QgsVectorLayer * )QgsProject::instance()->mapLayers().contains( layer1Str ) ) )
@@ -365,7 +367,7 @@ void checkDock::runTests( ValidateType type )
       TopolError *te = *it;
       te->conflict();
 
-      QgsSettings settings;
+      const QgsSettings settings;
       if ( te->conflict().type() == QgsWkbTypes::PolygonGeometry )
       {
         rb = new QgsRubberBand( qgsInterface->mapCanvas(), QgsWkbTypes::PolygonGeometry );
@@ -394,7 +396,7 @@ void checkDock::validate( ValidateType type )
   mRbErrorMarkers.clear();
 
   runTests( type );
-  mComment->setText( tr( "%1 errors were found" ).arg( mErrorList.count() ) );
+  mComment->setText( tr( "%n error(s) were found", nullptr, mErrorList.count() ) );
 
   mRBFeature1->reset();
   mRBFeature2->reset();

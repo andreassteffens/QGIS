@@ -37,7 +37,6 @@ QgsSymbolLevelsWidget::QgsSymbolLevelsWidget( QgsFeatureRenderer *renderer, bool
 
 QgsSymbolLevelsWidget::QgsSymbolLevelsWidget( const QgsLegendSymbolList &symbols, bool usingSymbolLevels, QWidget *parent )
   : QgsPanelWidget( parent )
-  , mForceOrderingEnabled( false )
 {
   setupUi( this );
 
@@ -91,6 +90,7 @@ QgsSymbolLevelsWidget::QgsSymbolLevelsWidget( const QgsLegendSymbolList &symbols
   connect( tableLevels, &QTableWidget::cellChanged, this, &QgsSymbolLevelsWidget::renderingPassChanged );
 }
 
+
 void QgsSymbolLevelsWidget::populateTable()
 {
   const int iconSize = QgsGuiUtils::scaleIconSize( 16 );
@@ -112,7 +112,7 @@ void QgsSymbolLevelsWidget::populateTable()
       else
       {
         const QgsSymbolLayer *sl = sym->symbolLayer( layer );
-        const QIcon icon = QgsSymbolLayerUtils::symbolLayerPreviewIcon( sl, QgsUnitTypes::RenderMillimeters, QSize( iconSize, iconSize ) );
+        const QIcon icon = QgsSymbolLayerUtils::symbolLayerPreviewIcon( sl, QgsUnitTypes::RenderMillimeters, QSize( iconSize, iconSize ), QgsMapUnitScale(), sym->type() );
         item = new QTableWidgetItem( icon, QString::number( sl->renderingPass() ) );
       }
       tableLevels->setItem( row, layer + 1, item );
@@ -132,7 +132,7 @@ void QgsSymbolLevelsWidget::apply()
   if ( !mRenderer )
     return;
 
-  for ( const QgsLegendSymbolItem &legendSymbol : qgis::as_const( mLegendSymbols ) )
+  for ( const QgsLegendSymbolItem &legendSymbol : std::as_const( mLegendSymbols ) )
   {
     QgsSymbol *sym = legendSymbol.symbol();
     for ( int layer = 0; layer < sym->symbolLayerCount(); layer++ )
@@ -146,7 +146,7 @@ void QgsSymbolLevelsWidget::apply()
 
 void QgsSymbolLevelsWidget::setDefaultLevels()
 {
-  for ( const QgsLegendSymbolItem &item : qgis::as_const( mLegendSymbols ) )
+  for ( const QgsLegendSymbolItem &item : std::as_const( mLegendSymbols ) )
   {
     QgsSymbol *sym = item.symbol();
     for ( int layer = 0; layer < sym->symbolLayerCount(); layer++ )

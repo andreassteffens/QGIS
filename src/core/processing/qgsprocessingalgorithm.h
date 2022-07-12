@@ -35,6 +35,7 @@ class QgsFeatureSink;
 class QgsProcessingModelAlgorithm;
 class QgsProcessingAlgorithmConfigurationWidget;
 class QgsMeshLayer;
+class QgsPointCloudLayer;
 
 #ifdef SIP_RUN
 % ModuleHeaderCode
@@ -378,7 +379,7 @@ class CORE_EXPORT QgsProcessingAlgorithm
      *
      * If specified, \a ok will be set to TRUE if algorithm was successfully run.
      *
-     * If \a catchExceptions is set to FALSE, then QgsProcessingExceptions raised during
+     * If \a catchExceptions is set to FALSE, then QgsProcessingException raised during
      * the algorithm run will not be automatically caught and will be raised instead.
      *
      * \returns A map of algorithm outputs. These may be output layer references, or calculated
@@ -459,6 +460,29 @@ class CORE_EXPORT QgsProcessingAlgorithm
      * string.
      */
     virtual QString asPythonCommand( const QVariantMap &parameters, QgsProcessingContext &context ) const;
+
+    /**
+     * Returns a command string which will execute the algorithm using the specified \a parameters
+     * via the command line qgis_process tool.
+     *
+     * Note that some combinations of parameter types and values cannot be represented as a qgis_process string.
+     *
+     * \param parameters algorithm parameters
+     * \param context processing context
+     * \param ok will be set to TRUE if the command was successfully generated
+     *
+     * \returns equivalent qgis_process command
+     *
+     * \since QGIS 3.24
+     */
+    virtual QString asQgisProcessCommand( const QVariantMap &parameters, QgsProcessingContext &context, bool &ok SIP_OUT ) const;
+
+    /**
+     * Returns a JSON serializable variant map containing the specified \a parameters and \a context settings.
+     *
+     * \since QGIS 3.24
+     */
+    virtual QVariantMap asMap( const QVariantMap &parameters, QgsProcessingContext &context ) const;
 
     /**
      * Associates this algorithm with its provider. No transfer of ownership is involved.
@@ -663,6 +687,18 @@ class CORE_EXPORT QgsProcessingAlgorithm
     QList<int> parameterAsEnums( const QVariantMap &parameters, const QString &name, const QgsProcessingContext &context ) const;
 
     /**
+     * Evaluates the parameter with matching \a name to a static enum string.
+     * \since QGIS 3.18
+     */
+    QString parameterAsEnumString( const QVariantMap &parameters, const QString &name, const QgsProcessingContext &context ) const;
+
+    /**
+     * Evaluates the parameter with matching \a name to list of static enum strings.
+     * \since QGIS 3.18
+     */
+    QStringList parameterAsEnumStrings( const QVariantMap &parameters, const QString &name, const QgsProcessingContext &context ) const;
+
+    /**
      * Evaluates the parameter with matching \a name to a static boolean value.
      */
     bool parameterAsBool( const QVariantMap &parameters, const QString &name, const QgsProcessingContext &context ) const;
@@ -722,7 +758,7 @@ class CORE_EXPORT QgsProcessingAlgorithm
      * to use parameterAsCompatibleSourceLayerPathAndLayerName() which may avoid conversion in more situations.
      */
     QString parameterAsCompatibleSourceLayerPath( const QVariantMap &parameters, const QString &name,
-        QgsProcessingContext &context, const QStringList &compatibleFormats, const QString &preferredFormat = QString( "shp" ), QgsProcessingFeedback *feedback = nullptr );
+        QgsProcessingContext &context, const QStringList &compatibleFormats, const QString &preferredFormat = QString( "shp" ), QgsProcessingFeedback *feedback = nullptr ) const;
 
     /**
      * Evaluates the parameter with matching \a name to a source vector layer file path and layer name of compatible format.
@@ -754,7 +790,7 @@ class CORE_EXPORT QgsProcessingAlgorithm
      * \since QGIS 3.10
      */
     QString parameterAsCompatibleSourceLayerPathAndLayerName( const QVariantMap &parameters, const QString &name,
-        QgsProcessingContext &context, const QStringList &compatibleFormats, const QString &preferredFormat = QString( "shp" ), QgsProcessingFeedback *feedback = nullptr, QString *layerName SIP_OUT = nullptr );
+        QgsProcessingContext &context, const QStringList &compatibleFormats, const QString &preferredFormat = QString( "shp" ), QgsProcessingFeedback *feedback = nullptr, QString *layerName SIP_OUT = nullptr ) const;
 
     /**
      * Evaluates the parameter with matching \a name to a map layer.
@@ -784,7 +820,6 @@ class CORE_EXPORT QgsProcessingAlgorithm
      * \since QGIS 3.6
      */
     QgsMeshLayer *parameterAsMeshLayer( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
-
 
     /**
      * Evaluates the parameter with matching \a name to a output layer destination.
@@ -832,14 +867,14 @@ class CORE_EXPORT QgsProcessingAlgorithm
      * \see parameterAsExtent()
      */
     QgsGeometry parameterAsExtentGeometry( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context,
-                                           const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem() );
+                                           const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem() ) const;
 
     /**
      * Returns the coordinate reference system associated with an extent parameter value.
      *
      * \see parameterAsExtent()
      */
-    QgsCoordinateReferenceSystem parameterAsExtentCrs( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context );
+    QgsCoordinateReferenceSystem parameterAsExtentCrs( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 
     /**
      * Evaluates the parameter with matching \a name to a point.
@@ -857,7 +892,7 @@ class CORE_EXPORT QgsProcessingAlgorithm
      *
      * \see parameterAsPoint()
      */
-    QgsCoordinateReferenceSystem parameterAsPointCrs( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context );
+    QgsCoordinateReferenceSystem parameterAsPointCrs( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 
     /**
      * Evaluates the parameter with matching \a name to a geometry.
@@ -875,9 +910,7 @@ class CORE_EXPORT QgsProcessingAlgorithm
      *
      * \see parameterAsGeometry()
      */
-    QgsCoordinateReferenceSystem parameterAsGeometryCrs( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context );
-
-
+    QgsCoordinateReferenceSystem parameterAsGeometryCrs( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 
     /**
      * Evaluates the parameter with matching \a name to a file/folder name.
@@ -937,36 +970,61 @@ class CORE_EXPORT QgsProcessingAlgorithm
      *
      * \since QGIS 3.10
      */
-    QColor parameterAsColor( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context );
+    QColor parameterAsColor( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 
     /**
      * Evaluates the parameter with matching \a name to a connection name string.
      *
      * \since QGIS 3.14
      */
-    QString parameterAsConnectionName( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context );
+    QString parameterAsConnectionName( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 
     /**
      * Evaluates the parameter with matching \a name to a database schema name string.
      *
      * \since QGIS 3.14
      */
-    QString parameterAsSchema( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context );
+    QString parameterAsSchema( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 
     /**
      * Evaluates the parameter with matching \a name to a database table name string.
      *
      * \since QGIS 3.14
      */
-    QString parameterAsDatabaseTableName( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context );
+    QString parameterAsDatabaseTableName( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 
     /**
      * Evaluates the parameter with matching \a name to a DateTime, or returns an invalid date time if the parameter was not set.
      *
      * \since QGIS 3.14
      */
-    QDateTime parameterAsDateTime( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context );
+    QDateTime parameterAsDateTime( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 
+    /**
+     * Evaluates the parameter with matching \a name to a point cloud layer.
+     *
+     * Layers will either be taken from \a context's active project, or loaded from external
+     * sources and stored temporarily in the \a context. In either case, callers do not
+     * need to handle deletion of the returned layer.
+     *
+     * \since QGIS 3.22
+     */
+    QgsPointCloudLayer *parameterAsPointCloudLayer( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
+
+    /**
+     * Evaluates the parameter with matching \a name to an annotation layer.
+     *
+     * Annotation layers will be taken from \a context's active project. Callers do not
+     * need to handle deletion of the returned layer.
+     *
+     * \warning Working with annotation layers is generally not thread safe (unless the layers are from
+     * a QgsProject loaded directly in a background thread). Ensure your algorithm returns the
+     * QgsProcessingAlgorithm::FlagNoThreading flag or only accesses annotation layers from a prepareAlgorithm()
+     * or postProcessAlgorithm() step.
+     *
+     * \since QGIS 3.22
+     */
+    QgsAnnotationLayer *parameterAsAnnotationLayer( const QVariantMap &parameters, const QString &name, QgsProcessingContext &context ) const;
 
     /**
      * Returns a user-friendly string to use as an error when a source parameter could
@@ -1009,6 +1067,19 @@ class CORE_EXPORT QgsProcessingAlgorithm
      * \since QGIS 3.2
      */
     static QString invalidSinkError( const QVariantMap &parameters, const QString &name );
+
+    /**
+     * Returns a user-friendly string to use as an error when a feature cannot be
+     * written into a sink.
+     *
+     * The \a sink argument is the sink into which the feature cannot be written.
+     *
+     * The \a parameters argument should give the algorithms parameter map, and the \a name
+     * should correspond to the sink parameter name.
+     *
+     * \since QGIS 3.22
+     */
+    static QString writeFeatureError( QgsFeatureSink *sink, const QVariantMap &parameters, const QString &name );
 
     /**
      * Checks whether this algorithm supports in-place editing on the given \a layer
@@ -1243,5 +1314,3 @@ class CORE_EXPORT QgsProcessingFeatureBasedAlgorithm : public QgsProcessingAlgor
 // clazy:excludeall=qstring-allocations
 
 #endif // QGSPROCESSINGALGORITHM_H
-
-

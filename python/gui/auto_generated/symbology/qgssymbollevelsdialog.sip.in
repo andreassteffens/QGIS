@@ -11,7 +11,7 @@
 
 class QgsSymbolLevelsWidget : QgsPanelWidget
 {
-%Docstring
+%Docstring(signature="appended")
 A widget which allows the user to modify the rendering order of symbol layers.
 
 .. seealso:: :py:class:`QgsSymbolLevelsDialog`
@@ -62,7 +62,7 @@ Sets whether the level ordering is always forced on and hide the checkbox (used 
 Apply button.
 
 .. deprecated:: QGIS 3.20.
-   Use symbolLevels() and manually apply the changes to the renderer as appropriate.
+   Use :py:func:`~QgsSymbolLevelsWidget.symbolLevels` and manually apply the changes to the renderer as appropriate.
 %End
 
 };
@@ -70,7 +70,7 @@ Apply button.
 
 class QgsSymbolLevelsDialog : QDialog
 {
-%Docstring
+%Docstring(signature="appended")
 A dialog which allows the user to modify the rendering order of symbol layers.
 
 .. seealso:: :py:class:`QgsSymbolLevelsWidget`

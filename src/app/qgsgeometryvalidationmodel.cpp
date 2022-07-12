@@ -162,7 +162,7 @@ QVariant QgsGeometryValidationModel::data( const QModelIndex &index, int role ) 
           featureTitle = FID_TO_STRING( featureItem.fid );
 
         if ( featureItem.errors.count() > 1 )
-          return tr( "%1: %n Errors", "", featureItem.errors.count() ).arg( featureTitle );
+          return tr( "%1: %n Error(s)", "", featureItem.errors.count() ).arg( featureTitle );
         else if ( featureItem.errors.count() == 1 )
           return tr( "%1: %2" ).arg( featureTitle, featureItem.errors.at( 0 )->description() );
         else
@@ -211,7 +211,7 @@ QVariant QgsGeometryValidationModel::data( const QModelIndex &index, int role ) 
       case DetailsRole:
       {
         QStringList details;
-        for ( const std::shared_ptr<QgsSingleGeometryCheckError> &error : qgis::as_const( featureItem.errors ) )
+        for ( const std::shared_ptr<QgsSingleGeometryCheckError> &error : std::as_const( featureItem.errors ) )
         {
           details << error->description();
         }

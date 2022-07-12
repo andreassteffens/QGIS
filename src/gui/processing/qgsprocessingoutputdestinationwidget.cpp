@@ -31,6 +31,7 @@
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QCheckBox>
+#include <QUrl>
 
 ///@cond NOT_STABLE
 
@@ -282,7 +283,7 @@ void QgsProcessingLayerOutputDestinationWidget::menuAboutToShow()
     connect( actionSaveToDatabase, &QAction::triggered, this, &QgsProcessingLayerOutputDestinationWidget::saveToDatabase );
     mMenu->addAction( actionSaveToDatabase );
 
-    if ( mParameter->algorithm() && dynamic_cast< const QgsProcessingParameterFeatureSink * >( mParameter )->supportsAppend() )
+    if ( mParameter->algorithm() && qgis::down_cast< const QgsProcessingParameterFeatureSink * >( mParameter )->supportsAppend() )
     {
       mMenu->addSeparator();
       QAction *actionAppendToLayer = new QAction( tr( "Append to Layer…" ), this );
@@ -355,7 +356,7 @@ void QgsProcessingLayerOutputDestinationWidget::selectDirectory()
   if ( lastDir.isEmpty() )
     lastDir = settings.value( QStringLiteral( "/Processing/LastOutputPath" ), QDir::homePath() ).toString();
 
-  const QString dirName = QFileDialog::getExistingDirectory( this, tr( "Select Directory" ), lastDir, QFileDialog::ShowDirsOnly );
+  const QString dirName = QFileDialog::getExistingDirectory( this, tr( "Select Directory" ), lastDir, QFileDialog::Options() );
   if ( !dirName.isEmpty() )
   {
     leText->setText( QDir::toNativeSeparators( dirName ) );
@@ -383,6 +384,11 @@ void QgsProcessingLayerOutputDestinationWidget::selectFile()
   else if ( mParameter->type() == QgsProcessingParameterRasterDestination::typeName() )
   {
     lastExtPath = QStringLiteral( "/Processing/LastRasterOutputExt" );
+    lastExt = settings.value( lastExtPath, QStringLiteral( ".%1" ).arg( mParameter->defaultFileExtension() ) ).toString();
+  }
+  else if ( mParameter->type() == QgsProcessingParameterPointCloudDestination::typeName() )
+  {
+    lastExtPath = QStringLiteral( "/Processing/LastPointCloudOutputExt" );
     lastExt = settings.value( lastExtPath, QStringLiteral( ".%1" ).arg( mParameter->defaultFileExtension() ) ).toString();
   }
 
@@ -472,6 +478,7 @@ void QgsProcessingLayerOutputDestinationWidget::saveToDatabase()
     QgsNewDatabaseTableNameWidget *widget = new QgsNewDatabaseTableNameWidget( mBrowserModel, QStringList() << QStringLiteral( "postgres" )
         << QStringLiteral( "mssql" )
         << QStringLiteral( "ogr" )
+        << QStringLiteral( "hana" )
         << QStringLiteral( "spatialite" ), this );
     widget->setPanelTitle( tr( "Save “%1” to Database Table" ).arg( mParameter->description() ) );
     widget->setAcceptButtonVisible( true );
@@ -541,7 +548,7 @@ void QgsProcessingLayerOutputDestinationWidget::appendToLayer()
       else
       {
         // get fields for destination
-        std::unique_ptr< QgsVectorLayer > dest = qgis::make_unique< QgsVectorLayer >( widget->uri().uri, QString(), widget->uri().providerKey );
+        std::unique_ptr< QgsVectorLayer > dest = std::make_unique< QgsVectorLayer >( widget->uri().uri, QString(), widget->uri().providerKey );
         if ( widget->uri().providerKey == QLatin1String( "ogr" ) )
           setAppendDestination( widget->uri().uri, dest->fields() );
         else
@@ -622,7 +629,15 @@ QString QgsProcessingLayerOutputDestinationWidget::mimeDataToPath( const QMimeDa
     else if ( ( mParameter->type() == QgsProcessingParameterRasterDestination::typeName()
                 || mParameter->type() == QgsProcessingParameterFileDestination::typeName() )
               && u.layerType == QLatin1String( "raster" ) && u.providerKey == QLatin1String( "gdal" ) )
+    {
       return u.uri;
+    }
+    else if ( ( mParameter->type() == QgsProcessingParameterPointCloudDestination::typeName()
+                || mParameter->type() == QgsProcessingParameterFileDestination::typeName() )
+              && u.layerType == QLatin1String( "pointcloud" ) && ( u.providerKey == QLatin1String( "ept" ) || u.providerKey == QLatin1String( "pdal" ) ) )
+    {
+      return u.uri;
+    }
 #if 0
     else if ( ( mParameter->type() == QgsProcessingParameterMeshDestination::typeName()
                 || mParameter->type() == QgsProcessingParameterFileDestination::typeName() )
@@ -655,14 +670,15 @@ QString QgsProcessingLayerOutputDestinationWidget::mimeDataToPath( const QMimeDa
   if ( !data->text().isEmpty() && !rawPaths.contains( data->text() ) )
     rawPaths.append( data->text() );
 
-  for ( const QString &path : qgis::as_const( rawPaths ) )
+  for ( const QString &path : std::as_const( rawPaths ) )
   {
     QFileInfo file( path );
     if ( file.isFile() && ( mParameter->type() == QgsProcessingParameterFeatureSink::typeName()
                             || mParameter->type() == QgsProcessingParameterVectorDestination::typeName()
                             || mParameter->type() == QgsProcessingParameterRasterDestination::typeName()
                             || mParameter->type() == QgsProcessingParameterVectorDestination::typeName()
-                            || mParameter->type() == QgsProcessingParameterFileDestination::typeName() ) )
+                            || mParameter->type() == QgsProcessingParameterFileDestination::typeName()
+                            || mParameter->type() == QgsProcessingParameterPointCloudDestination::typeName() ) )
     {
       // TODO - we should check to see if it's a valid extension for the parameter, but that's non-trivial
       return path;

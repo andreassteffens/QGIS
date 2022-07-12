@@ -34,6 +34,8 @@ class QgsVectorLayerFeatureSource;
 #include "qgspointlocatorinittask.h"
 #include <memory>
 
+#include <QPointer>
+
 /**
  * \ingroup core
  * \brief Helper class used when traversing the index looking for vertices - builds a list of matches.
@@ -153,12 +155,13 @@ class CORE_EXPORT QgsPointLocator : public QObject
     enum Type
     {
       Invalid = 0, //!< Invalid
-      Vertex  = 1, //!< Snapped to a vertex. Can be a vertex of the geometry or an intersection.
-      Edge    = 2, //!< Snapped to an edge
-      Area    = 4, //!< Snapped to an area
-      Centroid = 8, //!< Snapped to a centroid
-      MiddleOfSegment = 16, //!< Snapped to the middle of a segment
-      All = Vertex | Edge | Area | Centroid | MiddleOfSegment //!< Combination of all types
+      Vertex  = 1 << 0, //!< Snapped to a vertex. Can be a vertex of the geometry or an intersection.
+      Edge    = 1 << 1, //!< Snapped to an edge
+      Area    = 1 << 2, //!< Snapped to an area
+      Centroid = 1 << 3, //!< Snapped to a centroid
+      MiddleOfSegment = 1 << 4, //!< Snapped to the middle of a segment
+      LineEndpoint = 1 << 5, //!< Start or end points of lines only (since QGIS 3.20)
+      All = Vertex | Edge | Area | Centroid | MiddleOfSegment //!< Combination of all types. Note LineEndpoint is not included as endpoints made redundant by the presence of the Vertex flag.
     };
 
     Q_DECLARE_FLAGS( Types, Type )
@@ -204,16 +207,23 @@ class CORE_EXPORT QgsPointLocator : public QObject
         QgsPointLocator::Type type() const { return mType; }
 
         bool isValid() const { return mType != Invalid; }
-        //! Returns true if the Match is a vertex
+        //! Returns TRUE if the Match is a vertex
         bool hasVertex() const { return mType == Vertex; }
-        //! Returns true if the Match is an edge
+        //! Returns TRUE if the Match is an edge
         bool hasEdge() const { return mType == Edge; }
-        //! Returns true if the Match is a centroid
+        //! Returns TRUE if the Match is a centroid
         bool hasCentroid() const { return mType == Centroid; }
-        //! Returns true if the Match is an area
+        //! Returns TRUE if the Match is an area
         bool hasArea() const { return mType == Area; }
-        //! Returns true if the Match is the middle of a segment
+        //! Returns TRUE if the Match is the middle of a segment
         bool hasMiddleSegment() const { return mType == MiddleOfSegment; }
+
+        /**
+         * Returns TRUE if the Match is a line endpoint (start or end vertex).
+         *
+         * \since QGIS 3.20
+         */
+        bool hasLineEndpoint() const { return mType == LineEndpoint; }
 
         /**
          * for vertex / edge match
@@ -251,21 +261,54 @@ class CORE_EXPORT QgsPointLocator : public QObject
         /**
          * Convenient method to return a point on an edge with linear
          * interpolation of the Z value.
+         * The parameter \a destinationCrs depends of where the instance of this Match is created (geom.cache: layer CRS, map canvas snapper: dest CRS)
          * \since 3.10
          */
-        QgsPoint interpolatedPoint() const
+        QgsPoint interpolatedPoint( const QgsCoordinateReferenceSystem &destinationCrs = QgsCoordinateReferenceSystem() ) const
         {
           QgsPoint point;
-          const QgsGeometry geom = mLayer->getGeometry( mFid );
-          if ( !( geom.isNull() || geom.isEmpty() ) )
-          {
-            QgsLineString line( geom.vertexAt( mVertexIndex ), geom.vertexAt( mVertexIndex + 1 ) );
 
-            point = QgsGeometryUtils::closestPoint( line, QgsPoint( mPoint ) );
+          if ( mLayer )
+          {
+            QgsPointXY snappedPoint( mPoint );
+            const QgsGeometry geom = mLayer->getGeometry( mFid );
+            QgsCoordinateTransform transform( destinationCrs, mLayer->crs(), mLayer->transformContext() );
+            if ( transform.isValid() )
+            {
+              try
+              {
+                snappedPoint = transform.transform( snappedPoint );
+              }
+              catch ( QgsCsException & )
+              {
+                QgsDebugMsg( QStringLiteral( "transformation to layer coordinate failed" ) );
+              }
+            }
+
+            if ( !( geom.isNull() || geom.isEmpty() ) )
+            {
+              const QgsLineString line( geom.vertexAt( mVertexIndex ), geom.vertexAt( mVertexIndex + 1 ) );
+              point = QgsGeometryUtils::closestPoint( line, QgsPoint( snappedPoint ) );
+            }
+
+
+            if ( transform.isValid() )
+            {
+              try
+              {
+                point.transform( transform, Qgis::TransformDirection::Reverse );
+              }
+              catch ( QgsCsException & )
+              {
+                QgsDebugMsg( QStringLiteral( "transformation to destination coordinate failed" ) );
+              }
+            }
           }
+
           return point;
         }
 
+        // TODO c++20 - replace with = default
         bool operator==( const QgsPointLocator::Match &other ) const
         {
           return mType == other.mType &&
@@ -274,7 +317,8 @@ class CORE_EXPORT QgsPointLocator : public QObject
                  mLayer == other.mLayer &&
                  mFid == other.mFid &&
                  mVertexIndex == other.mVertexIndex &&
-                 mEdgePoints == other.mEdgePoints &&
+                 mEdgePoints[0] == other.mEdgePoints[0] &&
+                 mEdgePoints[1] == other.mEdgePoints[1] &&
                  mCentroid == other.mCentroid &&
                  mMiddleOfSegment == other.mMiddleOfSegment;
         }
@@ -332,6 +376,14 @@ class CORE_EXPORT QgsPointLocator : public QObject
      * \since 3.12
      */
     Match nearestMiddleOfSegment( const QgsPointXY &point, double tolerance, QgsPointLocator::MatchFilter *filter = nullptr, bool relaxed = false );
+
+    /**
+     * Find nearest line endpoint (start or end vertex) to the specified point - up to distance specified by tolerance
+     * Optional filter may discard unwanted matches.
+     * This method is either blocking or non blocking according to \a relaxed parameter passed
+     * \since 3.20
+     */
+    Match nearestLineEndpoints( const QgsPointXY &point, double tolerance, QgsPointLocator::MatchFilter *filter = nullptr, bool relaxed = false );
 
     /**
      * Find nearest edge to the specified point - up to distance specified by tolerance
@@ -474,6 +526,7 @@ class CORE_EXPORT QgsPointLocator : public QObject
     friend class TestQgsPointLocator;
     friend class QgsPointLocator_VisitorCentroidsInRect;
     friend class QgsPointLocator_VisitorMiddlesInRect;
+    friend class QgsPointLocator_VisitorNearestLineEndpoint;
 };
 
 

@@ -17,6 +17,8 @@
 #define QGSXYZCONNECTION_H
 
 #include <QStringList>
+#include "qgshttpheaders.h"
+
 
 struct QgsXyzConnection
 {
@@ -30,11 +32,14 @@ struct QgsXyzConnection
   QString username;
   // HTTP Basic password
   QString password;
-  // Referer
-  QString referer;
+  // http headers
+  QgsHttpHeaders httpHeaders;
   // tile pixel ratio (0 = unknown (not scaled), 1.0 = 256x256, 2.0 = 512x512)
   double tilePixelRatio = 0;
   bool hidden = false;
+
+  // Interpretation key related to the converter from color to value, empty if none
+  QString interpretation;
 
   QString encodedUri() const;
 };

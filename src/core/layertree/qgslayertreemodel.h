@@ -21,6 +21,7 @@
 #include <QFont>
 #include <QIcon>
 #include <QTimer>
+#include <QUuid>
 #include <memory>
 
 #include "qgsgeometry.h"
@@ -293,7 +294,7 @@ class CORE_EXPORT QgsLayerTreeModel : public QAbstractItemModel
      * Emits a message than can be displayed to the user in a GUI class
      * \since QGIS 3.14
      */
-    void messageEmitted( const QString &message, Qgis::MessageLevel level = Qgis::Info, int duration = 5 );
+    void messageEmitted( const QString &message, Qgis::MessageLevel level = Qgis::MessageLevel::Info, int duration = 5 );
 
   protected slots:
     void nodeWillAddChildren( QgsLayerTreeNode *node, int indexFrom, int indexTo );
@@ -314,6 +315,12 @@ class CORE_EXPORT QgsLayerTreeModel : public QAbstractItemModel
     void nodeLayerLoaded();
     void nodeLayerWillBeUnloaded();
     void layerLegendChanged();
+
+    /**
+     * Emitted when layer flags have changed.
+     * \since QGIS 3.18
+     */
+    void layerFlagsChanged();
 
     void layerNeedsUpdate();
 
@@ -363,6 +370,14 @@ class CORE_EXPORT QgsLayerTreeModel : public QAbstractItemModel
     void legendInvalidateMapBasedData();
 
   protected:
+
+    /**
+     * Returns a temporary render context.
+     *
+     * \note Note available in Python bindings.
+     */
+    QgsRenderContext *createTemporaryRenderContext() const SIP_SKIP;
+
     //! Pointer to the root node of the layer tree. Not owned by the model
     QgsLayerTree *mRootNode = nullptr;
     //! Sets of flags for the model
@@ -464,8 +479,7 @@ class CORE_EXPORT QgsLayerTreeModel : public QAbstractItemModel
 
   private:
 
-    //! Returns a temporary render context
-    QgsRenderContext *createTemporaryRenderContext() const;
+
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS( QgsLayerTreeModel::Flags )

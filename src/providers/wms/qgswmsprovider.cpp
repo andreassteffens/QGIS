@@ -43,6 +43,7 @@
 #include "qgsnetworkaccessmanager.h"
 #include "qgsnetworkreplyparser.h"
 #include "qgstilecache.h"
+#include "qgsgdalutils.h"
 #include "qgsgml.h"
 #include "qgsgmlschema.h"
 #include "qgswmscapabilities.h"
@@ -51,6 +52,7 @@
 #include "qgsogrutils.h"
 #include "qgsproviderregistry.h"
 #include "qgsruntimeprofiler.h"
+#include "qgstiledownloadmanager.h"
 
 #include <QNetworkRequest>
 #include <QNetworkReply>
@@ -65,6 +67,10 @@
 #include <QNetworkDiskCache>
 #include <QTimer>
 #include <QStringBuilder>
+#include <QUrlQuery>
+#include <QJsonArray>
+#include <QRegularExpression>
+#include <QRegularExpressionMatch>
 
 #include <ogr_api.h>
 
@@ -128,7 +134,7 @@ QgsWmsProvider::QgsWmsProvider( QString const &uri, const ProviderOptions &optio
   if ( mSettings.mIsMBTiles )
   {
     if ( QgsApplication::profiler()->groupIsActive( QStringLiteral( "projectload" ) ) )
-      profile = qgis::make_unique< QgsScopedRuntimeProfile >( tr( "Setup tile capabilities" ), QStringLiteral( "projectload" ) );
+      profile = std::make_unique< QgsScopedRuntimeProfile >( tr( "Setup tile capabilities" ), QStringLiteral( "projectload" ) );
 
     // we are dealing with a local MBTiles file
     if ( !setupMBTilesCapabilities( uri ) )
@@ -140,7 +146,7 @@ QgsWmsProvider::QgsWmsProvider( QString const &uri, const ProviderOptions &optio
   else if ( mSettings.mXyz )
   {
     if ( QgsApplication::profiler()->groupIsActive( QStringLiteral( "projectload" ) ) )
-      profile = qgis::make_unique< QgsScopedRuntimeProfile >( tr( "Setup tile capabilities" ), QStringLiteral( "projectload" ) );
+      profile = std::make_unique< QgsScopedRuntimeProfile >( tr( "Setup tile capabilities" ), QStringLiteral( "projectload" ) );
 
     // we are working with XYZ tiles
     // no need to get capabilities, the whole definition is in URI
@@ -156,7 +162,7 @@ QgsWmsProvider::QgsWmsProvider( QString const &uri, const ProviderOptions &optio
       mCaps = *capabilities;
 
     if ( QgsApplication::profiler()->groupIsActive( QStringLiteral( "projectload" ) ) )
-      profile = qgis::make_unique< QgsScopedRuntimeProfile >( tr( "Retrieve server capabilities" ), QStringLiteral( "projectload" ) );
+      profile = std::make_unique< QgsScopedRuntimeProfile >( tr( "Retrieve server capabilities" ), QStringLiteral( "projectload" ) );
 
     // Make sure we have capabilities - other functions here may need them
     if ( !retrieveServerCapabilities() )
@@ -170,8 +176,10 @@ QgsWmsProvider::QgsWmsProvider( QString const &uri, const ProviderOptions &optio
       Q_ASSERT_X( temporalCapabilities(), "QgsWmsProvider::QgsWmsProvider()", "Data provider temporal capabilities object does not exist" );
       temporalCapabilities()->setHasTemporalCapabilities( true );
       temporalCapabilities()->setAvailableTemporalRange( mSettings.mFixedRange );
-      temporalCapabilities()->setIntervalHandlingMethod(
-        QgsRasterDataProviderTemporalCapabilities::MatchExactUsingStartOfRange );
+      temporalCapabilities()->setAllAvailableTemporalRanges( mSettings.mAllRanges );
+      temporalCapabilities()->setDefaultInterval( mSettings.mDefaultInterval );
+
+      temporalCapabilities()->setIntervalHandlingMethod( Qgis::TemporalIntervalMatchMethod::MatchExactUsingStartOfRange );
 
       if ( mSettings.mIsBiTemporal )
       {
@@ -182,7 +190,7 @@ QgsWmsProvider::QgsWmsProvider( QString const &uri, const ProviderOptions &optio
     if ( mSettings.mCrsId.isEmpty() && !mSettings.mActiveSubLayers.empty() )
     {
       // if crs not specified via layer uri, use the first available from server capabilities
-      for ( const QgsWmsLayerProperty &property : qgis::as_const( mCaps.mLayersSupported ) )
+      for ( const QgsWmsLayerProperty &property : std::as_const( mCaps.mLayersSupported ) )
       {
         if ( property.name == mSettings.mActiveSubLayers[0] )
         {
@@ -215,6 +223,9 @@ QgsWmsProvider::QgsWmsProvider( QString const &uri, const ProviderOptions &optio
   // 2) http://xxx.xxx.xx/yyy/yyy?
   // 3) http://xxx.xxx.xx/yyy/yyy?zzz=www
 
+
+  mConverter = QgsWmsInterpretationConverter::createConverter( mSettings.mInterpretation );
+
   mValid = true;
   QgsDebugMsgLevel( QStringLiteral( "exiting constructor." ), 4 );
 }
@@ -245,6 +256,17 @@ QString QgsWmsProvider::prepareUri( QString uri )
 QgsWmsProvider::~QgsWmsProvider()
 {
   QgsDebugMsgLevel( QStringLiteral( "deconstructing." ), 4 );
+}
+
+//! Returns the destination extent in image coordinate of a tile image defined by its extent
+static QRectF destinationRect( const QgsRectangle &destinationExtent, const QRectF &tileImageExtent, int imagePixelWidth )
+{
+  double cr = destinationExtent.width() / imagePixelWidth;
+
+  return QRectF( ( tileImageExtent.left() - destinationExtent.xMinimum() ) / cr,
+                 ( destinationExtent.yMaximum() - tileImageExtent.bottom() ) / cr,
+                 tileImageExtent.width() / cr,
+                 tileImageExtent.height() / cr );
 }
 
 QgsWmsProvider *QgsWmsProvider::clone() const
@@ -308,8 +330,7 @@ static QString pickLegend( const QgsWmsStyleProperty &s )
 
 static const QgsWmsStyleProperty *searchStyle( const QVector<QgsWmsStyleProperty> &styles, const QString &name )
 {
-  const auto constStyles = styles;
-  for ( const QgsWmsStyleProperty &s : constStyles )
+  for ( const QgsWmsStyleProperty &s : styles )
     if ( s.name == name )
       return &s;
   return nullptr;
@@ -386,51 +407,51 @@ QString QgsWmsProvider::getLegendGraphicUrl() const
 
 QStringList QgsWmsProvider::getLegendGraphicUrls() const
 {
-	QStringList qlistUrls;
-	
-	for (int i = 0; i < mCaps.mLayersSupported.size(); i++)
-	{
-		QString url;
+  QStringList qlistUrls;
+  
+  for (int i = 0; i < mCaps.mLayersSupported.size(); i++)
+  {
+    QString url;
+  
+    const QgsWmsLayerProperty &l = mCaps.mLayersSupported[i];
 
-		const QgsWmsLayerProperty &l = mCaps.mLayersSupported[i];
-
-		for (int j = 0; j < mSettings.mActiveSubLayers.size(); j++)
-		{
-			if (l.name == mSettings.mActiveSubLayers[j])
-			{
-				if (!mSettings.mActiveSubStyles[j].isEmpty() && mSettings.mActiveSubStyles[j] != QLatin1String("default"))
-				{
-					const QgsWmsStyleProperty *s = searchStyle(l.style, mSettings.mActiveSubStyles[j]);
-					if (s)
-						url = pickLegend(*s);
-				}
-				else
-				{
-					// QGIS wants the default style, but GetCapabilities doesn't give us a
-					// way to know what is the default style. So we look for the onlineResource
-					// only if there is a single style available or if there is a style called "default".
-					if (l.style.size() == 1)
-					{
-						url = pickLegend(l.style[0]);
-					}
-					else
-					{
-						const QgsWmsStyleProperty *s = searchStyle(l.style, QStringLiteral("default"));
-						if (s)
-							url = pickLegend(*s);
-					}
-				}
-
-				if (url.isEmpty() && !mCaps.mCapabilities.capability.request.getLegendGraphic.dcpType.isEmpty())
-					url = mCaps.mCapabilities.capability.request.getLegendGraphic.dcpType.front().http.get.onlineResource.xlinkHref;
-
-				if (!url.isEmpty())
-					qlistUrls.append(prepareUri(url));
-			}
-		}
-	}
-	
-	return qlistUrls;
+    for (int j = 0; j < mSettings.mActiveSubLayers.size(); j++)
+    {
+      if (l.name == mSettings.mActiveSubLayers[j])
+      {
+        if (!mSettings.mActiveSubStyles[j].isEmpty() && mSettings.mActiveSubStyles[j] != QLatin1String("default"))
+        {
+          const QgsWmsStyleProperty *s = searchStyle(l.style, mSettings.mActiveSubStyles[j]);
+          if (s)
+            url = pickLegend(*s);
+        }
+        else
+        {
+          // QGIS wants the default style, but GetCapabilities doesn't give us a
+          // way to know what is the default style. So we look for the onlineResource
+          // only if there is a single style available or if there is a style called "default".
+          if (l.style.size() == 1)
+          {
+            url = pickLegend(l.style[0]);
+          }
+          else
+          {
+            const QgsWmsStyleProperty *s = searchStyle(l.style, QStringLiteral("default"));
+            if (s)
+              url = pickLegend(*s);
+          }
+        }
+  
+        if (url.isEmpty() && !mCaps.mCapabilities.capability.request.getLegendGraphic.dcpType.isEmpty())
+          url = mCaps.mCapabilities.capability.request.getLegendGraphic.dcpType.front().http.get.onlineResource.xlinkHref;
+  
+        if (!url.isEmpty())
+          qlistUrls.append(prepareUri(url));
+      }
+    }
+  }
+  
+  return qlistUrls;
 }
 
 bool QgsWmsProvider::addLayers()
@@ -444,7 +465,7 @@ bool QgsWmsProvider::addLayers()
   }
 
   // Set the visibility of these new layers on by default
-  for ( const QString &layer : qgis::as_const( mSettings.mActiveSubLayers ) )
+  for ( const QString &layer : std::as_const( mSettings.mActiveSubLayers ) )
   {
     mActiveSubLayerVisibility[ layer ] = true;
     QgsDebugMsgLevel( QStringLiteral( "set visibility of layer '%1' to true." ).arg( layer ), 3 );
@@ -464,6 +485,17 @@ bool QgsWmsProvider::addLayers()
 void QgsWmsProvider::setConnectionName( QString const &connName )
 {
   mConnectionName = connName;
+}
+
+Qgis::DataProviderFlags QgsWmsProvider::flags() const
+{
+  Qgis::DataProviderFlags res;
+  if ( mSettings.mXyz )
+  {
+    // always consider XYZ tiles as basemap sources
+    res |= Qgis::DataProviderFlag::IsBasemapSource;
+  }
+  return res;
 }
 
 void QgsWmsProvider::setLayerOrder( QStringList const &layers )
@@ -628,7 +660,14 @@ static bool _fuzzyContainsRect( const QRectF &r1, const QRectF &r2 )
   return r1.contains( r2.adjusted( epsilon, epsilon, -epsilon, -epsilon ) );
 }
 
-void QgsWmsProvider::fetchOtherResTiles( QgsTileMode tileMode, const QgsRectangle &viewExtent, int imageWidth, QList<QRectF> &missingRects, double tres, int resOffset, QList<TileImage> &otherResTiles )
+void QgsWmsProvider::fetchOtherResTiles( QgsTileMode tileMode,
+    const QgsRectangle &viewExtent,
+    int imageWidth,
+    QList<QRectF> &missingRects,
+    double tres,
+    int resOffset,
+    QList<TileImage> &otherResTiles,
+    QgsRasterBlockFeedback *feedback )
 {
   if ( !mTileMatrixSet )
     return;  // there is no tile matrix set defined for ordinary WMS (with user-specified tile size)
@@ -667,23 +706,25 @@ void QgsWmsProvider::fetchOtherResTiles( QgsTileMode tileMode, const QgsRectangl
       break;
 
     case XYZ:
-      createTileRequestsXYZ( tmOther, tiles, requests );
+      createTileRequestsXYZ( tmOther, tiles, requests, feedback );
       break;
   }
+
+  if ( feedback && feedback->isCanceled() )
+    return;
 
   QList<QRectF> missingRectsToDelete;
   const auto constRequests = requests;
   for ( const TileRequest &r : constRequests )
   {
+    if ( feedback && feedback->isCanceled() )
+      return;
+
     QImage localImage;
     if ( ! QgsTileCache::tile( r.url, localImage ) )
       continue;
 
-    double cr = viewExtent.width() / imageWidth;
-    QRectF dst( ( r.rect.left() - viewExtent.xMinimum() ) / cr,
-                ( viewExtent.yMaximum() - r.rect.bottom() ) / cr,
-                r.rect.width() / cr,
-                r.rect.height() / cr );
+    QRectF dst = destinationRect( viewExtent, r.rect, imageWidth );
     otherResTiles << TileImage( dst, localImage, false );
 
     // see if there are any missing rects that are completely covered by this tile
@@ -698,6 +739,9 @@ void QgsWmsProvider::fetchOtherResTiles( QgsTileMode tileMode, const QgsRectangl
       }
     }
   }
+
+  if ( feedback && feedback->isCanceled() )
+    return;
 
   // remove all the rectangles we have completely covered by tiles from this resolution
   // so we will not use tiles from multiple resolutions for one missing tile (to save time)
@@ -736,7 +780,25 @@ static void _drawDebugRect( QPainter &p, const QRectF &rect, const QColor &color
 #endif
 }
 
-QImage *QgsWmsProvider::draw( QgsRectangle const &viewExtent, int pixelWidth, int pixelHeight, QgsRasterBlockFeedback *feedback )
+/**
+ * Resets an image with a buffered image (add 2 pixels on each side) to take account of external pixels considering the resolution,
+ * Returns the map extent of the buffered image.
+ */
+static QgsRectangle initializeBufferedImage( const QgsRectangle &viewExtent, double resolution, QImage *image )
+{
+  int pixelX = std::ceil( viewExtent.width() / resolution ) + 4;
+  int pixelY = std::ceil( viewExtent.height() / resolution ) + 4;
+
+  *image = QImage( pixelX, pixelY, QImage::Format_ARGB32 );
+  image->fill( 0 );
+
+  return  QgsRectangle( viewExtent.xMinimum() - 2 * resolution,
+                        viewExtent.yMinimum() - 2 * resolution,
+                        viewExtent.xMinimum() + ( image->width() - 2 ) * resolution,
+                        viewExtent.yMinimum() + ( image->height() - 2 ) * resolution );
+}
+
+QImage *QgsWmsProvider::draw( const QgsRectangle &viewExtent, int pixelWidth, int pixelHeight, QgsRectangle &effectiveViewExtent, double &sourceResolution, QgsRasterBlockFeedback *feedback )
 {
   if ( qApp && qApp->thread() == QThread::currentThread() )
   {
@@ -850,7 +912,11 @@ QImage *QgsWmsProvider::draw( QgsRectangle const &viewExtent, int pixelWidth, in
 
     // calculate tile coordinates
     int col0, col1, row0, row1;
-    tm->viewExtentIntersection( viewExtent, tml, col0, row0, col1, row1 );
+
+    if ( mConverter && mProviderResamplingEnabled ) // if resampling we need some exterior pixel depending of the algorithm, max is 2 with cubic resampling
+      tm->viewExtentIntersection( viewExtent.buffered( tm->tres * 2 ), tml, col0, row0, col1, row1 );
+    else
+      tm->viewExtentIntersection( viewExtent, tml, col0, row0, col1, row1 );
 
 #ifdef QGISDEBUG
     int n = ( col1 - col0 + 1 ) * ( row1 - row0 + 1 );
@@ -883,13 +949,16 @@ QImage *QgsWmsProvider::draw( QgsRectangle const &viewExtent, int pixelWidth, in
         break;
 
       case XYZ:
-        createTileRequestsXYZ( tm, tiles, requests );
+        createTileRequestsXYZ( tm, tiles, requests, feedback );
         break;
 
       default:
         QgsDebugMsg( QStringLiteral( "unexpected tile mode %1" ).arg( mTileLayer->tileMode ) );
         return image;
     }
+
+    if ( feedback && feedback->isCanceled() )
+      return image;
 
     QList<TileImage> tileImages;  // in the correct resolution
     QList<QRectF> missing;  // rectangles (in map coords) of missing tiles for this view
@@ -904,9 +973,13 @@ QImage *QgsWmsProvider::draw( QgsRectangle const &viewExtent, int pixelWidth, in
     QElapsedTimer t;
     t.start();
     TileRequests requestsFinal;
+    effectiveViewExtent = viewExtent;
     const auto constRequests = requests;
     for ( const TileRequest &r : constRequests )
     {
+      if ( feedback && feedback->isCanceled() )
+        return image;
+
       QImage localImage;
 
       if ( mbtilesReader && !QgsTileCache::tile( r.url, localImage ) )
@@ -922,13 +995,20 @@ QImage *QgsWmsProvider::draw( QgsRectangle const &viewExtent, int pixelWidth, in
 
       if ( QgsTileCache::tile( r.url, localImage ) )
       {
-        double cr = viewExtent.width() / image->width();
-        QRectF dst( ( r.rect.left() - viewExtent.xMinimum() ) / cr,
-                    ( viewExtent.yMaximum() - r.rect.bottom() ) / cr,
-                    r.rect.width() / cr,
-                    r.rect.height() / cr );
+        if ( mConverter && mProviderResamplingEnabled )
+        {
+          if ( sourceResolution < 0 )
+          {
+            sourceResolution = r.rect.width() / localImage.width();
+            effectiveViewExtent = initializeBufferedImage( viewExtent, sourceResolution, image );
+          }
+
+        }
+
+        const QRectF dst = destinationRect( effectiveViewExtent, r.rect, image->width() );
+
         // if image size is "close enough" to destination size, don't smooth it out. Instead try for pixel-perfect placement!
-        bool disableSmoothing = ( qgsDoubleNear( dst.width(), tm->tileWidth, 2 ) && qgsDoubleNear( dst.height(), tm->tileHeight, 2 ) );
+        bool disableSmoothing = mConverter || ( qgsDoubleNear( dst.width(), tm->tileWidth, 2 ) && qgsDoubleNear( dst.height(), tm->tileHeight, 2 ) );
         tileImages << TileImage( dst, localImage, !disableSmoothing );
       }
       else
@@ -939,9 +1019,14 @@ QImage *QgsWmsProvider::draw( QgsRectangle const &viewExtent, int pixelWidth, in
         requestsFinal << r;
       }
     }
+
+    if ( feedback && feedback->isCanceled() )
+      return image;
+
+    if ( sourceResolution < 0 )
+      effectiveViewExtent = viewExtent;
+
     int t0 = t.elapsed();
-
-
     // draw other res tiles if preview
     QPainter p( image );
     if ( feedback && feedback->isPreviewOnly() && missing.count() > 0 )
@@ -960,9 +1045,15 @@ QImage *QgsWmsProvider::draw( QgsRectangle const &viewExtent, int pixelWidth, in
       // first we check lower resolution tiles: one level back, then two levels back (if there is still some area not covered),
       // finally (in the worst case we use one level higher resolution tiles). This heuristic should give
       // good overviews while not spending too much time drawing cached tiles from resolutions far away.
-      fetchOtherResTiles( tileMode, viewExtent, image->width(), missing, tm->tres, 1, lowerResTiles );
-      fetchOtherResTiles( tileMode, viewExtent, image->width(), missing, tm->tres, 2, lowerResTiles2 );
-      fetchOtherResTiles( tileMode, viewExtent, image->width(), missing, tm->tres, -1, higherResTiles );
+      fetchOtherResTiles( tileMode, effectiveViewExtent, image->width(), missing, tm->tres, 1, lowerResTiles, feedback );
+      fetchOtherResTiles( tileMode, effectiveViewExtent, image->width(), missing, tm->tres, 2, lowerResTiles2, feedback );
+      fetchOtherResTiles( tileMode, effectiveViewExtent, image->width(), missing, tm->tres, -1, higherResTiles, feedback );
+
+      if ( feedback && feedback->isCanceled() )
+      {
+        p.end();
+        return image;
+      }
 
       // draw the cached tiles lowest to highest resolution
       const auto constLowerResTiles2 = lowerResTiles2;
@@ -987,10 +1078,22 @@ QImage *QgsWmsProvider::draw( QgsRectangle const &viewExtent, int pixelWidth, in
 
     int t1 = t.elapsed() - t0;
 
+    if ( feedback && feedback->isCanceled() )
+    {
+      p.end();
+      return image;
+    }
+
     // draw composite in this resolution
     const auto constTileImages = tileImages;
     for ( const TileImage &ti : constTileImages )
     {
+      if ( feedback && feedback->isCanceled() )
+      {
+        p.end();
+        return image;
+      }
+
       if ( ti.smooth && mSettings.mSmoothPixmapTransform )
         p.setRenderHint( QPainter::SmoothPixmapTransform, true );
       p.drawImage( ti.rect, ti.img );
@@ -1019,18 +1122,35 @@ QImage *QgsWmsProvider::draw( QgsRectangle const &viewExtent, int pixelWidth, in
       cmp.center = viewExtent.center();
       std::sort( requestsFinal.begin(), requestsFinal.end(), cmp );
 
-      QgsWmsTiledImageDownloadHandler handler( dataSourceUri(), mSettings.authorization(), mTileReqNo, requestsFinal, image, viewExtent, mSettings.mSmoothPixmapTransform, feedback );
+      QgsWmsTiledImageDownloadHandler handler(
+        dataSourceUri(),
+        mSettings.authorization(),
+        mTileReqNo,
+        requestsFinal,
+        image,
+        effectiveViewExtent,
+        sourceResolution,
+        mSettings.mSmoothPixmapTransform,
+        mProviderResamplingEnabled,
+        feedback );
+
       handler.downloadBlocking();
+
+      if ( feedback && !handler.error().isEmpty() )
+        feedback->appendError( handler.error() );
+
+      effectiveViewExtent = handler.effectiveViewExtent();
+      sourceResolution = handler.sourceResolution();
     }
 
     QgsDebugMsgLevel( QStringLiteral( "TILE CACHE total: %1 / %2" ).arg( QgsTileCache::totalCost() ).arg( QgsTileCache::maxCost() ), 3 );
 
 #if 0
     const QgsWmsStatistics::Stat &stat = QgsWmsStatistics::statForUri( dataSourceUri() );
-    emit statusChanged( tr( "%n tile requests in background", "tile request count", requests.count() )
-                        + tr( ", %n cache hits", "tile cache hits", stat.cacheHits )
+    emit statusChanged( tr( "%n tile request(s) in background", "tile request count", requests.count() )
+                        + tr( ", %n cache hit(s)", "tile cache hits", stat.cacheHits )
                         + tr( ", %n cache misses.", "tile cache missed", stat.cacheMisses )
-                        + tr( ", %n errors.", "errors", stat.errors )
+                        + tr( ", %n error(s).", "errors", stat.errors )
                       );
 #endif
   }
@@ -1038,11 +1158,52 @@ QImage *QgsWmsProvider::draw( QgsRectangle const &viewExtent, int pixelWidth, in
   return image;
 }
 
+static GDALResampleAlg getGDALResamplingAlg( QgsRasterDataProvider::ResamplingMethod method )
+{
+  GDALResampleAlg eResampleAlg = GRA_NearestNeighbour;
+  switch ( method )
+  {
+    case QgsRasterDataProvider::ResamplingMethod::Nearest:
+    case QgsRasterDataProvider::ResamplingMethod::Gauss: // Gauss not available in GDALResampleAlg
+      eResampleAlg = GRA_NearestNeighbour;
+      break;
+
+    case QgsRasterDataProvider::ResamplingMethod::Bilinear:
+      eResampleAlg = GRA_Bilinear;
+      break;
+
+    case QgsRasterDataProvider::ResamplingMethod::Cubic:
+      eResampleAlg = GRA_Cubic;
+      break;
+
+    case QgsRasterDataProvider::ResamplingMethod::CubicSpline:
+      eResampleAlg = GRA_CubicSpline;
+      break;
+
+    case QgsRasterDataProvider::ResamplingMethod::Lanczos:
+      eResampleAlg = GRA_Lanczos;
+      break;
+
+    case QgsRasterDataProvider::ResamplingMethod::Average:
+      eResampleAlg = GRA_Average;
+      break;
+
+    case QgsRasterDataProvider::ResamplingMethod::Mode:
+      eResampleAlg = GRA_Mode;
+      break;
+  }
+
+  return eResampleAlg;
+}
+
+
 bool QgsWmsProvider::readBlock( int bandNo, QgsRectangle  const &viewExtent, int pixelWidth, int pixelHeight, void *block, QgsRasterBlockFeedback *feedback )
 {
   Q_UNUSED( bandNo )
   // TODO: optimize to avoid writing to QImage
-  std::unique_ptr< QImage > image( draw( viewExtent, pixelWidth, pixelHeight, feedback ) );
+  QgsRectangle effectiveExtent;
+  double sourceResolution = -1;
+  std::unique_ptr< QImage > image( draw( viewExtent, pixelWidth, pixelHeight, effectiveExtent, sourceResolution, feedback ) );
   if ( !image )   // should not happen
   {
     QgsMessageLog::logMessage( tr( "image is NULL" ), tr( "WMS" ) );
@@ -1050,7 +1211,13 @@ bool QgsWmsProvider::readBlock( int bandNo, QgsRectangle  const &viewExtent, int
   }
 
   QgsDebugMsgLevel( QStringLiteral( "image height = %1 bytesPerLine = %2" ).arg( image->height() ) . arg( image->bytesPerLine() ), 3 );
-  size_t myExpectedSize = pixelWidth * pixelHeight * 4;
+  size_t pixelsCount;
+  if ( mConverter && mProviderResamplingEnabled )
+    pixelsCount = static_cast<size_t>( image->width() ) * image->height();
+  else
+    pixelsCount  = static_cast<size_t>( pixelWidth ) * pixelHeight;
+
+  size_t myExpectedSize = pixelsCount * 4;
   size_t myImageSize = image->height() *  image->bytesPerLine();
   if ( myExpectedSize != myImageSize )   // should not happen
   {
@@ -1062,7 +1229,42 @@ bool QgsWmsProvider::readBlock( int bandNo, QgsRectangle  const &viewExtent, int
   if ( ptr )
   {
     // If image is too large, ptr can be NULL
-    memcpy( block, ptr, myExpectedSize );
+    if ( mConverter && ( image->format() == QImage::Format_ARGB32 || image->format() == QImage::Format_RGB32 ) )
+    {
+      std::vector<float> data;
+      data.resize( pixelsCount );
+      const QRgb *inputPtr = reinterpret_cast<const QRgb *>( image->constBits() );
+      float *outputPtr = data.data();
+      for ( size_t i = 0; i < pixelsCount; ++i )
+      {
+        mConverter->convert( *inputPtr, outputPtr );
+        inputPtr++;
+        outputPtr++;
+      }
+
+      if ( mProviderResamplingEnabled )
+      {
+        const double resamplingFactor = ( viewExtent.width() / pixelWidth ) / sourceResolution;
+
+        GDALResampleAlg alg;
+        if ( resamplingFactor < 1 || qgsDoubleNear( resamplingFactor, 1.0 ) )
+          alg = getGDALResamplingAlg( mZoomedInResamplingMethod );
+        else
+          alg = getGDALResamplingAlg( mZoomedOutResamplingMethod );
+
+        gdal::dataset_unique_ptr gdalDsInput = QgsGdalUtils::blockToSingleBandMemoryDataset( image->width(), image->height(), effectiveExtent, data.data(), GDT_Float32 );
+        gdal::dataset_unique_ptr gdalDsOutput = QgsGdalUtils::blockToSingleBandMemoryDataset( pixelWidth, pixelHeight, viewExtent, block, GDT_Float32 );
+        return QgsGdalUtils::resampleSingleBandRaster( gdalDsInput.get(), gdalDsOutput.get(), alg, nullptr );
+      }
+
+      memcpy( block, data.data(), myExpectedSize );
+      return true;
+    }
+    else
+    {
+      memcpy( block, ptr, myExpectedSize );
+    }
+
     return true;
   }
   else
@@ -1164,7 +1366,7 @@ void QgsWmsProvider::addWmstParameters( QUrlQuery &query )
   QString format { QStringLiteral( "yyyy-MM-ddThh:mm:ssZ" ) };
   bool dateOnly = false;
 
-  QgsProviderMetadata *metadata = QgsProviderRegistry::instance()->providerMetadata( "wms" );
+  QgsProviderMetadata *metadata = QgsProviderRegistry::instance()->providerMetadata( QStringLiteral( "wms" ) );
 
   QVariantMap uri = metadata->decodeUri( dataSourceUri() );
 
@@ -1189,7 +1391,7 @@ void QgsWmsProvider::addWmstParameters( QUrlQuery &query )
 
   if ( !uri.value( QStringLiteral( "enableTime" ), true ).toBool() )
   {
-    format = "yyyy-MM-dd";
+    format = QStringLiteral( "yyyy-MM-dd" );
     dateOnly = true;
   }
 
@@ -1197,22 +1399,22 @@ void QgsWmsProvider::addWmstParameters( QUrlQuery &query )
   {
     switch ( temporalCapabilities()->intervalHandlingMethod() )
     {
-      case QgsRasterDataProviderTemporalCapabilities::MatchUsingWholeRange:
+      case Qgis::TemporalIntervalMatchMethod::MatchUsingWholeRange:
         break;
-      case QgsRasterDataProviderTemporalCapabilities::MatchExactUsingStartOfRange:
+      case Qgis::TemporalIntervalMatchMethod::MatchExactUsingStartOfRange:
         range = QgsDateTimeRange( range.begin(), range.begin() );
         break;
-      case QgsRasterDataProviderTemporalCapabilities::MatchExactUsingEndOfRange:
+      case Qgis::TemporalIntervalMatchMethod::MatchExactUsingEndOfRange:
         range = QgsDateTimeRange( range.end(), range.end() );
         break;
-      case QgsRasterDataProviderTemporalCapabilities::FindClosestMatchToStartOfRange:
+      case Qgis::TemporalIntervalMatchMethod::FindClosestMatchToStartOfRange:
       {
         QDateTime dateTimeStart = mSettings.findLeastClosestDateTime( range.begin(), dateOnly );
         range = QgsDateTimeRange( dateTimeStart, dateTimeStart );
         break;
       }
 
-      case QgsRasterDataProviderTemporalCapabilities::FindClosestMatchToEndOfRange:
+      case Qgis::TemporalIntervalMatchMethod::FindClosestMatchToEndOfRange:
       {
         QDateTime dateTimeEnd = mSettings.findLeastClosestDateTime( range.end(), dateOnly );
         range = QgsDateTimeRange( dateTimeEnd, dateTimeEnd );
@@ -1288,6 +1490,14 @@ void QgsWmsProvider::createTileRequestsWMSC( const QgsWmtsTileMatrix *tm, const 
   {
     setQueryItem( query, QStringLiteral( "TRANSPARENT" ), QStringLiteral( "TRUE" ) );  // some servers giving error for 'true' (lowercase)
   }
+
+  // For WMSC-T layers
+  if ( temporalCapabilities() &&
+       temporalCapabilities()->hasTemporalCapabilities() )
+  {
+    addWmstParameters( query );
+  }
+
   url.setQuery( query );
 
   int i = 0;
@@ -1400,7 +1610,7 @@ static QString _tile2quadkey( int tileX, int tileY, int z )
 }
 
 
-void QgsWmsProvider::createTileRequestsXYZ( const QgsWmtsTileMatrix *tm, const QgsWmsProvider::TilePositions &tiles, QgsWmsProvider::TileRequests &requests )
+void QgsWmsProvider::createTileRequestsXYZ( const QgsWmtsTileMatrix *tm, const QgsWmsProvider::TilePositions &tiles, QgsWmsProvider::TileRequests &requests, QgsRasterBlockFeedback *feedback )
 {
   int z = tm->identifier.toInt();
   QString url = mSettings.mBaseUrl;
@@ -1425,6 +1635,22 @@ void QgsWmsProvider::createTileRequestsXYZ( const QgsWmtsTileMatrix *tm, const Q
       turl.replace( QLatin1String( "{y}" ), QString::number( tile.row ), Qt::CaseInsensitive );
     }
     turl.replace( QLatin1String( "{z}" ), QString::number( z ), Qt::CaseInsensitive );
+
+    if ( turl.contains( QLatin1String( "{usage}" ) ) && feedback )
+    {
+      switch ( feedback->renderContext().rendererUsage() )
+      {
+        case Qgis::RendererUsage::View:
+          turl.replace( QLatin1String( "{usage}" ), QLatin1String( "view" ) );
+          break;
+        case Qgis::RendererUsage::Export:
+          turl.replace( QLatin1String( "{usage}" ), QLatin1String( "export" ) );
+          break;
+        case Qgis::RendererUsage::Unknown:
+          turl.replace( QLatin1String( "{usage}" ), QString() );
+          break;
+      }
+    }
 
     QgsDebugMsgLevel( QStringLiteral( "tileRequest %1 %2/%3 (%4,%5): %6" ).arg( mTileReqNo ).arg( i ).arg( tiles.count() ).arg( tile.row ).arg( tile.col ).arg( turl ), 2 );
     requests << TileRequest( turl, tm->tileRect( tile.col, tile.row ), i );
@@ -1459,6 +1685,7 @@ bool QgsWmsProvider::retrieveServerCapabilities( bool forceRefresh )
 
   return true;
 }
+
 
 void QgsWmsProvider::setupXyzCapabilities( const QString &uri, const QgsRectangle &sourceExtent, int sourceMinZoom, int sourceMaxZoom, double sourceTilePixelRatio )
 {
@@ -1560,7 +1787,7 @@ void QgsWmsProvider::setupXyzCapabilities( const QString &uri, const QgsRectangl
     tm.topLeft = topLeft;
     tm.tileWidth = tm.tileHeight = 256 * tilePixelRatio;
     tm.matrixWidth = tm.matrixHeight = 1 << zoom;
-    tm.tres = xspan / ( tm.tileWidth * tm.matrixWidth );
+    tm.tres = xspan / ( static_cast< qgssize >( tm.tileWidth ) * tm.matrixWidth );
     tm.scaleDenom = 0.0;
 
     mCaps.mTileMatrixSets[tms.identifier].tileMatrices[tm.tres] = tm;
@@ -1635,7 +1862,10 @@ Qgis::DataType QgsWmsProvider::dataType( int bandNo ) const
 Qgis::DataType QgsWmsProvider::sourceDataType( int bandNo ) const
 {
   Q_UNUSED( bandNo )
-  return Qgis::ARGB32;
+  if ( mConverter )
+    return mConverter->dataType();
+  else
+    return Qgis::DataType::ARGB32;
 }
 
 int QgsWmsProvider::bandCount() const
@@ -1649,7 +1879,7 @@ static const QgsWmsLayerProperty *_findNestedLayerProperty( const QString &layer
   if ( prop->name == layerName )
     return prop;
 
-  for ( const QgsWmsLayerProperty &child : qgis::as_const( prop->layer ) )
+  for ( const QgsWmsLayerProperty &child : std::as_const( prop->layer ) )
   {
     if ( const QgsWmsLayerProperty *res = _findNestedLayerProperty( layerName, &child ) )
       return res;
@@ -1662,7 +1892,7 @@ static const QgsWmsLayerProperty *_findNestedLayerProperty( const QString &layer
 bool QgsWmsProvider::extentForNonTiledLayer( const QString &layerName, const QString &crs, QgsRectangle &extent ) const
 {
   const QgsWmsLayerProperty *layerProperty = nullptr;
-  for ( const QgsWmsLayerProperty &toplevelLayer : qgis::as_const( mCaps.mCapabilities.capability.layers ) )
+  for ( const QgsWmsLayerProperty &toplevelLayer : std::as_const( mCaps.mCapabilities.capability.layers ) )
   {
     layerProperty = _findNestedLayerProperty( layerName, &toplevelLayer );
     if ( layerProperty )
@@ -1709,11 +1939,11 @@ bool QgsWmsProvider::extentForNonTiledLayer( const QString &layerName, const QSt
   if ( !wgs.isValid() || !dst.isValid() )
     return false;
 
-  QgsCoordinateTransform xform( wgs, dst, transformContext() );
-
   QgsDebugMsgLevel( QStringLiteral( "transforming layer extent %1" ).arg( extent.toString( true ) ), 2 );
   try
   {
+    QgsCoordinateTransform xform( wgs, dst, transformContext() );
+    xform.setBallparkTransformsAreAppropriate( true );
     extent = xform.transformBoundingBox( extent );
   }
   catch ( QgsCsException &cse )
@@ -1922,45 +2152,45 @@ QStringList QgsWmsProvider::subLayerStyles() const
 
 bool QgsWmsProvider::getMinMaxScale(double &dMin, double &dMax)
 {
-	dMin = dMax = -1;
-	bool bRes = false;
+  dMin = dMax = -1;
+  bool bRes = false;
 
-	if (mSettings.mTiled)
-		return bRes;
+  if (mSettings.mTiled)
+    return bRes;
 
-	dMin = DBL_MAX;
-	dMax = -1;
+  dMin = DBL_MAX;
+  dMax = -1;
 
-	for(const QString &strLayer : mSettings.mActiveSubLayers)
-	{
-		const QgsWmsLayerProperty *layerProperty = nullptr;
-		for(const QgsWmsLayerProperty &toplevelLayer : mCaps.mCapabilities.capability.layers)
-		{
-			layerProperty = _findNestedLayerProperty(strLayer, &toplevelLayer);
-			if (layerProperty)
-				break;
-		}
-		
-		if (layerProperty)
-		{
-			if (layerProperty->maximumScaleDenominator >= 1 && 
-				layerProperty->maximumScaleDenominator > layerProperty->minimumScaleDenominator && 
-				!isnan(layerProperty->minimumScaleDenominator) &&
-				!isnan(layerProperty->maximumScaleDenominator) &&
-				!isinf(layerProperty->minimumScaleDenominator) &&
-				!isinf(layerProperty->maximumScaleDenominator)) 
-			{
-				//dMin = std::min(dMin, layerProperty->minimumScaleDenominator);
-				//dMax = std::max(dMax, layerProperty->maximumScaleDenominator);
-				dMin = layerProperty->minimumScaleDenominator;
-				dMax = layerProperty->maximumScaleDenominator;
+  for(const QString &strLayer : mSettings.mActiveSubLayers)
+  {
+    const QgsWmsLayerProperty *layerProperty = nullptr;
+    for(const QgsWmsLayerProperty &toplevelLayer : mCaps.mCapabilities.capability.layers)
+    {
+      layerProperty = _findNestedLayerProperty(strLayer, &toplevelLayer);
+      if (layerProperty)
+        break;
+    }
 
-				bRes = true;
-			}	
-		}
-	}
+    if (layerProperty)
+    {
+      if (layerProperty->maximumScaleDenominator >= 1 && 
+        layerProperty->maximumScaleDenominator > layerProperty->minimumScaleDenominator && 
+        !isnan(layerProperty->minimumScaleDenominator) &&
+        !isnan(layerProperty->maximumScaleDenominator) &&
+        !isinf(layerProperty->minimumScaleDenominator) &&
+        !isinf(layerProperty->maximumScaleDenominator)) 
+      {
+        //dMin = std::min(dMin, layerProperty->minimumScaleDenominator);
+        //dMax = std::max(dMax, layerProperty->maximumScaleDenominator);
+        dMin = layerProperty->minimumScaleDenominator;
+        dMax = layerProperty->maximumScaleDenominator;
 
-	return bRes;
+        bRes = true;
+      }
+    }
+  }
+
+  return bRes;
 }
 
 bool QgsWmsProvider::calculateExtent() const
@@ -1991,13 +2221,13 @@ bool QgsWmsProvider::calculateExtent() const
         {
           QgsCoordinateReferenceSystem qgisSrsSource = QgsCoordinateReferenceSystem::fromOgcWmsCrs( mTileLayer->boundingBoxes[i].crs );
 
-          QgsCoordinateTransform ct( qgisSrsSource, qgisSrsDest, transformContext() );
-
           QgsDebugMsgLevel( QStringLiteral( "ct: %1 => %2" ).arg( mTileLayer->boundingBoxes.at( i ).crs, mImageCrs ), 2 );
 
           try
           {
-            QgsRectangle extent = ct.transformBoundingBox( mTileLayer->boundingBoxes.at( i ).box, QgsCoordinateTransform::ForwardTransform );
+            QgsCoordinateTransform ct( qgisSrsSource, qgisSrsDest, transformContext() );
+            ct.setBallparkTransformsAreAppropriate( true );
+            QgsRectangle extent = ct.transformBoundingBox( mTileLayer->boundingBoxes.at( i ).box, Qgis::TransformDirection::Forward );
 
             //make sure extent does not contain 'inf' or 'nan'
             if ( extent.isFinite() )
@@ -2102,12 +2332,14 @@ int QgsWmsProvider::capabilities() const
     }
   }
 
-  // Prevent prefetch of XYZ openstreetmap images
-  // See: https://github.com/qgis/QGIS/issues/34813
-  if ( !( mSettings.mTiled && mSettings.mXyz && dataSourceUri().contains( QStringLiteral( "openstreetmap.org" ) ) ) )
+  if ( mSettings.mXyz )
   {
-    // March 2021: *never* prefetch tile based layers, see: https://github.com/qgis/QGIS/pull/41953
-    // capability |= Capability::Prefetch;
+    capability |= Capability::Prefetch;
+  }
+
+  if ( mSettings.mTiled || mSettings.mXyz )
+  {
+    capability |= DpiDependentData;
   }
 
   QgsDebugMsgLevel( QStringLiteral( "capability = %1" ).arg( capability ), 2 );
@@ -2225,7 +2457,7 @@ QString QgsWmsProvider::layerMetadata( QgsWmsLayerProperty &layer )
                 tr( "Extent" ) %
                 QStringLiteral( "</th></tr>" );
 
-    for ( const QgsWmsDimensionProperty &d : qgis::as_const( layer.dimensions ) )
+    for ( const QgsWmsDimensionProperty &d : std::as_const( layer.dimensions ) )
     {
       metadata += QStringLiteral( "<tr><td>" ) % d.name % QStringLiteral( "</td><td>" ) % d.units %  QStringLiteral( "</td><td>" ) % d.extent % QStringLiteral( "</td></tr>" );
     }
@@ -2245,7 +2477,7 @@ QString QgsWmsProvider::layerMetadata( QgsWmsLayerProperty &layer )
                 tr( "URL" ) %
                 QStringLiteral( "</th></tr>" );
 
-    for ( const QgsWmsMetadataUrlProperty &l : qgis::as_const( layer.metadataUrl ) )
+    for ( const QgsWmsMetadataUrlProperty &l : std::as_const( layer.metadataUrl ) )
     {
       metadata += QStringLiteral( "<tr><td>" ) % l.format % QStringLiteral( "</td><td>" ) % l.onlineResource.xlinkHref % QStringLiteral( "</td></tr>" );
     }
@@ -2254,7 +2486,7 @@ QString QgsWmsProvider::layerMetadata( QgsWmsLayerProperty &layer )
   }
 
   // Layer Coordinate Reference Systems
-  for ( int j = 0; j < std::min( layer.crs.size(), 10 ); j++ )
+  for ( int j = 0; j < std::min( static_cast< int >( layer.crs.size() ), 10 ); j++ )
   {
     metadata += QStringLiteral( "<tr><td>" ) %
                 tr( "Available in CRS" ) %
@@ -2603,7 +2835,7 @@ QString QgsWmsProvider::htmlMetadata()
 
                                 "<table width=\"100%\" class=\"tabular-view\">" );  // Nested table 3
 
-    for ( const QgsWmtsTileLayer &l : qgis::as_const( mCaps.mTileLayersSupported ) )
+    for ( const QgsWmtsTileLayer &l : std::as_const( mCaps.mTileLayersSupported ) )
     {
       metadata += QStringLiteral( "<tr><th class=\"strong\">" ) %
                   tr( "Identifier" ) %
@@ -2670,7 +2902,7 @@ QString QgsWmsProvider::htmlMetadata()
                     QStringLiteral( "</td>"
                                     "<td class=\"strong\">" );
         QStringList styles;
-        for ( const QgsWmtsStyle &style : qgis::as_const( l.styles ) )
+        for ( const QgsWmtsStyle &style : std::as_const( l.styles ) )
         {
           styles << style.identifier;
         }
@@ -2702,7 +2934,7 @@ QString QgsWmsProvider::htmlMetadata()
                   tr( "Available Tilesets" ) %
                   QStringLiteral( "</td><td class=\"strong\">" );
 
-      for ( const QgsWmtsTileMatrixSetLink &setLink : qgis::as_const( l.setLinks ) )
+      for ( const QgsWmtsTileMatrixSetLink &setLink : std::as_const( l.setLinks ) )
       {
         metadata += setLink.tileMatrixSet + "<br>";
       }
@@ -3160,7 +3392,7 @@ QgsRasterIdentifyResult QgsWmsProvider::identify( const QgsPointXY &point, QgsRa
         const QStringList parts = mSettings.mBaseUrl.split( QRegularExpression( "\\?" ) );
         const QString base = parts.isEmpty() ? mSettings.mBaseUrl : parts.first();
         // and strip everything before the `rest` element (at least for GeoServer)
-        const int index = url.length() - url.lastIndexOf( QStringLiteral( "rest" ) ) + 1; // +1 for the /
+        const int index = url.length() - url.lastIndexOf( QLatin1String( "rest" ) ) + 1; // +1 for the /
         url = base + url.right( index );
       }
 
@@ -3362,7 +3594,9 @@ QgsRasterIdentifyResult QgsWmsProvider::identify( const QgsPointXY &point, QgsRa
         dom.setContent( gmlByteArray ); // gets XML encoding
         gmlByteArray.clear();
         QTextStream stream( &gmlByteArray );
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         stream.setCodec( QTextCodec::codecForName( "UTF-8" ) );
+#endif
         dom.save( stream, 4, QDomNode::EncodingFromTextStream );
 
         QgsDebugMsgLevel( "GML UTF-8 (first 2000 bytes):\n" + gmlByteArray.left( 2000 ), 2 );
@@ -3461,7 +3695,7 @@ QgsRasterIdentifyResult QgsWmsProvider::identify( const QgsPointXY &point, QgsRa
         if ( xsdPart < 0 && !featureTypeNames.isEmpty() && featureStoreList.isEmpty() )
         {
           QgsError err = QGS_ERROR( tr( "Cannot identify" ) );
-          err.append( tr( "Result parsing failed. %1 feature types were guessed from gml (%2) but no features were parsed." ).arg( featureTypeNames.size() ).arg( featureTypeNames.join( QLatin1Char( ',' ) ) ) );
+          err.append( tr( "Result parsing failed. %n feature type(s) were guessed from gml (%2) but no features were parsed.", nullptr, featureTypeNames.size() ).arg( featureTypeNames.join( QLatin1Char( ',' ) ) ) );
           QgsDebugMsg( "parsing GML error: " + err.message() );
           return QgsRasterIdentifyResult( err );
         }
@@ -3691,6 +3925,11 @@ QgsCoordinateReferenceSystem QgsWmsProvider::crs() const
 
 QgsRasterDataProvider::ProviderCapabilities QgsWmsProvider::providerCapabilities() const
 {
+  if ( mConverter )
+    return ProviderCapability::ReadLayerMetadata |
+           ProviderCapability::ProviderHintBenefitsFromResampling |
+           ProviderCapability::ProviderHintCanPerformProviderResampling;
+
   return ProviderCapability::ReadLayerMetadata;
 }
 
@@ -3741,6 +3980,35 @@ QList<double> QgsWmsProvider::nativeResolutions() const
 QgsLayerMetadata QgsWmsProvider::layerMetadata() const
 {
   return mLayerMetadata;
+}
+
+QgsRasterBandStats QgsWmsProvider::bandStatistics(
+  int bandNo,
+  int stats,
+  const QgsRectangle &extent,
+  int sampleSize,
+  QgsRasterBlockFeedback *feedback )
+{
+  if ( mConverter )
+    return mConverter->statistics( bandNo, stats, extent, sampleSize, feedback );
+  else
+    return QgsRasterBandStats();
+}
+
+QgsRasterHistogram QgsWmsProvider::histogram(
+  int bandNo,
+  int binCount,
+  double minimum,
+  double maximum,
+  const QgsRectangle &extent,
+  int sampleSize,
+  bool includeOutOfRange,
+  QgsRasterBlockFeedback *feedback )
+{
+  if ( mConverter )
+    return mConverter->histogram( bandNo, binCount, minimum, maximum, extent, sampleSize, includeOutOfRange, feedback );
+  else
+    return QgsRasterHistogram();
 }
 
 QVector<QgsWmsSupportedFormat> QgsWmsProvider::supportedFormats()
@@ -3982,6 +4250,7 @@ QgsImageFetcher *QgsWmsProvider::getLegendGraphicFetcher( const QgsMapSettings *
     try
     {
       QgsCoordinateTransform ct { mapSettings->destinationCrs(), crs(), mapSettings->transformContext() };
+      ct.setBallparkTransformsAreAppropriate( true );
       mapExtent = ct.transformBoundingBox( mapExtent );
     }
     catch ( QgsCsException & )
@@ -4259,7 +4528,16 @@ void QgsWmsImageDownloadHandler::canceled()
 // ----------
 
 
-QgsWmsTiledImageDownloadHandler::QgsWmsTiledImageDownloadHandler( const QString &providerUri, const QgsWmsAuthorization &auth, int tileReqNo, const QgsWmsProvider::TileRequests &requests, QImage *image, const QgsRectangle &viewExtent, bool smoothPixmapTransform, QgsRasterBlockFeedback *feedback )
+QgsWmsTiledImageDownloadHandler::QgsWmsTiledImageDownloadHandler( const QString &providerUri,
+    const QgsWmsAuthorization &auth,
+    int tileReqNo,
+    const QgsWmsProvider::TileRequests &requests,
+    QImage *image,
+    const QgsRectangle &viewExtent,
+    double sourceResolution,
+    bool smoothPixmapTransform,
+    bool resamplingEnabled,
+    QgsRasterBlockFeedback *feedback )
   : mProviderUri( providerUri )
   , mAuth( auth )
   , mImage( image )
@@ -4268,6 +4546,9 @@ QgsWmsTiledImageDownloadHandler::QgsWmsTiledImageDownloadHandler( const QString 
   , mTileReqNo( tileReqNo )
   , mSmoothPixmapTransform( smoothPixmapTransform )
   , mFeedback( feedback )
+  , mEffectiveViewExtent( viewExtent )
+  , mSourceResolution( sourceResolution )
+  , mResamplingEnabled( resamplingEnabled )
 {
   if ( feedback )
   {
@@ -4293,9 +4574,8 @@ QgsWmsTiledImageDownloadHandler::QgsWmsTiledImageDownloadHandler( const QString 
     request.setAttribute( static_cast<QNetworkRequest::Attribute>( TileRect ), r.rect );
     request.setAttribute( static_cast<QNetworkRequest::Attribute>( TileRetry ), 0 );
 
-    QNetworkReply *reply = QgsNetworkAccessManager::instance()->get( request );
-    connect( reply, &QNetworkReply::finished, this, &QgsWmsTiledImageDownloadHandler::tileReplyFinished );
-
+    QgsTileDownloadManagerReply *reply = QgsApplication::tileDownloadManager()->get( request );
+    connect( reply, &QgsTileDownloadManagerReply::finished, this, &QgsWmsTiledImageDownloadHandler::tileReplyFinished );
     mReplies << reply;
   }
 }
@@ -4315,10 +4595,9 @@ void QgsWmsTiledImageDownloadHandler::downloadBlocking()
   Q_ASSERT( mReplies.isEmpty() );
 }
 
-
 void QgsWmsTiledImageDownloadHandler::tileReplyFinished()
 {
-  QNetworkReply *reply = qobject_cast<QNetworkReply *>( sender() );
+  QgsTileDownloadManagerReply *reply = qobject_cast<QgsTileDownloadManagerReply *>( sender() );
 
 #if defined(QGISDEBUG)
   bool fromCache = reply->attribute( QNetworkRequest::SourceIsFromCacheAttribute ).toBool();
@@ -4397,10 +4676,10 @@ void QgsWmsTiledImageDownloadHandler::tileReplyFinished()
       reply->deleteLater();
 
       QgsDebugMsgLevel( QStringLiteral( "redirected gettile: %1" ).arg( redirect.toString() ), 2 );
-      reply = QgsNetworkAccessManager::instance()->get( request );
-      mReplies << reply;
 
-      connect( reply, &QNetworkReply::finished, this, &QgsWmsTiledImageDownloadHandler::tileReplyFinished );
+      QgsTileDownloadManagerReply *reply = QgsApplication::tileDownloadManager()->get( request );
+      connect( reply, &QgsTileDownloadManagerReply::finished, this, &QgsWmsTiledImageDownloadHandler::tileReplyFinished );
+      mReplies << reply;
 
       return;
     }
@@ -4409,7 +4688,6 @@ void QgsWmsTiledImageDownloadHandler::tileReplyFinished()
     if ( !status.isNull() && status.toInt() >= 400 )
     {
       QVariant phrase = reply->attribute( QNetworkRequest::HttpReasonPhraseAttribute );
-
       QgsWmsProvider::showMessageBox( tr( "Tile request error" ), tr( "Status: %1\nReason phrase: %2" ).arg( status.toInt() ).arg( phrase.toString() ) );
 
       mReplies.removeOne( reply );
@@ -4426,7 +4704,7 @@ void QgsWmsTiledImageDownloadHandler::tileReplyFinished()
     if ( !contentType.isEmpty() && !contentType.startsWith( QLatin1String( "image/" ), Qt::CaseInsensitive ) &&
          contentType.compare( QLatin1String( "application/octet-stream" ), Qt::CaseInsensitive ) != 0 )
     {
-      QByteArray text = reply->readAll();
+      QByteArray text = reply->data();
       QString errorTitle, errorText;
       if ( contentType.compare( QLatin1String( "text/xml" ), Qt::CaseInsensitive ) == 0 && QgsWmsProvider::parseServiceExceptionReportDom( text, errorTitle, errorText ) )
       {
@@ -4463,19 +4741,20 @@ void QgsWmsTiledImageDownloadHandler::tileReplyFinished()
     // only take results from current request number
     if ( mTileReqNo == tileReqNo )
     {
-      double cr = mViewExtent.width() / mImage->width();
+      QgsDebugMsgLevel( QStringLiteral( "tile reply: length %1" ).arg( reply->data().size() ), 2 );
 
-      QRectF dst( ( r.left() - mViewExtent.xMinimum() ) / cr,
-                  ( mViewExtent.yMaximum() - r.bottom() ) / cr,
-                  r.width() / cr,
-                  r.height() / cr );
-
-      QgsDebugMsgLevel( QStringLiteral( "tile reply: length %1" ).arg( reply->bytesAvailable() ), 2 );
-
-      QImage myLocalImage = QImage::fromData( reply->readAll() );
+      QImage myLocalImage = QImage::fromData( reply->data() );
 
       if ( !myLocalImage.isNull() )
       {
+        if ( mResamplingEnabled && mSourceResolution < 0 )
+        {
+          mSourceResolution = r.width() / myLocalImage.width();
+          mEffectiveViewExtent = initializeBufferedImage( mViewExtent, mSourceResolution, mImage );
+        }
+
+        const QRectF dst = destinationRect( mEffectiveViewExtent, r, mImage->width() );
+
         QPainter p( mImage );
         // if image size is "close enough" to destination size, don't smooth it out. Instead try for pixel-perfect placement!
         const bool disableSmoothing = ( qgsDoubleNear( dst.width(), myLocalImage.width(), 2 ) && qgsDoubleNear( dst.height(), myLocalImage.height(), 2 ) );
@@ -4525,10 +4804,22 @@ void QgsWmsTiledImageDownloadHandler::tileReplyFinished()
       {
         QgsWmsStatistics::Stat &stat = QgsWmsStatistics::statForUri( mProviderUri );
         stat.errors++;
-
         // if we reached timeout, let's try again (e.g. in case of slow connection or slow server)
-        if ( reply->error() == QNetworkReply::TimeoutError )
-          repeatTileRequest( reply->request() );
+        repeatTileRequest( reply->request() );
+
+        if ( reply->error() == QNetworkReply::ContentAccessDenied )
+        {
+          const QString contentType = reply->header( QNetworkRequest::ContentTypeHeader ).toString();
+
+          QString errorMessage;
+          if ( contentType.startsWith( QLatin1String( "text/plain" ) ) )
+            errorMessage = reply->data();
+          else
+            errorMessage = reply->attribute( QNetworkRequest::HttpReasonPhraseAttribute ).toString();
+
+          mError = tr( "Access denied: %1" ).
+                   arg( errorMessage );
+        }
       }
     }
 
@@ -4541,10 +4832,10 @@ void QgsWmsTiledImageDownloadHandler::tileReplyFinished()
 
 #if 0
   const QgsWmsStatistics::Stat &stat = QgsWmsStatistics::statForUri( mProviderUri );
-  emit statusChanged( tr( "%n tile requests in background", "tile request count", mReplies.count() )
-                      + tr( ", %n cache hits", "tile cache hits", stat.cacheHits )
+  emit statusChanged( tr( "%n tile request(s) in background", "tile request count", mReplies.count() )
+                      + tr( ", %n cache hit(s)", "tile cache hits", stat.cacheHits )
                       + tr( ", %n cache misses.", "tile cache missed", stat.cacheMisses )
-                      + tr( ", %n errors.", "errors", stat.errors )
+                      + tr( ", %n error(s).", "errors", stat.errors )
                     );
 #endif
 }
@@ -4552,12 +4843,9 @@ void QgsWmsTiledImageDownloadHandler::tileReplyFinished()
 void QgsWmsTiledImageDownloadHandler::canceled()
 {
   QgsDebugMsgLevel( QStringLiteral( "Caught canceled() signal" ), 3 );
-  const auto constMReplies = mReplies;
-  for ( QNetworkReply *reply : constMReplies )
-  {
-    QgsDebugMsgLevel( QStringLiteral( "Aborting tiled network request" ), 3 );
-    reply->abort();
-  }
+  qDeleteAll( mReplies );
+  mReplies.clear();
+  finish();
 }
 
 
@@ -4595,14 +4883,29 @@ void QgsWmsTiledImageDownloadHandler::repeatTileRequest( QNetworkRequest const &
   if ( stat.errors < 100 )
   {
     QgsMessageLog::logMessage( tr( "repeat tileRequest %1 tile %2(retry %3)" )
-                               .arg( tileReqNo ).arg( tileNo ).arg( retry ), tr( "WMS" ), Qgis::Info );
+                               .arg( tileReqNo ).arg( tileNo ).arg( retry ), tr( "WMS" ), Qgis::MessageLevel::Info );
   }
   QgsDebugMsgLevel( QStringLiteral( "repeat tileRequest %1 %2(retry %3) for url: %4" ).arg( tileReqNo ).arg( tileNo ).arg( retry ).arg( url ), 2 );
   request.setAttribute( static_cast<QNetworkRequest::Attribute>( TileRetry ), retry );
 
-  QNetworkReply *reply = QgsNetworkAccessManager::instance()->get( request );
+  QgsTileDownloadManagerReply *reply = QgsApplication::tileDownloadManager()->get( request );
+  connect( reply, &QgsTileDownloadManagerReply::finished, this, &QgsWmsTiledImageDownloadHandler::tileReplyFinished );
   mReplies << reply;
-  connect( reply, &QNetworkReply::finished, this, &QgsWmsTiledImageDownloadHandler::tileReplyFinished );
+}
+
+double QgsWmsTiledImageDownloadHandler::sourceResolution() const
+{
+  return mSourceResolution;
+}
+
+QgsRectangle QgsWmsTiledImageDownloadHandler::effectiveViewExtent() const
+{
+  return mEffectiveViewExtent;
+}
+
+QString QgsWmsTiledImageDownloadHandler::error() const
+{
+  return mError;
 }
 
 // Some servers like http://glogow.geoportal2.pl/map/wms/wms.php? do not BBOX
@@ -4690,7 +4993,13 @@ void QgsWmsLegendDownloadHandler::startUrl( const QUrl &url )
 
   mReply = mNetworkAccessManager.get( request );
   mSettings.authorization().setAuthorizationReply( mReply );
+
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
   connect( mReply, static_cast < void ( QNetworkReply::* )( QNetworkReply::NetworkError ) >( &QNetworkReply::error ), this, &QgsWmsLegendDownloadHandler::errored );
+#else
+  connect( mReply, &QNetworkReply::errorOccurred, this, &QgsWmsLegendDownloadHandler::errored );
+#endif
+
   connect( mReply, &QNetworkReply::finished, this, &QgsWmsLegendDownloadHandler::finished );
   connect( mReply, &QNetworkReply::downloadProgress, this, &QgsWmsLegendDownloadHandler::progressed );
 }
@@ -4788,6 +5097,11 @@ QgsWmsProviderMetadata::QgsWmsProviderMetadata()
 {
 }
 
+QIcon QgsWmsProviderMetadata::icon() const
+{
+  return QgsApplication::getThemeIcon( QStringLiteral( "mIconWms.svg" ) );
+}
+
 QList<QgsDataItemProvider *> QgsWmsProviderMetadata::dataItemProviders() const
 {
   QList<QgsDataItemProvider *> providers;
@@ -4799,14 +5113,14 @@ QList<QgsDataItemProvider *> QgsWmsProviderMetadata::dataItemProviders() const
   return providers;
 }
 
-QVariantMap QgsWmsProviderMetadata::decodeUri( const QString &uri )
+QVariantMap QgsWmsProviderMetadata::decodeUri( const QString &uri ) const
 {
   const QUrlQuery query { uri };
   const auto constItems { query.queryItems() };
   QVariantMap decoded;
   for ( const auto &item : constItems )
   {
-    if ( item.first == QStringLiteral( "url" ) )
+    if ( item.first == QLatin1String( "url" ) )
     {
       const QUrl url( item.second );
       if ( url.isLocalFile() )
@@ -4826,13 +5140,13 @@ QVariantMap QgsWmsProviderMetadata::decodeUri( const QString &uri )
   return decoded;
 }
 
-QString QgsWmsProviderMetadata::encodeUri( const QVariantMap &parts )
+QString QgsWmsProviderMetadata::encodeUri( const QVariantMap &parts ) const
 {
   QUrlQuery query;
   QList<QPair<QString, QString> > items;
   for ( auto it = parts.constBegin(); it != parts.constEnd(); ++it )
   {
-    if ( it.key() == QStringLiteral( "path" ) )
+    if ( it.key() == QLatin1String( "path" ) )
     {
       items.push_back( { QStringLiteral( "url" ), QUrl::fromLocalFile( it.value().toString() ).toString() } );
     }
@@ -4845,9 +5159,97 @@ QString QgsWmsProviderMetadata::encodeUri( const QVariantMap &parts )
   return query.toString();
 }
 
+QList<QgsMapLayerType> QgsWmsProviderMetadata::supportedLayerTypes() const
+{
+  return { QgsMapLayerType::RasterLayer };
+}
+
 #ifndef HAVE_STATIC_PROVIDERS
 QGISEXTERN QgsProviderMetadata *providerMetadataFactory()
 {
   return new QgsWmsProviderMetadata();
 }
 #endif
+
+
+std::unique_ptr<QgsWmsInterpretationConverter> QgsWmsInterpretationConverter::createConverter( const QString &key )
+{
+  if ( key == QgsWmsInterpretationConverterMapTilerTerrainRGB::interpretationKey() )
+    return std::make_unique<QgsWmsInterpretationConverterMapTilerTerrainRGB>();
+  else if ( key == QgsWmsInterpretationConverterTerrariumRGB::interpretationKey() )
+    return std::make_unique<QgsWmsInterpretationConverterTerrariumRGB>();
+
+  return nullptr;
+}
+
+Qgis::DataType QgsWmsInterpretationConverter::dataType() const
+{
+  return Qgis::DataType::Float32;
+}
+
+//
+// QgsWmsInterpretationConverterMapTilerTerrainRGB
+//
+
+void QgsWmsInterpretationConverterMapTilerTerrainRGB::convert( const QRgb &color, float *converted ) const
+{
+  int R = qRed( color );
+  int G = qGreen( color );
+  int B = qBlue( color );
+
+  if ( qAlpha( color ) == 255 )
+  {
+    *converted = -10000 + ( ( R * 256 * 256 + G * 256 + B ) ) * 0.1;
+  }
+  else
+  {
+    *converted = std::numeric_limits<float>::quiet_NaN();
+  }
+}
+
+QgsRasterBandStats QgsWmsInterpretationConverterMapTilerTerrainRGB::statistics( int, int, const QgsRectangle &, int, QgsRasterBlockFeedback * ) const
+{
+  QgsRasterBandStats stat;
+  stat.minimumValue = -10000;
+  stat.maximumValue = 9000;
+  stat.statsGathered = QgsRasterBandStats::Min | QgsRasterBandStats::Max;
+  return stat;
+}
+
+QgsRasterHistogram QgsWmsInterpretationConverterMapTilerTerrainRGB::histogram( int, int, double, double, const QgsRectangle &, int, bool, QgsRasterBlockFeedback * ) const
+{
+  return QgsRasterHistogram();
+}
+
+//
+// QgsWmsInterpretationConverterTerrariumRGB
+//
+
+void QgsWmsInterpretationConverterTerrariumRGB::convert( const QRgb &color, float *converted ) const
+{
+  // for description of the "terrarium" format:
+  // https://github.com/tilezen/joerd/blob/master/docs/formats.md
+
+  if ( qAlpha( color ) == 255 )
+  {
+    *converted = qRed( color ) * 256 + qGreen( color ) + qBlue( color ) / 256.f - 32768;
+  }
+  else
+  {
+    *converted = std::numeric_limits<float>::quiet_NaN();
+  }
+}
+
+QgsRasterBandStats QgsWmsInterpretationConverterTerrariumRGB::statistics( int, int, const QgsRectangle &, int, QgsRasterBlockFeedback * ) const
+{
+  QgsRasterBandStats stat;
+  stat.minimumValue = -11000;
+  stat.maximumValue = 9000;
+  stat.statsGathered = QgsRasterBandStats::Min | QgsRasterBandStats::Max;
+  return stat;
+}
+
+QgsRasterHistogram QgsWmsInterpretationConverterTerrariumRGB::histogram( int, int, double, double, const QgsRectangle &, int, bool, QgsRasterBlockFeedback * ) const
+{
+  return QgsRasterHistogram();
+}

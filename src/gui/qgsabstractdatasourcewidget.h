@@ -29,6 +29,7 @@
 #include <QDialogButtonBox>
 
 class QgsMapCanvas;
+class QgsBrowserModel;
 
 
 /**
@@ -46,11 +47,25 @@ class GUI_EXPORT QgsAbstractDataSourceWidget : public QDialog
   public:
 
     /**
-     * Store a pointer to the map canvas to retrieve extent and CRS
-     * Used to select an appropriate CRS and possibly to retrieve data only in the current extent
+     * Sets a browser \a model to use with the widget.
+     *
+     * \see browserModel()
+     * \since QGIS 3.18
      */
-    void setMapCanvas( const QgsMapCanvas *mapCanvas );
+    virtual void setBrowserModel( QgsBrowserModel *model );
 
+    /**
+     * Returns the dialog map canvas
+     * \see setMapCanvas()
+     *
+     */
+    virtual QgsMapCanvas *mapCanvas() {return mMapCanvas; }
+
+    /**
+     * Sets the dialog map canvas
+     * \see mapCanvas()
+     */
+    virtual void setMapCanvas( QgsMapCanvas *mapCanvas ) { mMapCanvas = mapCanvas; }
 
   public slots:
 
@@ -93,6 +108,13 @@ class GUI_EXPORT QgsAbstractDataSourceWidget : public QDialog
     void addRasterLayer( const QString &rasterLayerPath, const QString &baseName, const QString &providerKey );
 
     /**
+     * Emitted when one or more GDAL supported layers are selected for addition
+     * \param layersList list of layers protocol URIs
+     * \since 3.20
+     */
+    void addRasterLayers( const QStringList &layersList );
+
+    /**
      * Emitted when a vector layer has been selected for addition.
      *
      * If \a providerKey is not specified, the default provider key associated with the source
@@ -111,6 +133,12 @@ class GUI_EXPORT QgsAbstractDataSourceWidget : public QDialog
      * \since QGIS 3.14
      */
     void addVectorTileLayer( const QString &url, const QString &baseName );
+
+    /**
+     * Emitted when a point cloud layer has been selected for addition.
+     * \since QGIS 3.18
+     */
+    void addPointCloudLayer( const QString &url, const QString &baseName, const QString &providerKey );
 
     /**
      * Emitted when one or more OGR supported layers are selected for addition
@@ -148,7 +176,6 @@ class GUI_EXPORT QgsAbstractDataSourceWidget : public QDialog
      */
     void pushMessage( const QString &title, const QString &message, const Qgis::MessageLevel level = Qgis::MessageLevel::Info );
 
-
   protected:
 
     //! Constructor
@@ -157,8 +184,12 @@ class GUI_EXPORT QgsAbstractDataSourceWidget : public QDialog
     //! Returns the widget mode
     QgsProviderRegistry::WidgetMode widgetMode() const;
 
-    //! Returns the map canvas (can be NULLPTR)
-    const QgsMapCanvas *mapCanvas() const;
+    /**
+     * Returns the associated browser model (may be NULLPTR).
+     *
+     * \since QGIS 3.18
+     */
+    QgsBrowserModel *browserModel();
 
     //! Connect the ok and apply/add buttons to the slots
     void setupButtons( QDialogButtonBox *buttonBox );
@@ -169,7 +200,8 @@ class GUI_EXPORT QgsAbstractDataSourceWidget : public QDialog
   private:
     QPushButton *mAddButton  = nullptr;
     QgsProviderRegistry::WidgetMode mWidgetMode;
-    QgsMapCanvas const *mMapCanvas = nullptr;
+    QgsBrowserModel *mBrowserModel = nullptr;
+    QgsMapCanvas *mMapCanvas = nullptr;
 
 };
 

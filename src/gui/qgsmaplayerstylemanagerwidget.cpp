@@ -31,6 +31,7 @@
 #include "qgsvectorlayer.h"
 #include "qgsrasterlayer.h"
 #include "qgsapplication.h"
+#include "qgsproviderregistry.h"
 
 QgsMapLayerStyleManagerWidget::QgsMapLayerStyleManagerWidget( QgsMapLayer *layer, QgsMapCanvas *canvas, QWidget *parent )
   : QgsMapLayerConfigWidget( layer, canvas, parent )
@@ -86,7 +87,7 @@ QgsMapLayerStyleManagerWidget::QgsMapLayerStyleManagerWidget( QgsMapLayer *layer
     mModel->appendRow( item );
   }
 
-  QString active = mLayer->styleManager()->currentStyle();
+  const QString active = mLayer->styleManager()->currentStyle();
   currentStyleChanged( active );
 
   connect( mModel, &QStandardItemModel::itemChanged, this, &QgsMapLayerStyleManagerWidget::renameStyle );
@@ -97,13 +98,13 @@ void QgsMapLayerStyleManagerWidget::styleClicked( const QModelIndex &index )
   if ( !mLayer || !index.isValid() )
     return;
 
-  QString name = index.data().toString();
+  const QString name = index.data().toString();
   mLayer->styleManager()->setCurrentStyle( name );
 }
 
 void QgsMapLayerStyleManagerWidget::currentStyleChanged( const QString &name )
 {
-  QList<QStandardItem *> items = mModel->findItems( name );
+  const QList<QStandardItem *> items = mModel->findItems( name );
   if ( items.isEmpty() )
     return;
 
@@ -122,7 +123,7 @@ void QgsMapLayerStyleManagerWidget::styleAdded( const QString &name )
 
 void QgsMapLayerStyleManagerWidget::styleRemoved( const QString &name )
 {
-  QList<QStandardItem *> items = mModel->findItems( name );
+  const QList<QStandardItem *> items = mModel->findItems( name );
   if ( items.isEmpty() )
     return;
 
@@ -132,7 +133,7 @@ void QgsMapLayerStyleManagerWidget::styleRemoved( const QString &name )
 
 void QgsMapLayerStyleManagerWidget::styleRenamed( const QString &oldname, const QString &newname )
 {
-  QList<QStandardItem *> items = mModel->findItems( oldname );
+  const QList<QStandardItem *> items = mModel->findItems( oldname );
   if ( items.isEmpty() )
     return;
 
@@ -144,13 +145,13 @@ void QgsMapLayerStyleManagerWidget::styleRenamed( const QString &oldname, const 
 void QgsMapLayerStyleManagerWidget::addStyle()
 {
   bool ok;
-  QString text = QInputDialog::getText( nullptr, tr( "New Style" ),
-                                        tr( "Style name:" ), QLineEdit::Normal,
-                                        QStringLiteral( "new style" ), &ok );
+  const QString text = QInputDialog::getText( nullptr, tr( "New Style" ),
+                       tr( "Style name:" ), QLineEdit::Normal,
+                       QStringLiteral( "new style" ), &ok );
   if ( !ok || text.isEmpty() )
     return;
 
-  bool res = mLayer->styleManager()->addStyleFromLayer( text );
+  const bool res = mLayer->styleManager()->addStyleFromLayer( text );
   if ( res ) // make it active!
   {
     mLayer->styleManager()->setCurrentStyle( text );
@@ -163,13 +164,13 @@ void QgsMapLayerStyleManagerWidget::addStyle()
 
 void QgsMapLayerStyleManagerWidget::removeStyle()
 {
-  QString current = mLayer->styleManager()->currentStyle();
-  QList<QStandardItem *> items = mModel->findItems( current );
+  const QString current = mLayer->styleManager()->currentStyle();
+  const QList<QStandardItem *> items = mModel->findItems( current );
   if ( items.isEmpty() )
     return;
 
   QStandardItem *item = items.at( 0 );
-  bool res = mLayer->styleManager()->removeStyle( current );
+  const bool res = mLayer->styleManager()->removeStyle( current );
   if ( res )
   {
     mModel->removeRow( item->row() );
@@ -210,12 +211,31 @@ void QgsMapLayerStyleManagerWidget::saveAsDefault()
         case 0:
           return;
         case 2:
+        {
+          QString errorMessage;
+          if ( QgsProviderRegistry::instance()->styleExists( layer->providerType(), layer->source(), QString(), errorMessage ) )
+          {
+            if ( QMessageBox::question( nullptr, tr( "Save style in database" ),
+                                        tr( "A matching style already exists in the database for this layer. Do you want to overwrite it?" ),
+                                        QMessageBox::Yes | QMessageBox::No ) == QMessageBox::No )
+            {
+              return;
+            }
+          }
+          else if ( !errorMessage.isEmpty() )
+          {
+            QMessageBox::warning( nullptr, tr( "Save style in database" ),
+                                  errorMessage );
+            return;
+          }
+
           layer->saveStyleToDatabase( QString(), QString(), true, QString(), errorMsg );
           if ( errorMsg.isNull() )
           {
             return;
           }
           break;
+        }
         default:
           break;
       }
@@ -223,7 +243,11 @@ void QgsMapLayerStyleManagerWidget::saveAsDefault()
   }
 
   bool defaultSavedFlag = false;
+  // TODO Once the deprecated `saveDefaultStyle()` method is gone, just
+  // remove the NOWARN_DEPRECATED tags
+  Q_NOWARN_DEPRECATED_PUSH
   errorMsg = mLayer->saveDefaultStyle( defaultSavedFlag );
+  Q_NOWARN_DEPRECATED_POP
   if ( !defaultSavedFlag )
   {
     QMessageBox::warning( this, tr( "Default Style" ), errorMsg );
@@ -305,10 +329,10 @@ void QgsMapLayerStyleManagerWidget::saveStyle()
 void QgsMapLayerStyleManagerWidget::loadStyle()
 {
   QgsSettings myQSettings;  // where we keep last used filter in persistent state
-  QString myLastUsedDir = myQSettings.value( QStringLiteral( "style/lastStyleDir" ), QDir::homePath() ).toString();
+  const QString myLastUsedDir = myQSettings.value( QStringLiteral( "style/lastStyleDir" ), QDir::homePath() ).toString();
 
-  QString myFileName = QFileDialog::getOpenFileName( this, tr( "Load layer properties from style file" ), myLastUsedDir,
-                       tr( "QGIS Layer Style File" ) + " (*.qml);;" + tr( "SLD File" ) + " (*.sld)" );
+  const QString myFileName = QFileDialog::getOpenFileName( this, tr( "Load layer properties from style file" ), myLastUsedDir,
+                             tr( "QGIS Layer Style File" ) + " (*.qml);;" + tr( "SLD File" ) + " (*.sld)" );
   if ( myFileName.isNull() )
   {
     return;
@@ -337,8 +361,8 @@ void QgsMapLayerStyleManagerWidget::loadStyle()
     QMessageBox::warning( this, tr( "Load Style" ), myMessage );
   }
 
-  QFileInfo myFI( myFileName );
-  QString myPath = myFI.path();
+  const QFileInfo myFI( myFileName );
+  const QString myPath = myFI.path();
   myQSettings.setValue( QStringLiteral( "style/lastStyleDir" ), myPath );
 
 }

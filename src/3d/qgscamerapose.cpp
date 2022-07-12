@@ -33,14 +33,37 @@ QDomElement QgsCameraPose::writeXml( QDomDocument &doc ) const
 
 void QgsCameraPose::readXml( const QDomElement &elem )
 {
-  double x = elem.attribute( QStringLiteral( "x" ) ).toDouble();
-  double y = elem.attribute( QStringLiteral( "y" ) ).toDouble();
-  double z = elem.attribute( QStringLiteral( "z" ) ).toDouble();
+  const double x = elem.attribute( QStringLiteral( "x" ) ).toDouble();
+  const double y = elem.attribute( QStringLiteral( "y" ) ).toDouble();
+  const double z = elem.attribute( QStringLiteral( "z" ) ).toDouble();
   mCenterPoint = QgsVector3D( x, y, z );
 
   mDistanceFromCenterPoint = elem.attribute( QStringLiteral( "dist" ) ).toFloat();
   mPitchAngle = elem.attribute( QStringLiteral( "pitch" ) ).toFloat();
   mHeadingAngle = elem.attribute( QStringLiteral( "heading" ) ).toFloat();
+}
+
+void QgsCameraPose::setCenterPoint( const QgsVector3D &point )
+{
+  // something went horribly wrong. Prevent further errors
+  if ( std::isnan( point.x() ) || std::isnan( point.y() ) || std::isnan( point.z() ) )
+    qWarning() << "Not updating camera position: it cannot be NaN!";
+  else
+    mCenterPoint = point;
+}
+
+void QgsCameraPose::setDistanceFromCenterPoint( float distance )
+{
+  mDistanceFromCenterPoint = std::max( distance, 10.0f );
+}
+
+void QgsCameraPose::setPitchAngle( float pitch )
+{
+  // prevent going over the head
+  // prevent bug in QgsCameraPose::updateCamera when updating camera rotation.
+  // With a mPitchAngle < 0.2, QQuaternion::fromEulerAngles( mPitchAngle, mHeadingAngle, 0 ) will return bad rotation angle.
+  // See https://bugreports.qt.io/browse/QTBUG-72103
+  mPitchAngle = std::clamp( pitch, 0.2f, 180.0f );
 }
 
 void QgsCameraPose::updateCamera( Qt3DRender::QCamera *camera )

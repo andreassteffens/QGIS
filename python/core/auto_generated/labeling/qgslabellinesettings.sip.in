@@ -11,7 +11,7 @@
 
 class QgsLabelLineSettings
 {
-%Docstring
+%Docstring(signature="appended")
 
 Contains settings related to how the label engine places and formats
 labels for line features (or polygon features which are labeled in
@@ -23,6 +23,9 @@ a "perimeter" style mode).
 %TypeHeaderCode
 #include "qgslabellinesettings.h"
 %End
+  public:
+    static const QMetaObject staticMetaObject;
+
   public:
 
     enum class DirectionSymbolPlacement
@@ -36,6 +39,20 @@ a "perimeter" style mode).
     {
       HintOnly,
       Strict,
+    };
+
+    enum class AnchorClipping
+    {
+      UseVisiblePartsOfLine,
+      UseEntireLine,
+    };
+
+    enum class AnchorTextPoint
+    {
+      StartOfText,
+      CenterOfText,
+      EndOfText,
+      FollowPlacement,
     };
 
     QgsLabeling::LinePlacementFlags placementFlags() const;
@@ -267,7 +284,11 @@ the end of the line.
 
 .. seealso:: :py:func:`setLineAnchorPercent`
 
+.. seealso:: :py:func:`anchorTextPoint`
+
 .. seealso:: :py:func:`anchorType`
+
+.. seealso:: :py:func:`anchorClipping`
 %End
 
     void setLineAnchorPercent( double percent );
@@ -281,7 +302,11 @@ the end of the line.
 
 .. seealso:: :py:func:`lineAnchorPercent`
 
+.. seealso:: :py:func:`setAnchorTextPoint`
+
 .. seealso:: :py:func:`setAnchorType`
+
+.. seealso:: :py:func:`setAnchorClipping`
 %End
 
     AnchorType anchorType() const;
@@ -292,6 +317,8 @@ handled.
 .. seealso:: :py:func:`setAnchorType`
 
 .. seealso:: :py:func:`lineAnchorPercent`
+
+.. seealso:: :py:func:`anchorClipping`
 %End
 
     void setAnchorType( AnchorType type );
@@ -302,6 +329,56 @@ handled.
 .. seealso:: :py:func:`anchorType`
 
 .. seealso:: :py:func:`setLineAnchorPercent`
+
+.. seealso:: :py:func:`setAnchorClipping`
+%End
+
+    AnchorClipping anchorClipping() const;
+%Docstring
+Returns the line anchor clipping mode, which dictates how line strings are clipped
+before calculating the line anchor placement.
+
+.. seealso:: :py:func:`setAnchorClipping`
+
+.. seealso:: :py:func:`anchorType`
+
+.. seealso:: :py:func:`lineAnchorPercent`
+
+.. versionadded:: 3.20
+%End
+
+    void setAnchorClipping( AnchorClipping clipping );
+%Docstring
+Sets the line anchor ``clipping`` mode, which dictates how line strings are clipped
+before calculating the line anchor placement.
+
+.. seealso:: :py:func:`anchorClipping`
+
+.. seealso:: :py:func:`setAnchorType`
+
+.. seealso:: :py:func:`setLineAnchorPercent`
+
+.. versionadded:: 3.20
+%End
+
+    AnchorTextPoint anchorTextPoint() const;
+%Docstring
+Returns the line anchor text point, which dictates which part of the label text
+should be placed at the :py:func:`~QgsLabelLineSettings.lineAnchorPercent`.
+
+.. seealso:: :py:func:`setAnchorTextPoint`
+
+.. versionadded:: 3.26
+%End
+
+    void setAnchorTextPoint( AnchorTextPoint point );
+%Docstring
+Sets the line anchor text ``point``, which dictates which part of the label text
+should be placed at the :py:func:`~QgsLabelLineSettings.lineAnchorPercent`.
+
+.. seealso:: :py:func:`anchorTextPoint`
+
+.. versionadded:: 3.26
 %End
 
 };

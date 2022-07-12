@@ -27,6 +27,7 @@
 #include "qgsterraingenerator.h"
 
 #include <Qt3DRender/QGeometryRenderer>
+#include <Qt3DCore/QTransform>
 #include <QMutexLocker>
 
 ///@cond PRIVATE
@@ -77,7 +78,7 @@ QgsDemTerrainTileLoader::QgsDemTerrainTileLoader( QgsTerrainEntity *terrain, Qgs
 
   // get heightmap asynchronously
   connect( heightMapGenerator, &QgsDemHeightMapGenerator::heightMapReady, this, &QgsDemTerrainTileLoader::onHeightMapReady );
-  mHeightMapJobId = heightMapGenerator->render( node->tileX(), node->tileY(), node->tileZ() );
+  mHeightMapJobId = heightMapGenerator->render( node->tileId() );
   mResolution = heightMapGenerator->resolution();
 }
 
@@ -93,14 +94,15 @@ Qt3DCore::QEntity *QgsDemTerrainTileLoader::createEntity( Qt3DCore::QEntity *par
   }
 
   const Qgs3DMapSettings &map = terrain()->map3D();
-  QgsRectangle extent = map.terrainGenerator()->tilingScheme().tileToExtent( mNode->tileX(), mNode->tileY(), mNode->tileZ() ); //node->extent;
+  QgsChunkNodeId nodeId = mNode->tileId();
+  QgsRectangle extent = map.terrainGenerator()->tilingScheme().tileToExtent( nodeId );
   double x0 = extent.xMinimum() - map.origin().x();
   double y0 = extent.yMinimum() - map.origin().y();
   double side = extent.width();
   double half = side / 2;
 
 
-  QgsTerrainTileEntity *entity = new QgsTerrainTileEntity( mNode->tileId() );
+  QgsTerrainTileEntity *entity = new QgsTerrainTileEntity( nodeId );
 
   // create geometry renderer
 
@@ -110,7 +112,7 @@ Qt3DCore::QEntity *QgsDemTerrainTileLoader::createEntity( Qt3DCore::QEntity *par
 
   // create material
 
-  createTextureComponent( entity, map.isTerrainShadingEnabled(), map.terrainShadingMaterial(), !map.terrainLayers().empty() );
+  createTextureComponent( entity, map.isTerrainShadingEnabled(), map.terrainShadingMaterial(), !map.layers().empty() );
 
   // create transform
 
@@ -122,6 +124,7 @@ Qt3DCore::QEntity *QgsDemTerrainTileLoader::createEntity( Qt3DCore::QEntity *par
   transform->setTranslation( QVector3D( x0 + half, 0, - ( y0 + half ) ) );
 
   mNode->setExactBbox( QgsAABB( x0, zMin * map.terrainVerticalScale(), -y0, x0 + side, zMax * map.terrainVerticalScale(), -( y0 + side ) ) );
+  mNode->updateParentBoundingBoxesRecursively();
 
   entity->setEnabled( false );
   entity->setParent( parent );
@@ -151,7 +154,7 @@ void QgsDemTerrainTileLoader::onHeightMapReady( int jobId, const QByteArray &hei
 
 QgsDemHeightMapGenerator::QgsDemHeightMapGenerator( QgsRasterLayer *dtm, const QgsTilingScheme &tilingScheme, int resolution, const QgsCoordinateTransformContext &transformContext )
   : mDtm( dtm )
-  , mClonedProvider( dtm ? ( QgsRasterDataProvider * )dtm->dataProvider()->clone() : nullptr )
+  , mClonedProvider( dtm ? qgis::down_cast<QgsRasterDataProvider *>( dtm->dataProvider()->clone() ) : nullptr )
   , mTilingScheme( tilingScheme )
   , mResolution( resolution )
   , mLastJobId( 0 )
@@ -185,7 +188,7 @@ static QByteArray _readDtmData( QgsRasterDataProvider *provider, const QgsRectan
   QByteArray data;
   if ( block )
   {
-    block->convert( Qgis::Float32 ); // currently we expect just floats
+    block->convert( Qgis::DataType::Float32 ); // currently we expect just floats
     data = block->data();
     data.detach();  // this should make a deep copy
 
@@ -210,14 +213,12 @@ static QByteArray _readOnlineDtm( QgsTerrainDownloader *downloader, const QgsRec
   return downloader->getHeightMap( extent, res, destCrs, context );
 }
 
-int QgsDemHeightMapGenerator::render( int x, int y, int z )
+int QgsDemHeightMapGenerator::render( const QgsChunkNodeId &nodeId )
 {
-  QgsChunkNodeId tileId( x, y, z );
-
-  QgsEventTracing::addEvent( QgsEventTracing::AsyncBegin, QStringLiteral( "3D" ), QStringLiteral( "DEM" ), tileId.text() );
+  QgsEventTracing::addEvent( QgsEventTracing::AsyncBegin, QStringLiteral( "3D" ), QStringLiteral( "DEM" ), nodeId.text() );
 
   // extend the rect by half-pixel on each side? to get the values in "corners"
-  QgsRectangle extent = mTilingScheme.tileToExtent( x, y, z );
+  QgsRectangle extent = mTilingScheme.tileToExtent( nodeId );
   float mapUnitsPerPixel = extent.width() / mResolution;
   extent.grow( mapUnitsPerPixel / 2 );
   // but make sure not to go beyond the full extent (returns invalid values)
@@ -226,19 +227,19 @@ int QgsDemHeightMapGenerator::render( int x, int y, int z )
 
   JobData jd;
   jd.jobId = ++mLastJobId;
-  jd.tileId = tileId;
+  jd.tileId = nodeId;
   jd.extent = extent;
   jd.timer.start();
+  QFutureWatcher<QByteArray> *fw = new QFutureWatcher<QByteArray>( nullptr );
+  connect( fw, &QFutureWatcher<QByteArray>::finished, this, &QgsDemHeightMapGenerator::onFutureFinished );
+  connect( fw, &QFutureWatcher<QByteArray>::finished, fw, &QObject::deleteLater );
   // make a clone of the data provider so it is safe to use in worker thread
   if ( mDtm )
     jd.future = QtConcurrent::run( _readDtmData, mClonedProvider, extent, mResolution, mTilingScheme.crs() );
   else
     jd.future = QtConcurrent::run( _readOnlineDtm, mDownloader.get(), extent, mResolution, mTilingScheme.crs(), mTransformContext );
 
-  QFutureWatcher<QByteArray> *fw = new QFutureWatcher<QByteArray>( nullptr );
   fw->setFuture( jd.future );
-  connect( fw, &QFutureWatcher<QByteArray>::finished, this, &QgsDemHeightMapGenerator::onFutureFinished );
-  connect( fw, &QFutureWatcher<QByteArray>::finished, fw, &QObject::deleteLater );
 
   mJobs.insert( fw, jd );
 
@@ -276,7 +277,7 @@ void QgsDemHeightMapGenerator::lazyLoadDtmCoarseData( int res, const QgsRectangl
   if ( mDtmCoarseData.isEmpty() )
   {
     std::unique_ptr< QgsRasterBlock > block( mDtm->dataProvider()->block( 1, rect, res, res ) );
-    block->convert( Qgis::Float32 );
+    block->convert( Qgis::DataType::Float32 );
     mDtmCoarseData = block->data();
     mDtmCoarseData.detach();  // make a deep copy
   }
@@ -294,8 +295,8 @@ float QgsDemHeightMapGenerator::heightAt( double x, double y )
 
   int cellX = ( int )( ( x - rect.xMinimum() ) / rect.width() * res + .5f );
   int cellY = ( int )( ( rect.yMaximum() - y ) / rect.height() * res + .5f );
-  cellX = qBound( 0, cellX, res - 1 );
-  cellY = qBound( 0, cellY, res - 1 );
+  cellX = std::clamp( cellX, 0, res - 1 );
+  cellY = std::clamp( cellY, 0, res - 1 );
 
   const float *data = ( const float * ) mDtmCoarseData.constData();
   return data[cellX + cellY * res];

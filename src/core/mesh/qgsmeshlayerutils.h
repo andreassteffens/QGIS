@@ -177,6 +177,15 @@ class CORE_EXPORT QgsMeshLayerUtils
     );
 
     /**
+     * Interpolates the z value for a \a mesh at the specified point (\a x, \a y).
+     *
+     * Returns NaN if the z value cannot be calculated for the point.
+     *
+     * \since QGIS 3.26
+     */
+    static double interpolateZForPoint( const QgsTriangularMesh &mesh, double x, double y );
+
+    /**
     * Interpolates vector based on known vector on the vertices of a triangle
     * \param p1 first vertex of the triangle
     * \param p2 second vertex of the triangle
@@ -236,6 +245,30 @@ class CORE_EXPORT QgsMeshLayerUtils
     );
 
     /**
+    * Interpolate values on vertices from values on faces
+    *
+    * \since QGIS 3.18
+    */
+    static QVector<double> interpolateFromFacesData(
+      const QVector<double> &valuesOnFaces,
+      const QgsMesh &nativeMesh,
+      QgsMeshDataBlock *active,
+      QgsMeshRendererScalarSettings::DataResamplingMethod method
+    );
+
+    /**
+    * Interpolate values on vertices from values on faces
+    *
+    * \since QGIS 3.20
+    */
+    static QVector<double> interpolateFromFacesData(
+      const QVector<double> &valuesOnFaces,
+      const QgsMesh &nativeMesh,
+      const QgsMeshDataBlock &active,
+      QgsMeshRendererScalarSettings::DataResamplingMethod method
+    );
+
+    /**
     * Resamples values on vertices to values on faces
     *
     * \since QGIS 3.14
@@ -250,11 +283,11 @@ class CORE_EXPORT QgsMeshLayerUtils
 
     /**
      * Calculates magnitude values ont vertices from the given QgsMeshDataBlock.
-     * If the values are defined on faces,
+     * If the values are defined on faces, the values are interpolated with the given method
      * \param meshLayer the mesh layer
      * \param index the dataset index that contains the data
      * \param activeFaceFlagValues pointer to the QVector containing active face flag values
-     * \param method used to inteprolate the values on vertices if needed
+     * \param method used to interpolate the values on vertices if needed
      * \returns magnitude values of the dataset on all the vertices
      * \since QGIS 3.14
      */
@@ -263,6 +296,27 @@ class CORE_EXPORT QgsMeshLayerUtils
       const QgsMeshDatasetIndex index,
       QgsMeshDataBlock *activeFaceFlagValues,
       const QgsMeshRendererScalarSettings::DataResamplingMethod method = QgsMeshRendererScalarSettings::NeighbourAverage );
+
+    /**
+     * Calculates magnitude values on vertices from the given QgsMeshDataBlock.
+     * If the values are defined on faces, the values are interpolated with the given method
+     * This method is thread safe.
+     * \param nativeMesh the native mesh
+     * \param groupMetadata the metadata of the group where come from the dataset values
+     * \param datasetValues block containing the dataset values
+     * \param activeFaceFlagValues block containing active face flag values
+     * \param method used to interpolate the values on vertices if needed
+     * \returns magnitude values of the dataset on all the vertices
+     * \since QGIS 3.18
+     */
+    static QVector<double> calculateMagnitudeOnVertices(
+      const QgsMesh &nativeMesh,
+      const QgsMeshDatasetGroupMetadata &groupMetadata,
+      const QgsMeshDataBlock &datasetValues,
+      const QgsMeshDataBlock &activeFaceFlagValues,
+      const QgsMeshRendererScalarSettings::DataResamplingMethod method = QgsMeshRendererScalarSettings::NeighbourAverage );
+
+
 
     /**
      * Calculates the bounding box of the triangle

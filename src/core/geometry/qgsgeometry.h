@@ -35,6 +35,7 @@ email                : morb at ozemail dot com dot au
 #include "qgspointxy.h"
 #include "qgspoint.h"
 #include "qgsfeatureid.h"
+#include "qgsvertexid.h"
 
 #ifndef SIP_RUN
 #include "json_fwd.hpp"
@@ -127,33 +128,6 @@ class CORE_EXPORT QgsGeometry
     Q_PROPERTY( QgsWkbTypes::GeometryType type READ type )
 
   public:
-
-    /**
-     * Success or failure of a geometry operation.
-     * This gives details about cause of failure.
-     */
-    enum OperationResult
-    {
-      Success = 0, //!< Operation succeeded
-      NothingHappened = 1000, //!< Nothing happened, without any error
-      InvalidBaseGeometry, //!< The base geometry on which the operation is done is invalid or empty
-      InvalidInputGeometryType, //!< The input geometry (ring, part, split line, etc.) has not the correct geometry type
-      SelectionIsEmpty, //!< No features were selected
-      SelectionIsGreaterThanOne, //!< More than one features were selected
-      GeometryEngineError, //!< Geometry engine misses a method implemented or an error occurred in the geometry engine
-      LayerNotEditable, //!< Cannot edit layer
-      /* Add part issues */
-      AddPartSelectedGeometryNotFound, //!< The selected geometry cannot be found
-      AddPartNotMultiGeometry, //!< The source geometry is not multi
-      /* Add ring issues*/
-      AddRingNotClosed, //!< The input ring is not closed
-      AddRingNotValid, //!< The input ring is not valid
-      AddRingCrossesExistingRings, //!< The input ring crosses existing rings (it is not disjoint)
-      AddRingNotInExistingFeature, //!< The input ring doesn't have any existing ring to fit into
-      /* Split features */
-      SplitCannotSplitPoint, //!< Cannot split points
-    };
-    Q_ENUM( OperationResult )
 
     //! Constructor
     QgsGeometry() SIP_HOLDGIL;
@@ -264,12 +238,43 @@ class CORE_EXPORT QgsGeometry
      */
     static QgsGeometry fromPolyline( const QgsPolyline &polyline );
 
-    //! Creates a new geometry from a QgsMultiPolylineXY object
+    /**
+     * Creates a new geometry from a QgsMultiPolylineXY object.
+     */
     static QgsGeometry fromMultiPolylineXY( const QgsMultiPolylineXY &multiline );
-    //! Creates a new geometry from a QgsPolygon
+
+#ifndef SIP_RUN
+
+    /**
+     * Creates a new geometry from a QgsPolygonXY.
+     */
+#else
+
+    /**
+     * Creates a new polygon geometry from a list of lists of QgsPointXY.
+     *
+     * The first list of QgsPointXY objects specifies the exterior ring of the polygon, and the remaining
+     * lists specify any interior rings.
+     *
+     * ### Example
+     *
+     * \code{.py}
+     *   # Create a polygon geometry with a single exterior ring (a triangle)
+     *   polygon = QgsGeometry.fromPolygonXY([[QgsPointXY(1, 2), QgsPointXY(5, 2), QgsPointXY(5, 10), QgsPointXY(1, 2)]]))
+     *
+     *   # Create a donut shaped polygon geometry with an interior ring
+     *   polygon = QgsGeometry.fromPolygonXY([[QgsPointXY(1, 2), QgsPointXY(5, 2), QgsPointXY(5, 10), QgsPointXY(1, 10), QgsPointXY(1, 2)],
+     *                                        [QgsPointXY(3, 4), QgsPointXY(4, 4), QgsPointXY(4, 6), QgsPointXY(3, 6), QgsPointXY(3, 4)]])
+     * \endcode
+     */
+#endif
     static QgsGeometry fromPolygonXY( const QgsPolygonXY &polygon );
-    //! Creates a new geometry from a QgsMultiPolygon
+
+    /**
+     * Creates a new geometry from a QgsMultiPolygonXY.
+     */
     static QgsGeometry fromMultiPolygonXY( const QgsMultiPolygonXY &multipoly );
+
     //! Creates a new geometry from a QgsRectangle
     static QgsGeometry fromRect( const QgsRectangle &rect ) SIP_HOLDGIL;
     //! Creates a new multipart geometry from a list of QgsGeometry objects
@@ -363,13 +368,6 @@ class CORE_EXPORT QgsGeometry
      */
     bool isGeosEqual( const QgsGeometry & ) const;
 
-    //! Validity check flags
-    enum ValidityFlag
-    {
-      FlagAllowSelfTouchingHoles = 1 << 0, //!< Indicates that self-touching holes are permitted. OGC validity states that self-touching holes are NOT permitted, whilst other vendor validity checks (e.g. ESRI) permit self-touching holes.
-    };
-    Q_DECLARE_FLAGS( ValidityFlags, ValidityFlag )
-
     /**
      * Checks validity of the geometry using GEOS.
      *
@@ -377,7 +375,7 @@ class CORE_EXPORT QgsGeometry
      *
      * \since QGIS 1.5
      */
-    bool isGeosValid( QgsGeometry::ValidityFlags flags = QgsGeometry::ValidityFlags() ) const;
+    bool isGeosValid( Qgis::GeometryValidityFlags flags = Qgis::GeometryValidityFlags() ) const;
 
     /**
      * Determines whether the geometry is simple (according to OGC definition),
@@ -388,6 +386,21 @@ class CORE_EXPORT QgsGeometry
      * \since QGIS 3.0
      */
     bool isSimple() const;
+
+    /**
+     * Returns TRUE if the geometry is a polygon that is almost an axis-parallel rectangle.
+     *
+     * The \a maximumDeviation argument specifes the maximum angle (in degrees) that the polygon edges
+     * are allowed to deviate from axis parallel lines.
+     *
+     * By default the check will permit polygons with more than 4 edges, so long as the overall shape of
+     * the polygon is an axis-parallel rectangle (i.e. it is tolerant to rectangles with additional vertices
+     * added along the rectangle sides). If \a simpleRectanglesOnly is set to TRUE then the method will
+     * only return TRUE if the geometry is a simple rectangle consisting of 4 edges.
+     *
+     * \since QGIS 3.20
+     */
+    bool isAxisParallelRectangle( double maximumDeviation, bool simpleRectanglesOnly = false ) const;
 
     /**
      * Returns the planar, 2-dimensional area of the geometry.
@@ -405,6 +418,8 @@ class CORE_EXPORT QgsGeometry
 
     /**
      * Returns the planar, 2-dimensional length of geometry.
+     *
+     * If the geometry is a polygon geometry then the perimeter of the polygon will be returned.
      *
      * \warning QgsGeometry objects are inherently Cartesian/planar geometries, and the length
      * returned by this method is calculated using strictly Cartesian mathematics. In contrast,
@@ -624,21 +639,59 @@ class CORE_EXPORT QgsGeometry
      */
     double hausdorffDistanceDensify( const QgsGeometry &geom, double densifyFraction ) const;
 
-    //TODO QGIS 4.0 - rename beforeVertex to previousVertex, afterVertex to nextVertex
+    /**
+     * Returns the Fréchet distance between this geometry and \a geom, restricted to discrete points for both geometries.
+     *
+     * The Fréchet distance is a measure of similarity between curves that takes into account the location and ordering of the points along the curves.
+     * Therefore it is often better than the Hausdorff distance.
+     *
+     * In case of error -1 will be returned.
+     *
+     * This method requires a QGIS build based on GEOS 3.7 or later.
+     *
+     * \throws QgsNotSupportedException on QGIS builds based on GEOS 3.6 or earlier.
+     * \see frechetDistanceDensify()
+     * \since QGIS 3.20
+     */
+    double frechetDistance( const QgsGeometry &geom ) const SIP_THROW( QgsNotSupportedException );
+
+    /**
+     * Returns the Fréchet distance between this geometry and \a geom, restricted to discrete points for both geometries.
+     *
+     * The Fréchet distance is a measure of similarity between curves that takes into account the location and ordering of the points along the curves.
+     * Therefore it is often better than the Hausdorff distance.
+     *
+     * This function accepts a \a densifyFraction argument. The function performs a segment
+     * densification before computing the discrete Fréchet distance. The \a densifyFraction parameter
+     * sets the fraction by which to densify each segment. Each segment will be split into a
+     * number of equal-length subsegments, whose fraction of the total length is
+     * closest to the given fraction.
+     *
+     * This method can be used when the default approximation provided by frechetDistance()
+     * is not sufficient. Decreasing the \a densifyFraction parameter will make the
+     * distance returned approach the true Fréchet distance for the geometries.
+     *
+     * This method requires a QGIS build based on GEOS 3.7 or later.
+     *
+     * \throws QgsNotSupportedException on QGIS builds based on GEOS 3.6 or earlier.
+     * \see frechetDistance()
+     * \since QGIS 3.20
+     */
+    double frechetDistanceDensify( const QgsGeometry &geom, double densifyFraction ) const SIP_THROW( QgsNotSupportedException );
 
     /**
      * Returns the vertex closest to the given point, the corresponding vertex index, squared distance snap point / target point
      * and the indices of the vertices before and after the closest vertex.
      * \param point point to search for
-     * \param atVertex will be set to the vertex index of the closest found vertex
-     * \param beforeVertex will be set to the vertex index of the previous vertex from the closest one. Will be set to -1 if
+     * \param closestVertexIndex will be set to the vertex index of the closest found vertex
+     * \param previousVertexIndex will be set to the vertex index of the previous vertex from the closest one. Will be set to -1 if
      * not present.
-     * \param afterVertex will be set to the vertex index of the next vertex after the closest one. Will be set to -1 if
+     * \param nextVertexIndex will be set to the vertex index of the next vertex after the closest one. Will be set to -1 if
      * not present.
      * \param sqrDist will be set to the square distance between the closest vertex and the specified point
      * \returns closest point in geometry. If not found (empty geometry), returns null point and sqrDist is negative.
      */
-    QgsPointXY closestVertex( const QgsPointXY &point, int &atVertex SIP_OUT, int &beforeVertex SIP_OUT, int &afterVertex SIP_OUT, double &sqrDist SIP_OUT ) const;
+    QgsPointXY closestVertex( const QgsPointXY &point, int &closestVertexIndex SIP_OUT, int &previousVertexIndex SIP_OUT, int &nextVertexIndex SIP_OUT, double &sqrDist SIP_OUT ) const;
 
     /**
      * Returns the distance along this geometry from its first vertex to the specified vertex.
@@ -733,9 +786,18 @@ class CORE_EXPORT QgsGeometry
     bool deleteVertex( int atVertex );
 
     /**
+     * Converts the vertex at the given position from/to circular
+     * \returns FALSE if atVertex does not correspond to a valid vertex
+     * on this geometry (including if this geometry is a Point),
+     * or if the specified vertex can't be converted (e.g. start/end points).
+     * \since QGIS 3.20
+     */
+    bool toggleCircularAtVertex( int atVertex );
+
+    /**
      * Returns coordinates of a vertex.
      * \param atVertex index of the vertex
-     * \returns Coordinates of the vertex or empty QgsPoint() on error
+     * \returns Coordinates of the vertex or empty QgsPoint on error
      */
     QgsPoint vertexAt( int atVertex ) const;
 
@@ -747,7 +809,7 @@ class CORE_EXPORT QgsGeometry
     double sqrDistToVertexAt( QgsPointXY &point SIP_IN, int atVertex ) const;
 
     /**
-     * Returns the nearest point on this geometry to another geometry.
+     * Returns the nearest (closest) point on this geometry to another geometry.
      * \see shortestLine()
      * \since QGIS 2.14
      */
@@ -777,28 +839,28 @@ class CORE_EXPORT QgsGeometry
      * Searches for the closest segment of geometry to the given point
      * \param point Specifies the point for search
      * \param minDistPoint Receives the nearest point on the segment
-     * \param afterVertex Receives index of the vertex after the closest segment. The vertex
-     * before the closest segment is always afterVertex - 1
-     * \param leftOf Out: Returns if the point lies on the left of left side of the geometry ( < 0 means left, > 0 means right, 0 indicates
+     * \param nextVertexIndex Receives index of the next vertex after the closest segment. The vertex
+     * before the closest segment is always nextVertexIndex - 1
+     * \param leftOrRightOfSegment Out: Returns if the point is located on the left or right side of the geometry ( < 0 means left, > 0 means right, 0 indicates
      * that the test was unsuccessful, e.g. for a point exactly on the line)
      * \param epsilon epsilon for segment snapping
      * \returns The squared Cartesian distance is also returned in sqrDist, negative number on error
      */
-    double closestSegmentWithContext( const QgsPointXY &point, QgsPointXY &minDistPoint SIP_OUT, int &afterVertex SIP_OUT, int *leftOf SIP_OUT = nullptr, double epsilon = DEFAULT_SEGMENT_EPSILON ) const;
+    double closestSegmentWithContext( const QgsPointXY &point, QgsPointXY &minDistPoint SIP_OUT, int &nextVertexIndex SIP_OUT, int *leftOrRightOfSegment SIP_OUT = nullptr, double epsilon = DEFAULT_SEGMENT_EPSILON ) const;
 
     /**
      * Adds a new ring to this geometry. This makes only sense for polygon and multipolygons.
      * \param ring The ring to be added
      * \returns OperationResult a result code: success or reason of failure
      */
-    OperationResult addRing( const QVector<QgsPointXY> &ring );
+    Qgis::GeometryOperationResult addRing( const QVector<QgsPointXY> &ring );
 
     /**
      * Adds a new ring to this geometry. This makes only sense for polygon and multipolygons.
      * \param ring The ring to be added
      * \returns OperationResult a result code: success or reason of failure
      */
-    OperationResult addRing( QgsCurve *ring SIP_TRANSFER );
+    Qgis::GeometryOperationResult addRing( QgsCurve *ring SIP_TRANSFER );
 
     /**
      * Adds a new part to a the geometry.
@@ -806,7 +868,7 @@ class CORE_EXPORT QgsGeometry
      * \param geomType default geometry type to create if no existing geometry
      * \returns OperationResult a result code: success or reason of failure
      */
-    OperationResult addPart( const QVector<QgsPointXY> &points, QgsWkbTypes::GeometryType geomType = QgsWkbTypes::UnknownGeometry ) SIP_PYNAME( addPointsXY );
+    Qgis::GeometryOperationResult addPart( const QVector<QgsPointXY> &points, QgsWkbTypes::GeometryType geomType = QgsWkbTypes::UnknownGeometry ) SIP_PYNAME( addPointsXY );
 
     /**
      * Adds a new part to a the geometry.
@@ -814,7 +876,7 @@ class CORE_EXPORT QgsGeometry
      * \param geomType default geometry type to create if no existing geometry
      * \returns OperationResult a result code: success or reason of failure
      */
-    OperationResult addPart( const QgsPointSequence &points, QgsWkbTypes::GeometryType geomType = QgsWkbTypes::UnknownGeometry ) SIP_PYNAME( addPoints );
+    Qgis::GeometryOperationResult addPart( const QgsPointSequence &points, QgsWkbTypes::GeometryType geomType = QgsWkbTypes::UnknownGeometry ) SIP_PYNAME( addPoints );
 
     /**
      * Adds a new part to this geometry.
@@ -822,14 +884,14 @@ class CORE_EXPORT QgsGeometry
      * \param geomType default geometry type to create if no existing geometry
      * \returns OperationResult a result code: success or reason of failure
      */
-    OperationResult addPart( QgsAbstractGeometry *part SIP_TRANSFER, QgsWkbTypes::GeometryType geomType = QgsWkbTypes::UnknownGeometry );
+    Qgis::GeometryOperationResult addPart( QgsAbstractGeometry *part SIP_TRANSFER, QgsWkbTypes::GeometryType geomType = QgsWkbTypes::UnknownGeometry );
 
     /**
      * Adds a new island polygon to a multipolygon feature
      * \returns OperationResult a result code: success or reason of failure
      * \note available in python bindings as addPartGeometry
      */
-    OperationResult addPart( const QgsGeometry &newPart ) SIP_PYNAME( addPartGeometry );
+    Qgis::GeometryOperationResult addPart( const QgsGeometry &newPart ) SIP_PYNAME( addPartGeometry );
 
     /**
      * Removes the interior rings from a (multi)polygon geometry. If the minimumAllowedArea
@@ -843,7 +905,7 @@ class CORE_EXPORT QgsGeometry
      * Translates this geometry by dx, dy, dz and dm.
      * \returns OperationResult a result code: success or reason of failure
      */
-    OperationResult translate( double dx, double dy, double dz = 0.0, double dm = 0.0 );
+    Qgis::GeometryOperationResult translate( double dx, double dy, double dz = 0.0, double dm = 0.0 );
 
     /**
      * Transforms this geometry as described by the coordinate transform \a ct.
@@ -859,7 +921,7 @@ class CORE_EXPORT QgsGeometry
      *
      * \returns OperationResult a result code: success or reason of failure
      */
-    OperationResult transform( const QgsCoordinateTransform &ct, QgsCoordinateTransform::TransformDirection direction = QgsCoordinateTransform::ForwardTransform, bool transformZ = false ) SIP_THROW( QgsCsException );
+    Qgis::GeometryOperationResult transform( const QgsCoordinateTransform &ct, Qgis::TransformDirection direction = Qgis::TransformDirection::Forward, bool transformZ = false ) SIP_THROW( QgsCsException );
 
     /**
      * Transforms the x and y components of the geometry using a QTransform object \a t.
@@ -869,7 +931,7 @@ class CORE_EXPORT QgsGeometry
      *
      * \returns OperationResult a result code: success or reason of failure
      */
-    OperationResult transform( const QTransform &t, double zTranslate = 0.0, double zScale = 1.0, double mTranslate = 0.0, double mScale = 1.0 );
+    Qgis::GeometryOperationResult transform( const QTransform &t, double zTranslate = 0.0, double zScale = 1.0, double mTranslate = 0.0, double mScale = 1.0 );
 
     /**
      * Rotate this geometry around the Z axis
@@ -877,7 +939,7 @@ class CORE_EXPORT QgsGeometry
      * \param center rotation center
      * \returns OperationResult a result code: success or reason of failure
      */
-    OperationResult rotate( double rotation, const QgsPointXY &center );
+    Qgis::GeometryOperationResult rotate( double rotation, const QgsPointXY &center );
 
     /**
      * Splits this geometry according to a given line.
@@ -889,7 +951,7 @@ class CORE_EXPORT QgsGeometry
      * \returns OperationResult a result code: success or reason of failure
      * \deprecated since QGIS 3.12 - will be removed in QGIS 4.0. Use the variant which accepts QgsPoint objects instead of QgsPointXY.
      */
-    Q_DECL_DEPRECATED OperationResult splitGeometry( const QVector<QgsPointXY> &splitLine, QVector<QgsGeometry> &newGeometries SIP_OUT, bool topological, QVector<QgsPointXY> &topologyTestPoints SIP_OUT, bool splitFeature = true ) SIP_DEPRECATED;
+    Q_DECL_DEPRECATED Qgis::GeometryOperationResult splitGeometry( const QVector<QgsPointXY> &splitLine, QVector<QgsGeometry> &newGeometries SIP_OUT, bool topological, QVector<QgsPointXY> &topologyTestPoints SIP_OUT, bool splitFeature = true ) SIP_DEPRECATED;
 
     /**
      * Splits this geometry according to a given line.
@@ -904,6 +966,7 @@ class CORE_EXPORT QgsGeometry
      * \returns OperationResult a result code: success or reason of failure
      *
      * Example:
+     *
      * \code{.py}
      *  geometry = QgsGeometry.fromWkt('CompoundCurveZ ((2749546.2003820720128715 1262904.45356595050543547 100, 2749557.82053794478997588 1262920.05570670193992555 200))')
      *  split_line = [QgsPoint(2749544.19, 1262914.79), QgsPoint(2749557.64, 1262897.30)]
@@ -912,7 +975,7 @@ class CORE_EXPORT QgsGeometry
      *  > LineStringZ (2749549.12 1262908.38 125.14, 2749557.82 1262920.06 200)
      * \endcode
      */
-    OperationResult splitGeometry( const QgsPointSequence &splitLine, QVector<QgsGeometry> &newGeometries SIP_OUT, bool topological, QgsPointSequence &topologyTestPoints SIP_OUT, bool splitFeature = true, bool skipIntersectionTest SIP_PYARGREMOVE = false );
+    Qgis::GeometryOperationResult splitGeometry( const QgsPointSequence &splitLine, QVector<QgsGeometry> &newGeometries SIP_OUT, bool topological, QgsPointSequence &topologyTestPoints SIP_OUT, bool splitFeature = true, bool skipIntersectionTest SIP_PYARGREMOVE = false );
 
     /**
      * Splits this geometry according to a given curve.
@@ -925,13 +988,13 @@ class CORE_EXPORT QgsGeometry
      * \returns OperationResult a result code: success or reason of failure
      * \since QGIS 3.16
      */
-    OperationResult splitGeometry( const QgsCurve *curve,  QVector<QgsGeometry> &newGeometries SIP_OUT, bool preserveCircular, bool topological, QgsPointSequence &topologyTestPoints SIP_OUT, bool splitFeature = true );
+    Qgis::GeometryOperationResult splitGeometry( const QgsCurve *curve,  QVector<QgsGeometry> &newGeometries SIP_OUT, bool preserveCircular, bool topological, QgsPointSequence &topologyTestPoints SIP_OUT, bool splitFeature = true );
 
     /**
      * Replaces a part of this geometry with another line
      * \returns OperationResult a result code: success or reason of failure
      */
-    OperationResult reshapeGeometry( const QgsLineString &reshapeLineString );
+    Qgis::GeometryOperationResult reshapeGeometry( const QgsLineString &reshapeLineString );
 
     /**
      * Changes this geometry such that it does not intersect the other geometry
@@ -1007,6 +1070,127 @@ class CORE_EXPORT QgsGeometry
     QgsGeometry orthogonalize( double tolerance = 1.0E-8, int maxIterations = 1000, double angleThreshold = 15.0 ) const;
 
     /**
+     * Constructs triangular waves along the boundary of the geometry, with the
+     * specified \a wavelength and \a amplitude.
+     *
+     * By default the \a wavelength argument is treated as a "maximum wavelength", where the actual
+     * wavelength will be dynamically adjusted so that an exact number of triangular waves are created
+     * along the boundaries of the geometry. If \a strictWavelength is set to TRUE then the \a wavelength
+     * will be used exactly and an incomplete pattern may be used for the final waveform.
+     *
+     * \see triangularWavesRandomized()
+     * \since QGIS 3.24
+     */
+    QgsGeometry triangularWaves( double wavelength, double amplitude, bool strictWavelength = false ) const;
+
+    /**
+     * Constructs randomized triangular waves along the boundary of the geometry, with the
+     * specified wavelength and amplitude ranges.
+     *
+     * The \a minimumWavelength and \a maximumWavelength arguments set the range for the randomized
+     * wavelength. This is evaluated for each individual triangular waveform created along the geometry
+     * boundaries, so the resultant geometry will consist of many different wavelengths.
+     *
+     * Similarly, the \a minimumAmplitude and \a maximumAmplitude arguments define the range for the
+     * randomized amplitude of the triangular components. Randomized amplitude values will be calculated
+     * individually for triangles placed on each either side of the input geometry boundaries.
+     *
+     * Optionally, a specific random \a seed can be used when generating points. If \a seed
+     * is 0, then a completely random sequence of points will be generated.
+     *
+     * \see triangularWaves()
+     * \since QGIS 3.24
+     */
+    QgsGeometry triangularWavesRandomized( double minimumWavelength, double maximumWavelength, double minimumAmplitude, double maximumAmplitude, unsigned long seed = 0 ) const;
+
+    /**
+     * Constructs square waves along the boundary of the geometry, with the
+     * specified \a wavelength and \a amplitude.
+     *
+     * By default the \a wavelength argument is treated as a "maximum wavelength", where the actual
+     * wavelength will be dynamically adjusted so that an exact number of square waves are created
+     * along the boundaries of the geometry. If \a strictWavelength is set to TRUE then the \a wavelength
+     * will be used exactly and an incomplete pattern may be used for the final waveform.
+     *
+     * \see squareWavesRandomized()
+     * \since QGIS 3.24
+     */
+    QgsGeometry squareWaves( double wavelength, double amplitude, bool strictWavelength = false ) const;
+
+    /**
+     * Constructs randomized square waves along the boundary of the geometry, with the
+     * specified wavelength and amplitude ranges.
+     *
+     * The \a minimumWavelength and \a maximumWavelength arguments set the range for the randomized
+     * wavelength. This is evaluated for each individual square waveform created along the geometry
+     * boundaries, so the resultant geometry will consist of many different wavelengths.
+     *
+     * Similarly, the \a minimumAmplitude and \a maximumAmplitude arguments define the range for the
+     * randomized amplitude of the square components. Randomized amplitude values will be calculated
+     * individually for squares placed on each either side of the input geometry boundaries.
+     *
+     * Optionally, a specific random \a seed can be used when generating points. If \a seed
+     * is 0, then a completely random sequence of points will be generated.
+     *
+     * \see squareWaves()
+     * \since QGIS 3.24
+     */
+    QgsGeometry squareWavesRandomized( double minimumWavelength, double maximumWavelength, double minimumAmplitude, double maximumAmplitude, unsigned long seed = 0 ) const;
+
+    /**
+     * Constructs rounded (sine-like) waves along the boundary of the geometry, with the
+     * specified \a wavelength and \a amplitude.
+     *
+     * By default the \a wavelength argument is treated as a "maximum wavelength", where the actual
+     * wavelength will be dynamically adjusted so that an exact number of waves are created
+     * along the boundaries of the geometry. If \a strictWavelength is set to TRUE then the \a wavelength
+     * will be used exactly and an incomplete pattern may be used for the final waveform.
+     *
+     * \see roundWavesRandomized()
+     * \since QGIS 3.24
+     */
+    QgsGeometry roundWaves( double wavelength, double amplitude, bool strictWavelength = false ) const;
+
+    /**
+     * Constructs randomized rounded (sine-like) waves along the boundary of the geometry, with the
+     * specified wavelength and amplitude ranges.
+     *
+     * The \a minimumWavelength and \a maximumWavelength arguments set the range for the randomized
+     * wavelength. This is evaluated for each individual waveform created along the geometry
+     * boundaries, so the resultant geometry will consist of many different wavelengths.
+     *
+     * Similarly, the \a minimumAmplitude and \a maximumAmplitude arguments define the range for the
+     * randomized amplitude of the square components. Randomized amplitude values will be calculated
+     * individually for waves placed on each either side of the input geometry boundaries.
+     *
+     * Optionally, a specific random \a seed can be used when generating points. If \a seed
+     * is 0, then a completely random sequence of points will be generated.
+     *
+     * \see squareWaves()
+     * \since QGIS 3.24
+     */
+    QgsGeometry roundWavesRandomized( double minimumWavelength, double maximumWavelength, double minimumAmplitude, double maximumAmplitude, unsigned long seed = 0 ) const;
+
+    /**
+     * Applies a dash pattern to a geometry, returning a MultiLineString geometry which is the
+     * input geometry stroked along each line/ring with the specified \a pattern.
+     *
+     * The \a startRule and \a endRule options can be set to control how the dash pattern is adjusted
+     * at line endings. If a \a startRule or \a endRule is set, the \a adjustment option defines whether
+     * both dash and gaps, or only dash or gap sizes are adjusted to apply the rules.
+     *
+     * The \a patternOffset option specifies how far along the pattern the result should start at.
+     * The offset is applied AFTER any start/end rules are applied.
+     *
+     * \since QGIS 3.24
+     */
+    QgsGeometry applyDashPattern( const QVector< double > &pattern,
+                                  Qgis::DashPatternLineEndingRule startRule = Qgis::DashPatternLineEndingRule::NoRule,
+                                  Qgis::DashPatternLineEndingRule endRule = Qgis::DashPatternLineEndingRule::NoRule,
+                                  Qgis::DashPatternSizeAdjustment adjustment = Qgis::DashPatternSizeAdjustment::ScaleBothDashAndGap,
+                                  double patternOffset = 0 ) const;
+
+    /**
      * Returns a new geometry with all points or vertices snapped to the closest point of the grid.
      *
      * If the gridified geometry could not be calculated (or was totally collapsed) an empty geometry will be returned.
@@ -1060,6 +1244,11 @@ class CORE_EXPORT QgsGeometry
      * The GEOS library is used to perform the intersection test. Geometries which are not
      * valid may return incorrect results.
      *
+     * \note For performance critical code, or when testing for intersection against many different
+     * geometries, consider using QgsGeometryEngine instead. This approach can be many orders of magnitude
+     * faster than calling intersects() directly. See createGeometryEngine() for details on how to use the
+     * QgsGeometryEngine class.
+     *
      * \see boundingBoxIntersects()
      */
     bool intersects( const QgsGeometry &geometry ) const;
@@ -1093,66 +1282,75 @@ class CORE_EXPORT QgsGeometry
 
     /**
      * Returns TRUE if the geometry completely contains another \a geometry.
+     *
+     * \note For performance critical code, or when testing for contains against many different
+     * geometries, consider using QgsGeometryEngine instead. This approach can be many orders of magnitude
+     * faster than calling contains() directly. See createGeometryEngine() for details on how to use the
+     * QgsGeometryEngine class.
+     *
      * \since QGIS 1.5
      */
     bool contains( const QgsGeometry &geometry ) const;
 
     /**
      * Returns TRUE if the geometry is disjoint of another \a geometry.
+     *
+     * \note For performance critical code, or when testing for disjoint against many different
+     * geometries, consider using QgsGeometryEngine instead. This approach can be many orders of magnitude
+     * faster than calling disjoint() directly. See createGeometryEngine() for details on how to use the
+     * QgsGeometryEngine class.
+     *
      * \since QGIS 1.5
      */
     bool disjoint( const QgsGeometry &geometry ) const;
 
     /**
      * Returns TRUE if the geometry touches another \a geometry.
+     *
+     * \note For performance critical code, or when testing for touches against many different
+     * geometries, consider using QgsGeometryEngine instead. This approach can be many orders of magnitude
+     * faster than calling touches() directly. See createGeometryEngine() for details on how to use the
+     * QgsGeometryEngine class.
+     *
      * \since QGIS 1.5
      */
     bool touches( const QgsGeometry &geometry ) const;
 
     /**
      * Returns TRUE if the geometry overlaps another \a geometry.
+     *
+     * \note For performance critical code, or when testing for overlaps against many different
+     * geometries, consider using QgsGeometryEngine instead. This approach can be many orders of magnitude
+     * faster than calling overlaps() directly. See createGeometryEngine() for details on how to use the
+     * QgsGeometryEngine class.
+     *
      * \since QGIS 1.5
      */
     bool overlaps( const QgsGeometry &geometry ) const;
 
     /**
      * Returns TRUE if the geometry is completely within another \a geometry.
+     *
+     * \note For performance critical code, or when testing for within against many different
+     * geometries, consider using QgsGeometryEngine instead. This approach can be many orders of magnitude
+     * faster than calling within() directly. See createGeometryEngine() for details on how to use the
+     * QgsGeometryEngine class.
+     *
      * \since QGIS 1.5
      */
     bool within( const QgsGeometry &geometry ) const;
 
-
     /**
      * Returns TRUE if the geometry crosses another \a geometry.
+     *
+     * \note For performance critical code, or when testing for crosses against many different
+     * geometries, consider using QgsGeometryEngine instead. This approach can be many orders of magnitude
+     * faster than calling crosses() directly. See createGeometryEngine() for details on how to use the
+     * QgsGeometryEngine class.
+     *
      * \since QGIS 1.5
      */
     bool crosses( const QgsGeometry &geometry ) const;
-
-    //! Side of line to buffer
-    enum BufferSide
-    {
-      SideLeft = 0, //!< Buffer to left of line
-      SideRight, //!< Buffer to right of line
-    };
-    Q_ENUM( BufferSide )
-
-    //! End cap styles for buffers
-    enum EndCapStyle
-    {
-      CapRound = 1, //!< Round cap
-      CapFlat, //!< Flat cap (in line with start/end of line)
-      CapSquare, //!< Square cap (extends past start/end of line by buffer distance)
-    };
-    Q_ENUM( EndCapStyle )
-
-    //! Join styles for buffers
-    enum JoinStyle
-    {
-      JoinStyleRound = 1, //!< Use rounded joins
-      JoinStyleMiter, //!< Use mitered joins
-      JoinStyleBevel, //!< Use beveled joins
-    };
-    Q_ENUM( JoinStyle )
 
     /**
      * Returns a buffer region around this geometry having the given width and with a specified number
@@ -1175,7 +1373,7 @@ class CORE_EXPORT QgsGeometry
      * \see taperedBuffer()
      * \since QGIS 2.4
      */
-    QgsGeometry buffer( double distance, int segments, EndCapStyle endCapStyle, JoinStyle joinStyle, double miterLimit ) const;
+    QgsGeometry buffer( double distance, int segments, Qgis::EndCapStyle endCapStyle, Qgis::JoinStyle joinStyle, double miterLimit ) const;
 
     /**
      * Returns an offset line at a given distance and side from an input line.
@@ -1185,7 +1383,7 @@ class CORE_EXPORT QgsGeometry
      * \param miterLimit  limit on the miter ratio used for very sharp corners (JoinStyleMiter only)
      * \since QGIS 2.4
      */
-    QgsGeometry offsetCurve( double distance, int segments, JoinStyle joinStyle, double miterLimit ) const;
+    QgsGeometry offsetCurve( double distance, int segments, Qgis::JoinStyle joinStyle, double miterLimit ) const;
 
     /**
      * Returns a single sided buffer for a (multi)line geometry. The buffer is only
@@ -1202,8 +1400,8 @@ class CORE_EXPORT QgsGeometry
      * \see taperedBuffer()
      * \since QGIS 3.0
      */
-    QgsGeometry singleSidedBuffer( double distance, int segments, BufferSide side,
-                                   JoinStyle joinStyle = JoinStyleRound,
+    QgsGeometry singleSidedBuffer( double distance, int segments, Qgis::BufferSide side,
+                                   Qgis::JoinStyle joinStyle = Qgis::JoinStyle::Round,
                                    double miterLimit = 2.0 ) const;
 
     /**
@@ -1341,6 +1539,83 @@ class CORE_EXPORT QgsGeometry
     QgsGeometry poleOfInaccessibility( double precision, double *distanceToBoundary SIP_OUT = nullptr ) const;
 
     /**
+     * Constructs the Largest Empty Circle for a set of obstacle geometries, up to a
+     * specified tolerance.
+     *
+     * The Largest Empty Circle is the largest circle which has its center in the convex hull of the
+     * obstacles (the boundary), and whose interior does not intersect with any obstacle.
+     * The circle center is the point in the interior of the boundary which has the farthest distance from
+     * the obstacles (up to tolerance). The circle is determined by the center point and a point lying on an
+     * obstacle indicating the circle radius.
+     * The implementation uses a successive-approximation technique over a grid of square cells covering the obstacles and boundary.
+     * The grid is refined using a branch-and-bound algorithm.  Point containment and distance are computed in a performant
+     * way by using spatial indexes.
+     * Returns a two-point linestring, with one point at the center of the inscribed circle and the other
+     * on the boundary of the inscribed circle.
+     *
+     * This method requires QGIS builds based on GEOS 3.9 or later.
+     *
+     * \warning the \a tolerance value must be a value greater than 0, or the algorithm may never converge on a solution
+     *
+     * \throws QgsNotSupportedException on QGIS builds based on GEOS 3.8 or earlier.
+     *
+     * \since QGIS 3.20
+     */
+    QgsGeometry largestEmptyCircle( double tolerance, const QgsGeometry &boundary = QgsGeometry() ) const SIP_THROW( QgsNotSupportedException );
+
+    /**
+     * Returns a linestring geometry which represents the minimum diameter of the geometry.
+     *
+     * The minimum diameter is defined to be the width of the smallest band that
+     * contains the geometry, where a band is a strip of the plane defined
+     * by two parallel lines. This can be thought of as the smallest hole that the geometry
+     * can be moved through, with a single rotation.
+     *
+     * This method requires a QGIS build based on GEOS 3.6 or later.
+     *
+     * \throws QgsNotSupportedException on QGIS builds based on GEOS 3.5 or earlier.
+     *
+     * \since QGIS 3.20
+     */
+    QgsGeometry minimumWidth() const SIP_THROW( QgsNotSupportedException );
+
+    /**
+     * Computes the minimum clearance of a geometry.
+     *
+     * The minimum clearance is the smallest amount by which
+     * a vertex could be moved to produce an invalid polygon, a non-simple linestring, or a multipoint with
+     * repeated points.  If a geometry has a minimum clearance of 'eps', it can be said that:
+     *
+     * - No two distinct vertices in the geometry are separated by less than 'eps'
+     * - No vertex is closer than 'eps' to a line segment of which it is not an endpoint.
+     *
+     * If the minimum clearance cannot be defined for a geometry (such as with a single point, or a multipoint
+     * whose points are identical) a value of infinity will be returned.
+     *
+     * If an error occurs while calculating the clearance NaN will be returned.
+     *
+     * This method requires a QGIS build based on GEOS 3.6 or later.
+     *
+     * \throws QgsNotSupportedException on QGIS builds based on GEOS 3.5 or earlier.
+     *
+     * \since QGIS 3.20
+     */
+    double minimumClearance() const SIP_THROW( QgsNotSupportedException );
+
+    /**
+     * Returns a LineString whose endpoints define the minimum clearance of a geometry.
+     *
+     * If the geometry has no minimum clearance, an empty LineString will be returned.
+     *
+     * This method requires a QGIS build based on GEOS 3.6 or later.
+     *
+     * \throws QgsNotSupportedException on QGIS builds based on GEOS 3.5 or earlier.
+     *
+     * \since QGIS 3.20
+     */
+    QgsGeometry minimumClearanceLine() const SIP_THROW( QgsNotSupportedException );
+
+    /**
      * Returns the smallest convex polygon that contains all the points in the geometry.
      *
      * If the input is a NULL geometry, the output will also be a NULL geometry.
@@ -1377,6 +1652,34 @@ class CORE_EXPORT QgsGeometry
      * \since QGIS 3.0
      */
     QgsGeometry delaunayTriangulation( double tolerance = 0.0, bool edgesOnly = false ) const;
+
+    /**
+     * Returns a (Multi)LineString representing the fully noded version of a collection of linestrings.
+     *
+     * The noding preserves all of the input nodes, and introduces the least possible number of new nodes.
+     * The resulting linework is dissolved (duplicate lines are removed).
+     *
+     * The input geometry type should be a (Multi)LineString.
+     *
+     * \since QGIS 3.20
+     */
+    QgsGeometry node() const;
+
+    /**
+     * Find paths shared between the two given lineal geometries (this and \a other).
+     *
+     * Returns a GeometryCollection having two elements:
+     *
+     * - first element is a MultiLineString containing shared paths
+     *   having the same direction on both inputs
+     * - second element is a MultiLineString containing shared paths
+     *   having the opposite direction on the two inputs
+     *
+     * Returns a null geometry on exception.
+     *
+     * \since QGIS 3.20
+     */
+    QgsGeometry sharedPaths( const QgsGeometry &other ) const;
 
     /**
      * Subdivides the geometry. The returned geometry will be a collection containing subdivided parts
@@ -1553,9 +1856,10 @@ class CORE_EXPORT QgsGeometry
      * Optionally, a specific random \a seed can be used when generating points. If \a seed
      * is 0, then a completely random sequence of points will be generated.
      *
-     * This method works only with (multi)polygon geometry types. If the geometry
-     * is not a polygon type, a TypeError will be raised. If the geometry
-     * is null, a ValueError will be raised.
+     * This method works only with (multi)polygon geometry types.
+     *
+     * \throws TypeError if the geometry is not a polygon type
+     * \throws ValueError if the geometry is null
      *
      * \since QGIS 3.10
      */
@@ -1652,6 +1956,10 @@ class CORE_EXPORT QgsGeometry
      * - single geometries will be upgraded to multi geometries
      * - z or m values will be added or dropped as required.
      *
+     * Since QGIS 3.24, the parameters \a defaultZ and \a defaultM control the dimension value added when promoting geometries
+     * to Z, M or ZM versions.
+     * By default 0.0 is used for Z and M.
+     *
      * \note This method is much stricter than convertToType(), as it considers the exact WKB type
      * of geometries instead of the geometry family (point/line/polygon), and tries more exhaustively
      * to coerce geometries to the desired \a type. It also correctly maintains curves and z/m values
@@ -1659,7 +1967,7 @@ class CORE_EXPORT QgsGeometry
      *
      * \since QGIS 3.14
      */
-    QVector< QgsGeometry > coerceToType( QgsWkbTypes::Type type ) const;
+    QVector< QgsGeometry > coerceToType( QgsWkbTypes::Type type, double defaultZ = 0, double defaultM = 0 ) const;
 
     /**
      * Try to convert the geometry to the requested type
@@ -1684,7 +1992,8 @@ class CORE_EXPORT QgsGeometry
      *
      * Any z or m values present in the geometry will be discarded.
      *
-     * \warning If the geometry is not a single-point type, an empty QgsPointXY() will be returned.
+     * \warning If the geometry is not a single-point type (or a multipoint containing a single point)
+     * an empty QgsPointXY() will be returned.
      */
     QgsPointXY asPoint() const;
 #else
@@ -1694,26 +2003,30 @@ class CORE_EXPORT QgsGeometry
      *
      * Any z or m values present in the geometry will be discarded.
      *
-     * This method works only with single-point geometry types. If the geometry
-     * is not a single-point type, a TypeError will be raised. If the geometry
-     * is null, a ValueError will be raised.
+     * This method works only with single-point geometry types.
+     *
+     * \throws TypeError if the geometry is not a single-point type (or a multipoint containing a single point)
+     * \throws ValueError if the geometry is null
      */
     SIP_PYOBJECT asPoint() const SIP_TYPEHINT( QgsPointXY );
     % MethodCode
-    const QgsWkbTypes::Type type = sipCpp->wkbType();
     if ( sipCpp->isNull() )
     {
       PyErr_SetString( PyExc_ValueError, QStringLiteral( "Null geometry cannot be converted to a point." ).toUtf8().constData() );
       sipIsErr = 1;
     }
-    else if ( QgsWkbTypes::flatType( type ) != QgsWkbTypes::Point )
-    {
-      PyErr_SetString( PyExc_TypeError, QStringLiteral( "%1 geometry cannot be converted to a point. Only Point types are permitted." ).arg( QgsWkbTypes::displayString( type ) ).toUtf8().constData() );
-      sipIsErr = 1;
-    }
     else
     {
-      sipRes = sipConvertFromNewType( new QgsPointXY( sipCpp->asPoint() ), sipType_QgsPointXY, Py_None );
+      const QgsAbstractGeometry *geom = sipCpp->constGet();
+      if ( QgsWkbTypes::flatType( geom->simplifiedTypeRef()->wkbType() ) != QgsWkbTypes::Point )
+      {
+        PyErr_SetString( PyExc_TypeError, QStringLiteral( "%1 geometry cannot be converted to a point. Only Point types are permitted." ).arg( QgsWkbTypes::displayString( geom->wkbType() ) ).toUtf8().constData() );
+        sipIsErr = 1;
+      }
+      else
+      {
+        sipRes = sipConvertFromNewType( new QgsPointXY( sipCpp->asPoint() ), sipType_QgsPointXY, Py_None );
+      }
     }
     % End
 #endif
@@ -1737,9 +2050,10 @@ class CORE_EXPORT QgsGeometry
      * Any z or m values present in the geometry will be discarded. If the geometry is a curved line type
      * (such as a CircularString), it will be automatically segmentized.
      *
-     * This method works only with single-line (or single-curve) geometry types. If the geometry
-     * is not a single-line type, a TypeError will be raised. If the geometry is null, a ValueError
-     * will be raised.
+     * This method works only with single-line (or single-curve).
+     *
+     * \throws TypeError if the geometry is not a single-line type
+     * \throws ValueError if the geometry is null
      */
     SIP_PYOBJECT asPolyline() const SIP_TYPEHINT( QgsPolylineXY );
     % MethodCode
@@ -1781,9 +2095,10 @@ class CORE_EXPORT QgsGeometry
      * Any z or m values present in the geometry will be discarded. If the geometry is a curved polygon type
      * (such as a CurvePolygon), it will be automatically segmentized.
      *
-     * This method works only with single-polygon (or single-curve polygon) geometry types. If the geometry
-     * is not a single-polygon type, a TypeError will be raised. If the geometry is null, a ValueError
-     * will be raised.
+     * This method works only with single-polygon (or single-curve polygon) geometry types.
+     *
+     * \throws TypeError if the geometry is not a single-polygon type
+     * \throws ValueError if the geometry is null
      */
     SIP_PYOBJECT asPolygon() const SIP_TYPEHINT( QgsPolygonXY );
     % MethodCode
@@ -1823,9 +2138,10 @@ class CORE_EXPORT QgsGeometry
      *
      * Any z or m values present in the geometry will be discarded.
      *
-     * This method works only with multi-point geometry types. If the geometry
-     * is not a multi-point type, a TypeError will be raised. If the geometry is null, a ValueError
-     * will be raised.
+     * This method works only with multi-point geometry types.
+     *
+     * \throws TypeError if the geometry is not a multi-point type
+     * \throws ValueError if the geometry is null
      */
     SIP_PYOBJECT asMultiPoint() const SIP_TYPEHINT( QgsMultiPointXY );
     % MethodCode
@@ -1867,9 +2183,10 @@ class CORE_EXPORT QgsGeometry
      * Any z or m values present in the geometry will be discarded. If the geometry is a curved line type
      * (such as a MultiCurve), it will be automatically segmentized.
      *
-     * This method works only with multi-linestring (or multi-curve) geometry types. If the geometry
-     * is not a multi-linestring type, a TypeError will be raised. If the geometry is null, a ValueError
-     * will be raised.
+     * This method works only with multi-linestring (or multi-curve) geometry types.
+     *
+     * \throws TypeError if the geometry is not a multi-linestring type
+     * \throws ValueError if the geometry is null
      */
     SIP_PYOBJECT asMultiPolyline() const SIP_TYPEHINT( QgsMultiPolylineXY );
     % MethodCode
@@ -1911,9 +2228,10 @@ class CORE_EXPORT QgsGeometry
      * Any z or m values present in the geometry will be discarded. If the geometry is a curved polygon type
      * (such as a MultiSurface), it will be automatically segmentized.
      *
-     * This method works only with multi-polygon (or multi-curve polygon) geometry types. If the geometry
-     * is not a multi-polygon type, a TypeError will be raised. If the geometry is null, a ValueError
-     * will be raised.
+     * This method works only with multi-polygon (or multi-curve polygon) geometry types.
+     *
+     * \throws TypeError if the geometry is not a multi-polygon type
+     * \throws ValueError if the geometry is null
      */
     SIP_PYOBJECT asMultiPolygon() const SIP_TYPEHINT( QgsMultiPolygonXY );
     % MethodCode
@@ -2017,7 +2335,7 @@ class CORE_EXPORT QgsGeometry
      * \returns 0 in case of success,
      *          1 if geometry is not of polygon type,
      *          2 if avoid intersection would change the geometry type,
-     *          3 other error during intersection removal
+     *          3 at least one geometry intersected is invalid. The algorithm may not work and return the same geometry as the input. You must fix your intersecting geometries.
      * \since QGIS 1.5
      */
     int avoidIntersections( const QList<QgsVectorLayer *> &avoidIntersectionsLayers,
@@ -2037,7 +2355,9 @@ class CORE_EXPORT QgsGeometry
      *
      * \returns new valid QgsGeometry or null geometry on error
      *
-     * \note Ported from PostGIS ST_MakeValid() and it should return equivalent results.
+     * \note For QGIS builds using GEOS library versions older than 3.8 this method calls
+     * an internal fork of PostGIS' ST_MakeValid() function. For builds based on GEOS 3.8 or
+     * later this method calls the GEOS MakeValid method directly.
      *
      * \since QGIS 3.0
      */
@@ -2048,9 +2368,34 @@ class CORE_EXPORT QgsGeometry
      * is to the right of the boundary. In particular, the exterior ring is oriented in a clockwise direction
      * and the interior rings in a counter-clockwise direction.
      *
+     * \warning Due to the conflicting definitions of the right-hand-rule in general use, it is recommended
+     * to use the explicit forcePolygonClockwise() or forcePolygonCounterClockwise() methods instead.
+     *
+     * \see forcePolygonClockwise()
+     * \see forcePolygonCounterClockwise()
      * \since QGIS 3.6
      */
     QgsGeometry forceRHR() const;
+
+    /**
+     * Forces geometries to respect the exterior ring is clockwise, interior rings are counter-clockwise convention.
+     *
+     * This convention is used primarily by ESRI software.
+     *
+     * \see forcePolygonCounterClockwise()
+     * \since QGIS 3.24
+     */
+    QgsGeometry forcePolygonClockwise() const;
+
+    /**
+     * Forces geometries to respect the exterior ring is counter-clockwise, interior rings are clockwise convention.
+     *
+     * This convention matches the OGC Simple Features specification.
+     *
+     * \see forcePolygonClockwise()
+     * \since QGIS 3.24
+     */
+    QgsGeometry forcePolygonCounterClockwise() const;
 
     /**
      * \ingroup core
@@ -2095,6 +2440,7 @@ class CORE_EXPORT QgsGeometry
         % End
 #endif
 
+        // TODO c++20 - replace with = default
         bool operator==( const QgsGeometry::Error &other ) const
         {
           return other.mMessage == mMessage && other.mHasLocation == mHasLocation && other.mLocation == mLocation;
@@ -2107,16 +2453,6 @@ class CORE_EXPORT QgsGeometry
     };
 
     /**
-     * Available methods for validating geometries.
-     * \since QGIS 3.0
-     */
-    enum ValidationMethod
-    {
-      ValidatorQgisInternal, //!< Use internal QgsGeometryValidator method
-      ValidatorGeos, //!< Use GEOS validation methods
-    };
-
-    /**
      * Validates geometry and produces a list of geometry errors.
      * The \a method argument dictates which validator to utilize.
      *
@@ -2124,7 +2460,18 @@ class CORE_EXPORT QgsGeometry
      *
      * \since QGIS 1.5
      */
-    void validateGeometry( QVector<QgsGeometry::Error> &errors SIP_OUT, ValidationMethod method = ValidatorQgisInternal, QgsGeometry::ValidityFlags flags = QgsGeometry::ValidityFlags() ) const;
+    void validateGeometry( QVector<QgsGeometry::Error> &errors SIP_OUT, Qgis::GeometryValidationEngine method = Qgis::GeometryValidationEngine::QgisInternal, Qgis::GeometryValidityFlags flags = Qgis::GeometryValidityFlags() ) const;
+
+    /**
+     * Reorganizes the geometry into a normalized form (or "canonical" form).
+     *
+     * Polygon rings will be rearranged so that their starting vertex is the lower left and ring orientation follows the
+     * right hand rule, collections are ordered by geometry type, and other normalization techniques are applied. The
+     * resultant geometry will be geometrically equivalent to the original geometry.
+     *
+     * \since QGIS 3.20
+     */
+    void normalize();
 
     /**
      * Compute the unary union on a list of \a geometries. May be faster than an iterative union on a set of geometries.
@@ -2447,7 +2794,41 @@ class CORE_EXPORT QgsGeometry
                         double minimumDistance = -1.0, double maxAngle = 180.0 ) const;
 
     /**
-     * Creates and returns a new geometry engine
+     * Creates and returns a new geometry engine representing the specified \a geometry.
+     *
+     * A geometry engine is a low-level representation of a QgsAbstractGeometry object, optimised for use with external
+     * geometry libraries such as GEOS.
+     *
+     * QgsGeometryEngine objects provide a mechanism for optimized evaluation of geometric algorithms, including spatial relationships
+     * between geometries and operations such as buffers or clipping. QgsGeometryEngine is recommended for use in any
+     * performance critical code instead of directly using the equivalent QgsGeometry methods such as QgsGeometry::intersects().
+     *
+     * Many methods available in the QgsGeometryEngine class can benefit from pre-preparing geometries. For instance, whenever
+     * a large number of spatial relationships will be tested (such as calling intersects(), within(), etc) then the
+     * geometry should first be prepared by calling prepareGeometry() before performing the tests.
+     *
+     * ### Example
+     *
+     * \code{.py}
+     *   # polygon_geometry contains a complex polygon, with many vertices
+     *   polygon_geometry = QgsGeometry.fromWkt('Polygon((...))')
+     *
+     *   # create a QgsGeometryEngine representation of the polygon
+     *   polygon_geometry_engine = QgsGeometry.createGeometryEngine(polygon_geometry.constGet())
+     *
+     *   # since we'll be performing many intersects tests, we can speed up these tests considerably
+     *   # by first "preparing" the geometry engine
+     *   polygon_geometry_engine.prepareGeometry()
+     *
+     *   # now we are ready to quickly test intersection against many other objects
+     *   for feature in my_layer.getFeatures():
+     *       feature_geometry = feature.geometry()
+     *       # test whether the feature's geometry intersects our original complex polygon
+     *       if polygon_geometry_engine.intersects(feature_geometry.constGet()):
+     *           print('feature intersects the polygon!')
+     * \endcode
+     *
+     * QgsGeometryEngine operations are backed by the GEOS library (https://trac.osgeo.org/geos/).
      */
     static QgsGeometryEngine *createGeometryEngine( const QgsAbstractGeometry *geometry ) SIP_FACTORY;
 
@@ -2490,7 +2871,6 @@ class CORE_EXPORT QgsGeometry
      */
     void reset( std::unique_ptr< QgsAbstractGeometry > newGeometry );
 
-    static void convertToPolyline( const QgsPointSequence &input, QgsPolylineXY &output );
     static void convertPolygon( const QgsPolygon &input, QgsPolygonXY &output );
 
     //! Try to convert the geometry to a point
@@ -2534,7 +2914,6 @@ class CORE_EXPORT QgsGeometry
 }; // class QgsGeometry
 
 Q_DECLARE_METATYPE( QgsGeometry )
-Q_DECLARE_OPERATORS_FOR_FLAGS( QgsGeometry::ValidityFlags )
 
 //! Writes the geometry to stream out. QGIS version compatibility is not guaranteed.
 CORE_EXPORT QDataStream &operator<<( QDataStream &out, const QgsGeometry &geometry );

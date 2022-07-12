@@ -15,13 +15,12 @@
 
 #include "qgspointrotationitem.h"
 #include <QPainter>
+#include <QLocale>
 #include <cmath>
 #include "qgsguiutils.h"
 
 QgsPointRotationItem::QgsPointRotationItem( QgsMapCanvas *canvas )
   : QgsMapCanvasItem( canvas )
-  , mOrientation( Clockwise )
-  , mRotation( 0.0 )
 {
   //setup font
   mFont.setPointSize( 12 );
@@ -75,9 +74,14 @@ void QgsPointRotationItem::paint( QPainter *painter )
   QPen bufferPen;
   bufferPen.setColor( Qt::white );
   bufferPen.setWidthF( QgsGuiUtils::scaleIconSize( 4 ) );
-  QFontMetricsF fm( mFont );
+  const QFontMetricsF fm( mFont );
   QPainterPath label;
-  label.addText( mPixmap.width(), mPixmap.height() / 2.0 + fm.height() / 2.0, mFont, QString::number( mRotation ) );
+  const double rotationText = mRotation * QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::AngleDegrees,
+                              mRotationUnit );
+  label.addText( mPixmap.width(),
+                 mPixmap.height() / 2.0 + fm.height() / 2.0,
+                 mFont,
+                 QgsUnitTypes::formatAngle( rotationText, -1, mRotationUnit ) );
   painter->setPen( bufferPen );
   painter->setBrush( Qt::NoBrush );
   painter->drawPath( label );
@@ -90,23 +94,24 @@ void QgsPointRotationItem::paint( QPainter *painter )
 
 void QgsPointRotationItem::setPointLocation( const QgsPointXY &p )
 {
-  QPointF transformedPoint = toCanvasCoordinates( p );
+  const QPointF transformedPoint = toCanvasCoordinates( p );
   setPos( transformedPoint.x() - mPixmap.width() / 2.0, transformedPoint.y() - mPixmap.height() / 2.0 );
+}
+
+void QgsPointRotationItem::setRotationUnit( const QgsUnitTypes::AngleUnit &rotationUnit )
+{
+  mRotationUnit = rotationUnit;
 }
 
 void QgsPointRotationItem::setSymbol( const QImage &symbolImage )
 {
   mPixmap = QPixmap::fromImage( symbolImage );
-  QFontMetricsF fm( mFont );
+  const QFontMetricsF fm( mFont );
 
-  //set item size
-#if QT_VERSION < QT_VERSION_CHECK(5, 11, 0)
-  mItemSize.setWidth( mPixmap.width() + fm.width( QStringLiteral( "360" ) ) );
-#else
-  mItemSize.setWidth( mPixmap.width() + fm.horizontalAdvance( QStringLiteral( "360" ) ) );
-#endif
+  //set item size: 6283 millirad arcseconds = 360°
+  mItemSize.setWidth( mPixmap.width() + fm.horizontalAdvance( QStringLiteral( "6283 millirad" ) ) );
   const double pixmapHeight = mPixmap.height();
-  double fontHeight = fm.height();
+  const double fontHeight = fm.height();
   if ( pixmapHeight >= fontHeight )
   {
     mItemSize.setHeight( mPixmap.height() );

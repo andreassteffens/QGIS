@@ -25,10 +25,13 @@
 #include "qgshelp.h"
 #include "qgsstylemodel.h"
 #include "qgis_gui.h"
+#include "qgis_sip.h"
+#include "qgssettingsentryimpl.h"
 
 class QgsStyle;
 class QgsTemporaryCursorOverride;
 class QgsMessageBar;
+class QgsProjectStyleDatabaseModel;
 
 #ifndef SIP_RUN
 ///@cond PRIVATE
@@ -69,6 +72,14 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
     Q_OBJECT
 
   public:
+#ifndef SIP_RUN
+
+    /**
+     * Last used folder for generic style database actions.
+     * \since QGIS 3.26
+     */
+    static const inline QgsSettingsEntryString settingLastStyleDatabaseFolder = QgsSettingsEntryString( QStringLiteral( "last-style-database-folder" ), QgsSettings::Prefix::STYLE_MANAGER, QString(), QStringLiteral( "Last used folder for style databases" ) );
+#endif
 
     /**
      * Constructor for QgsStyleManagerDialog, with the specified \a parent widget and window \a flags.
@@ -79,6 +90,15 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
      */
     QgsStyleManagerDialog( QgsStyle *style, QWidget *parent SIP_TRANSFERTHIS = nullptr, Qt::WindowFlags flags = Qt::WindowFlags(),
                            bool readOnly = false );
+
+    /**
+     * Constructor for QgsStyleManagerDialog, with the specified \a parent widget and window \a flags.
+     *
+     * All styles linked to the current project will be available.
+     *
+     * \since QGIS 3.26
+     */
+    QgsStyleManagerDialog( QWidget *parent SIP_TRANSFERTHIS = nullptr, Qt::WindowFlags flags = Qt::WindowFlags() );
 
     // TODO QGIS 4.0 -- rename "RampType" to "rampType".
 
@@ -347,7 +367,15 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
 
     void pasteItem();
 
+    void setThumbnailSize( int );
+
+    void currentStyleAboutToBeDestroyed();
+
   private:
+
+    void init();
+
+    void setCurrentStyle( QgsStyle *style );
     int selectedItemType();
 
     /**
@@ -355,11 +383,19 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
      */
     bool allTypesSelected() const;
 
+    bool isReadOnly() const;
+
     struct ItemDetails
     {
       QgsStyle::StyleEntity entityType;
-      QgsSymbol::SymbolType symbolType;
+      Qgis::SymbolType symbolType;
       QString name;
+    };
+
+    enum GroupModelRoles
+    {
+      Name = Qt::UserRole + 1,
+      TagName
     };
 
     QList< ItemDetails > selectedItems();
@@ -377,6 +413,8 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
 
     QgsCheckableStyleModel *mModel = nullptr;
 
+    QgsProjectStyleDatabaseModel *mProjectStyleModel = nullptr;
+
     QString mStyleFilename;
 
     bool mModified = false;
@@ -386,6 +424,8 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
 
     //! space to store symbol tags
     QStringList mTagList;
+
+    QMenu *mShareMenu = nullptr;
 
     //! Context menu for the symbols/colorramps
     QMenu *mGroupMenu = nullptr;
@@ -415,13 +455,18 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
 
     QAction *mActionCopyItem = nullptr;
     QAction *mActionPasteItem = nullptr;
+    QAction *mExportAction = nullptr;
+    QAction *mImportAction = nullptr;
 
     int mBlockGroupUpdates = 0;
+    int mBlockStyleDatabaseChanges = 0;
 
     bool mReadOnly = false;
     bool mFavoritesGroupVisible = true;
     bool mSmartGroupVisible = true;
     QString mBaseName;
+
+    static QString sPreviousTag;
 
     bool addTextFormat();
     bool editTextFormat();
@@ -429,11 +474,13 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
     bool addLabelSettings( QgsWkbTypes::GeometryType type );
     bool editLabelSettings();
 
-    bool addLegendPatchShape( QgsSymbol::SymbolType type );
+    bool addLegendPatchShape( Qgis::SymbolType type );
     bool editLegendPatchShape();
 
     bool addSymbol3D( const QString &type );
     bool editSymbol3D();
+
+    void addStyleDatabase( bool createNew );
 
     friend class QgsStyleExportImportDialog;
 };

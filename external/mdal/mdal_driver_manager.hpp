@@ -38,11 +38,13 @@ namespace MDAL
                                     const std::string &meshName ) const;
       void loadDatasets( Mesh *mesh, const std::string &datasetFile ) const;
 
-      void save( Mesh *mesh, const std::string &uri, const std::string &driver ) const;
+      void save( Mesh *mesh, const std::string &uri ) const;
 
       size_t driversCount() const;
       std::shared_ptr<MDAL::Driver> driver( const std::string &driverName ) const;
       std::shared_ptr<MDAL::Driver> driver( size_t index ) const;
+
+      void loadDynamicDrivers();
 
     private:
       DriverManager();

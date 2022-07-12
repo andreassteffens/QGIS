@@ -28,6 +28,7 @@
 //
 
 #include <Qt3DCore/QEntity>
+#include <numeric>
 
 #define SIP_NO_FILE
 
@@ -45,6 +46,7 @@ class QgsChunkQueueJobFactory;
 #include <QTime>
 
 #include "qgsfeatureid.h"
+#include "qgschunknode_p.h"
 
 namespace Qt3DRender
 {
@@ -62,7 +64,9 @@ class QgsChunkedEntity : public Qt3DCore::QEntity
     Q_OBJECT
   public:
     //! Constructs a chunked entity
-    QgsChunkedEntity( const QgsAABB &rootBbox, float rootError, float mTau, int mMaxLevel, QgsChunkLoaderFactory *loaderFactory, bool ownsFactory, Qt3DCore::QNode *parent = nullptr );
+    QgsChunkedEntity( float tau, QgsChunkLoaderFactory *loaderFactory, bool ownsFactory,
+                      int primitivesBudget = std::numeric_limits<int>::max(),
+                      Qt3DCore::QNode *parent = nullptr );
     ~QgsChunkedEntity() override;
 
     //! Records some bits about the scene (context for update() method)
@@ -99,6 +103,30 @@ class QgsChunkedEntity : public Qt3DCore::QEntity
     //! Returns whether object picking is currently enabled
     bool hasPickingEnabled() const { return mPickingEnabled; }
 
+    //! Sets whether additive strategy is enabled - see usingAditiveStrategy()
+    void setUsingAdditiveStrategy( bool additive ) { mAdditiveStrategy = additive; }
+
+    /**
+     * Returns whether additive strategy is enabled.
+     * With additive strategy enabled, also all parent nodes are added to active nodes.
+     * This is desired when child nodes add more detailed data rather than just replace coarser data in parents.
+     */
+    bool usingAditiveStrategy() const { return mAdditiveStrategy; }
+
+    /**
+     * Sets the limit of the GPU memory used to render the entity
+     * \since QGIS 3.26
+     */
+    void setGpuMemoryLimit( double gpuMemoryLimit ) { mGpuMemoryLimit = gpuMemoryLimit; }
+
+    /**
+     * Returns the limit of the GPU memory used to render the entity in megabytes
+     * \since QGIS 3.26
+     */
+    double gpuMemoryLimit() const { return mGpuMemoryLimit; }
+
+    static double calculateEntityGpuMemorySize( Qt3DCore::QEntity *entity );
+
   protected:
     //! Cancels the background job that is currently in progress
     void cancelActiveJob( QgsChunkQueueJob *job );
@@ -108,6 +136,9 @@ class QgsChunkedEntity : public Qt3DCore::QEntity
 
   private:
     void update( QgsChunkNode *node, const SceneState &state );
+
+    //! Removes chunks for loading queue that are currently not needed
+    void pruneLoaderQueue( const SceneState &state );
 
     //! make sure that the chunk will be loaded soon (if not loaded yet) and not unloaded anytime soon (if loaded already)
     void requestResidency( QgsChunkNode *node );
@@ -144,8 +175,6 @@ class QgsChunkedEntity : public Qt3DCore::QEntity
      * it reaches leafs.
      */
     float mTau;
-    //! maximum allowed depth of quad tree
-    int mMaxLevel;
     //! factory that creates loaders for individual chunk nodes
     QgsChunkLoaderFactory *mChunkLoaderFactory = nullptr;
     //! True if entity owns the factory
@@ -163,9 +192,6 @@ class QgsChunkedEntity : public Qt3DCore::QEntity
 
     QTime mCurrentTime;
 
-    //! max. length for replacement queue
-    int mMaxLoadedChunks = 512;
-
     //! Entity that shows bounding boxes of active chunks (NULLPTR if not enabled)
     QgsChunkBoundsEntity *mBboxesEntity = nullptr;
 
@@ -175,7 +201,16 @@ class QgsChunkedEntity : public Qt3DCore::QEntity
     //! If picking is enabled, QObjectPicker objects will be assigned to chunks and pickedObject() signals fired on mouse click
     bool mPickingEnabled = false;
 
+    /**
+     * With additive strategy enabled, also all parent nodes are added to active nodes.
+     * This is desired when child nodes add more detailed data rather than just replace coarser data in parents.
+     */
+    bool mAdditiveStrategy = false;
+
     bool mIsValid = true;
+
+    int mPrimitivesBudget = std::numeric_limits<int>::max();
+    double mGpuMemoryLimit = 500.0; // in megabytes
 };
 
 /// @endcond

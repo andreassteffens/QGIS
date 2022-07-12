@@ -8,6 +8,7 @@
 %Include auto_generated/qgsserverogcapihandler.sip
 %Include auto_generated/qgsserverstatichandler.sip
 %Include auto_generated/qgsserverparameters.sip
+%Include auto_generated/qgsserverfeatureid.sip
 %Include auto_generated/qgsserverquerystringparameter.sip
 %Include auto_generated/qgsserversettings.sip
 %Include auto_generated/qgsservicemodule.sip
@@ -19,6 +20,9 @@
 %Include auto_generated/qgsserverapiutils.sip
 %Include auto_generated/qgsserverexception.sip
 %If ( HAVE_SERVER_PYTHON_PLUGINS )
+%Include auto_generated/qgsserverfilter.sip
+%End
+%If ( HAVE_SERVER_PYTHON_PLUGINS )
 %Include auto_generated/qgsserverinterface.sip
 %End
 %Include auto_generated/qgsserverprojectutils.sip
@@ -29,9 +33,6 @@
 %Include auto_generated/qgsfeaturefilterprovidergroup.sip
 %Include auto_generated/qgsfeaturefilter.sip
 %Include auto_generated/qgsstorebadlayerinfo.sip
-%If ( HAVE_SERVER_PYTHON_PLUGINS )
-%Include auto_generated/qgsserverfilter.sip
-%End
 %If ( HAVE_SERVER_PYTHON_PLUGINS )
 %Include auto_generated/qgsaccesscontrolfilter.sip
 %End

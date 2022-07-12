@@ -27,9 +27,9 @@ set -e
 
 DIR=$(git rev-parse --show-toplevel)
 
-# GNU prefix command for mac os support (gsed, gsplit)
+# GNU prefix command for bsd/mac os support (gsed, gsplit)
 GP=
-if [[ "$OSTYPE" =~ darwin* ]]; then
+if [[ "$OSTYPE" == *bsd* ]] || [[ "$OSTYPE" =~ darwin* ]]; then
   GP=g
 fi
 
@@ -37,7 +37,11 @@ pushd ${DIR} > /dev/null
 
 count=0
 
-modules=(3d core gui analysis server)
+if [[ -n $1 ]]; then
+  modules=("$1")
+else
+  modules=(core gui analysis server 3d)
+fi
 for module in "${modules[@]}"; do
 
   # clean auto_additions and auto_generated folders

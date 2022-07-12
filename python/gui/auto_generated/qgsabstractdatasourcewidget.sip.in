@@ -14,7 +14,7 @@
 
 class QgsAbstractDataSourceWidget : QDialog
 {
-%Docstring
+%Docstring(signature="appended")
 Abstract base Data Source Widget to create connections and add layers
 This class provides common functionality and the interface for all
 source select dialogs used by data providers to configure data sources
@@ -28,12 +28,28 @@ and add layers.
 %End
   public:
 
-    void setMapCanvas( const QgsMapCanvas *mapCanvas );
+    virtual void setBrowserModel( QgsBrowserModel *model );
 %Docstring
-Store a pointer to the map canvas to retrieve extent and CRS
-Used to select an appropriate CRS and possibly to retrieve data only in the current extent
+Sets a browser ``model`` to use with the widget.
+
+.. seealso:: :py:func:`browserModel`
+
+.. versionadded:: 3.18
 %End
 
+    virtual QgsMapCanvas *mapCanvas();
+%Docstring
+Returns the dialog map canvas
+
+.. seealso:: :py:func:`setMapCanvas`
+%End
+
+    virtual void setMapCanvas( QgsMapCanvas *mapCanvas );
+%Docstring
+Sets the dialog map canvas
+
+.. seealso:: :py:func:`mapCanvas`
+%End
 
   public slots:
 
@@ -79,6 +95,15 @@ Emitted when a DB layer has been selected for addition
 Emitted when a raster layer has been selected for addition
 %End
 
+    void addRasterLayers( const QStringList &layersList );
+%Docstring
+Emitted when one or more GDAL supported layers are selected for addition
+
+:param layersList: list of layers protocol URIs
+
+.. versionadded:: 3.20
+%End
+
     void addVectorLayer( const QString &uri, const QString &layerName, const QString &providerKey = QString() );
 %Docstring
 Emitted when a vector layer has been selected for addition.
@@ -99,6 +124,13 @@ Emitted when a mesh layer has been selected for addition.
 Emitted when a vector tile layer has been selected for addition.
 
 .. versionadded:: 3.14
+%End
+
+    void addPointCloudLayer( const QString &url, const QString &baseName, const QString &providerKey );
+%Docstring
+Emitted when a point cloud layer has been selected for addition.
+
+.. versionadded:: 3.18
 %End
 
     void addVectorLayers( const QStringList &layerList, const QString &encoding, const QString &dataSourceType );
@@ -125,7 +157,7 @@ Emitted when a layer needs to be replaced
 Emitted when a progress dialog is shown by the provider dialog.
 
 .. deprecated:: QGIS 3.4
-   this signal is no longer used. Use QgsProxyProgressTask instead to show progress reports.
+   this signal is no longer used. Use :py:class:`QgsProxyProgressTask` instead to show progress reports.
 %End
 
     void progressMessage( QString message );
@@ -145,7 +177,6 @@ Emitted when a ``message`` with ``title`` and ``level`` must be shown to the use
 .. versionadded:: 3.14
 %End
 
-
   protected:
 
     QgsAbstractDataSourceWidget( QWidget *parent /TransferThis/ = 0, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
@@ -158,9 +189,11 @@ Constructor
 Returns the widget mode
 %End
 
-    const QgsMapCanvas *mapCanvas() const;
+    QgsBrowserModel *browserModel();
 %Docstring
-Returns the map canvas (can be ``None``)
+Returns the associated browser model (may be ``None``).
+
+.. versionadded:: 3.18
 %End
 
     void setupButtons( QDialogButtonBox *buttonBox );

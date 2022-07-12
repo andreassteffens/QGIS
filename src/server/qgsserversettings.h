@@ -57,7 +57,6 @@ class SERVER_EXPORT QgsServerSettingsEnv : public QObject
       QGIS_SERVER_LOG_FILE,
       QGIS_SERVER_LOG_STDERR,
       QGIS_PROJECT_FILE,
-      MAX_CACHE_LAYERS,
       QGIS_SERVER_IGNORE_BAD_LAYERS, //!< Do not consider the whole project unavailable if it contains bad layers
       QGIS_SERVER_CACHE_DIRECTORY,
       QGIS_SERVER_CACHE_SIZE,
@@ -73,7 +72,16 @@ class SERVER_EXPORT QgsServerSettingsEnv : public QObject
       QGIS_SERVER_TRUST_LAYER_METADATA, //!< Trust layer metadata. Improves project read time. (since QGIS 3.16).
       QGIS_SERVER_DISABLE_GETPRINT, //!< Disabled WMS GetPrint request and don't load layouts. Improves project read time. (since QGIS 3.16).
       QGIS_SERVER_LANDING_PAGE_PROJECTS_DIRECTORIES, //!< Directories used by the landing page service to find .qgs and .qgz projects (since QGIS 3.16)
-      QGIS_SERVER_LANDING_PAGE_PROJECTS_PG_CONNECTIONS //!< PostgreSQL connection strings used by the landing page service to find projects (since QGIS 3.16)
+      QGIS_SERVER_LANDING_PAGE_PROJECTS_PG_CONNECTIONS, //!< PostgreSQL connection strings used by the landing page service to find projects (since QGIS 3.16)
+      QGIS_SERVER_LOG_PROFILE, //!< When QGIS_SERVER_LOG_LEVEL is 0 this flag adds to the logs detailed information about the time taken by the different processing steps inside the QGIS Server request (since QGIS 3.16)
+      QGIS_SERVER_SERVICE_URL, //!< To set the service URL if it's not present in the project. (since QGIS 3.20).
+      QGIS_SERVER_WMS_SERVICE_URL, //!< To set the WMS service URL if it's not present in the project. (since QGIS 3.20).
+      QGIS_SERVER_WFS_SERVICE_URL, //!< To set the WFS service URL if it's not present in the project. (since QGIS 3.20).
+      QGIS_SERVER_WCS_SERVICE_URL, //!< To set the WCS service URL if it's not present in the project. (since QGIS 3.20).
+      QGIS_SERVER_WMTS_SERVICE_URL, //!< To set the WMTS service URL if it's not present in the project. (since QGIS 3.20).
+      QGIS_SERVER_LANDING_PAGE_PREFIX, //! Prefix of the path component of the landing page base URL, default is empty (since QGIS 3.20).
+      QGIS_SERVER_PROJECT_CACHE_CHECK_INTERVAL, //! Set the interval for cache invalidation strategy 'interval', default to 0 which select the legacy File system watcher  (since QGIS 3.26).
+      QGIS_SERVER_PROJECT_CACHE_STRATEGY, //! Set the project cache strategy. Possible values are 'filesystem', 'periodic' or 'off' (since QGIS 3.26).
     };
     Q_ENUM( EnvVar )
 };
@@ -149,16 +157,19 @@ class SERVER_EXPORT QgsServerSettings
 	int unloadWatcherInterval() const;
 
     /**
-      * Returns the maximum number of cached layers.
-      * \returns the number of cached layers.
-      */
-    int maxCacheLayers() const;
-
-    /**
      * Returns the log level.
      * \returns the log level.
      */
     Qgis::MessageLevel logLevel() const;
+
+    /**
+     * Returns TRUE if profile information has to be added to the logs, default value is FALSE.
+     *
+     * \note this flag is only effective when logLevel() returns Qgis::MessageLevel::Info (0)
+     * \see logLevel()
+     * \since QGIS 3.18
+     */
+    bool logProfile() const;
 
     /**
      * Returns the QGS project file to use.
@@ -247,6 +258,12 @@ class SERVER_EXPORT QgsServerSettings
     QString landingPageProjectsPgConnections() const;
 
     /**
+     * Returns the landing page base URL regular expression, defaults to `/`.
+     * \since QGIS 3.20
+     */
+    QString landingPageBaseUrlPrefix() const;
+
+    /**
      * Returns the server-wide base directory where HTML templates and static assets (e.g. images, js and css files) are searched for.
      *
      * The default path is calculated by joining QgsApplication::pkgDataPath() with "resources/server/api", this path
@@ -297,6 +314,33 @@ class SERVER_EXPORT QgsServerSettings
      * \since QGIS 3.16
      */
     bool getPrintDisabled() const;
+
+    /**
+     * Returns the service URL from the setting.
+     * \since QGIS 3.20
+     */
+    QString serviceUrl( const QString &service ) const;
+
+    /**
+     * Returns the config cache check interval for the 'periodic' strategy.
+     * \since QGIS 3.26
+     */
+    int projectCacheCheckInterval() const;
+
+    /**
+     * Returns the project's cache strategy
+     * The default value is 'filesystem', the value can be changed by setting the environment
+     * variable QGIS_SERVER_PROJECT_CACHE_STRATEGY.
+     * Possible values are:
+     *
+     * - 'filesystem': Use file system watcher for notifying projects change. Note that it works
+     *   only with projects stored in files and not across mounted NFS volumes on Linux.
+     * - 'periodic': Timer based periodic check for project's changes. Works with all storage backend.
+     * - 'off': Disable completely internal project's cache handling
+     *
+     * \since QGIS 3.26
+     */
+    QString projectCacheStrategy() const;
 
     /**
      * Returns the string representation of a setting.

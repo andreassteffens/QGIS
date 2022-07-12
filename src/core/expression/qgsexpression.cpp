@@ -17,13 +17,16 @@
 #include "qgsexpressionfunction.h"
 #include "qgsexpressionnodeimpl.h"
 #include "qgsfeaturerequest.h"
-#include "qgscolorramp.h"
+#include "qgscolorrampimpl.h"
 #include "qgslogger.h"
 #include "qgsexpressioncontext.h"
 #include "qgsgeometry.h"
 #include "qgsproject.h"
 #include "qgsexpressioncontextutils.h"
+#include "qgsexpressionutils.h"
 #include "qgsexpression_p.h"
+
+#include <QRegularExpression>
 
 // from parser
 extern QgsExpressionNode *parseExpression( const QString &str, QString &parserErrorMsg, QList<QgsExpression::ParserError> &parserErrors );
@@ -97,6 +100,7 @@ QString QgsExpression::quotedValue( const QVariant &value, QVariant::Type type )
       return value.toBool() ? QStringLiteral( "TRUE" ) : QStringLiteral( "FALSE" );
 
     case QVariant::List:
+    case QVariant::StringList:
     {
       QStringList quotedValues;
       const QVariantList values = value.toList();
@@ -278,8 +282,8 @@ void QgsExpression::initGeomCalculator( const QgsExpressionContext *context )
     // actually don't do it right away, cos it's expensive to create and only a very small number of expression
     // functions actually require it. Let's lazily construct it when needed
     d->mDaEllipsoid = context->variable( QStringLiteral( "project_ellipsoid" ) ).toString();
-    d->mDaCrs = qgis::make_unique<QgsCoordinateReferenceSystem>( context->variable( QStringLiteral( "_layer_crs" ) ).value<QgsCoordinateReferenceSystem>() );
-    d->mDaTransformContext = qgis::make_unique<QgsCoordinateTransformContext>( context->variable( QStringLiteral( "_project_transform_context" ) ).value<QgsCoordinateTransformContext>() );
+    d->mDaCrs = std::make_unique<QgsCoordinateReferenceSystem>( context->variable( QStringLiteral( "_layer_crs" ) ).value<QgsCoordinateReferenceSystem>() );
+    d->mDaTransformContext = std::make_unique<QgsCoordinateTransformContext>( context->variable( QStringLiteral( "_project_transform_context" ) ).value<QgsCoordinateTransformContext>() );
   }
 
   // Set the distance units from the context if it has not been set by setDistanceUnits()
@@ -450,7 +454,11 @@ QString QgsExpression::replaceExpressionText( const QString &action, const QgsEx
     if ( exp.hasParserError() )
     {
       QgsDebugMsg( "Expression parser error: " + exp.parserErrorString() );
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 2)
       expr_action += action.midRef( start, index - start );
+#else
+      expr_action += QStringView {action}.mid( start, index - start );
+#endif
       continue;
     }
 
@@ -465,7 +473,11 @@ QString QgsExpression::replaceExpressionText( const QString &action, const QgsEx
     if ( exp.hasEvalError() )
     {
       QgsDebugMsg( "Expression parser eval error: " + exp.evalErrorString() );
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 2)
       expr_action += action.midRef( start, index - start );
+#else
+      expr_action += QStringView {action}.mid( start, index - start );
+#endif
       continue;
     }
 
@@ -473,7 +485,11 @@ QString QgsExpression::replaceExpressionText( const QString &action, const QgsEx
     expr_action += action.mid( start, pos - start ) + result.toString();
   }
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 2)
   expr_action += action.midRef( index );
+#else
+  expr_action += QStringView {action}.mid( index ).toString();
+#endif
 
   return expr_action;
 }
@@ -484,14 +500,13 @@ QSet<QString> QgsExpression::referencedVariables( const QString &text )
   int index = 0;
   while ( index < text.size() )
   {
-    QRegExp rx = QRegExp( "\\[%([^\\]]+)%\\]" );
-
-    int pos = rx.indexIn( text, index );
-    if ( pos < 0 )
+    const thread_local QRegularExpression rx( "\\[%([^\\]]+)%\\]" );
+    const QRegularExpressionMatch match = rx.match( text );
+    if ( !match.hasMatch() )
       break;
 
-    index = pos + rx.matchedLength();
-    QString to_replace = rx.cap( 1 ).trimmed();
+    index = match.capturedStart() + match.capturedLength();
+    QString to_replace = match.captured( 1 ).trimmed();
 
     QgsExpression exp( to_replace );
     variables.unite( exp.referencedVariables() );
@@ -550,7 +565,7 @@ QString QgsExpression::helpText( QString name )
                         .arg( tr( "%1 %2" ).arg( f.mType, name ),
                               f.mDescription ) );
 
-  for ( const HelpVariant &v : qgis::as_const( f.mVariants ) )
+  for ( const HelpVariant &v : std::as_const( f.mVariants ) )
   {
     if ( f.mVariants.size() > 1 )
     {
@@ -584,7 +599,7 @@ QString QgsExpression::helpText( QString name )
         helpContents += '(';
 
         QString delim;
-        for ( const HelpArg &a : qgis::as_const( v.mArguments ) )
+        for ( const HelpArg &a : std::as_const( v.mArguments ) )
         {
           if ( !a.mDescOnly )
           {
@@ -626,7 +641,7 @@ QString QgsExpression::helpText( QString name )
     {
       helpContents += QStringLiteral( "<h4>%1</h4>\n<div class=\"arguments\">\n<table>" ).arg( tr( "Arguments" ) );
 
-      for ( const HelpArg &a : qgis::as_const( v.mArguments ) )
+      for ( const HelpArg &a : std::as_const( v.mArguments ) )
       {
         if ( a.mSyntaxOnly )
           continue;
@@ -641,7 +656,7 @@ QString QgsExpression::helpText( QString name )
     {
       helpContents += QStringLiteral( "<h4>%1</h4>\n<div class=\"examples\">\n<ul>\n" ).arg( tr( "Examples" ) );
 
-      for ( const HelpExample &e : qgis::as_const( v.mExamples ) )
+      for ( const HelpExample &e : std::as_const( v.mExamples ) )
       {
         helpContents += "<li><code>" + e.mExpression + "</code> &rarr; <code>" + e.mReturns + "</code>";
 
@@ -673,7 +688,7 @@ QStringList QgsExpression::tags( const QString &name )
   {
     const Help &f = ( *sFunctionHelpTexts() )[ name ];
 
-    for ( const HelpVariant &v : qgis::as_const( f.mVariants ) )
+    for ( const HelpVariant &v : std::as_const( f.mVariants ) )
     {
       tags << v.mTags;
     }
@@ -728,14 +743,15 @@ void QgsExpression::initVariableHelp()
   //layer variables
   sVariableHelpTexts()->insert( QStringLiteral( "layer_name" ), QCoreApplication::translate( "variable_help", "Name of current layer." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "layer_id" ), QCoreApplication::translate( "variable_help", "ID of current layer." ) );
+  sVariableHelpTexts()->insert( QStringLiteral( "layer_crs" ), QCoreApplication::translate( "variable_help", "CRS Authority ID of current layer." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "layer" ), QCoreApplication::translate( "variable_help", "The current layer." ) );
 
   //composition variables
   sVariableHelpTexts()->insert( QStringLiteral( "layout_name" ), QCoreApplication::translate( "variable_help", "Name of composition." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "layout_numpages" ), QCoreApplication::translate( "variable_help", "Number of pages in composition." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "layout_page" ), QCoreApplication::translate( "variable_help", "Current page number in composition." ) );
-  sVariableHelpTexts()->insert( QStringLiteral( "layout_pageheight" ), QCoreApplication::translate( "variable_help", "Composition page height in mm." ) );
-  sVariableHelpTexts()->insert( QStringLiteral( "layout_pagewidth" ), QCoreApplication::translate( "variable_help", "Composition page width in mm." ) );
+  sVariableHelpTexts()->insert( QStringLiteral( "layout_pageheight" ), QCoreApplication::translate( "variable_help", "Composition page height in mm (or specified custom units)." ) );
+  sVariableHelpTexts()->insert( QStringLiteral( "layout_pagewidth" ), QCoreApplication::translate( "variable_help", "Composition page width in mm (or specified custom units)." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "layout_pageoffsets" ), QCoreApplication::translate( "variable_help", "Array of Y coordinate of the top of each page." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "layout_dpi" ), QCoreApplication::translate( "variable_help", "Composition resolution (DPI)." ) );
 
@@ -771,6 +787,7 @@ void QgsExpression::initVariableHelp()
   sVariableHelpTexts()->insert( QStringLiteral( "map_units" ), QCoreApplication::translate( "variable_help", "Units for map measurements." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "map_crs_definition" ), QCoreApplication::translate( "variable_help", "Coordinate reference system of the map (full definition)." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "map_crs_acronym" ), QCoreApplication::translate( "variable_help", "Acronym of the coordinate reference system of the map." ) );
+  sVariableHelpTexts()->insert( QStringLiteral( "map_crs_projection" ), QCoreApplication::translate( "variable_help", "Projection method used by the coordinate reference system of the map." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "map_crs_ellipsoid" ), QCoreApplication::translate( "variable_help", "Acronym of the ellipsoid of the coordinate reference system of the map." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "map_crs_proj4" ), QCoreApplication::translate( "variable_help", "Proj4 definition of the coordinate reference system of the map." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "map_crs_wkt" ), QCoreApplication::translate( "variable_help", "WKT definition of the coordinate reference system of the map." ) );
@@ -789,8 +806,8 @@ void QgsExpression::initVariableHelp()
   sVariableHelpTexts()->insert( QStringLiteral( "animation_interval" ), QCoreApplication::translate( "variable_help", "Duration of the animation's overall temporal time range (as an interval value)" ) );
 
   // vector tile layer variables
-  sVariableHelpTexts()->insert( QStringLiteral( "zoom_level" ), QCoreApplication::translate( "variable_help", "Zoom level of the tile that is being rendered (derived from the current map scale). Normally in interval [0, 20]." ) );
-  sVariableHelpTexts()->insert( QStringLiteral( "vector_tile_zoom" ), QCoreApplication::translate( "variable_help", "Exact zoom level of the tile that is being rendered (derived from the current map scale). Normally in interval [0, 20]. Unlike @zoom_level, this variable is a floating point value which can be used to interpolated values between two integer zoom levels." ) );
+  sVariableHelpTexts()->insert( QStringLiteral( "zoom_level" ), QCoreApplication::translate( "variable_help", "Vector tile zoom level of the map that is being rendered (derived from the current map scale). Normally in interval [0, 20]." ) );
+  sVariableHelpTexts()->insert( QStringLiteral( "vector_tile_zoom" ), QCoreApplication::translate( "variable_help", "Exact vector tile zoom level of the map that is being rendered (derived from the current map scale). Normally in interval [0, 20]. Unlike @zoom_level, this variable is a floating point value which can be used to interpolate values between two integer zoom levels." ) );
 
   sVariableHelpTexts()->insert( QStringLiteral( "row_number" ), QCoreApplication::translate( "variable_help", "Stores the number of the current row." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "grid_number" ), QCoreApplication::translate( "variable_help", "Current grid annotation value." ) );
@@ -827,6 +844,7 @@ void QgsExpression::initVariableHelp()
   //symbol variables
   sVariableHelpTexts()->insert( QStringLiteral( "geometry_part_count" ), QCoreApplication::translate( "variable_help", "Number of parts in rendered feature's geometry." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "geometry_part_num" ), QCoreApplication::translate( "variable_help", "Current geometry part number for feature being rendered." ) );
+  sVariableHelpTexts()->insert( QStringLiteral( "geometry_ring_num" ), QCoreApplication::translate( "variable_help", "Current geometry ring number for feature being rendered (for polygon features only). The exterior ring has a value of 0." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "geometry_point_count" ), QCoreApplication::translate( "variable_help", "Number of points in the rendered geometry's part. It is only meaningful for line geometries and for symbol layers that set this variable." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "geometry_point_num" ), QCoreApplication::translate( "variable_help", "Current point number in the rendered geometry's part. It is only meaningful for line geometries and for symbol layers that set this variable." ) );
 
@@ -836,6 +854,7 @@ void QgsExpression::initVariableHelp()
   sVariableHelpTexts()->insert( QStringLiteral( "symbol_layer_index" ), QCoreApplication::translate( "symbol_layer_index", "Current symbol layer index." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "symbol_marker_row" ), QCoreApplication::translate( "symbol_marker_row", "Row number for marker (valid for point pattern fills only)." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "symbol_marker_column" ), QCoreApplication::translate( "symbol_marker_column", "Column number for marker (valid for point pattern fills only)." ) );
+  sVariableHelpTexts()->insert( QStringLiteral( "symbol_frame" ), QCoreApplication::translate( "symbol_frame", "Frame number (for animated symbols only)." ) );
 
   sVariableHelpTexts()->insert( QStringLiteral( "symbol_label" ), QCoreApplication::translate( "symbol_label", "Label for the symbol (either a user defined label or the default autogenerated label)." ) );
   sVariableHelpTexts()->insert( QStringLiteral( "symbol_id" ), QCoreApplication::translate( "symbol_id", "Internal ID of the symbol." ) );
@@ -881,6 +900,21 @@ void QgsExpression::initVariableHelp()
 
   //form variable
   sVariableHelpTexts()->insert( QStringLiteral( "form_mode" ), QCoreApplication::translate( "form_mode", "What the form is used for, like AddFeatureMode, SingleEditMode, MultiEditMode, SearchMode, AggregateSearchMode or IdentifyMode as string." ) );
+
+  // plots
+  sVariableHelpTexts()->insert( QStringLiteral( "plot_axis" ), QCoreApplication::translate( "plot_axis", "The associated plot axis, e.g. 'x' or 'y'." ) );
+  sVariableHelpTexts()->insert( QStringLiteral( "plot_axis_value" ), QCoreApplication::translate( "plot_axis_value", "The current value for the plot axis." ) );
+}
+
+
+bool QgsExpression::addVariableHelpText( const QString name, const QString &description )
+{
+  if ( sVariableHelpTexts()->contains( name ) )
+  {
+    return false;
+  }
+  sVariableHelpTexts()->insert( name, description );
+  return true;
 }
 
 QString QgsExpression::variableHelpText( const QString &variableName )
@@ -941,10 +975,8 @@ QString QgsExpression::group( const QString &name )
   return sGroups()->value( name, name );
 }
 
-QString QgsExpression::formatPreviewString( const QVariant &value, const bool htmlOutput )
+QString QgsExpression::formatPreviewString( const QVariant &value, const bool htmlOutput, int maximumPreviewLength )
 {
-  static const int MAX_PREVIEW = 60;
-
   const QString startToken = htmlOutput ? QStringLiteral( "<i>&lt;" ) : QStringLiteral( "<" );
   const QString endToken = htmlOutput ? QStringLiteral( "&gt;</i>" ) : QStringLiteral( ">" );
 
@@ -998,25 +1030,25 @@ QString QgsExpression::formatPreviewString( const QVariant &value, const bool ht
   }
   else if ( value.type() == QVariant::Date )
   {
-    QDate dt = value.toDate();
+    const QDate dt = value.toDate();
     return startToken + tr( "date: %1" ).arg( dt.toString( QStringLiteral( "yyyy-MM-dd" ) ) ) + endToken;
   }
   else if ( value.type() == QVariant::Time )
   {
-    QTime tm = value.toTime();
+    const QTime tm = value.toTime();
     return startToken + tr( "time: %1" ).arg( tm.toString( QStringLiteral( "hh:mm:ss" ) ) ) + endToken;
   }
   else if ( value.type() == QVariant::DateTime )
   {
-    QDateTime dt = value.toDateTime();
-    return startToken + tr( "datetime: %1" ).arg( dt.toString( QStringLiteral( "yyyy-MM-dd hh:mm:ss" ) ) ) + endToken;
+    const QDateTime dt = value.toDateTime();
+    return startToken + tr( "datetime: %1 (%2)" ).arg( dt.toString( QStringLiteral( "yyyy-MM-dd hh:mm:ss" ) ), dt.timeZoneAbbreviation() ) + endToken;
   }
   else if ( value.type() == QVariant::String )
   {
     const QString previewString = value.toString();
-    if ( previewString.length() > MAX_PREVIEW + 3 )
+    if ( previewString.length() > maximumPreviewLength + 3 )
     {
-      return tr( "'%1…'" ).arg( previewString.left( MAX_PREVIEW ) );
+      return tr( "'%1…'" ).arg( previewString.left( maximumPreviewLength ) );
     }
     else
     {
@@ -1035,9 +1067,9 @@ QString QgsExpression::formatPreviewString( const QVariant &value, const bool ht
         separator = QStringLiteral( "," );
 
       mapStr.append( QStringLiteral( " '%1': %2" ).arg( it.key(), formatPreviewString( it.value(), htmlOutput ) ) );
-      if ( mapStr.length() > MAX_PREVIEW - 3 )
+      if ( mapStr.length() > maximumPreviewLength - 3 )
       {
-        mapStr = tr( "%1…" ).arg( mapStr.left( MAX_PREVIEW - 2 ) );
+        mapStr = tr( "%1…" ).arg( mapStr.left( maximumPreviewLength - 2 ) );
         break;
       }
     }
@@ -1059,9 +1091,9 @@ QString QgsExpression::formatPreviewString( const QVariant &value, const bool ht
 
       listStr.append( " " );
       listStr.append( formatPreviewString( arrayValue, htmlOutput ) );
-      if ( listStr.length() > MAX_PREVIEW - 3 )
+      if ( listStr.length() > maximumPreviewLength - 3 )
       {
-        listStr = QString( tr( "%1…" ) ).arg( listStr.left( MAX_PREVIEW - 2 ) );
+        listStr = QString( tr( "%1…" ) ).arg( listStr.left( maximumPreviewLength - 2 ) );
         break;
       }
     }
@@ -1070,20 +1102,37 @@ QString QgsExpression::formatPreviewString( const QVariant &value, const bool ht
     listStr += QLatin1Char( ']' );
     return listStr;
   }
+  else if ( value.type() == QVariant::Int ||
+            value.type() == QVariant::UInt ||
+            value.type() == QVariant::LongLong ||
+            value.type() == QVariant::ULongLong ||
+            value.type() == QVariant::Double ||
+            // Qt madness with QMetaType::Float :/
+            value.type() == static_cast<QVariant::Type>( QMetaType::Float ) )
+  {
+    return QgsExpressionUtils::toLocalizedString( value );
+  }
   else
   {
-    return value.toString();
+    QString str { value.toString() };
+    if ( str.length() > maximumPreviewLength - 3 )
+    {
+      str = tr( "%1…" ).arg( str.left( maximumPreviewLength - 2 ) );
+    }
+    return str;
   }
 }
 
-QString QgsExpression::createFieldEqualityExpression( const QString &fieldName, const QVariant &value )
+QString QgsExpression::createFieldEqualityExpression( const QString &fieldName, const QVariant &value, QVariant::Type fieldType )
 {
   QString expr;
 
   if ( value.isNull() )
     expr = QStringLiteral( "%1 IS NULL" ).arg( quotedColumnRef( fieldName ) );
-  else
+  else if ( fieldType == QVariant::Type::Invalid )
     expr = QStringLiteral( "%1 = %2" ).arg( quotedColumnRef( fieldName ), quotedValue( value ) );
+  else
+    expr = QStringLiteral( "%1 = %2" ).arg( quotedColumnRef( fieldName ), quotedValue( value, fieldType ) );
 
   return expr;
 }
@@ -1177,6 +1226,122 @@ bool QgsExpression::attemptReduceToInClause( const QStringList &expressions, QSt
           }
         }
       }
+      // Collect ORs
+      else if ( const QgsExpressionNodeBinaryOperator *orOp = dynamic_cast<const QgsExpressionNodeBinaryOperator *>( e.rootNode() ) )
+      {
+
+        // OR Collector function: returns a possibly empty list of the left and right operands of an OR expression
+        std::function<QStringList( QgsExpressionNode *, QgsExpressionNode * )> collectOrs = [ &collectOrs ]( QgsExpressionNode * opLeft,  QgsExpressionNode * opRight ) -> QStringList
+        {
+          QStringList orParts;
+          if ( const QgsExpressionNodeBinaryOperator *leftOrOp = dynamic_cast<const QgsExpressionNodeBinaryOperator *>( opLeft ) )
+          {
+            if ( leftOrOp->op( ) == QgsExpressionNodeBinaryOperator::BinaryOperator::boOr )
+            {
+              orParts.append( collectOrs( leftOrOp->opLeft(), leftOrOp->opRight() ) );
+            }
+            else
+            {
+              orParts.append( leftOrOp->dump() );
+            }
+          }
+          else if ( const QgsExpressionNodeInOperator *leftInOp = dynamic_cast<const QgsExpressionNodeInOperator *>( opLeft ) )
+          {
+            orParts.append( leftInOp->dump() );
+          }
+          else
+          {
+            return {};
+          }
+
+          if ( const QgsExpressionNodeBinaryOperator *rightOrOp = dynamic_cast<const QgsExpressionNodeBinaryOperator *>( opRight ) )
+          {
+            if ( rightOrOp->op( ) == QgsExpressionNodeBinaryOperator::BinaryOperator::boOr )
+            {
+              orParts.append( collectOrs( rightOrOp->opLeft(), rightOrOp->opRight() ) );
+            }
+            else
+            {
+              orParts.append( rightOrOp->dump() );
+            }
+          }
+          else if ( const QgsExpressionNodeInOperator *rightInOp = dynamic_cast<const QgsExpressionNodeInOperator *>( opRight ) )
+          {
+            orParts.append( rightInOp->dump() );
+          }
+          else
+          {
+            return {};
+          }
+
+          return orParts;
+        };
+
+        if ( orOp->op( ) == QgsExpressionNodeBinaryOperator::BinaryOperator::boOr )
+        {
+          // Try to collect all OR conditions
+          const QStringList orParts = collectOrs( orOp->opLeft(), orOp->opRight() );
+          if ( orParts.isEmpty() )
+          {
+            return false;
+          }
+          else
+          {
+            QString orPartsResult;
+            if ( attemptReduceToInClause( orParts, orPartsResult ) )
+            {
+              // Need to check if the IN field is correct,
+              QgsExpression inExp { orPartsResult };
+              if ( ! inExp.rootNode() )
+              {
+                return false;
+              }
+
+              if ( const QgsExpressionNodeInOperator *inOpInner = dynamic_cast<const QgsExpressionNodeInOperator *>( inExp.rootNode() ) )
+              {
+                if ( inOpInner->node()->nodeType() != QgsExpressionNode::NodeType::ntColumnRef || inOpInner->node()->referencedColumns().size() < 1 )
+                {
+                  return false;
+                }
+
+                const QString innerInfield { inOpInner->node()->referencedColumns().values().first() };
+
+                if ( first )
+                {
+                  inField = innerInfield;
+                  first = false;
+                }
+
+                if ( innerInfield != inField )
+                {
+                  return false;
+                }
+                else
+                {
+                  const auto constInnerValuesList { inOpInner->list()->list() };
+                  for ( const auto &innerInValueNode : std::as_const( constInnerValuesList ) )
+                  {
+                    values.append( innerInValueNode->dump() );
+                  }
+                }
+
+              }
+              else
+              {
+                return false;
+              }
+            }
+            else
+            {
+              return false;
+            }
+          }
+        }
+        else
+        {
+          return false;
+        }
+      }
       else
       {
         return false;
@@ -1195,6 +1360,43 @@ const QgsExpressionNode *QgsExpression::rootNode() const
 bool QgsExpression::isField() const
 {
   return d->mRootNode && d->mRootNode->nodeType() == QgsExpressionNode::ntColumnRef;
+}
+
+int QgsExpression::expressionToLayerFieldIndex( const QString &expression, const QgsVectorLayer *layer )
+{
+  if ( !layer )
+    return -1;
+
+  // easy check first -- lookup field directly.
+  int attrIndex = layer->fields().lookupField( expression.trimmed() );
+  if ( attrIndex >= 0 )
+    return attrIndex;
+
+  // may still be a simple field expression, just one which is enclosed in "" or similar
+  QgsExpression candidate( expression );
+  if ( candidate.isField() )
+  {
+    const QString fieldName =  qgis::down_cast<const QgsExpressionNodeColumnRef *>( candidate.rootNode() )->name();
+    return layer->fields().lookupField( fieldName );
+  }
+  return -1;
+}
+
+QString QgsExpression::quoteFieldExpression( const QString &expression, const QgsVectorLayer *layer )
+{
+  if ( !layer )
+    return expression;
+
+  const int fieldIndex = QgsExpression::expressionToLayerFieldIndex( expression, layer );
+  if ( !expression.contains( '\"' ) && fieldIndex != -1 )
+  {
+    // retrieve actual field name from layer, so that we correctly remove any unwanted leading/trailing whitespace
+    return QgsExpression::quotedColumnRef( layer->fields().at( fieldIndex ).name() );
+  }
+  else
+  {
+    return expression;
+  }
 }
 
 QList<const QgsExpressionNode *> QgsExpression::nodes() const

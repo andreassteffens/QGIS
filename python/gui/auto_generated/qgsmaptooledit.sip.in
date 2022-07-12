@@ -11,7 +11,7 @@
 
 class QgsMapToolEdit: QgsMapTool
 {
-%Docstring
+%Docstring(signature="appended")
 Base class for map tools that edit vector geometry
 %End
 
@@ -23,10 +23,28 @@ Base class for map tools that edit vector geometry
 
     virtual Flags flags() const;
 
-    double defaultZValue() const;
+    static double defaultZValue();
 %Docstring
-Returns default Z value
-Use for set Z coordinate to new vertex for 2.5d geometries
+Returns default Z value.
+Used for setting Z coordinate to new vertex.
+%End
+
+    static double defaultMValue();
+%Docstring
+Returns default M value.
+Used for setting M coordinate to new vertex.
+
+.. versionadded:: 3.20
+%End
+
+    QgsGeometryRubberBand *createGeometryRubberBand( QgsWkbTypes::GeometryType geometryType = QgsWkbTypes::LineGeometry, bool alternativeBand = false ) const /Factory/;
+%Docstring
+Creates a  geometry rubber band with the color/line width from
+the QGIS settings. The caller takes ownership of the
+returned object
+
+:param geometryType:
+:param alternativeBand: if ``True``, rubber band will be set with more transparency and a dash pattern. default is ``False``.
 %End
 
   protected:
@@ -54,8 +72,6 @@ returned object
 :param alternativeBand: if ``True``, rubber band will be set with more transparency and a dash pattern. default is ``False``.
 %End
 
-    QgsGeometryRubberBand *createGeometryRubberBand( QgsWkbTypes::GeometryType geometryType = QgsWkbTypes::LineGeometry, bool alternativeBand = false ) const /Factory/;
-
     QgsVectorLayer *currentVectorLayer();
 %Docstring
 Returns the current vector layer of the map canvas or 0
@@ -74,7 +90,7 @@ Adds a list of ``vertices`` to other features to keep topology up to date, e.g. 
 The ``vertices`` list specifies a set of topological points to add, in the layer's coordinate reference system.
 
 .. deprecated:: QGIS 3.12
-   - will be removed in QGIS 4.0. Use the variant which accepts QgsPoint objects instead of QgsPointXY.
+   - will be removed in QGIS 4.0. Use the variant which accepts :py:class:`QgsPoint` objects instead of :py:class:`QgsPointXY`.
 %End
 
     TopologicalResult addTopologicalPoints( const QVector<QgsPoint> &vertices );

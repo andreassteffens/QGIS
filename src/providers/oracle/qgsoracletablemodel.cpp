@@ -16,22 +16,52 @@
  ***************************************************************************/
 
 #include "qgsoracletablemodel.h"
-#include "qgsdataitem.h"
 #include "qgslogger.h"
 #include "qgsapplication.h"
+#include "qgsiconutils.h"
 
-QgsOracleTableModel::QgsOracleTableModel()
+QgsOracleTableModel::QgsOracleTableModel( QObject *parent )
+  : QgsAbstractDbTableModel( parent )
 {
-  QStringList headerLabels;
-  headerLabels << tr( "Owner" );
-  headerLabels << tr( "Table" );
-  headerLabels << tr( "Type" );
-  headerLabels << tr( "Geometry column" );
-  headerLabels << tr( "SRID" );
-  headerLabels << tr( "Primary key column" );
-  headerLabels << tr( "Select at id" );
-  headerLabels << tr( "Sql" );
-  setHorizontalHeaderLabels( headerLabels );
+  mColumns << tr( "Owner" )
+           << tr( "Table" )
+           << tr( "Type" )
+           << tr( "Geometry column" )
+           << tr( "SRID" )
+           << tr( "Primary key column" )
+           << tr( "Select at id" )
+           << tr( "SQL" );
+  setHorizontalHeaderLabels( mColumns );
+}
+
+QStringList QgsOracleTableModel::columns() const
+{
+  return mColumns;
+}
+
+int QgsOracleTableModel::defaultSearchColumn() const
+{
+  return static_cast<int>( DbtmTable );
+}
+
+bool QgsOracleTableModel::searchableColumn( int column ) const
+{
+  Columns col = static_cast<Columns>( column );
+  switch ( col )
+  {
+    case DbtmOwner:
+    case DbtmTable:
+    case DbtmGeomCol:
+    case DbtmType:
+    case DbtmSrid:
+    case DbtmSql:
+      return true;
+
+    case DbtmPkCol:
+    case DbtmSelectAtId:
+      return false;
+  }
+  return false;
 }
 
 void QgsOracleTableModel::addTableEntry( const QgsOracleLayerProperty &layerProperty )
@@ -69,7 +99,9 @@ void QgsOracleTableModel::addTableEntry( const QgsOracleLayerProperty &layerProp
     }
 
     QStandardItem *ownerNameItem = new QStandardItem( layerProperty.ownerName );
-    QStandardItem *typeItem = new QStandardItem( iconForWkbType( wkbType ), wkbType == QgsWkbTypes::Unknown ? tr( "Select…" ) : QgsOracleConn::displayStringForWkbType( wkbType ) );
+    QStandardItem *typeItem = new QStandardItem(
+      QgsIconUtils::iconForWkbType( wkbType ),
+      wkbType == QgsWkbTypes::Unknown ? tr( "Select…" ) : QgsWkbTypes::translatedDisplayString( wkbType ) );
     typeItem->setData( wkbType == QgsWkbTypes::Unknown, Qt::UserRole + 1 );
     typeItem->setData( wkbType, Qt::UserRole + 2 );
     if ( wkbType == QgsWkbTypes::Unknown )
@@ -220,29 +252,6 @@ void QgsOracleTableModel::setSql( const QModelIndex &index, const QString &sql )
   }
 }
 
-QIcon QgsOracleTableModel::iconForWkbType( QgsWkbTypes::Type type )
-{
-  switch ( QgsWkbTypes::geometryType( type ) )
-  {
-    case QgsWkbTypes::PointGeometry:
-      return QgsApplication::getThemeIcon( "/mIconPointLayer.svg" );
-
-    case QgsWkbTypes::LineGeometry:
-      return QgsApplication::getThemeIcon( "/mIconLineLayer.svg" );
-
-    case QgsWkbTypes::PolygonGeometry:
-      return QgsApplication::getThemeIcon( "/mIconPolygonLayer.svg" );
-
-    case QgsWkbTypes::UnknownGeometry:
-      return QgsApplication::getThemeIcon( "/mIconLayer.png" );
-
-    case QgsWkbTypes::NullGeometry:
-      return QgsApplication::getThemeIcon( "/mIconTableLayer.svg" );
-
-  }
-  return QgsApplication::getThemeIcon( "/mIconTableLayer.png" );
-}
-
 bool QgsOracleTableModel::setData( const QModelIndex &idx, const QVariant &value, int role )
 {
   if ( !QStandardItemModel::setData( idx, value, role ) )
@@ -272,7 +281,7 @@ bool QgsOracleTableModel::setData( const QModelIndex &idx, const QVariant &value
         tip = tr( "Select a primary key" );
     }
 
-    for ( int i = 0; i < DbtmColumns; i++ )
+    for ( int i = 0; i < columnCount(); i++ )
     {
       QStandardItem *item = itemFromIndex( idx.sibling( idx.row(), i ) );
       if ( tip.isEmpty() )

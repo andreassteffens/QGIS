@@ -47,6 +47,14 @@ class CORE_EXPORT QgsExpressionNodeUnaryOperator : public QgsExpressionNode
     {}
     ~QgsExpressionNodeUnaryOperator() override { delete mOperand; }
 
+#ifdef SIP_RUN
+    SIP_PYOBJECT __repr__();
+    % MethodCode
+    QString str = QStringLiteral( "<QgsExpressionNodeUnaryOperator: %1>" ).arg( sipCpp->text() );
+    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
+    % End
+#endif
+
     /**
      * Returns the unary operator.
      */
@@ -139,6 +147,14 @@ class CORE_EXPORT QgsExpressionNodeBinaryOperator : public QgsExpressionNode
       , mOpRight( opRight )
     {}
     ~QgsExpressionNodeBinaryOperator() override { delete mOpLeft; delete mOpRight; }
+
+#ifdef SIP_RUN
+    SIP_PYOBJECT __repr__();
+    % MethodCode
+    QString str = QStringLiteral( "<QgsExpressionNodeBinaryOperator: %1>" ).arg( sipCpp->text() );
+    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
+    % End
+#endif
 
     /**
      * Returns the binary operator.
@@ -258,6 +274,69 @@ class CORE_EXPORT QgsExpressionNodeIndexOperator : public QgsExpressionNode
 };
 
 /**
+ * \brief SQL-like BETWEEN and NOT BETWEEN predicates.
+ * \ingroup core
+ * \since QGIS 3.26
+ */
+class CORE_EXPORT QgsExpressionNodeBetweenOperator: public QgsExpressionNode
+{
+  public:
+
+    /**
+     * This node tests if the result of \a node is between the result of \a nodeLowerBound and \a nodeHigherBound nodes. Optionally it can be inverted with \a negate which by default is FALSE.
+     */
+    QgsExpressionNodeBetweenOperator( QgsExpressionNode *node SIP_TRANSFER, QgsExpressionNode *nodeLowerBound SIP_TRANSFER, QgsExpressionNode *nodeHigherBound SIP_TRANSFER, bool negate = false )
+      : mNode( node )
+      , mLowerBound( nodeLowerBound )
+      , mHigherBound( nodeHigherBound )
+      , mNegate( negate )
+    {}
+
+    ~QgsExpressionNodeBetweenOperator() override;
+
+    /**
+     * Returns the expression node.
+     */
+    QgsExpressionNode *node() const { return mNode; }
+
+
+    QgsExpressionNode::NodeType nodeType() const override;
+    bool prepareNode( QgsExpression *parent, const QgsExpressionContext *context ) override;
+    QVariant evalNode( QgsExpression *parent, const QgsExpressionContext *context ) override;
+    QString dump() const override;
+
+    QSet<QString> referencedColumns() const override;
+    QSet<QString> referencedVariables() const override;
+    QSet<QString> referencedFunctions() const override;
+    QList<const QgsExpressionNode *> nodes() const override; SIP_SKIP
+    bool needsGeometry() const override;
+    QgsExpressionNode *clone() const override SIP_FACTORY;
+    bool isStatic( QgsExpression *parent, const QgsExpressionContext *context ) const override;
+
+    /**
+     * Returns the lower bound expression node of the range.
+     */
+    QgsExpressionNode *lowerBound() const;
+
+    /**
+     * Returns the higher bound expression node of the range.
+     */
+    QgsExpressionNode *higherBound() const;
+
+    /**
+     * Returns TRUE if the predicate is an exclusion test (NOT BETWEEN).
+     */
+    bool negate() const;
+
+  private:
+    QgsExpressionNode *mNode = nullptr;
+    QgsExpressionNode *mLowerBound = nullptr;
+    QgsExpressionNode *mHigherBound = nullptr;
+    bool mNegate = false;
+
+};
+
+/**
  * \brief An expression node for value IN or NOT IN clauses.
  * \ingroup core
  */
@@ -325,6 +404,24 @@ class CORE_EXPORT QgsExpressionNodeFunction : public QgsExpressionNode
 
     ~QgsExpressionNodeFunction() override;
 
+#ifdef SIP_RUN
+    SIP_PYOBJECT __repr__();
+    % MethodCode
+    QString function;
+    if ( QgsExpressionFunction *fd = QgsExpression::QgsExpression::Functions()[sipCpp->fnIndex()] )
+    {
+      function = fd->name();
+    }
+    else
+    {
+      function = QString::number( sipCpp->fnIndex() );
+    }
+
+    QString str = QStringLiteral( "<QgsExpressionNodeFunction: %1>" ).arg( function );
+    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
+    % End
+#endif
+
     /**
      * Returns the index of the node's function.
      */
@@ -372,6 +469,14 @@ class CORE_EXPORT QgsExpressionNodeLiteral : public QgsExpressionNode
       : mValue( value )
     {}
 
+#ifdef SIP_RUN
+    SIP_PYOBJECT __repr__();
+    % MethodCode
+    QString str = QStringLiteral( "<QgsExpressionNodeLiteral: %1>" ).arg( sipCpp->valueAsString() );
+    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
+    % End
+#endif
+
     //! The value of the literal.
     inline QVariant value() const { return mValue; }
 
@@ -388,6 +493,13 @@ class CORE_EXPORT QgsExpressionNodeLiteral : public QgsExpressionNode
     bool needsGeometry() const override;
     QgsExpressionNode *clone() const override SIP_FACTORY;
     bool isStatic( QgsExpression *parent, const QgsExpressionContext *context ) const override;
+
+    /**
+     * Returns a string representation of the node's literal value.
+     *
+     * \since QGIS 3.20
+     */
+    QString valueAsString() const;
 
   private:
     QVariant mValue;
@@ -409,6 +521,14 @@ class CORE_EXPORT QgsExpressionNodeColumnRef : public QgsExpressionNode
       : mName( name )
       , mIndex( -1 )
     {}
+
+#ifdef SIP_RUN
+    SIP_PYOBJECT __repr__();
+    % MethodCode
+    QString str = QStringLiteral( "<QgsExpressionNodeColumnRef: \"%1\">" ).arg( sipCpp->name() );
+    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
+    % End
+#endif
 
     //! The name of the column.
     QString name() const { return mName; }

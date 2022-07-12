@@ -22,7 +22,7 @@ class QgsSymbolLayer
 %ConvertToSubClassCode
     switch ( sipCpp->type() )
     {
-      case QgsSymbol::Marker:
+      case Qgis::SymbolType::Marker:
         if ( sipCpp->layerType() == "EllipseMarker" )
           sipType = sipType_QgsEllipseSymbolLayer;
         else if ( sipCpp->layerType() == "FontMarker" )
@@ -35,6 +35,8 @@ class QgsSymbolLayer
           sipType = sipType_QgsSvgMarkerSymbolLayer;
         else if ( sipCpp->layerType() == "RasterMarker" )
           sipType = sipType_QgsRasterMarkerSymbolLayer;
+        else if ( sipCpp->layerType() == "AnimatedMarker" )
+          sipType = sipType_QgsAnimatedMarkerSymbolLayer;
         else if ( sipCpp->layerType() == "VectorField" )
           sipType = sipType_QgsVectorFieldSymbolLayer;
         else if ( sipCpp->layerType() == "MaskMarker" )
@@ -43,7 +45,7 @@ class QgsSymbolLayer
           sipType = sipType_QgsMarkerSymbolLayer;
         break;
 
-      case QgsSymbol::Line:
+      case Qgis::SymbolType::Line:
         if ( sipCpp->layerType() == "MarkerLine" )
           sipType = sipType_QgsMarkerLineSymbolLayer;
         else if ( sipCpp->layerType() == "SimpleLine" )
@@ -52,11 +54,17 @@ class QgsSymbolLayer
           sipType = sipType_QgsHashedLineSymbolLayer;
         else if ( sipCpp->layerType() == "ArrowLine" )
           sipType = sipType_QgsArrowSymbolLayer;
+        else if ( sipCpp->layerType() == "InterpolatedLine" )
+          sipType = sipType_QgsInterpolatedLineSymbolLayer;
+        else if ( sipCpp->layerType() == "RasterLine" )
+          sipType = sipType_QgsRasterLineSymbolLayer;
+        else if ( sipCpp->layerType() == "Lineburst" )
+          sipType = sipType_QgsLineburstSymbolLayer;
         else
           sipType = sipType_QgsLineSymbolLayer;
         break;
 
-      case QgsSymbol::Fill:
+      case Qgis::SymbolType::Fill:
         if ( sipCpp->layerType() == "SimpleFill" )
           sipType = sipType_QgsSimpleFillSymbolLayer;
         else if ( sipCpp->layerType() == "LinePatternFill" )
@@ -79,7 +87,7 @@ class QgsSymbolLayer
           sipType = sipType_QgsFillSymbolLayer;
         break;
 
-      case QgsSymbol::Hybrid:
+      case Qgis::SymbolType::Hybrid:
         sipType = sipType_QgsGeometryGeneratorSymbolLayer;
         break;
     }
@@ -148,6 +156,16 @@ class QgsSymbolLayer
       PropertyFontFamily,
       PropertyFontStyle,
       PropertyDashPatternOffset,
+      PropertyTrimStart,
+      PropertyTrimEnd,
+      PropertyLineStartWidthValue,
+      PropertyLineEndWidthValue,
+      PropertyLineStartColorValue,
+      PropertyLineEndColorValue,
+      PropertyMarkerClipping,
+      PropertyRandomOffsetX,
+      PropertyRandomOffsetY,
+      PropertyLineClipping,
     };
 
     static const QgsPropertiesDefinition &propertyDefinitions();
@@ -160,6 +178,13 @@ Returns the symbol layer property definitions.
     virtual ~QgsSymbolLayer();
 
 
+
+    virtual Qgis::SymbolLayerFlags flags() const;
+%Docstring
+Returns flags which control the symbol layer's behavior.
+
+.. versionadded:: 3.22
+%End
 
     bool enabled() const;
 %Docstring
@@ -183,38 +208,95 @@ when desired.
 
     virtual QColor color() const;
 %Docstring
-The fill color.
+Returns the "representative" color of the symbol layer.
+
+Depending on the symbol layer type, this will have different meaning. For instance, a line
+symbol layer will generally return the stroke color of the layer, while a fill symbol layer
+will return the "fill" color instead of stroke.
+
+Some symbol layer types will return an invalid QColor if they have no representative
+color associated (e.g. raster image based symbol layers).
+
+.. seealso:: :py:func:`setColor`
+
+.. seealso:: :py:func:`strokeColor`
+
+.. seealso:: :py:func:`fillColor`
 %End
 
     virtual void setColor( const QColor &color );
 %Docstring
-The fill color.
+Sets the "representative" color for the symbol layer.
+
+Depending on the symbol layer type, this will have different meaning. For instance, a line
+symbol layer will generally set the stroke color of the layer, while a fill symbol layer
+will set the "fill" color instead of stroke.
+
+.. seealso:: :py:func:`color`
+
+.. seealso:: :py:func:`setStrokeColor`
+
+.. seealso:: :py:func:`setFillColor`
 %End
 
     virtual void setStrokeColor( const QColor &color );
 %Docstring
-Set stroke color. Supported by marker and fill layers.
+Sets the stroke ``color`` for the symbol layer.
+
+This property is not supported by all symbol layer types, only those with a stroke component.
+
+.. seealso:: :py:func:`strokeColor`
+
+.. seealso:: :py:func:`setColor`
+
+.. seealso:: :py:func:`setFillColor`
 
 .. versionadded:: 2.1
 %End
 
     virtual QColor strokeColor() const;
 %Docstring
-Gets stroke color. Supported by marker and fill layers.
+Returns the stroke color for the symbol layer.
+
+This property is not supported by all symbol layer types, only those with a stroke component. Symbol
+layers without a stroke component will return an invalid QColor.
+
+.. seealso:: :py:func:`setStrokeColor`
+
+.. seealso:: :py:func:`color`
+
+.. seealso:: :py:func:`fillColor`
 
 .. versionadded:: 2.1
 %End
 
     virtual void setFillColor( const QColor &color );
 %Docstring
-Set fill color. Supported by marker and fill layers.
+Sets the fill ``color`` for the symbol layer.
+
+This property is not supported by all symbol layer types, only those with a fill component.
+
+.. seealso:: :py:func:`fillColor`
+
+.. seealso:: :py:func:`setColor`
+
+.. seealso:: :py:func:`setStrokeColor`
 
 .. versionadded:: 2.1
 %End
 
     virtual QColor fillColor() const;
 %Docstring
-Gets fill color. Supported by marker and fill layers.
+Returns the fill color for the symbol layer.
+
+This property is not supported by all symbol layer types, only those with a fill component. Symbol
+layers without a fill component will return an invalid QColor.
+
+.. seealso:: :py:func:`setFillColor`
+
+.. seealso:: :py:func:`color`
+
+.. seealso:: :py:func:`strokeColor`
 
 .. versionadded:: 2.1
 %End
@@ -307,11 +389,14 @@ The default implementation does nothing.
 Shall be reimplemented by subclasses to create a deep copy of the instance.
 %End
 
-    virtual void toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap &props ) const;
+    virtual void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props ) const;
+%Docstring
+Saves the symbol layer as SLD
+%End
 
     virtual QString ogrFeatureStyle( double mmScaleFactor, double mapUnitScaleFactor ) const;
 
-    virtual QgsStringMap properties() const = 0;
+    virtual QVariantMap properties() const = 0;
 %Docstring
 Should be reimplemented by subclasses to return a string map that
 contains the configuration information for the symbol layer. This
@@ -330,15 +415,38 @@ Returns the symbol's sub symbol, if present.
 Sets layer's subsymbol. takes ownership of the passed symbol
 %End
 
-    QgsSymbol::SymbolType type() const;
+    Qgis::SymbolType type() const;
 
     virtual bool isCompatibleWithSymbol( QgsSymbol *symbol ) const;
 %Docstring
 Returns if the layer can be used below the specified symbol
 %End
 
+    virtual bool canCauseArtifactsBetweenAdjacentTiles() const;
+%Docstring
+Returns ``True`` if the symbol layer rendering can cause visible artifacts across a single feature
+when the feature is rendered as a series of adjacent map tiles each containing a portion of the feature's geometry.
+
+The default implementation returns ``False``.
+
+.. versionadded:: 3.18
+%End
+
     void setLocked( bool locked );
+%Docstring
+Sets whether the layer's colors are locked.
+
+If ``locked`` is ``True`` then the symbol layer colors are locked and the layer will ignore any symbol-level color changes.
+
+.. seealso:: :py:func:`isLocked`
+%End
+
     bool isLocked() const;
+%Docstring
+Returns ``True`` if the symbol layer colors are locked and the layer will ignore any symbol-level color changes.
+
+.. seealso:: :py:func:`setLocked`
+%End
 
     virtual double estimateMaxBleed( const QgsRenderContext &context ) const;
 %Docstring
@@ -368,7 +476,7 @@ symbol layer subclasses will interpret this in different ways, e.g., a marker sy
 layer may use it to specify the units for the marker size, while a line symbol
 layer may use it to specify the units for the line width.
 
-:return: output unit, or QgsUnitTypes.RenderUnknownUnit if the symbol layer contains mixed units
+:return: output unit, or :py:class:`QgsUnitTypes`.RenderUnknownUnit if the symbol layer contains mixed units
 
 .. seealso:: :py:func:`setOutputUnit`
 %End
@@ -512,7 +620,7 @@ Sets the symbol layer's property collection, used for data defined overrides.
 
 :param collection: property collection. Existing properties will be replaced.
 
-.. seealso:: :py:func:`properties`
+.. seealso:: :py:func:`dataDefinedProperties`
 
 .. versionadded:: 3.0
 %End
@@ -524,7 +632,7 @@ Returns ``True`` if the symbol layer (or any of its sub-symbols) contains data d
 .. versionadded:: 3.4.5
 %End
 
-    virtual QgsSymbolLayerReferenceList masks() const;
+    virtual QList<QgsSymbolLayerReference> masks() const;
 %Docstring
 Returns masks defined by this symbol layer.
 This is a list of symbol layers of other layers that should be occluded.
@@ -532,9 +640,23 @@ This is a list of symbol layers of other layers that should be occluded.
 .. versionadded:: 3.12
 %End
 
+    virtual void prepareMasks( const QgsSymbolRenderContext &context );
+%Docstring
+Prepares all mask internal objects according to what is defined in ``context``
+This should be called prior to calling :py:func:`~QgsSymbolLayer.startRender` method.
+
+.. versionadded:: 3.26
+%End
+
   protected:
 
-    QgsSymbolLayer( QgsSymbol::SymbolType type, bool locked = false );
+    QgsSymbolLayer( Qgis::SymbolType type, bool locked = false );
+%Docstring
+Constructor for QgsSymbolLayer.
+
+:param type: specifies the associated symbol type
+:param locked: if ``True``, then symbol layer colors will be locked and will ignore any symbol-level color changes.
+%End
 
 
 
@@ -542,7 +664,8 @@ This is a list of symbol layers of other layers that should be occluded.
 
 
 
-    void restoreOldDataDefinedProperties( const QgsStringMap &stringMap );
+
+    void restoreOldDataDefinedProperties( const QVariantMap &stringMap );
 %Docstring
 Restores older data defined properties from string map.
 
@@ -572,7 +695,7 @@ Copies paint effect of this layer to another symbol layer
 
 class QgsMarkerSymbolLayer : QgsSymbolLayer
 {
-%Docstring
+%Docstring(signature="appended")
 Abstract base class for marker symbol layers.
 %End
 
@@ -723,7 +846,7 @@ Returns the map unit scale for the symbol's size.
 .. seealso:: :py:func:`sizeUnit`
 %End
 
-    void setScaleMethod( QgsSymbol::ScaleMethod scaleMethod );
+    void setScaleMethod( Qgis::ScaleMethod scaleMethod );
 %Docstring
 Sets the method to use for scaling the marker's size.
 
@@ -732,7 +855,7 @@ Sets the method to use for scaling the marker's size.
 .. seealso:: :py:func:`scaleMethod`
 %End
 
-    QgsSymbol::ScaleMethod scaleMethod() const;
+    Qgis::ScaleMethod scaleMethod() const;
 %Docstring
 Returns the method to use for scaling the marker's size.
 
@@ -857,10 +980,10 @@ the vertical anchor point is aligned with the marker's desired location.
 .. seealso:: :py:func:`horizontalAnchorPoint`
 %End
 
-    virtual void toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap &props ) const;
+    virtual void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props ) const;
 
 
-    virtual void writeSldMarker( QDomDocument &doc, QDomElement &element, const QgsStringMap &props ) const;
+    virtual void writeSldMarker( QDomDocument &doc, QDomElement &element, const QVariantMap &props ) const;
 %Docstring
 Writes the symbol layer definition as a SLD XML element.
 
@@ -1201,8 +1324,6 @@ Default method to render polygon
   private:
     QgsFillSymbolLayer( const QgsFillSymbolLayer &other );
 };
-
-
 
 
 /************************************************************************

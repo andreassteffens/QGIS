@@ -155,7 +155,7 @@ void QgsGraphicsViewMouseHandles::drawSelectedItemBounds( QPainter *painter )
   QList< QGraphicsItem * > itemsToDraw;
   expandItemList( selectedItems, itemsToDraw );
 
-  for ( QGraphicsItem *item : qgis::as_const( itemsToDraw ) )
+  for ( QGraphicsItem *item : std::as_const( itemsToDraw ) )
   {
     //get bounds of selected item
     QPolygonF itemBounds;
@@ -493,15 +493,10 @@ void QgsGraphicsViewMouseHandles::resetStatusBar()
 {
   const QList<QGraphicsItem *> selectedItems = selectedSceneItems( false );
   int selectedCount = selectedItems.size();
-  if ( selectedCount > 1 )
+  if ( selectedCount )
   {
     //set status bar message to count of selected items
-    showStatusMessage( tr( "%1 items selected" ).arg( selectedCount ) );
-  }
-  else if ( selectedCount == 1 )
-  {
-    //set status bar message to count of selected items
-    showStatusMessage( tr( "1 item selected" ) );
+    showStatusMessage( tr( "%n item(s) selected", nullptr, selectedCount ) );
   }
   else
   {

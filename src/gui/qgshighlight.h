@@ -15,20 +15,24 @@
 #ifndef QGSHIGHLIGHT_H
 #define QGSHIGHLIGHT_H
 
+#include "qgis_gui.h"
+#include "qgsfeature.h"
+#include "qgsrendercontext.h"
 #include "qgsmapcanvasitem.h"
 #include "qgsgeometry.h"
-#include "qgssymbol.h"
 #include <QBrush>
 #include <QColor>
 #include <QList>
 #include <QPen>
 #include <QPainter>
 #include <QPainterPath>
-#include "qgis_gui.h"
+#include <QPointer>
 
 class QgsMapLayer;
 class QgsVectorLayer;
 class QgsSymbol;
+class QgsFeatureRenderer;
+
 
 #ifdef SIP_RUN
 % ModuleHeaderCode
@@ -66,7 +70,13 @@ class GUI_EXPORT QgsHighlight : public QgsMapCanvasItem
 #ifdef SIP_RUN
     SIP_CONVERT_TO_SUBCLASS_CODE
     if ( dynamic_cast<QgsHighlight *>( sipCpp ) )
+    {
       sipType = sipType_QgsHighlight;
+      // We need to tweak the pointer as sip believes it is single inheritance
+      // from QgsMapCanvasItem, but the raw address of QgsHighlight (sipCpp)
+      // is actually a QObject
+      *sipCppRet = dynamic_cast<QgsHighlight *>( sipCpp );
+    }
     else
       sipType = nullptr;
     SIP_END
@@ -168,26 +178,38 @@ class GUI_EXPORT QgsHighlight : public QgsMapCanvasItem
     //! recalculates needed rectangle
     void updateRect();
 
+  private slots:
+    void updateTransformedGeometry();
+
   private:
+    enum PointSymbol
+    {
+      Square,
+      Circle
+    };
+
     void init();
     void setSymbol( QgsSymbol *symbol, const QgsRenderContext &context, const QColor &color, const QColor &fillColor );
     double getSymbolWidth( const QgsRenderContext &context, double width, QgsUnitTypes::RenderUnit unit );
     //! Gets renderer for current color mode and colors. The renderer should be freed by caller.
     std::unique_ptr< QgsFeatureRenderer > createRenderer( QgsRenderContext &context, const QColor &color, const QColor &fillColor );
-    void paintPoint( QPainter *p, const QgsPointXY &point );
+    void paintPoint( QgsRenderContext &context, const QgsPoint *point, double size, QgsUnitTypes::RenderUnit sizeUnit, PointSymbol symbol );
     void paintLine( QPainter *p, QgsPolylineXY line );
     void paintPolygon( QPainter *p, const QgsPolygonXY &polygon );
+    QgsRenderContext createRenderContext();
 
     int mWidth = 1; // line / stroke width property
     QColor mColor; // line / stroke color property
     QColor mFillColor; // line / stroke fillColor property
     QBrush mBrush;
     QPen mPen;
-    QgsGeometry *mGeometry = nullptr;
+    QgsGeometry mOriginalGeometry;
+    QgsGeometry mGeometry;
     QPointer< QgsMapLayer > mLayer;
     QgsFeature mFeature;
     double mBuffer = 0; // line / stroke buffer in pixels
     double mMinWidth = 0; // line / stroke minimum width in pixels
+    QgsRenderContext mRenderContext;
 };
 
 #endif

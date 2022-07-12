@@ -8,11 +8,12 @@
 
 
 
+
 class QgsScopedExpressionFunction : QgsExpressionFunction
 {
-%Docstring
-Expression function for use within a QgsExpressionContextScope. This differs from a
-standard QgsExpression.Function in that it requires an implemented
+%Docstring(signature="appended")
+Expression function for use within a :py:class:`QgsExpressionContextScope`. This differs from a
+standard :py:class:`QgsExpression`.Function in that it requires an implemented
 :py:func:`~clone` method.
 
 .. versionadded:: 2.12
@@ -76,13 +77,13 @@ Returns a clone of the function.
 
 class QgsExpressionContextScope
 {
-%Docstring
+%Docstring(signature="appended")
 Single scope for storing variables and functions for use within a :py:class:`QgsExpressionContext`.
 Examples include a project's scope, which could contain information about the current project such as
-the project file's location. QgsExpressionContextScope can encapsulate both variables (static values)
+the project file's location. :py:class:`QgsExpressionContextScope` can encapsulate both variables (static values)
 and functions(which are calculated only when an expression is evaluated).
 
-See QgsExpressionContextUtils for helper methods for working with QgsExpressionContextScope objects.
+See :py:class:`QgsExpressionContextUtils` for helper methods for working with :py:class:`QgsExpressionContextScope` objects.
 
 .. versionadded:: 2.12
 %End
@@ -334,6 +335,49 @@ Removes any feature associated with the scope.
 .. versionadded:: 3.0
 %End
 
+    bool hasGeometry() const;
+%Docstring
+Returns ``True`` if the scope has a geometry associated with it.
+
+.. seealso:: :py:func:`geometry`
+
+.. versionadded:: 3.24
+%End
+
+    QgsGeometry geometry() const;
+%Docstring
+Sets the geometry associated with the scope.
+
+.. seealso:: :py:func:`setGeometry`
+
+.. seealso:: :py:func:`hasGeometry`
+
+.. versionadded:: 3.24
+%End
+
+    void setGeometry( const QgsGeometry &geometry );
+%Docstring
+Convenience function for setting a ``geometry`` for the scope. Any existing
+geometry set by the scope will be overwritten.
+
+.. seealso:: :py:func:`removeGeometry`
+
+.. seealso:: :py:func:`geometry`
+
+.. versionadded:: 3.24
+%End
+
+    void removeGeometry();
+%Docstring
+Removes any geometry associated with the scope.
+
+.. seealso:: :py:func:`setGeometry`
+
+.. seealso:: :py:func:`hasGeometry`
+
+.. versionadded:: 3.24
+%End
+
     void setFields( const QgsFields &fields );
 %Docstring
 Convenience function for setting a fields for the scope. Any existing
@@ -364,14 +408,14 @@ Writes scope variables to an XML ``element``.
 
 class QgsExpressionContext
 {
-%Docstring
-Expression contexts are used to encapsulate the parameters around which a QgsExpression should
-be evaluated. QgsExpressions can then utilize the information stored within a context to contextualise
-their evaluated result. A QgsExpressionContext consists of a stack of QgsExpressionContextScope objects,
+%Docstring(signature="appended")
+Expression contexts are used to encapsulate the parameters around which a :py:class:`QgsExpression` should
+be evaluated. :py:class:`QgsExpressions` can then utilize the information stored within a context to contextualise
+their evaluated result. A :py:class:`QgsExpressionContext` consists of a stack of :py:class:`QgsExpressionContextScope` objects,
 where scopes added later to the stack will override conflicting variables and functions from scopes
 lower in the stack.
 
-See QgsExpressionContextUtils for helper methods for working with QgsExpressionContext objects.
+See :py:class:`QgsExpressionContextUtils` for helper methods for working with :py:class:`QgsExpressionContext` objects.
 
 .. versionadded:: 2.12
 %End
@@ -693,6 +737,35 @@ Convenience function for retrieving the feature for the context, if set.
 .. seealso:: :py:func:`setFeature`
 %End
 
+    void setGeometry( const QgsGeometry &geometry );
+%Docstring
+Convenience function for setting a ``geometry`` for the context. The geometry
+will be set within the last scope of the context, so will override any
+existing geometries within the context.
+
+.. seealso:: :py:func:`geometry`
+
+.. versionadded:: 3.24
+%End
+
+    bool hasGeometry() const;
+%Docstring
+Returns ``True`` if the context has a geometry associated with it.
+
+.. seealso:: :py:func:`geometry`
+
+.. versionadded:: 3.24
+%End
+
+    QgsGeometry geometry() const;
+%Docstring
+Convenience function for retrieving the geometry for the context, if set.
+
+.. seealso:: :py:func:`setGeometry`
+
+.. versionadded:: 3.24
+%End
+
     void setFields( const QgsFields &fields );
 %Docstring
 Convenience function for setting a fields for the context. The fields
@@ -785,12 +858,37 @@ Clears all cached values from the context.
 .. versionadded:: 2.16
 %End
 
+    void setFeedback( QgsFeedback *feedback );
+%Docstring
+Attach a ``feedback`` object that can be queried regularly by the expression engine to check
+if expression evaluation should be canceled.
+
+Ownership of ``feedback`` is NOT transferred, and the caller must take care that it exists
+for the lifetime of the expression context.
+
+.. seealso:: :py:func:`feedback`
+
+.. versionadded:: 3.20
+%End
+
+    QgsFeedback *feedback() const;
+%Docstring
+Returns the feedback object that can be queried regularly by the expression to check
+if evaluation should be canceled, if set.
+
+.. seealso:: :py:func:`setFeedback`
+
+.. versionadded:: 3.20
+%End
+
     static const QString EXPR_FIELDS;
     static const QString EXPR_ORIGINAL_VALUE;
     static const QString EXPR_SYMBOL_COLOR;
     static const QString EXPR_SYMBOL_ANGLE;
     static const QString EXPR_GEOMETRY_PART_COUNT;
     static const QString EXPR_GEOMETRY_PART_NUM;
+
+    static const QString EXPR_GEOMETRY_RING_NUM;
     static const QString EXPR_GEOMETRY_POINT_COUNT;
     static const QString EXPR_GEOMETRY_POINT_NUM;
     static const QString EXPR_CLUSTER_SIZE;

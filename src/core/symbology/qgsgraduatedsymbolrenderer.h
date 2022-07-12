@@ -48,14 +48,28 @@ class CORE_EXPORT QgsGraduatedSymbolRenderer : public QgsFeatureRenderer
     bool filterNeedsGeometry() const override;
     QString dump() const override;
     QgsGraduatedSymbolRenderer *clone() const override SIP_FACTORY;
-    void toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap &props = QgsStringMap() ) const override;
+    void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const override;
     QgsFeatureRenderer::Capabilities capabilities() override { return SymbolLevels | Filter; }
     QgsSymbolList symbols( QgsRenderContext &context ) const override;
     bool accept( QgsStyleEntityVisitorInterface *visitor ) const override;
 
+    /**
+     * Returns the attribute name (or expression) used for the classification.
+     *
+     * \see setClassAttribute()
+     */
     QString classAttribute() const { return mAttrName; }
+
+    /**
+     * Sets the attribute name (or expression) used for the classification.
+     *
+     * \see classAttribute()
+     */
     void setClassAttribute( const QString &attr ) { mAttrName = attr; }
 
+    /**
+     * Returns a list of all ranges used in the classification.
+     */
     const QgsRangeList &ranges() const { return mRanges; }
 
     bool updateRangeSymbol( int rangeIndex, QgsSymbol *symbol SIP_TRANSFER );
@@ -271,7 +285,7 @@ class CORE_EXPORT QgsGraduatedSymbolRenderer : public QgsFeatureRenderer
      * \returns new QgsGraduatedSymbolRenderer object
      * \deprecated since QGIS 3.10
      */
-    static Q_DECL_DEPRECATED QgsGraduatedSymbolRenderer *createRenderer( QgsVectorLayer *vlayer,
+    Q_DECL_DEPRECATED static QgsGraduatedSymbolRenderer *createRenderer( QgsVectorLayer *vlayer,
         const QString &attrName,
         int classes,
         Mode mode,
@@ -290,6 +304,7 @@ class CORE_EXPORT QgsGraduatedSymbolRenderer : public QgsFeatureRenderer
     QDomElement save( QDomDocument &doc, const QgsReadWriteContext &context ) override;
     QgsLegendSymbolList legendSymbolItems() const override;
     QSet< QString > legendKeysForFeature( const QgsFeature &feature, QgsRenderContext &context ) const override;
+    QString legendKeyToExpression( const QString &key, QgsVectorLayer *layer, bool &ok ) const override;
 
     /**
      * Returns the renderer's source symbol, which is the base symbol used for the each classes' symbol before applying
@@ -372,23 +387,21 @@ class CORE_EXPORT QgsGraduatedSymbolRenderer : public QgsFeatureRenderer
      */
     double maxSymbolSize() const;
 
-    enum GraduatedMethod
-    {
-      GraduatedColor = 0,
-      GraduatedSize = 1
-    };
-
     /**
-     * Returns the method used for graduation (either size or color)
+     * Returns the method used for graduation (either size or color).
+     *
+     * \see setGraduatedMethod()
      * \since QGIS 2.10
      */
-    GraduatedMethod graduatedMethod() const { return mGraduatedMethod; }
+    Qgis::GraduatedMethod graduatedMethod() const { return mGraduatedMethod; }
 
     /**
-     * set the method used for graduation (either size or color)
+     * Set the \a method used for graduation (either size or color).
+     *
+     * \see graduatedMethod()
      * \since QGIS 2.10
      */
-    void setGraduatedMethod( GraduatedMethod method ) { mGraduatedMethod = method; }
+    void setGraduatedMethod( Qgis::GraduatedMethod method ) { mGraduatedMethod = method; }
 
     bool legendSymbolItemsCheckable() const override;
     bool legendSymbolItemChecked( const QString &key ) override;
@@ -398,7 +411,7 @@ class CORE_EXPORT QgsGraduatedSymbolRenderer : public QgsFeatureRenderer
 
     /**
      * creates a QgsGraduatedSymbolRenderer from an existing renderer.
-     * \returns a new renderer if the conversion was possible, otherwise 0.
+     * \returns a new renderer if the conversion was possible, otherwise NULLPTR.
      * \since QGIS 2.6
      */
     static QgsGraduatedSymbolRenderer *convertFromRenderer( const QgsFeatureRenderer *renderer ) SIP_FACTORY;
@@ -443,7 +456,7 @@ class CORE_EXPORT QgsGraduatedSymbolRenderer : public QgsFeatureRenderer
     std::unique_ptr<QgsColorRamp> mSourceColorRamp;
 
     std::unique_ptr<QgsExpression> mExpression;
-    GraduatedMethod mGraduatedMethod = GraduatedColor;
+    Qgis::GraduatedMethod mGraduatedMethod = Qgis::GraduatedMethod::Color;
     //! attribute index (derived from attribute name in startRender)
 
     int mAttrNum = -1;
@@ -462,7 +475,7 @@ class CORE_EXPORT QgsGraduatedSymbolRenderer : public QgsFeatureRenderer
     QString legendKeyForValue( double value ) const;
 
     //! \note not available in Python bindings
-    static QString graduatedMethodStr( GraduatedMethod method ) SIP_SKIP;
+    static QString graduatedMethodStr( Qgis::GraduatedMethod method ) SIP_SKIP;
 
     std::shared_ptr<QgsClassificationMethod> mClassificationMethod;
 

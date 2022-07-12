@@ -165,6 +165,65 @@ class TestQgsFeature(unittest.TestCase):
         feat.setGeometry(QgsPoint(12, 34))
         self.assertEqual(feat.geometry().asWkt(), 'Point (12 34)')
 
+    def testAttributeCount(self):
+        f = QgsFeature()
+        self.assertEqual(f.attributeCount(), 0)
+        f.setAttributes([1, 2, 3])
+        self.assertEqual(f.attributeCount(), 3)
+
+    def testResizeAttributes(self):
+        f = QgsFeature()
+        f.resizeAttributes(3)
+        self.assertEqual(f.attributes(), [NULL, NULL, NULL])
+        f.setAttributes([1, 2, 3])
+        f.resizeAttributes(3)
+        self.assertEqual(f.attributes(), [1, 2, 3])
+        f.resizeAttributes(5)
+        self.assertEqual(f.attributes(), [1, 2, 3, NULL, NULL])
+        f.resizeAttributes(2)
+        self.assertEqual(f.attributes(), [1, 2])
+
+    def testPadAttributes(self):
+        f = QgsFeature()
+        f.padAttributes(3)
+        self.assertEqual(f.attributes(), [NULL, NULL, NULL])
+        f.setAttributes([1, 2, 3])
+        f.padAttributes(0)
+        self.assertEqual(f.attributes(), [1, 2, 3])
+        f.padAttributes(2)
+        self.assertEqual(f.attributes(), [1, 2, 3, NULL, NULL])
+        f.padAttributes(3)
+        self.assertEqual(f.attributes(), [1, 2, 3, NULL, NULL, NULL, NULL, NULL])
+
+    def testAttributeMap(self):
+        # start with a feature with no fields
+        f = QgsFeature()
+        f.setAttributes([1, 'a', NULL])
+        with self.assertRaises(ValueError):
+            _ = f.attributeMap()
+
+        # set fields
+        fields = QgsFields()
+        field1 = QgsField('my_field')
+        fields.append(field1)
+        field2 = QgsField('my_field2')
+        fields.append(field2)
+        field3 = QgsField('my_field3')
+        fields.append(field3)
+        f.setFields(fields)
+        f.setAttributes([1, 'a', NULL])
+        self.assertEqual(f.attributeMap(), {'my_field': 1, 'my_field2': 'a', 'my_field3': NULL})
+
+        # unbalanced fields/attributes -- should be handled gracefully
+        # less attributes than fields
+        f.setAttributes([1, 'a'])
+        with self.assertRaises(ValueError):
+            _ = f.attributeMap()
+        f.setAttributes([1, 'a', 2, 3])
+        # more attributes than fields
+        with self.assertRaises(ValueError):
+            _ = f.attributeMap()
+
 
 if __name__ == '__main__':
     unittest.main()

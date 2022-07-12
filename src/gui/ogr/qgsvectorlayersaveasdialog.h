@@ -42,7 +42,7 @@ class GUI_EXPORT QgsVectorLayerSaveAsDialog : public QDialog, private Ui::QgsVec
   public:
 
     //! Bitmask of options to be shown
-    enum Options
+    enum Option
     {
       Symbology = 1, //!< Show symbology options
       DestinationCrs = 1 << 2, //!< Show destination CRS (reprojection) option
@@ -51,8 +51,10 @@ class GUI_EXPORT QgsVectorLayerSaveAsDialog : public QDialog, private Ui::QgsVec
       SelectedOnly = 1 << 5, //!< Show selected features only option
       GeometryType = 1 << 6, //!< Show geometry group
       Extent = 1 << 7, //!< Show extent group
+      Metadata = 1 << 8, //!< Show metadata options
       AllOptions = ~0 //!< Show all options
     };
+    Q_DECLARE_FLAGS( Options, Option )
 
     /**
      * Construct a new QgsVectorLayerSaveAsDialog
@@ -64,7 +66,7 @@ class GUI_EXPORT QgsVectorLayerSaveAsDialog : public QDialog, private Ui::QgsVec
     /**
      * Construct a new QgsVectorLayerSaveAsDialog
      */
-    QgsVectorLayerSaveAsDialog( QgsVectorLayer *layer, int options = AllOptions, QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags() );
+    QgsVectorLayerSaveAsDialog( QgsVectorLayer *layer, Options options = AllOptions, QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags() );
 
     /**
      * The format in which the export should be written.
@@ -118,6 +120,11 @@ class GUI_EXPORT QgsVectorLayerSaveAsDialog : public QDialog, private Ui::QgsVec
     QgsAttributeList selectedAttributes() const;
     //! Returns selected attributes that must be exported with their displayed values instead of their raw values. Added in QGIS 2.16
     QgsAttributeList attributesAsDisplayedValues() const;
+
+    /**
+     * Returns a list of export names for attributes
+     */
+    QStringList attributesExportNames() const;
 
     /**
      * Returns TRUE if the "add to canvas" checkbox is checked.
@@ -176,6 +183,13 @@ class GUI_EXPORT QgsVectorLayerSaveAsDialog : public QDialog, private Ui::QgsVec
     bool onlySelected() const;
 
     /**
+     * Returns TRUE if the persist metadata (copy source metadata to destination layer) option is checked.
+     *
+     * \since QGIS 3.20
+     */
+    bool persistMetadata() const;
+
+    /**
      * Returns the selected flat geometry type for the export.
      * \see automaticGeometryType()
      * \see forceMulti()
@@ -224,10 +238,20 @@ class GUI_EXPORT QgsVectorLayerSaveAsDialog : public QDialog, private Ui::QgsVec
     void accept() override;
     void mSelectAllAttributes_clicked();
     void mDeselectAllAttributes_clicked();
+    void mUseAliasesForExportedName_stateChanged( int state );
     void mReplaceRawFieldValues_stateChanged( int state );
     void mAttributeTable_itemChanged( QTableWidgetItem *item );
 
   private:
+
+    enum class ColumnIndex : int
+    {
+      Name = 0,
+      ExportName = 1,
+      Type = 2,
+      ExportAsDisplayedValue = 3
+    };
+
     void setup();
     QList< QPair< QLabel *, QWidget * > > createControls( const QMap<QString, QgsVectorFileWriter::Option *> &options );
 
@@ -237,10 +261,11 @@ class GUI_EXPORT QgsVectorLayerSaveAsDialog : public QDialog, private Ui::QgsVec
     QgsCoordinateReferenceSystem mLayerCrs;
     QgsVectorLayer *mLayer = nullptr;
     QgsMapCanvas *mMapCanvas = nullptr;
-    bool mAttributeTableItemChangedSlotEnabled;
-    bool mReplaceRawFieldValuesStateChangedSlotEnabled;
     QgsVectorFileWriter::ActionOnExistingFile mActionOnExistingFile;
     Options mOptions = AllOptions;
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS( QgsVectorLayerSaveAsDialog::Options )
+
 
 #endif // QGSVECTORLAYERSAVEASDIALOG_H

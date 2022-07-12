@@ -27,12 +27,12 @@
 #include "qgsexpressioncontext.h"
 #include "qgsfields.h"
 #include "qgscoordinatetransform.h"
-#include "qgssymbol.h"
 #include "qgsproperty.h"
 #include "qgspropertycollection.h"
 
 #include "diagram/qgsdiagram.h"
 #include "qgsreadwritecontext.h"
+#include "qgsmapunitscale.h"
 
 class QgsDiagramRenderer;
 class QgsFeature;
@@ -45,6 +45,7 @@ class QgsLayerTreeModelLegendNode;
 class QgsLayerTreeLayer;
 class QgsPaintEffect;
 class QgsDataDefinedSizeLegend;
+class QgsLineSymbol;
 
 namespace pal { class Layer; } SIP_SKIP
 
@@ -856,6 +857,10 @@ class CORE_EXPORT QgsLinearlyInterpolatedDiagramRenderer : public QgsDiagramRend
   public:
     QgsLinearlyInterpolatedDiagramRenderer();
     ~QgsLinearlyInterpolatedDiagramRenderer() override;
+    //! Copy constructor
+    QgsLinearlyInterpolatedDiagramRenderer( const QgsLinearlyInterpolatedDiagramRenderer &other );
+
+    QgsLinearlyInterpolatedDiagramRenderer &operator=( const QgsLinearlyInterpolatedDiagramRenderer &other );
 
     QgsLinearlyInterpolatedDiagramRenderer *clone() const override SIP_FACTORY;
 
@@ -924,17 +929,12 @@ class CORE_EXPORT QgsLinearlyInterpolatedDiagramRenderer : public QgsDiagramRend
 
     QSizeF diagramSize( const QgsFeature &, const QgsRenderContext &c ) const override;
 
-    //! Copy constructor
-    QgsLinearlyInterpolatedDiagramRenderer( const QgsLinearlyInterpolatedDiagramRenderer &other );
-
   private:
     QgsDiagramSettings mSettings;
     QgsDiagramInterpolationSettings mInterpolationSettings;
 
     //! Stores more settings about how legend for varying size of symbols should be rendered
     QgsDataDefinedSizeLegend *mDataDefinedSizeLegend = nullptr;
-
-    QgsLinearlyInterpolatedDiagramRenderer &operator=( const QgsLinearlyInterpolatedDiagramRenderer & ) = delete;
 };
 
 #endif // QGSDIAGRAMRENDERER_H

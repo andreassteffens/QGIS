@@ -11,7 +11,7 @@
 
 class QgsColorRampButton : QToolButton
 {
-%Docstring
+%Docstring(signature="appended")
 A cross platform button subclass for selecting color ramps. Will open color ramp dialogs when clicked.
 Offers live updates to button from color ramp dialog. An attached drop-down menu allows for access to
 saved color ramps, as well as option to invert the current color ramp and create new ramps.
@@ -139,7 +139,7 @@ Returns whether random colors option is shown in the button's drop-down menu.
 
     bool isRandomColorRamp() const;
 %Docstring
-Returns ``True`` if the current color is null.
+Returns ``True`` if the current color ramp is random.
 
 .. seealso:: :py:func:`setShowNull`
 
@@ -168,7 +168,7 @@ Returns whether the set to null (clear) option is shown in the button's drop-dow
 
     bool isNull() const;
 %Docstring
-Returns ``True`` if the current color is null.
+Returns ``True`` if the current color ramp is null.
 
 .. seealso:: :py:func:`setShowNull`
 

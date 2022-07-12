@@ -72,6 +72,15 @@ class TestQgsVectorLayerUtils(unittest.TestCase):
         self.assertFalse(QgsVectorLayerUtils.fieldIsReadOnly(layer, 1))
         self.assertFalse(QgsVectorLayerUtils.fieldIsReadOnly(layer, 2))
 
+        # simulate read-only field from provider
+        field = QgsField('test2', QVariant.String)
+        field.setReadOnly(True)
+        layer.addAttribute(field)
+        self.assertFalse(QgsVectorLayerUtils.fieldIsReadOnly(layer, 0))
+        self.assertFalse(QgsVectorLayerUtils.fieldIsReadOnly(layer, 1))
+        self.assertFalse(QgsVectorLayerUtils.fieldIsReadOnly(layer, 2))
+        self.assertTrue(QgsVectorLayerUtils.fieldIsReadOnly(layer, 3))
+
         layer.rollBack()
         layer.startEditing()
 
@@ -463,43 +472,6 @@ class TestQgsVectorLayerUtils(unittest.TestCase):
         f = QgsVectorLayerUtils.createFeature(layer, attributes={0: 'test_1', 1: 132})
         self.assertEqual(f.attributes(), ['test_5', 132, NULL])
 
-        """ test creating a feature respecting unique values of postgres provider """
-        layer = QgsVectorLayer("Point?field=fldtxt:string&field=fldint:integer&field=flddbl:double",
-                               "addfeat", "memory")
-
-        # init connection string
-        dbconn = 'service=qgis_test'
-        if 'QGIS_PGTEST_DB' in os.environ:
-            dbconn = os.environ['QGIS_PGTEST_DB']
-
-        # create a vector layer
-        pg_layer = QgsVectorLayer('{} table="qgis_test"."authors" sql='.format(dbconn), "authors", "postgres")
-        self.assertTrue(pg_layer.isValid())
-        # check the default clause
-        default_clause = 'nextval(\'qgis_test.authors_pk_seq\'::regclass)'
-        self.assertEqual(pg_layer.dataProvider().defaultValueClause(0), default_clause)
-
-        # though default_clause is after the first create not unique (until save), it should fill up all the features with it
-        pg_layer.startEditing()
-        f = QgsVectorLayerUtils.createFeature(pg_layer)
-        self.assertEqual(f.attributes(), [default_clause, NULL])
-        self.assertTrue(pg_layer.addFeatures([f]))
-        self.assertTrue(QgsVectorLayerUtils.valueExists(pg_layer, 0, default_clause))
-        f = QgsVectorLayerUtils.createFeature(pg_layer)
-        self.assertEqual(f.attributes(), [default_clause, NULL])
-        self.assertTrue(pg_layer.addFeatures([f]))
-        f = QgsVectorLayerUtils.createFeature(pg_layer)
-        self.assertEqual(f.attributes(), [default_clause, NULL])
-        self.assertTrue(pg_layer.addFeatures([f]))
-        # if a unique value is passed, use it
-        f = QgsVectorLayerUtils.createFeature(pg_layer, attributes={0: 40, 1: NULL})
-        self.assertEqual(f.attributes(), [40, NULL])
-        # and if a default value is configured use it as well
-        pg_layer.setDefaultValueDefinition(0, QgsDefaultValue('11*4'))
-        f = QgsVectorLayerUtils.createFeature(pg_layer)
-        self.assertEqual(f.attributes(), [44, NULL])
-        pg_layer.rollBack()
-
     def testDuplicateFeature(self):
         """ test duplicating a feature """
 
@@ -808,6 +780,61 @@ class TestQgsVectorLayerUtils(unittest.TestCase):
         self.assertTrue(vl.startEditing())
         vl.addFeatures(features)
         self.assertTrue(vl.commitChanges())
+
+    def testGuessFriendlyIdentifierField(self):
+        """
+        Test guessing a user friendly identifier field
+        """
+        fields = QgsFields()
+        self.assertFalse(QgsVectorLayerUtils.guessFriendlyIdentifierField(fields))
+
+        fields.append(QgsField('id', QVariant.Int))
+        self.assertEqual(QgsVectorLayerUtils.guessFriendlyIdentifierField(fields), 'id')
+        self.assertEqual(QgsVectorLayerUtils.guessFriendlyIdentifierFieldV2(fields), ('id', False))
+
+        fields.append(QgsField('name', QVariant.String))
+        self.assertEqual(QgsVectorLayerUtils.guessFriendlyIdentifierField(fields), 'name')
+        self.assertEqual(QgsVectorLayerUtils.guessFriendlyIdentifierFieldV2(fields), ('name', True))
+
+        fields.append(QgsField('title', QVariant.String))
+        self.assertEqual(QgsVectorLayerUtils.guessFriendlyIdentifierField(fields), 'name')
+        self.assertEqual(QgsVectorLayerUtils.guessFriendlyIdentifierFieldV2(fields), ('name', True))
+
+        # regardless of actual field order, we prefer "name" over "title"
+        fields = QgsFields()
+        fields.append(QgsField('title', QVariant.String))
+        fields.append(QgsField('name', QVariant.String))
+        self.assertEqual(QgsVectorLayerUtils.guessFriendlyIdentifierField(fields), 'name')
+
+        # test with an "anti candidate", which is a substring which makes a field containing "name" less preferred...
+        fields = QgsFields()
+        fields.append(QgsField('id', QVariant.Int))
+        fields.append(QgsField('typename', QVariant.String))
+        self.assertEqual(QgsVectorLayerUtils.guessFriendlyIdentifierField(fields), 'typename')
+        fields.append(QgsField('title', QVariant.String))
+        self.assertEqual(QgsVectorLayerUtils.guessFriendlyIdentifierField(fields), 'title')
+
+        fields = QgsFields()
+        fields.append(QgsField('id', QVariant.Int))
+        fields.append(QgsField('classname', QVariant.String))
+        fields.append(QgsField('x', QVariant.String))
+        self.assertEqual(QgsVectorLayerUtils.guessFriendlyIdentifierField(fields), 'classname')
+        fields.append(QgsField('desc', QVariant.String))
+        self.assertEqual(QgsVectorLayerUtils.guessFriendlyIdentifierField(fields), 'desc')
+
+        fields = QgsFields()
+        fields.append(QgsField('id', QVariant.Int))
+        fields.append(QgsField('areatypename', QVariant.String))
+        fields.append(QgsField('areaadminname', QVariant.String))
+        self.assertEqual(QgsVectorLayerUtils.guessFriendlyIdentifierField(fields), 'areaadminname')
+
+        # if no good matches by name found, the first string field should be used
+        fields = QgsFields()
+        fields.append(QgsField('id', QVariant.Int))
+        fields.append(QgsField('date', QVariant.Date))
+        fields.append(QgsField('station', QVariant.String))
+        fields.append(QgsField('org', QVariant.String))
+        self.assertEqual(QgsVectorLayerUtils.guessFriendlyIdentifierField(fields), 'station')
 
 
 if __name__ == '__main__':

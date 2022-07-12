@@ -34,9 +34,7 @@
 
 #include <Qt3DRender/QMesh>
 
-#if QT_VERSION >= 0x050900
 #include <Qt3DExtras/QExtrudedTextGeometry>
-#endif
 
 #include <QUrl>
 #include <QVector3D>
@@ -70,7 +68,7 @@ class QgsInstancedPoint3DSymbolHandler : public QgsFeature3DHandler
       , mSelectedIds( selectedIds ) {}
 
     bool prepare( const Qgs3DRenderContext &context, QSet<QString> &attributeNames ) override;
-    void processFeature( QgsFeature &feature, const Qgs3DRenderContext &context ) override;
+    void processFeature( const QgsFeature &feature, const Qgs3DRenderContext &context ) override;
     void finalize( Qt3DCore::QEntity *parent, const Qgs3DRenderContext &context ) override;
 
   private:
@@ -105,7 +103,7 @@ bool QgsInstancedPoint3DSymbolHandler::prepare( const Qgs3DRenderContext &contex
   return true;
 }
 
-void QgsInstancedPoint3DSymbolHandler::processFeature( QgsFeature &feature, const Qgs3DRenderContext &context )
+void QgsInstancedPoint3DSymbolHandler::processFeature( const QgsFeature &feature, const Qgs3DRenderContext &context )
 {
   PointData &out = mSelectedIds.contains( feature.id() ) ? outSelected : outNormal;
 
@@ -124,7 +122,7 @@ void QgsInstancedPoint3DSymbolHandler::finalize( Qt3DCore::QEntity *parent, cons
   updateZRangeFromPositions( outSelected.positions );
 
   // the elevation offset is applied in the vertex shader so let's account for it as well
-  float symbolHeight = mSymbol->transform().data()[13];
+  const float symbolHeight = mSymbol->transform().data()[13];
   mZMin += symbolHeight;
   mZMax += symbolHeight;
 }
@@ -182,12 +180,12 @@ Qt3DRender::QMaterial *QgsInstancedPoint3DSymbolHandler::material( const QgsPoin
   technique->graphicsApiFilter()->setMajorVersion( 3 );
   technique->graphicsApiFilter()->setMinorVersion( 2 );
 
-  QMatrix4x4 transformMatrix = symbol->transform();
+  const QMatrix4x4 transformMatrix = symbol->transform();
   QMatrix3x3 normalMatrix = transformMatrix.normalMatrix();  // transponed inverse of 3x3 sub-matrix
 
   // QMatrix3x3 is not supported for passing to shaders, so we pass QMatrix4x4
   float *n = normalMatrix.data();
-  QMatrix4x4 normalMatrix4(
+  const QMatrix4x4 normalMatrix4(
     n[0], n[3], n[6], 0,
     n[1], n[4], n[7], 0,
     n[2], n[5], n[8], 0,
@@ -216,17 +214,13 @@ Qt3DRender::QMaterial *QgsInstancedPoint3DSymbolHandler::material( const QgsPoin
 
 Qt3DRender::QGeometryRenderer *QgsInstancedPoint3DSymbolHandler::renderer( const QgsPoint3DSymbol *symbol, const QVector<QVector3D> &positions )
 {
-  int count = positions.count();
-  int byteCount = positions.count() * sizeof( QVector3D );
+  const int count = positions.count();
+  const int byteCount = positions.count() * sizeof( QVector3D );
   QByteArray ba;
   ba.resize( byteCount );
   memcpy( ba.data(), positions.constData(), byteCount );
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 10, 0)
-  Qt3DRender::QBuffer *instanceBuffer = new Qt3DRender::QBuffer( Qt3DRender::QBuffer::VertexBuffer );
-#else
   Qt3DRender::QBuffer *instanceBuffer = new Qt3DRender::QBuffer();
-#endif
   instanceBuffer->setData( ba );
 
   Qt3DRender::QAttribute *instanceDataAttribute = new Qt3DRender::QAttribute;
@@ -257,8 +251,8 @@ Qt3DRender::QGeometry *QgsInstancedPoint3DSymbolHandler::symbolGeometry( QgsPoin
   {
     case QgsPoint3DSymbol::Cylinder:
     {
-      float radius = shapeProperties[QStringLiteral( "radius" )].toFloat();
-      float length = shapeProperties[QStringLiteral( "length" )].toFloat();
+      const float radius = shapeProperties[QStringLiteral( "radius" )].toFloat();
+      const float length = shapeProperties[QStringLiteral( "length" )].toFloat();
       Qt3DExtras::QCylinderGeometry *g = new Qt3DExtras::QCylinderGeometry;
       //g->setRings(2);  // how many vertices vertically
       //g->setSlices(8); // how many vertices on circumference
@@ -269,7 +263,7 @@ Qt3DRender::QGeometry *QgsInstancedPoint3DSymbolHandler::symbolGeometry( QgsPoin
 
     case QgsPoint3DSymbol::Sphere:
     {
-      float radius = shapeProperties[QStringLiteral( "radius" )].toFloat();
+      const float radius = shapeProperties[QStringLiteral( "radius" )].toFloat();
       Qt3DExtras::QSphereGeometry *g = new Qt3DExtras::QSphereGeometry;
       g->setRadius( radius ? radius : 10 );
       return g;
@@ -277,9 +271,9 @@ Qt3DRender::QGeometry *QgsInstancedPoint3DSymbolHandler::symbolGeometry( QgsPoin
 
     case QgsPoint3DSymbol::Cone:
     {
-      float length = shapeProperties[QStringLiteral( "length" )].toFloat();
-      float bottomRadius = shapeProperties[QStringLiteral( "bottomRadius" )].toFloat();
-      float topRadius = shapeProperties[QStringLiteral( "topRadius" )].toFloat();
+      const float length = shapeProperties[QStringLiteral( "length" )].toFloat();
+      const float bottomRadius = shapeProperties[QStringLiteral( "bottomRadius" )].toFloat();
+      const float topRadius = shapeProperties[QStringLiteral( "topRadius" )].toFloat();
       Qt3DExtras::QConeGeometry *g = new Qt3DExtras::QConeGeometry;
       g->setLength( length ? length : 10 );
       g->setBottomRadius( bottomRadius );
@@ -291,7 +285,7 @@ Qt3DRender::QGeometry *QgsInstancedPoint3DSymbolHandler::symbolGeometry( QgsPoin
 
     case QgsPoint3DSymbol::Cube:
     {
-      float size = shapeProperties[QStringLiteral( "size" )].toFloat();
+      const float size = shapeProperties[QStringLiteral( "size" )].toFloat();
       Qt3DExtras::QCuboidGeometry *g = new Qt3DExtras::QCuboidGeometry;
       g->setXExtent( size ? size : 10 );
       g->setYExtent( size ? size : 10 );
@@ -301,8 +295,8 @@ Qt3DRender::QGeometry *QgsInstancedPoint3DSymbolHandler::symbolGeometry( QgsPoin
 
     case QgsPoint3DSymbol::Torus:
     {
-      float radius = shapeProperties[QStringLiteral( "radius" )].toFloat();
-      float minorRadius = shapeProperties[QStringLiteral( "minorRadius" )].toFloat();
+      const float radius = shapeProperties[QStringLiteral( "radius" )].toFloat();
+      const float minorRadius = shapeProperties[QStringLiteral( "minorRadius" )].toFloat();
       Qt3DExtras::QTorusGeometry *g = new Qt3DExtras::QTorusGeometry;
       g->setRadius( radius ? radius : 10 );
       g->setMinorRadius( minorRadius ? minorRadius : 5 );
@@ -311,24 +305,22 @@ Qt3DRender::QGeometry *QgsInstancedPoint3DSymbolHandler::symbolGeometry( QgsPoin
 
     case QgsPoint3DSymbol::Plane:
     {
-      float size = shapeProperties[QStringLiteral( "size" )].toFloat();
+      const float size = shapeProperties[QStringLiteral( "size" )].toFloat();
       Qt3DExtras::QPlaneGeometry *g = new Qt3DExtras::QPlaneGeometry;
       g->setWidth( size ? size : 10 );
       g->setHeight( size ? size : 10 );
       return g;
     }
 
-#if QT_VERSION >= 0x050900
     case QgsPoint3DSymbol::ExtrudedText:
     {
-      float depth = shapeProperties[QStringLiteral( "depth" )].toFloat();
-      QString text = shapeProperties[QStringLiteral( "text" )].toString();
+      const float depth = shapeProperties[QStringLiteral( "depth" )].toFloat();
+      const QString text = shapeProperties[QStringLiteral( "text" )].toString();
       Qt3DExtras::QExtrudedTextGeometry *g = new Qt3DExtras::QExtrudedTextGeometry;
       g->setDepth( depth ? depth : 1 );
       g->setText( text );
       return g;
     }
-#endif
 
     default:
       Q_ASSERT( false );
@@ -347,7 +339,7 @@ class QgsModelPoint3DSymbolHandler : public QgsFeature3DHandler
       , mSelectedIds( selectedIds ) {}
 
     bool prepare( const Qgs3DRenderContext &context, QSet<QString> &attributeNames ) override;
-    void processFeature( QgsFeature &feature, const Qgs3DRenderContext &context ) override;
+    void processFeature( const QgsFeature &feature, const Qgs3DRenderContext &context ) override;
     void finalize( Qt3DCore::QEntity *parent, const Qgs3DRenderContext &context ) override;
 
   private:
@@ -381,7 +373,7 @@ bool QgsModelPoint3DSymbolHandler::prepare( const Qgs3DRenderContext &context, Q
   return true;
 }
 
-void QgsModelPoint3DSymbolHandler::processFeature( QgsFeature &feature, const Qgs3DRenderContext &context )
+void QgsModelPoint3DSymbolHandler::processFeature( const QgsFeature &feature, const Qgs3DRenderContext &context )
 {
   PointData &out = mSelectedIds.contains( feature.id() ) ? outSelected : outNormal;
 
@@ -400,7 +392,7 @@ void QgsModelPoint3DSymbolHandler::finalize( Qt3DCore::QEntity *parent, const Qg
   updateZRangeFromPositions( outSelected.positions );
 
   // the elevation offset is applied separately in QTransform added to sub-entities
-  float symbolHeight = mSymbol->transform().data()[13];
+  const float symbolHeight = mSymbol->transform().data()[13];
   mZMin += symbolHeight;
   mZMax += symbolHeight;
 }
@@ -413,7 +405,9 @@ void QgsModelPoint3DSymbolHandler::makeEntity( Qt3DCore::QEntity *parent, const 
   }
   else
   {
-    if ( mSymbol->shapeProperties()[QStringLiteral( "overwriteMaterial" )].toBool() )
+    //  "overwriteMaterial" is a legacy setting indicating that non-embedded material should be used
+    if ( mSymbol->shapeProperties()[QStringLiteral( "overwriteMaterial" )].toBool()
+         || ( mSymbol->material() && mSymbol->material()->type() != QLatin1String( "null" ) ) )
     {
       addMeshEntities( context.map(), out.positions, mSymbol.get(), parent, false );
     }
@@ -431,14 +425,14 @@ void QgsModelPoint3DSymbolHandler::addSceneEntities( const Qgs3DMapSettings &map
   Q_UNUSED( map )
   for ( const QVector3D &position : positions )
   {
-    const QString source = QgsApplication::instance()->sourceCache()->localFilePath( symbol->shapeProperties()[QStringLiteral( "model" )].toString() );
+    const QString source = QgsApplication::sourceCache()->localFilePath( symbol->shapeProperties()[QStringLiteral( "model" )].toString() );
     // if the source is remote, the Qgs3DMapScene will take care of refreshing this 3D symbol when the source is fetched
     if ( !source.isEmpty() )
     {
       // build the entity
       Qt3DCore::QEntity *entity = new Qt3DCore::QEntity;
 
-      QUrl url = QUrl::fromLocalFile( source );
+      const QUrl url = QUrl::fromLocalFile( source );
       Qt3DRender::QSceneLoader *modelLoader = new Qt3DRender::QSceneLoader;
       modelLoader->setSource( url );
 
@@ -466,13 +460,13 @@ void QgsModelPoint3DSymbolHandler::addMeshEntities( const Qgs3DMapSettings &map,
   // get nodes
   for ( const QVector3D &position : positions )
   {
-    const QString source = QgsApplication::instance()->sourceCache()->localFilePath( symbol->shapeProperties()[QStringLiteral( "model" )].toString() );
+    const QString source = QgsApplication::sourceCache()->localFilePath( symbol->shapeProperties()[QStringLiteral( "model" )].toString() );
     if ( !source.isEmpty() )
     {
       // build the entity
       Qt3DCore::QEntity *entity = new Qt3DCore::QEntity;
 
-      QUrl url = QUrl::fromLocalFile( source );
+      const QUrl url = QUrl::fromLocalFile( source );
       Qt3DRender::QMesh *mesh = new Qt3DRender::QMesh;
       mesh->setSource( url );
 
@@ -507,7 +501,7 @@ class QgsPoint3DBillboardSymbolHandler : public QgsFeature3DHandler
       , mSelectedIds( selectedIds ) {}
 
     bool prepare( const Qgs3DRenderContext &context, QSet<QString> &attributeNames ) override;
-    void processFeature( QgsFeature &feature, const Qgs3DRenderContext &context ) override;
+    void processFeature( const QgsFeature &feature, const Qgs3DRenderContext &context ) override;
     void finalize( Qt3DCore::QEntity *parent, const Qgs3DRenderContext &context ) override;
 
   private:
@@ -537,7 +531,7 @@ bool QgsPoint3DBillboardSymbolHandler::prepare( const Qgs3DRenderContext &contex
   return true;
 }
 
-void QgsPoint3DBillboardSymbolHandler::processFeature( QgsFeature &feature, const Qgs3DRenderContext &context )
+void QgsPoint3DBillboardSymbolHandler::processFeature( const QgsFeature &feature, const Qgs3DRenderContext &context )
 {
   PointData &out = mSelectedIds.contains( feature.id() ) ? outSelected : outNormal;
 
@@ -556,7 +550,7 @@ void QgsPoint3DBillboardSymbolHandler::finalize( Qt3DCore::QEntity *parent, cons
   updateZRangeFromPositions( outSelected.positions );
 
   // the elevation offset is applied externally through a QTransform of QEntity so let's account for it
-  float billboardHeight = mSymbol->transform().data()[13];
+  const float billboardHeight = mSymbol->transform().data()[13];
   mZMin += billboardHeight;
   mZMax += billboardHeight;
 }

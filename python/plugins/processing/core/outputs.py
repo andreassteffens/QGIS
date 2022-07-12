@@ -40,7 +40,8 @@ from qgis.core import (QgsExpressionContext,
                        QgsProcessingOutputString,
                        QgsProcessingOutputBoolean,
                        QgsProcessingOutputFolder,
-                       QgsProcessingOutputMultipleLayers)
+                       QgsProcessingOutputMultipleLayers,
+                       QgsProcessingOutputPointCloudLayer)
 
 
 def getOutputFromString(s):
@@ -52,7 +53,7 @@ def getOutputFromString(s):
             return clazz(*params)
         else:
             tokens = s.split("=")
-            if not tokens[1].lower()[:len('output')] == 'output':
+            if tokens[1].lower()[: len('output')] != 'output':
                 return None
 
             name = tokens[0]
@@ -92,6 +93,8 @@ def getOutputFromString(s):
                 out = QgsProcessingOutputString(name, description)
             elif token.lower().strip().startswith('outputboolean'):
                 out = QgsProcessingOutputBoolean(name, description)
+            elif token.lower().strip().startswith('outputPointCloud'):
+                out = QgsProcessingOutputPointCloudLayer(name, description)
             #            elif token.lower().strip().startswith('extent'):
             #                out = OutputExtent()
 

@@ -27,6 +27,11 @@
 #include "qgsvectortilebasiclabeling.h"
 #include "qgsfontutils.h"
 #include "qgslinesymbollayer.h"
+#include "qgslinesymbol.h"
+#include "qgsfillsymbollayer.h"
+#include "qgsfillsymbol.h"
+#include "qgsmarkersymbol.h"
+#include "qgsmarkersymbollayer.h"
 
 /**
  * \ingroup UnitTests
@@ -59,6 +64,7 @@ class TestQgsVectorTileLayer : public QObject
     void test_labeling();
     void test_relativePaths();
     void test_polygonWithLineStyle();
+    void test_polygonWithMarker();
 };
 
 
@@ -85,15 +91,15 @@ void TestQgsVectorTileLayer::initTestCase()
 
   // let's have some standard style config for the layer
   QColor polygonFillColor = Qt::blue;
-  QColor polygonStrokeColor = polygonFillColor;
+  const QColor polygonStrokeColor = polygonFillColor;
   polygonFillColor.setAlpha( 100 );
-  double polygonStrokeWidth = DEFAULT_LINE_WIDTH * 2;
-  QColor lineStrokeColor = Qt::blue;
-  double lineStrokeWidth = DEFAULT_LINE_WIDTH * 2;
+  const double polygonStrokeWidth = DEFAULT_LINE_WIDTH * 2;
+  const QColor lineStrokeColor = Qt::blue;
+  const double lineStrokeWidth = DEFAULT_LINE_WIDTH * 2;
   QColor pointFillColor = Qt::red;
-  QColor pointStrokeColor = pointFillColor;
+  const QColor pointStrokeColor = pointFillColor;
   pointFillColor.setAlpha( 100 );
-  double pointSize = DEFAULT_POINT_SIZE;
+  const double pointSize = DEFAULT_POINT_SIZE;
 
   QgsVectorTileBasicRenderer *rend = new QgsVectorTileBasicRenderer;
   rend->setStyles( QgsVectorTileBasicRenderer::simpleStyle(
@@ -107,7 +113,7 @@ void TestQgsVectorTileLayer::initTestCase()
 
 void TestQgsVectorTileLayer::cleanupTestCase()
 {
-  QString myReportFile = QDir::tempPath() + "/qgistest.html";
+  const QString myReportFile = QDir::tempPath() + "/qgistest.html";
   QFile myFile( myReportFile );
   if ( myFile.open( QIODevice::WriteOnly | QIODevice::Append ) )
   {
@@ -122,11 +128,14 @@ void TestQgsVectorTileLayer::cleanupTestCase()
 void TestQgsVectorTileLayer::test_basic()
 {
   // tile fetch test
-  QByteArray tile0rawData = mLayer->getRawTile( QgsTileXYZ( 0, 0, 0 ) );
+  const QByteArray tile0rawData = mLayer->getRawTile( QgsTileXYZ( 0, 0, 0 ) );
   QCOMPARE( tile0rawData.length(), 64822 );
 
-  QByteArray invalidTileRawData = mLayer->getRawTile( QgsTileXYZ( 0, 0, 99 ) );
+  const QByteArray invalidTileRawData = mLayer->getRawTile( QgsTileXYZ( 0, 0, 99 ) );
   QCOMPARE( invalidTileRawData.length(), 0 );
+
+  // an xyz vector tile layer should be considered as a basemap layer
+  QCOMPARE( mLayer->properties(), Qgis::MapLayerProperties( Qgis::MapLayerProperty::IsBasemapLayer ) );
 }
 
 
@@ -141,7 +150,7 @@ bool TestQgsVectorTileLayer::imageCheck( const QString &testType, QgsVectorTileL
   myChecker.setControlName( "expected_" + testType );
   myChecker.setMapSettings( *mMapSettings );
   myChecker.setColorTolerance( 15 );
-  bool myResultFlag = myChecker.runTest( testType, 0 );
+  const bool myResultFlag = myChecker.runTest( testType, 0 );
   mReport += myChecker.report();
   return myResultFlag;
 }
@@ -175,7 +184,7 @@ void TestQgsVectorTileLayer::test_labeling()
   QgsPalLayerSettings labelSettings;
   labelSettings.drawLabels = true;
   labelSettings.fieldName = "name:en";
-  labelSettings.placement = QgsPalLayerSettings::OverPoint;
+  labelSettings.placement = Qgis::LabelPlacement::OverPoint;
   labelSettings.setFormat( format );
 
   QgsVectorTileBasicLabelingStyle st;
@@ -202,7 +211,7 @@ void TestQgsVectorTileLayer::test_labeling()
                      Qt::transparent, Qt::transparent, 0 ) );
   mLayer->setRenderer( rend );  // takes ownership
 
-  bool res = imageCheck( "render_test_labeling", mLayer, mLayer->extent() );
+  const bool res = imageCheck( "render_test_labeling", mLayer, mLayer->extent() );
 
   mLayer->setRenderer( oldRenderer );
 
@@ -213,18 +222,18 @@ void TestQgsVectorTileLayer::test_relativePaths()
 {
   QgsReadWriteContext contextRel;
   contextRel.setPathResolver( QgsPathResolver( "/home/qgis/project.qgs" ) );
-  QgsReadWriteContext contextAbs;
+  const QgsReadWriteContext contextAbs;
 
-  QString srcXyzLocal = "type=xyz&url=file:///home/qgis/%7Bz%7D/%7Bx%7D/%7By%7D.pbf";
-  QString srcXyzRemote = "type=xyz&url=http://www.example.com/%7Bz%7D/%7Bx%7D/%7By%7D.pbf";
-  QString srcMbtiles = "type=mbtiles&url=/home/qgis/test/map.mbtiles";
+  const QString srcXyzLocal = "type=xyz&url=file:///home/qgis/%7Bz%7D/%7Bx%7D/%7By%7D.pbf";
+  const QString srcXyzRemote = "type=xyz&url=http://www.example.com/%7Bz%7D/%7Bx%7D/%7By%7D.pbf";
+  const QString srcMbtiles = "type=mbtiles&url=/home/qgis/test/map.mbtiles";
 
-  QgsVectorTileLayer layer;
+  const QgsVectorTileLayer layer;
 
   // encode source: converting absolute paths to relative
-  QString srcXyzLocalRel = layer.encodedSource( srcXyzLocal, contextRel );
+  const QString srcXyzLocalRel = layer.encodedSource( srcXyzLocal, contextRel );
   QCOMPARE( srcXyzLocalRel, QStringLiteral( "type=xyz&url=file:./%7Bz%7D/%7Bx%7D/%7By%7D.pbf" ) );
-  QString srcMbtilesRel = layer.encodedSource( srcMbtiles, contextRel );
+  const QString srcMbtilesRel = layer.encodedSource( srcMbtiles, contextRel );
   QCOMPARE( srcMbtilesRel, QStringLiteral( "type=mbtiles&url=./test/map.mbtiles" ) );
   QCOMPARE( layer.encodedSource( srcXyzRemote, contextRel ), srcXyzRemote );
 
@@ -250,15 +259,13 @@ void TestQgsVectorTileLayer::test_polygonWithLineStyle()
   ds.setParam( "type", "xyz" );
   ds.setParam( "url", QString( "file://%1/{z}-{x}-{y}.pbf" ).arg( mDataDir ) );
   ds.setParam( "zmax", "1" );
-  std::unique_ptr< QgsVectorTileLayer > layer = qgis::make_unique< QgsVectorTileLayer >( ds.encodedUri(), "Vector Tiles Test" );
+  std::unique_ptr< QgsVectorTileLayer > layer = std::make_unique< QgsVectorTileLayer >( ds.encodedUri(), "Vector Tiles Test" );
   QVERIFY( layer->isValid() );
 
   mMapSettings->setLayers( QList<QgsMapLayer *>() << layer.get() );
 
-  QColor lineStrokeColor = Qt::blue;
-  double lineStrokeWidth = DEFAULT_LINE_WIDTH * 2;
-
-  QgsVectorTileBasicRenderer *rend = new QgsVectorTileBasicRenderer;
+  const QColor lineStrokeColor = Qt::blue;
+  const double lineStrokeWidth = DEFAULT_LINE_WIDTH * 2;
 
   QgsSimpleLineSymbolLayer *lineSymbolLayer = new QgsSimpleLineSymbolLayer;
   lineSymbolLayer->setColor( lineStrokeColor );
@@ -268,10 +275,55 @@ void TestQgsVectorTileLayer::test_polygonWithLineStyle()
   QgsVectorTileBasicRendererStyle st( QStringLiteral( "Polygons" ), QString(), QgsWkbTypes::LineGeometry );
   st.setSymbol( lineSymbol );
 
-  rend->setStyles( QList<QgsVectorTileBasicRendererStyle>() << st );
+  QgsSimpleFillSymbolLayer *fillSymbolLayer = new QgsSimpleFillSymbolLayer;
+  fillSymbolLayer->setColor( Qt::white );
+  fillSymbolLayer->setStrokeStyle( Qt::NoPen );
+  QgsFillSymbol *fillSymbol = new QgsFillSymbol( QgsSymbolLayerList() << fillSymbolLayer );
+
+  QgsVectorTileBasicRendererStyle bgst( QStringLiteral( "background" ), QStringLiteral( "background" ), QgsWkbTypes::PolygonGeometry );
+  bgst.setSymbol( fillSymbol );
+
+  QgsVectorTileBasicRenderer *rend = new QgsVectorTileBasicRenderer;
+  rend->setStyles( QList<QgsVectorTileBasicRendererStyle>() << bgst << st );
   layer->setRenderer( rend );  // takes ownership
 
   QVERIFY( imageCheck( "render_test_polygon_with_line_style", layer.get(), layer->extent() ) );
+}
+
+void TestQgsVectorTileLayer::test_polygonWithMarker()
+{
+  // a polygon in a vector tile layer which is matched by a marker rule should result in a point-inside-polygon placement
+  QgsDataSourceUri ds;
+  ds.setParam( "type", "xyz" );
+  ds.setParam( "url", QString( "file://%1/{z}-{x}-{y}.pbf" ).arg( mDataDir ) );
+  ds.setParam( "zmax", "1" );
+  std::unique_ptr< QgsVectorTileLayer > layer = std::make_unique< QgsVectorTileLayer >( ds.encodedUri(), "Vector Tiles Test" );
+  QVERIFY( layer->isValid() );
+
+  mMapSettings->setLayers( QList<QgsMapLayer *>() << layer.get() );
+
+  const QColor markerColor = Qt::blue;
+
+  QgsSimpleMarkerSymbolLayer *markerSymbolLayer = new QgsSimpleMarkerSymbolLayer;
+  markerSymbolLayer->setColor( markerColor );
+  QgsMarkerSymbol *markerSymbol = new QgsMarkerSymbol( QgsSymbolLayerList() << markerSymbolLayer );
+
+  QgsVectorTileBasicRendererStyle st( QStringLiteral( "Polygons" ), QString(), QgsWkbTypes::PointGeometry );
+  st.setSymbol( markerSymbol );
+
+  QgsSimpleFillSymbolLayer *fillSymbolLayer = new QgsSimpleFillSymbolLayer;
+  fillSymbolLayer->setColor( Qt::white );
+  fillSymbolLayer->setStrokeStyle( Qt::NoPen );
+  QgsFillSymbol *fillSymbol = new QgsFillSymbol( QgsSymbolLayerList() << fillSymbolLayer );
+
+  QgsVectorTileBasicRendererStyle bgst( QStringLiteral( "background" ), QStringLiteral( "background" ), QgsWkbTypes::PolygonGeometry );
+  bgst.setSymbol( fillSymbol );
+
+  QgsVectorTileBasicRenderer *rend = new QgsVectorTileBasicRenderer;
+  rend->setStyles( QList<QgsVectorTileBasicRendererStyle>() << bgst << st );
+  layer->setRenderer( rend );  // takes ownership
+
+  QVERIFY( imageCheck( "render_test_polygon_with_marker", layer.get(), layer->extent() ) );
 }
 
 

@@ -13,13 +13,13 @@
 
 class QgsTextMaskSettings
 {
-%Docstring
+%Docstring(signature="appended")
 Container for settings relating to a selective masking around a text.
 A selective masking only makes sense in contexts where the text is rendered over some other map layers, especially for labeling.
 
 .. note::
 
-   QgsTextMaskSettings objects are implicitly shared.
+   :py:class:`QgsTextMaskSettings` objects are implicitly shared.
 
 .. versionadded:: 3.12
 %End
@@ -118,7 +118,7 @@ Sets the units used for the buffer size.
     QgsMapUnitScale sizeMapUnitScale() const;
 %Docstring
 Returns the map unit scale object for the buffer size. This is only used if the
-buffer size is set to QgsUnitTypes.RenderMapUnit.
+buffer size is set to :py:class:`QgsUnitTypes`.RenderMapUnit.
 
 .. seealso:: :py:func:`setSizeMapUnitScale`
 
@@ -128,7 +128,7 @@ buffer size is set to QgsUnitTypes.RenderMapUnit.
     void setSizeMapUnitScale( const QgsMapUnitScale &scale );
 %Docstring
 Sets the map unit scale object for the buffer size. This is only used if the
-buffer size is set to QgsUnitTypes.RenderMapUnit.
+buffer size is set to :py:class:`QgsUnitTypes`.RenderMapUnit.
 
 :param scale: scale for buffer size
 
@@ -203,7 +203,7 @@ Write settings into a DOM element.
 .. seealso:: :py:func:`readXml`
 %End
 
-    QgsSymbolLayerReferenceList maskedSymbolLayers() const;
+    QList<QgsSymbolLayerReference> maskedSymbolLayers() const;
 %Docstring
 Returns a list of references to symbol layers that are masked by this buffer.
 
@@ -212,7 +212,7 @@ Returns a list of references to symbol layers that are masked by this buffer.
 .. seealso:: :py:func:`setMaskedSymbolLayers`
 %End
 
-    void setMaskedSymbolLayers( QgsSymbolLayerReferenceList maskedLayers );
+    void setMaskedSymbolLayers( const QList<QgsSymbolLayerReference> &maskedLayers );
 %Docstring
 Sets the symbol layers that will be masked by this buffer.
 

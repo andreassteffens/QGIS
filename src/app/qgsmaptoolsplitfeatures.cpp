@@ -30,6 +30,21 @@ QgsMapToolSplitFeatures::QgsMapToolSplitFeatures( QgsMapCanvas *canvas )
   setSnapToLayerGridEnabled( false );
 }
 
+bool QgsMapToolSplitFeatures::supportsTechnique( Qgis::CaptureTechnique technique ) const
+{
+  switch ( technique )
+  {
+    case Qgis::CaptureTechnique::StraightSegments:
+    case Qgis::CaptureTechnique::CircularString:
+    case Qgis::CaptureTechnique::Streaming:
+      return true;
+
+    case Qgis::CaptureTechnique::Shape:
+      return false;
+  }
+  return false;
+}
+
 void QgsMapToolSplitFeatures::cadCanvasReleaseEvent( QgsMapMouseEvent *e )
 {
   //check if we operate on a vector layer
@@ -56,27 +71,21 @@ void QgsMapToolSplitFeatures::cadCanvasReleaseEvent( QgsMapMouseEvent *e )
     //If we snap the first point on a vertex of a line layer, we directly split the feature at this point
     if ( vlayer->geometryType() == QgsWkbTypes::LineGeometry && pointsZM().isEmpty() )
     {
-      QgsPointLocator::Match m = mCanvas->snappingUtils()->snapToCurrentLayer( e->pos(), QgsPointLocator::Vertex );
+      const QgsPointLocator::Match m = mCanvas->snappingUtils()->snapToCurrentLayer( e->pos(), QgsPointLocator::Vertex );
       if ( m.isValid() )
       {
         split = true;
       }
     }
 
-    int error = addVertex( e->mapPoint(), e->mapPointMatch() );
-    if ( error == 1 )
-    {
-      //current layer is not a vector layer
-      return;
-    }
-    else if ( error == 2 )
+    const int error = addVertex( e->mapPoint(), e->mapPointMatch() );
+    if ( error == 2 )
     {
       //problem with coordinate transformation
       QgisApp::instance()->messageBar()->pushMessage(
         tr( "Coordinate transform error" ),
         tr( "Cannot transform the point to the layers coordinate system" ),
-        Qgis::Info,
-        QgisApp::instance()->messageTimeout() );
+        Qgis::MessageLevel::Info );
       return;
     }
 
@@ -92,11 +101,11 @@ void QgsMapToolSplitFeatures::cadCanvasReleaseEvent( QgsMapMouseEvent *e )
     deleteTempRubberBand();
 
     //bring up dialog if a split was not possible (polygon) or only done once (line)
-    bool topologicalEditing = QgsProject::instance()->topologicalEditing();
+    const bool topologicalEditing = QgsProject::instance()->topologicalEditing();
     QgsPointSequence topologyTestPoints;
     vlayer->beginEditCommand( tr( "Features split" ) );
-    QgsGeometry::OperationResult returnCode = vlayer->splitFeatures( captureCurve(), topologyTestPoints, true, topologicalEditing );
-    if ( returnCode == QgsGeometry::OperationResult::Success )
+    const Qgis::GeometryOperationResult returnCode = vlayer->splitFeatures( captureCurve(), topologyTestPoints, true, topologicalEditing );
+    if ( returnCode == Qgis::GeometryOperationResult::Success )
     {
       vlayer->endEditCommand();
     }
@@ -107,13 +116,12 @@ void QgsMapToolSplitFeatures::cadCanvasReleaseEvent( QgsMapMouseEvent *e )
 
     switch ( returnCode )
     {
-      case QgsGeometry::OperationResult::Success:
+      case Qgis::GeometryOperationResult::Success:
         if ( topologicalEditing == true &&
              ! topologyTestPoints.isEmpty() )
         {
           //check if we need to add topological points to other layers
-          QList<QgsVectorLayer *> editableLayers;
-          const auto layers = canvas()->layers();
+          const auto layers = canvas()->layers( true );
           for ( QgsMapLayer *layer : layers )
           {
             QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( layer );
@@ -125,7 +133,7 @@ void QgsMapToolSplitFeatures::cadCanvasReleaseEvent( QgsMapMouseEvent *e )
                    vectorLayer->geometryType() == QgsWkbTypes::PolygonGeometry ) )
             {
               vectorLayer->beginEditCommand( tr( "Topological points from Features split" ) );
-              int returnValue = vectorLayer->addTopologicalPoints( topologyTestPoints );
+              const int returnValue = vectorLayer->addTopologicalPoints( topologyTestPoints );
               if ( returnValue == 0 )
               {
                 vectorLayer->endEditCommand();
@@ -139,34 +147,30 @@ void QgsMapToolSplitFeatures::cadCanvasReleaseEvent( QgsMapMouseEvent *e )
           }
         }
         break;
-      case QgsGeometry::OperationResult::NothingHappened:
+      case Qgis::GeometryOperationResult::NothingHappened:
         QgisApp::instance()->messageBar()->pushMessage(
           tr( "No features were split" ),
           tr( "If there are selected features, the split tool only applies to those. If you would like to split all features under the split line, clear the selection." ),
-          Qgis::Warning,
-          QgisApp::instance()->messageTimeout() );
+          Qgis::MessageLevel::Warning );
         break;
-      case QgsGeometry::OperationResult::GeometryEngineError:
+      case Qgis::GeometryOperationResult::GeometryEngineError:
         QgisApp::instance()->messageBar()->pushMessage(
           tr( "No feature split done" ),
           tr( "Cut edges detected. Make sure the line splits features into multiple parts." ),
-          Qgis::Warning,
-          QgisApp::instance()->messageTimeout() );
+          Qgis::MessageLevel::Warning );
         break;
-      case QgsGeometry::OperationResult::InvalidBaseGeometry:
+      case Qgis::GeometryOperationResult::InvalidBaseGeometry:
         QgisApp::instance()->messageBar()->pushMessage(
           tr( "No feature split done" ),
           tr( "The geometry is invalid. Please repair before trying to split it." ),
-          Qgis::Warning,
-          QgisApp::instance()->messageTimeout() );
+          Qgis::MessageLevel::Warning );
         break;
       default:
         //several intersections but only one split (most likely line)
         QgisApp::instance()->messageBar()->pushMessage(
           tr( "No feature split done" ),
           tr( "An error occurred during splitting." ),
-          Qgis::Warning,
-          QgisApp::instance()->messageTimeout() );
+          Qgis::MessageLevel::Warning );
         break;
     }
     stopCapturing();

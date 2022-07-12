@@ -1,16 +1,5 @@
-include_directories(
-    ${CMAKE_SOURCE_DIR}/src/core
-    ${CMAKE_SOURCE_DIR}/src/core/geometry
-
-    ${CMAKE_BINARY_DIR}/src/core
-    ${CMAKE_BINARY_DIR}/src/core/geometry
-)
-
-include_directories(SYSTEM
-    ${Qt5Core_INCLUDE_DIRS}
-)
-
 add_library(libdxfrw STATIC
+    drw_base.cpp
     drw_classes.cpp
     drw_entities.cpp
     drw_header.cpp
@@ -31,7 +20,15 @@ add_library(libdxfrw STATIC
     intern/dxfwriter.cpp
     intern/rscodec.cpp
 )
+
+target_include_directories(libdxfrw PUBLIC
+  ${CMAKE_SOURCE_DIR}/external/libdxfrw
+)
+
 set_property(TARGET libdxfrw PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+# require c++11
+target_compile_features(libdxfrw PRIVATE cxx_std_11)
 
 if(FALSE)
 if(DOXYGEN_FOUND)

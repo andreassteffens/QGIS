@@ -95,9 +95,9 @@ QgsRasterRenderer *QgsMultiBandColorRendererWidget::renderer()
     return nullptr;
   }
 
-  int redBand = mRedBandComboBox->currentBand();
-  int greenBand = mGreenBandComboBox->currentBand();
-  int blueBand = mBlueBandComboBox->currentBand();
+  const int redBand = mRedBandComboBox->currentBand();
+  const int greenBand = mGreenBandComboBox->currentBand();
+  const int blueBand = mBlueBandComboBox->currentBand();
 
   QgsMultiBandColorRenderer *r = new QgsMultiBandColorRenderer( provider, redBand, greenBand, blueBand );
   setCustomMinMaxValues( r, provider, redBand, greenBand, blueBand );
@@ -137,22 +137,13 @@ void QgsMultiBandColorRendererWidget::setCustomMinMaxValues( QgsMultiBandColorRe
     return;
   }
 
-  if ( mContrastEnhancementAlgorithmComboBox->currentData().toInt() ==
-       QgsContrastEnhancement::NoEnhancement )
-  {
-    r->setRedContrastEnhancement( nullptr );
-    r->setGreenContrastEnhancement( nullptr );
-    r->setBlueContrastEnhancement( nullptr );
-    return;
-  }
-
   QgsContrastEnhancement *redEnhancement = nullptr;
   QgsContrastEnhancement *greenEnhancement = nullptr;
   QgsContrastEnhancement *blueEnhancement = nullptr;
 
   bool redMinOk, redMaxOk;
-  double redMin = QgsDoubleValidator::toDouble( mRedMinLineEdit->text(), &redMinOk );
-  double redMax = QgsDoubleValidator::toDouble( mRedMaxLineEdit->text(), &redMaxOk );
+  const double redMin = QgsDoubleValidator::toDouble( mRedMinLineEdit->text(), &redMinOk );
+  const double redMax = QgsDoubleValidator::toDouble( mRedMaxLineEdit->text(), &redMaxOk );
   if ( redMinOk && redMaxOk && redBand != -1 )
   {
     redEnhancement = new QgsContrastEnhancement( ( Qgis::DataType )(
@@ -162,8 +153,8 @@ void QgsMultiBandColorRendererWidget::setCustomMinMaxValues( QgsMultiBandColorRe
   }
 
   bool greenMinOk, greenMaxOk;
-  double greenMin = QgsDoubleValidator::toDouble( mGreenMinLineEdit->text(), &greenMinOk );
-  double greenMax = QgsDoubleValidator::toDouble( mGreenMaxLineEdit->text(), &greenMaxOk );
+  const double greenMin = QgsDoubleValidator::toDouble( mGreenMinLineEdit->text(), &greenMinOk );
+  const double greenMax = QgsDoubleValidator::toDouble( mGreenMaxLineEdit->text(), &greenMaxOk );
   if ( greenMinOk && greenMaxOk && greenBand != -1 )
   {
     greenEnhancement = new QgsContrastEnhancement( ( Qgis::DataType )(
@@ -173,8 +164,8 @@ void QgsMultiBandColorRendererWidget::setCustomMinMaxValues( QgsMultiBandColorRe
   }
 
   bool blueMinOk, blueMaxOk;
-  double blueMin = QgsDoubleValidator::toDouble( mBlueMinLineEdit->text(), &blueMinOk );
-  double blueMax = QgsDoubleValidator::toDouble( mBlueMaxLineEdit->text(), &blueMaxOk );
+  const double blueMin = QgsDoubleValidator::toDouble( mBlueMinLineEdit->text(), &blueMinOk );
+  const double blueMax = QgsDoubleValidator::toDouble( mBlueMaxLineEdit->text(), &blueMaxOk );
   if ( blueMinOk && blueMaxOk && blueBand != -1 )
   {
     blueEnhancement = new QgsContrastEnhancement( ( Qgis::DataType )(
@@ -451,4 +442,16 @@ int QgsMultiBandColorRendererWidget::selectedBand( int index )
       break;
   }
   return -1;
+}
+
+QgsContrastEnhancement::ContrastEnhancementAlgorithm QgsMultiBandColorRendererWidget::contrastEnhancementAlgorithm() const
+{
+  return static_cast<QgsContrastEnhancement::ContrastEnhancementAlgorithm>( mContrastEnhancementAlgorithmComboBox->currentData().toInt() );
+}
+
+void QgsMultiBandColorRendererWidget::setContrastEnhancementAlgorithm( QgsContrastEnhancement::ContrastEnhancementAlgorithm algorithm )
+{
+  mDisableMinMaxWidgetRefresh = true;
+  mContrastEnhancementAlgorithmComboBox->setCurrentIndex( mContrastEnhancementAlgorithmComboBox->findData( static_cast<int>( algorithm ) ) );
+  mDisableMinMaxWidgetRefresh = false;
 }

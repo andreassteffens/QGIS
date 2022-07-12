@@ -22,9 +22,8 @@
 
 #include "qgis_core.h"
 #include "qgscoordinatereferencesystem.h"
+#include "qgscoordinatetransformcontext.h"
 #include "qgsrectangle.h"
-
-class QAction;
 
 class QgsLocatorResult;
 class QgsLocator;
@@ -65,6 +64,24 @@ class CORE_EXPORT QgsLocatorModelBridge : public QObject
 
     //! Triggers the result at given \a index and with optional \a actionId if an additional action was triggered
     void triggerResult( const QModelIndex &index,  const int actionId = -1 );
+
+    /**
+     * Returns the coordinate transform context, which should be used whenever the
+     * locator constructs a coordinate transform.
+     *
+     * \see setTransformContext()
+     * \since QGIS 3.18
+     */
+    QgsCoordinateTransformContext transformContext() const { return mTransformContext; }
+
+    /**
+     * Sets the coordinate transform \a context, which should be used whenever the
+     * locator constructs a coordinate transform.
+     *
+     * \see transformContext()
+     * \since QGIS 3.18
+     */
+    void setTransformContext( const QgsCoordinateTransformContext &context ) { mTransformContext = context; }
 
   signals:
     //! Emitted when a result is added
@@ -108,6 +125,7 @@ class CORE_EXPORT QgsLocatorModelBridge : public QObject
     // see discussion in https://github.com/qgis/QGIS/pull/8404
     QgsRectangle mCanvasExtent;
     QgsCoordinateReferenceSystem mCanvasCrs;
+    QgsCoordinateTransformContext mTransformContext;
 };
 
 #endif // QGSLOCATORMODELBRIDGE_H

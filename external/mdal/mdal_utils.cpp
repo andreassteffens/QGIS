@@ -14,10 +14,77 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctime>
+#include <stdlib.h>
+
+#if defined _WIN32
+#define UNICODE
+#include <locale>
+#include <codecvt>
+#endif
+
+std::string MDAL::getEnvVar( const std::string &varname, const std::string &defaultVal )
+{
+  if ( varname.empty() )
+    return std::string();
+
+  char *envVarC = getenv( varname.c_str() );
+
+  if ( !envVarC )
+    return defaultVal;
+  else
+    return std::string( envVarC );
+}
+
+bool MDAL::openInputFile( std::ifstream &inputFileStream, const std::string &fileName, std::ios_base::openmode mode )
+{
+#if defined _MSC_VER
+  std::wstring_convert< std::codecvt_utf8_utf16< wchar_t > > converter;
+  std::wstring wStr = converter.from_bytes( fileName );
+  inputFileStream.open( wStr, std::ifstream::in | mode );
+#else
+  inputFileStream.open( fileName, std::ifstream::in | mode );
+#endif
+
+  return inputFileStream.is_open();
+}
+
+std::ifstream MDAL::openInputFile( const std::string &fileName, std::ios_base::openmode mode )
+{
+  std::ifstream ret;
+
+#if defined _MSC_VER
+  std::wstring_convert< std::codecvt_utf8_utf16< wchar_t > > converter;
+  std::wstring wStr = converter.from_bytes( fileName );
+  ret.open( wStr, mode );
+#else
+  ret.open( fileName, mode );
+#endif
+
+  return ret;
+}
+
+std::ofstream MDAL::openOutputFile( const std::string &fileName, std::ios_base::openmode mode )
+{
+  std::ofstream ret;
+
+#if defined _MSC_VER
+  std::wstring_convert< std::codecvt_utf8_utf16< wchar_t > > converter;
+  std::wstring wStr = converter.from_bytes( fileName );
+  ret.open( wStr, mode );
+#else
+  ret.open( fileName, mode );
+#endif
+
+  return ret;
+}
 
 bool MDAL::fileExists( const std::string &filename )
 {
-  std::ifstream in( filename );
+  std::ifstream in;
+
+  if ( !openInputFile( in, filename ) )
+    return false;
+
   return in.good();
 }
 
@@ -25,7 +92,8 @@ std::string MDAL::readFileToString( const std::string &filename )
 {
   if ( MDAL::fileExists( filename ) )
   {
-    std::ifstream t( filename );
+    std::ifstream t = openInputFile( filename );
+
     std::stringstream buffer;
     buffer << t.rdbuf();
     return buffer.str();
@@ -447,7 +515,7 @@ std::string MDAL::getCurrentTimeStamp()
   return s;
 }
 
-MDAL::Statistics _calculateStatistics( const std::vector<double> &values, size_t count, bool isVector )
+MDAL::Statistics _calculateStatistics( const std::vector<double> &values, size_t count, bool isVector, const std::vector<int> &active )
 {
   MDAL::Statistics ret;
 
@@ -457,6 +525,9 @@ MDAL::Statistics _calculateStatistics( const std::vector<double> &values, size_t
 
   for ( size_t i = 0; i < count; ++i )
   {
+    if ( !active.empty() && active.at( i ) == 0 )
+      continue;
+
     double magnitude;
     if ( isVector )
     {
@@ -509,7 +580,7 @@ MDAL::Statistics MDAL::calculateStatistics( DatasetGroup *grp )
   if ( !grp )
     return ret;
 
-  for ( std::shared_ptr<Dataset> ds : grp->datasets )
+  for ( std::shared_ptr<Dataset> &ds : grp->datasets )
   {
     MDAL::Statistics dsStats = ds->statistics();
     combineStatistics( ret, dsStats );
@@ -527,6 +598,11 @@ MDAL::Statistics MDAL::calculateStatistics( std::shared_ptr<Dataset> dataset )
   bool is3D = dataset->group()->dataLocation() == MDAL_DataLocation::DataOnVolumes;
   size_t bufLen = 2000;
   std::vector<double> buffer( isVector ? bufLen * 2 : bufLen );
+  std::vector<int> activeBuffer;
+  bool activeFaceFlag = dataset->group()->dataLocation() == MDAL_DataLocation::DataOnFaces && dataset->supportsActiveFlag();
+
+  if ( activeFaceFlag )
+    activeBuffer.resize( bufLen );
 
   size_t i = 0;
   while ( i < dataset->valuesCount() )
@@ -553,11 +629,14 @@ MDAL::Statistics MDAL::calculateStatistics( std::shared_ptr<Dataset> dataset )
       {
         valsRead = dataset->scalarData( i, bufLen, buffer.data() );
       }
+
+      if ( activeFaceFlag )
+        dataset->activeData( i, bufLen, activeBuffer.data() );
     }
     if ( valsRead == 0 )
       return ret;
 
-    MDAL::Statistics dsStats = _calculateStatistics( buffer, valsRead, isVector );
+    MDAL::Statistics dsStats = _calculateStatistics( buffer, valsRead, isVector, activeBuffer );
     combineStatistics( ret, dsStats );
     i += valsRead;
   }
@@ -582,64 +661,75 @@ void MDAL::combineStatistics( MDAL::Statistics &main, const MDAL::Statistics &ot
 
 void MDAL::addBedElevationDatasetGroup( MDAL::Mesh *mesh, const Vertices &vertices )
 {
-  if ( !mesh )
-    return;
-
-  if ( 0 == mesh->verticesCount() )
-    return;
-
-  std::shared_ptr<DatasetGroup> group = std::make_shared< DatasetGroup >(
-                                          mesh->driverName(),
-                                          mesh,
-                                          mesh->uri(),
-                                          "Bed Elevation"
-                                        );
-  group->setDataLocation( MDAL_DataLocation::DataOnVertices );
-  group->setIsScalar( true );
-
-  std::shared_ptr<MDAL::MemoryDataset2D> dataset = std::make_shared< MemoryDataset2D >( group.get() );
-  dataset->setTime( 0.0 );
+  std::vector<double> values( mesh->verticesCount() );
   for ( size_t i = 0; i < vertices.size(); ++i )
   {
-    dataset->setScalarValue( i, vertices[i].z );
+    values[i] = vertices[i].z;
   }
-  dataset->setStatistics( MDAL::calculateStatistics( dataset ) );
-  group->datasets.push_back( dataset );
-  group->setStatistics( MDAL::calculateStatistics( group ) );
-  mesh->datasetGroups.push_back( group );
+  addVertexScalarDatasetGroup( mesh, values, "Bed Elevation" );
 }
 
-void MDAL::addFaceScalarDatasetGroup( MDAL::Mesh *mesh,
-                                      const std::vector<double> &values,
-                                      const std::string &name )
+static void _addScalarDatasetGroup( MDAL::Mesh *mesh,
+                                    const std::vector<double> &values,
+                                    const std::string &name,
+                                    MDAL_DataLocation location
+                                  )
 {
   if ( !mesh )
     return;
 
+  size_t maxCount = 0;
+  switch ( location )
+  {
+    case MDAL_DataLocation::DataOnVertices: maxCount = mesh->verticesCount(); break;
+    case MDAL_DataLocation::DataOnFaces: maxCount = mesh->facesCount(); break;
+    case MDAL_DataLocation::DataOnEdges: maxCount = mesh->edgesCount(); break;
+    default:
+      assert( false );
+  }
+
   if ( values.empty() )
     return;
 
-  if ( mesh->facesCount() == 0 )
+  if ( maxCount == 0 )
     return;
 
-  assert( values.size() ==  mesh->facesCount() );
+  assert( values.size() ==  maxCount );
 
-  std::shared_ptr<DatasetGroup> group = std::make_shared< DatasetGroup >(
-                                          mesh->driverName(),
-                                          mesh,
-                                          mesh->uri(),
-                                          name
-                                        );
-  group->setDataLocation( MDAL_DataLocation::DataOnFaces );
+  std::shared_ptr<MDAL::DatasetGroup> group = std::make_shared< MDAL::DatasetGroup >(
+        mesh->driverName(),
+        mesh,
+        mesh->uri(),
+        name
+      );
+  group->setDataLocation( location );
   group->setIsScalar( true );
 
-  std::shared_ptr<MDAL::MemoryDataset2D> dataset = std::make_shared< MemoryDataset2D >( group.get() );
+  std::shared_ptr<MDAL::MemoryDataset2D> dataset = std::make_shared< MDAL::MemoryDataset2D >( group.get() );
   dataset->setTime( 0.0 );
   memcpy( dataset->values(), values.data(), sizeof( double )*values.size() );
   dataset->setStatistics( MDAL::calculateStatistics( dataset ) );
   group->datasets.push_back( dataset );
   group->setStatistics( MDAL::calculateStatistics( group ) );
   mesh->datasetGroups.push_back( group );
+}
+
+
+void MDAL::addFaceScalarDatasetGroup( MDAL::Mesh *mesh,
+                                      const std::vector<double> &values,
+                                      const std::string &name )
+{
+  _addScalarDatasetGroup( mesh, values, name, MDAL_DataLocation::DataOnFaces );
+}
+
+void MDAL::addVertexScalarDatasetGroup( MDAL::Mesh *mesh, const std::vector<double> &values, const std::string &name )
+{
+  _addScalarDatasetGroup( mesh, values, name, MDAL_DataLocation::DataOnVertices );
+}
+
+void MDAL::addEdgeScalarDatasetGroup( MDAL::Mesh *mesh, const std::vector<double> &values, const std::string &name )
+{
+  _addScalarDatasetGroup( mesh, values, name, MDAL_DataLocation::DataOnEdges );
 }
 
 bool MDAL::isNativeLittleEndian()
@@ -661,7 +751,6 @@ std::string MDAL::coordinateToString( double coordinate, int precision )
   oss << coordinate;
 
   std::string returnString = oss.str();
-  returnString.back();
 
   //remove unnecessary '0' or '.'
   if ( returnString.size() > 0 )
@@ -936,3 +1025,105 @@ std::string MDAL::buildAndMergeMeshUris( const std::string &meshFile, const std:
 
   return mergedUris;
 }
+
+MDAL::Library::Library( std::string libraryFile )
+{
+  d = new Data;
+  d->mLibraryFile = libraryFile;
+  d->mRef++;
+}
+
+MDAL::Library::~Library()
+{
+  d->mRef--;
+#ifdef WIN32
+  if ( d->mLibrary &&  d->mRef == 0 )
+    FreeLibrary( d->mLibrary );
+#else
+  if ( d->mLibrary &&  d->mRef == 0 )
+    dlclose( d->mLibrary );
+#endif
+}
+
+MDAL::Library::Library( const MDAL::Library &other )
+{
+  *this = other;
+  d->mRef++;
+}
+
+MDAL::Library &MDAL::Library::operator=( const MDAL::Library &other )
+{
+  d = other.d;
+  d->mRef++;
+
+  return ( *this );
+}
+
+bool MDAL::Library::isValid()
+{
+  if ( !d->mLibrary )
+    loadLibrary();
+
+  return d->mLibrary != nullptr;
+}
+
+std::vector<std::string> MDAL::Library::libraryFilesInDir( const std::string &dirPath )
+{
+  std::vector<std::string> filesList;
+#if defined(WIN32)
+  WIN32_FIND_DATA data;
+  HANDLE hFind;
+  std::string pattern = dirPath;
+  pattern.push_back( '*' );
+
+  hFind = FindFirstFile( pattern.c_str(), &data );
+
+  if ( hFind == INVALID_HANDLE_VALUE )
+    return filesList;
+
+  do
+  {
+    std::string fileName( data.cFileName );
+    if ( !fileName.empty() && fileExtension( fileName ) == ".dll" )
+      filesList.push_back( fileName );
+  }
+  while ( FindNextFile( hFind, &data ) != 0 );
+
+  FindClose( hFind );
+#else
+  DIR *dir = opendir( dirPath.c_str() );
+  struct dirent *de = readdir( dir );
+  while ( de != nullptr )
+  {
+    std::string fileName( de->d_name );
+    if ( !fileName.empty() )
+    {
+      std::string extentsion = fileExtension( fileName );
+      if ( extentsion == ".so" || extentsion == ".dylib" )
+        filesList.push_back( fileName );
+    }
+    de = readdir( dir );
+  }
+
+  closedir( dir );
+#endif
+  return filesList;
+}
+
+bool MDAL::Library::loadLibrary()
+{
+  //should we allow only one successful loading?
+  if ( d->mLibrary )
+    return false;
+#ifdef WIN32
+  UINT uOldErrorMode =
+    SetErrorMode( SEM_NOOPENFILEERRORBOX | SEM_FAILCRITICALERRORS );
+  d->mLibrary = LoadLibrary( d->mLibraryFile.c_str() );
+  SetErrorMode( uOldErrorMode );
+#else
+  d->mLibrary = dlopen( d->mLibraryFile.c_str(), RTLD_LAZY );
+#endif
+
+  return d->mLibrary != nullptr;
+}
+

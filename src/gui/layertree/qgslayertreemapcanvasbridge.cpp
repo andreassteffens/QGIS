@@ -83,8 +83,8 @@ void QgsLayerTreeMapCanvasBridge::setCanvasLayers()
     }
   }
 
-  bool firstLayers = mAutoSetupOnFirstLayer && !mHasLayersLoaded && currentSpatialLayerCount != 0;
-  bool firstValidLayers = mAutoSetupOnFirstLayer && !mHasValidLayersLoaded && currentValidSpatialLayerCount != 0;
+  const bool firstLayers = mAutoSetupOnFirstLayer && !mHasLayersLoaded && currentSpatialLayerCount != 0;
+  const bool firstValidLayers = mAutoSetupOnFirstLayer && !mHasValidLayersLoaded && currentValidSpatialLayerCount != 0;
 
   mCanvas->setLayers( canvasLayers );
   if ( mOverviewCanvas )
@@ -93,7 +93,7 @@ void QgsLayerTreeMapCanvasBridge::setCanvasLayers()
   if ( firstValidLayers )
   {
     // if we are moving from zero to non-zero layers, let's zoom to those data (only consider valid layers here!)
-    mCanvas->zoomToFullExtent();
+    mCanvas->zoomToProjectExtent();
   }
 
   if ( !mFirstCRS.isValid() )
@@ -154,7 +154,17 @@ void QgsLayerTreeMapCanvasBridge::setCanvasLayers( QgsLayerTreeNode *node, QList
 
   const QList<QgsLayerTreeNode *> children = node->children();
   for ( QgsLayerTreeNode *child : children )
+  {
+    if ( QgsLayerTreeGroup *group = QgsLayerTree::toGroup( node ) )
+    {
+      if ( QgsGroupLayer *groupLayer = group->groupLayer() )
+      {
+        canvasLayers << groupLayer;
+        continue;
+      }
+    }
     setCanvasLayers( child, canvasLayers, overviewLayers, allLayers );
+  }
 }
 
 void QgsLayerTreeMapCanvasBridge::deferredSetCanvasLayers()
@@ -190,7 +200,7 @@ void QgsLayerTreeMapCanvasBridge::layersAdded( const QList<QgsMapLayer *> &layer
         {
           mHasValidLayersLoaded = true;
           // if we are moving from zero valid layers to non-zero VALID layers, let's zoom to those data
-          mCanvas->zoomToFullExtent();
+          mCanvas->zoomToProjectExtent();
         }
       } );
     }

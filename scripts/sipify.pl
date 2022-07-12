@@ -21,6 +21,11 @@ use constant MULTILINE_CONDITIONAL_STATEMENT => 22;
 use constant CODE_SNIPPET => 30;
 use constant CODE_SNIPPET_CPP => 31;
 
+use constant PREPEND_CODE_NO => 40;
+use constant PREPEND_CODE_VIRTUAL => 41;
+use constant PREPEND_CODE_MAKE_PRIVATE => 42;
+
+
 # read arguments
 my $debug = 0;
 my $sip_output = '';
@@ -37,7 +42,7 @@ chomp(my @INPUT_LINES = <$handle>);
 close $handle;
 
 # config
-my $cfg_file = File::Spec->catfile( dirname(__FILE__), 'sipify.yaml' );
+my $cfg_file = File::Spec->catfile( dirname(__FILE__), '../python/sipify.yaml' );
 my $yaml = YAML::Tiny->read( $cfg_file  );
 my $SIP_CONFIG = $yaml->[0];
 
@@ -64,8 +69,9 @@ my @SKIPPED_PARAMS_REMOVE = ();
 my $GLOB_IFDEF_NESTING_IDX = 0;
 my @GLOB_BRACKET_NESTING_IDX = (0);
 my $PRIVATE_SECTION_LINE = '';
+my $LAST_ACCESS_SECTION_LINE = '';
 my $RETURN_TYPE = '';
-my $IS_OVERRIDE = 0;
+my $IS_OVERRIDE_OR_MAKE_PRIVATE = PREPEND_CODE_NO;
 my $IF_FEATURE_CONDITION = '';
 my $FOUND_SINCE = 0;
 my %QFLAG_HASH;
@@ -75,7 +81,7 @@ my $LINE_IDX = 0;
 my $LINE;
 my @OUTPUT = ();
 my @OUTPUT_PYTHON = ();
-
+my $DOXY_INSIDE_SIP_RUN = 0;
 
 sub read_line {
     my $new_line = $INPUT_LINES[$LINE_IDX];
@@ -87,7 +93,7 @@ sub read_line {
                                   $GLOB_BRACKET_NESTING_IDX[$#GLOB_BRACKET_NESTING_IDX],
                                   $SIP_RUN,
                                   $MULTILINE_DEFINITION,
-                                  $IS_OVERRIDE,
+                                  $IS_OVERRIDE_OR_MAKE_PRIVATE,
                                   $ACTUAL_CLASS,
                                   $#CLASSNAME)." :: ".$new_line."\n";
    $new_line = replace_macros($new_line);
@@ -95,16 +101,24 @@ sub read_line {
 }
 
 sub write_output {
-    my ($dbg_code, $out) = @_;
+    my ($dbg_code, $out, $prepend) = @_;
+    $prepend //= "no";
     if ($debug == 1){
         $dbg_code = sprintf("%d %-4s :: ", $LINE_IDX, $dbg_code);
     }
     else{
         $dbg_code = '';
     }
-    push @OUTPUT, "%If ($IF_FEATURE_CONDITION)\n" if $IF_FEATURE_CONDITION ne '';
-    push @OUTPUT, $dbg_code.$out;
-    push @OUTPUT, "%End\n" if $IF_FEATURE_CONDITION ne '';
+    if ($prepend eq "prepend")
+    {
+       unshift @OUTPUT, $dbg_code . $out;
+    }
+    else
+    {
+      push @OUTPUT, "%If ($IF_FEATURE_CONDITION)\n" if $IF_FEATURE_CONDITION ne '';
+      push @OUTPUT, $dbg_code . $out;
+      push @OUTPUT, "%End\n" if $IF_FEATURE_CONDITION ne '';
+    }
     $IF_FEATURE_CONDITION = '';
 }
 
@@ -147,18 +161,66 @@ sub python_header {
     return @header;
 }
 
+sub create_class_links {
+    my $line = $_[0];
+
+    if ( $line =~ m/\b(Qgs[A-Z]\w+)\b(\.?$|[^\w]{2})/) {
+        if ( defined $ACTUAL_CLASS && $1 !~ $ACTUAL_CLASS ) {
+            $line =~ s/\b(Qgs[A-Z]\w+)\b(\.?$|[^\w]{2})/:py:class:`$1`$2/g;
+        }
+    }
+    $line =~ s/\b(Qgs[A-Z]\w+\.[a-z]\w+\(\))(?!\w)/:py:func:`$1`/g;
+    if ( defined $ACTUAL_CLASS && $ACTUAL_CLASS) {
+        $line =~ s/(?<!\.)\b(?:([a-z]\w+)\(\))(?!\w)/:py:func:`~$ACTUAL_CLASS.$1`/g;
+    }
+    else {
+        $line =~ s/(?<!\.)\b(?:([a-z]\w+)\(\))(?!\w)/:py:func:`~$1`/g;
+    }
+
+    if ( $line =~ m/\b(?<![`~])(Qgs[A-Z]\w+)\b(?!\()/) {
+        if ( (!$ACTUAL_CLASS) || $1 ne $ACTUAL_CLASS ) {
+            $line =~ s/\b(?<![`~])(Qgs[A-Z]\w+)\b(?!\()/:py:class:`$1`/g;
+        }
+    }
+
+    return $line;
+}
+
 sub processDoxygenLine {
     my $line = $_[0];
 
+    if ( $line =~ m/\s*#ifdef SIP_RUN/ ) {
+      $DOXY_INSIDE_SIP_RUN = 1;
+      return "";
+    }
+    elsif ( $line =~ m/\s*#ifndef SIP_RUN/ ) {
+      $DOXY_INSIDE_SIP_RUN = 2;
+      return "";
+    }
+    elsif ($DOXY_INSIDE_SIP_RUN != 0 && $line =~ m/\s*#else/ ) {
+      $DOXY_INSIDE_SIP_RUN = $DOXY_INSIDE_SIP_RUN == 1 ? 2 : 1;
+      return "";
+    }
+    elsif ($DOXY_INSIDE_SIP_RUN != 0 && $line =~ m/\s*#endif/ ) {
+      $DOXY_INSIDE_SIP_RUN = 0;
+      return "";
+    }
+
+    if ($DOXY_INSIDE_SIP_RUN == 2) {
+      return "";
+    }
+
     # detect code snippet
-    if ( $line =~ m/\\code(\{\.(\w+)\})?/ ) {
+    if ( $line =~ m/\\code(\{\.?(\w+)\})?/ ) {
         my $codelang = "";
         $codelang = " $2" if (defined $2);
+        $codelang =~ m/(cpp|py|unparsed)/ or exit_with_error("invalid code snippet format: $codelang");
         $COMMENT_CODE_SNIPPET = CODE_SNIPPET;
         $COMMENT_CODE_SNIPPET = CODE_SNIPPET_CPP if ($codelang =~ m/cpp/ );
         $codelang =~ s/py/python/;
+        $codelang =~ s/unparsed/raw/;
         return "\n" if ( $COMMENT_CODE_SNIPPET == CODE_SNIPPET_CPP );
-        return ".. code-block::$codelang\n\n";
+        return "\n.. code-block::$codelang\n\n";
     }
     if ( $line =~ m/\\endcode/ ) {
         $COMMENT_CODE_SNIPPET = 0;
@@ -166,6 +228,7 @@ sub processDoxygenLine {
     }
     if ($COMMENT_CODE_SNIPPET != 0){
         if ( $COMMENT_CODE_SNIPPET == CODE_SNIPPET_CPP ){
+            # cpp code is stripped out
             return "";
         } else {
             if ( $line ne ''){
@@ -274,7 +337,7 @@ sub processDoxygenLine {
         my $depr_line = "\n.. deprecated::";
         $depr_line .= " QGIS $+{DEPR_VERSION}" if (defined $+{DEPR_VERSION});
         $depr_line .= "\n  $+{DEPR_MESSAGE}\n" if (defined $+{DEPR_MESSAGE});
-        return $depr_line;
+        return create_class_links($depr_line);
     }
 
     # create links in see also
@@ -308,21 +371,10 @@ sub processDoxygenLine {
             }
         }
     }
-    else
-    {
+    elsif ( $line !~ m/\\throws.*/ ) {
         # create links in plain text too (less performant)
-        if ( $line =~ m/\b(Qgs[A-Z]\w+)\b(\.?$|[^\w]{2})/) {
-            if ( defined $ACTUAL_CLASS && $1 !~ $ACTUAL_CLASS ) {
-                $line =~ s/\b(Qgs[A-Z]\w+)\b(\.?$|[^\w]{2})/:py:class:`$1`$2/g;
-            }
-        }
-        $line =~ s/\b(Qgs[A-Z]\w+\.[a-z]\w+\(\))(?!\w)/:py:func:`$1`/g;
-        if ( defined $ACTUAL_CLASS && $ACTUAL_CLASS) {
-          $line =~ s/(?<!\.)\b(?:([a-z]\w+)\(\))(?!\w)/:py:func:`~$ACTUAL_CLASS.$1`/g;
-        }
-        else {
-          $line =~ s/(?<!\.)\b(?:([a-z]\w+)\(\))(?!\w)/:py:func:`~$1`/g;
-        }
+        # we don't do this for "throws" lines, as Sphinx does not format these correctly
+        $line = create_class_links($line)
     }
 
     if ( $line =~ m/[\\@]note (.*)/ ) {
@@ -359,7 +411,7 @@ sub detect_and_remove_following_body_or_initializerlist {
     # https://regex101.com/r/ZaP3tC/8
     my $python_signature = '';
     do {no warnings 'uninitialized';
-        if ( $LINE =~  m/^(\s*)?((?:(?:explicit|static|const|unsigned|virtual)\s+)*)(([\w:]+(<.*?>)?\s+[*&]?)?(~?\w+|(\w+::)?operator.{1,2})\s*\(([\w=()\/ ,&*<>."-]|::)*\)( +(?:const|SIP_[\w_]+?))*)\s*((\s*[:,]\s+\w+\(.*\))*\s*\{.*\}\s*(?:SIP_[\w_]+)?;?|(?!;))(\s*\/\/.*)?$/
+        if ( $LINE =~  m/^(\s*)?((?:(?:explicit|static|const|unsigned|virtual)\s+)*)(([(?:long )\w:]+(<.*?>)?\s+[*&]?)?(~?\w+|(\w+::)?operator.{1,2})\s*\(([\w=()\/ ,&*<>."-]|::)*\)( +(?:const|SIP_[\w_]+?))*)\s*((\s*[:,]\s+\w+\(.*\))*\s*\{.*\}\s*(?:SIP_[\w_]+)?;?|(?!;))(\s*\/\/.*)?$/
              || $LINE =~ m/SIP_SKIP\s*(?!;)\s*(\/\/.*)?$/
              || $LINE =~ m/^\s*class.*SIP_SKIP/ ){
             dbg_info("remove constructor definition, function bodies, member initializing list");
@@ -452,14 +504,14 @@ sub fix_annotations {
     $line =~ s/\bSIP_NODEFAULTCTORS\b/\/NoDefaultCtors\//;
     $line =~ s/\bSIP_OUT\b/\/Out\//g;
     $line =~ s/\bSIP_RELEASEGIL\b/\/ReleaseGIL\//;
-    $line =~ s/\bSIP_HOLDGIL\b/\/HoldGIL\//;    
+    $line =~ s/\bSIP_HOLDGIL\b/\/HoldGIL\//;
     $line =~ s/\bSIP_TRANSFER\b/\/Transfer\//g;
     $line =~ s/\bSIP_TRANSFERBACK\b/\/TransferBack\//;
     $line =~ s/\bSIP_TRANSFERTHIS\b/\/TransferThis\//;
     $line =~ s/\bSIP_GETWRAPPER\b/\/GetWrapper\//;
 
     $line =~ s/SIP_PYNAME\(\s*(\w+)\s*\)/\/PyName=$1\//;
-    $line =~ s/SIP_TYPEHINT\(\s*(\w+)\s*\)/\/TypeHint="$1"\//;
+    $line =~ s/SIP_TYPEHINT\(\s*([\w\.\s,\[\]]+?)\s*\)/\/TypeHint="$1"\//g;
     $line =~ s/SIP_VIRTUALERRORHANDLER\(\s*(\w+)\s*\)/\/VirtualErrorHandler=$1\//;
     $line =~ s/SIP_THROW\(\s*(\w+)\s*\)/throw\( $1 \)/;
 
@@ -472,6 +524,7 @@ sub fix_annotations {
 
     # unprinted annotations
     $line =~ s/(\w+)(\<(?>[^<>]|(?2))*\>)?\s+SIP_PYALTERNATIVETYPE\(\s*\'?([^()']+)(\(\s*(?:[^()]++|(?2))*\s*\))?\'?\s*\)/$3/g;
+    $line =~ s/(\w+)\s+SIP_PYARGRENAME\(\s*(\w+)\s*\)/$2/g;
     $line =~ s/=\s+[^=]*?\s+SIP_PYARGDEFAULT\(\s*\'?([^()']+)(\(\s*(?:[^()]++|(?2))*\s*\))?\'?\s*\)/= $1/g;
     # remove argument
     if ($line =~ m/SIP_PYARGREMOVE/){
@@ -504,6 +557,8 @@ sub fix_constants {
     $line =~ s/\bstd::numeric_limits<double>::max\(\)/DBL_MAX/g;
     $line =~ s/\bstd::numeric_limits<double>::lowest\(\)/-DBL_MAX/g;
     $line =~ s/\bstd::numeric_limits<double>::epsilon\(\)/DBL_EPSILON/g;
+    $line =~ s/\bstd::numeric_limits<qlonglong>::min\(\)/LLONG_MIN/g;
+    $line =~ s/\bstd::numeric_limits<qlonglong>::max\(\)/LLONG_MAX/g;
     $line =~ s/\bstd::numeric_limits<int>::max\(\)/INT_MAX/g;
     $line =~ s/\bstd::numeric_limits<int>::min\(\)/INT_MIN/g;
     return $line;
@@ -748,7 +803,7 @@ while ($LINE_IDX < $LINE_COUNT){
         next;
     }
 
-    # insert metaoject for Q_GADGET
+    # insert metaobject for Q_GADGET
     if ($LINE =~ m/^\s*Q_GADGET\b.*?$/){
         if ($LINE !~ m/SIP_SKIP/){
             dbg_info('Q_GADGET');
@@ -779,6 +834,9 @@ while ($LINE_IDX < $LINE_COUNT){
 
     # Skip Q_OBJECT, Q_PROPERTY, Q_ENUM etc.
     if ($LINE =~ m/^\s*Q_(OBJECT|ENUMS|ENUM|FLAG|PROPERTY|DECLARE_METATYPE|DECLARE_TYPEINFO|NOWARN_DEPRECATED_(PUSH|POP))\b.*?$/){
+        next;
+    }
+    if ($LINE =~ m/^\s*QHASH_FOR_CLASS_ENUM/){
         next;
     }
 
@@ -836,7 +894,7 @@ while ($LINE_IDX < $LINE_COUNT){
 
     # class declaration started
     # https://regex101.com/r/6FWntP/16
-    if ( $LINE =~ m/^(\s*(class))(\s+Q_DECL_DEPRECATED)?\s+([A-Z0-9_]+_EXPORT\s+)?(?<classname>\w+)(?<domain>\s*\:\s*(public|protected|private)\s+\w+(< *(\w|::)+ *>)?(::\w+(<\w+>)?)*(,\s*(public|protected|private)\s+\w+(< *(\w|::)+ *>)?(::\w+(<\w+>)?)*)*)?(?<annot>\s*\/?\/?\s*SIP_\w+)?\s*?(\/\/.*|(?!;))$/ ){
+    if ( $LINE =~ m/^(\s*(class))\s+([A-Z0-9_]+_EXPORT\s+)?(Q_DECL_DEPRECATED\s+)?(?<classname>\w+)(?<domain>\s*\:\s*(public|protected|private)\s+\w+(< *(\w|::)+ *>)?(::\w+(<\w+>)?)*(,\s*(public|protected|private)\s+\w+(< *(\w|::)+ *>)?(::\w+(<\w+>)?)*)*)?(?<annot>\s*\/?\/?\s*SIP_\w+)?\s*?(\/\/.*|(?!;))$/ ){
         dbg_info("class definition started");
         push @ACCESS, PUBLIC;
         push @EXPORTED, 0;
@@ -852,7 +910,7 @@ while ($LINE_IDX < $LINE_COUNT){
                 push @DECLARED_CLASSES, $CLASSNAME[$#CLASSNAME];
             }
             dbg_info("class: ".$CLASSNAME[$#CLASSNAME]);
-            if ($LINE =~ m/\b[A-Z0-9_]+_EXPORT\b/ || $#CLASSNAME != 0 || $INPUT_LINES[$LINE_IDX-2] =~ m/^\s*template</){
+            if ($LINE =~ m/\b[A-Z0-9_]+_EXPORT\b/ || $#CLASSNAME != 0 || $INPUT_LINES[$LINE_IDX-2] =~ m/^\s*template\s*</){
                 # class should be exported except those not at top level or template classes
                 # if class is not exported, then its methods should be (checked whenever leaving out the class)
                 $EXPORTED[-1]++;
@@ -885,7 +943,7 @@ while ($LINE_IDX < $LINE_COUNT){
 
         $LINE .= "\n{\n";
         if ( $COMMENT !~ m/^\s*$/ ){
-            $LINE .= "%Docstring\n$COMMENT\n%End\n";
+            $LINE .= "%Docstring(signature=\"appended\")\n$COMMENT\n%End\n";
         }
         $LINE .= "\n%TypeHeaderCode\n#include \"" . basename($headerfile) . "\"";
         # for template based inheritance, add a typedef to define the base type
@@ -944,7 +1002,7 @@ while ($LINE_IDX < $LINE_COUNT){
                 pop(@CLASSNAME);
                 if ($#ACCESS == 0){
                     dbg_info("reached top level");
-                    # top level should stasy public
+                    # top level should stay public
                     $ACCESS[$#ACCESS] = PUBLIC;
                 }
                 $COMMENT = '';
@@ -958,6 +1016,7 @@ while ($LINE_IDX < $LINE_COUNT){
     # Private members (exclude SIP_RUN)
     if ( $LINE =~ m/^\s*private( slots)?:/ ){
         $ACCESS[$#ACCESS] = PRIVATE;
+        $LAST_ACCESS_SECTION_LINE = $LINE;
         $PRIVATE_SECTION_LINE = $LINE;
         $COMMENT = '';
         dbg_info("going private");
@@ -965,11 +1024,13 @@ while ($LINE_IDX < $LINE_COUNT){
     }
     elsif ( $LINE =~ m/^\s*(public( slots)?|signals):.*$/ ){
         dbg_info("going public");
+        $LAST_ACCESS_SECTION_LINE = $LINE;
         $ACCESS[$#ACCESS] = PUBLIC;
         $COMMENT = '';
     }
     elsif ( $LINE =~ m/^\s*(protected)( slots)?:.*$/ ){
         dbg_info("going protected");
+        $LAST_ACCESS_SECTION_LINE = $LINE;
         $ACCESS[$#ACCESS] = PROTECTED;
         $COMMENT = '';
     }
@@ -1009,6 +1070,10 @@ while ($LINE_IDX < $LINE_COUNT){
 
     # Enum declaration
     # For scoped and type based enum, the type has to be removed
+    if ( $LINE =~ m/^\s*Q_DECLARE_FLAGS\s*\(\s*(?<flags_name>\w+)\s*,\s*(?<flag_name>\w+)\s*\)\s*SIP_MONKEYPATCH_FLAGS_UNNEST\s*\(\s*(?<emkb>\w+)\s*,\s*(?<emkf>\w+)\s*\)\s*$/ ){
+        push @OUTPUT_PYTHON, "$+{emkb}.$+{emkf} = $ACTUAL_CLASS.$+{flags_name}\n";
+        $LINE =~ s/\s*SIP_MONKEYPATCH_FLAGS_UNNEST\(.*?\)//;
+    }
     if ( $LINE =~ m/^(\s*enum(\s+Q_DECL_DEPRECATED)?\s+(?<isclass>class\s+)?(?<enum_qualname>\w+))(:?\s+SIP_.*)?(\s*:\s*\w+)?(?<oneliner>.*)$/ ){
         my $enum_decl = $1;
         $enum_decl =~ s/\s*\bQ_DECL_DEPRECATED\b//;
@@ -1023,7 +1088,13 @@ while ($LINE_IDX < $LINE_COUNT){
         my $enum_mk_base = "";
         $enum_mk_base = $+{emkb} if defined $+{emkb};
         if (defined $+{emkf} and $monkeypatch eq "1"){
+          if ( $ACTUAL_CLASS ne "" ) {
+            if ($enum_mk_base.$+{emkf} ne $ACTUAL_CLASS.$enum_qualname) {
+              push @OUTPUT_PYTHON, "$enum_mk_base.$+{emkf} = $ACTUAL_CLASS.$enum_qualname\n";
+            }
+          } else {
             push @OUTPUT_PYTHON, "$enum_mk_base.$+{emkf} = $enum_qualname\n";
+          }
         }
         if ($LINE =~ m/\{((\s*\w+)(\s*=\s*[\w\s\d<|]+.*?)?(,?))+\s*\}/){
           # one line declaration
@@ -1046,22 +1117,40 @@ while ($LINE_IDX < $LINE_COUNT){
                 next if ($LINE =~ m/^\s*\w+\s*\|/); # multi line declaration as sum of enums
 
                 do {no warnings 'uninitialized';
-                    my $enum_decl = $LINE =~ s/^(\s*(?<em>\w+))(\s+SIP_\w+(?:\([^()]+\))?)?(?:\s*=\s*(?:[\w\s\d|+-]|::|<<)+)?(,?)(:?\s*\/\/!<\s*(?<co>.*)|.*)$/$1$3$4/r;
+                    my $enum_decl = $LINE =~ s/^(\s*(?<em>\w+))(\s+SIP_PYNAME(?:\(\s*(?<pyname>[^() ]+)\s*\)\s*)?)?(\s+SIP_MONKEY\w+(?:\(\s*(?<compat>[^() ]+)\s*\)\s*)?)?(?:\s*=\s*(?:[\w\s\d|+-]|::|<<)+)?(,?)(:?\s*\/\/!<\s*(?<co>.*)|.*)$/$1$3$7/r;
                     my $enum_member = $+{em};
                     my $comment = $+{co};
+                    # replace :: with . (changes c++ style namespace/class directives to Python style)
+                    $comment =~ s/::/./g;
+                    $comment =~ s/\"/\\"/g;
+                    my $compat_name = $+{compat} ? $+{compat} : $enum_member;
                     dbg_info("is_scope_based:$is_scope_based enum_mk_base:$enum_mk_base monkeypatch:$monkeypatch");
                     if ($is_scope_based eq "1" and $enum_member ne "") {
                         if ( $monkeypatch eq 1 and $enum_mk_base ne ""){
-		                    push @OUTPUT_PYTHON, "$enum_mk_base.$enum_member = $enum_qualname.$enum_member\n";
-		                    push @OUTPUT_PYTHON, "$enum_mk_base.$enum_member.__doc__ = \"$comment\"\n" ;
-		                    push @enum_members_doc, "'* ``$enum_member``: ' + $enum_qualname.$enum_member.__doc__";
+                          if ( $ACTUAL_CLASS ne "" ) {
+                            push @OUTPUT_PYTHON, "$enum_mk_base.$compat_name = $ACTUAL_CLASS.$enum_qualname.$enum_member\n";
+                            push @OUTPUT_PYTHON, "$enum_mk_base.$compat_name.is_monkey_patched = True\n";
+                            push @OUTPUT_PYTHON, "$enum_mk_base.$compat_name.__doc__ = \"$comment\"\n";
+                            push @enum_members_doc, "'* ``$compat_name``: ' + $ACTUAL_CLASS.$enum_qualname.$enum_member.__doc__";
+                          } else {
+                            push @OUTPUT_PYTHON, "$enum_mk_base.$compat_name = $enum_qualname.$enum_member\n";
+                            push @OUTPUT_PYTHON, "$enum_mk_base.$compat_name.is_monkey_patched = True\n";
+                            push @OUTPUT_PYTHON, "$enum_mk_base.$compat_name.__doc__ = \"$comment\"\n";
+                            push @enum_members_doc, "'* ``$compat_name``: ' + $enum_qualname.$enum_member.__doc__";
+                          }
                         } else {
                             if ( $monkeypatch eq 1 )
                             {
-                                push @OUTPUT_PYTHON, "$ACTUAL_CLASS.$enum_member = $ACTUAL_CLASS.$enum_qualname.$enum_member\n";
+                                push @OUTPUT_PYTHON, "$ACTUAL_CLASS.$compat_name = $ACTUAL_CLASS.$enum_qualname.$enum_member\n";
+                                push @OUTPUT_PYTHON, "$ACTUAL_CLASS.$compat_name.is_monkey_patched = True\n";
                             }
-                            push @OUTPUT_PYTHON, "$ACTUAL_CLASS.$enum_qualname.$enum_member.__doc__ = \"$comment\"\n";
-                            push @enum_members_doc, "'* ``$enum_member``: ' + $ACTUAL_CLASS.$enum_qualname.$enum_member.__doc__";
+                            if ( $ACTUAL_CLASS ne "" ){
+                                push @OUTPUT_PYTHON, "$ACTUAL_CLASS.$enum_qualname.$compat_name.__doc__ = \"$comment\"\n";
+                                push @enum_members_doc, "'* ``$compat_name``: ' + $ACTUAL_CLASS.$enum_qualname.$enum_member.__doc__";
+                            } else {
+                                push @OUTPUT_PYTHON, "$enum_qualname.$compat_name.__doc__ = \"$comment\"\n";
+                                push @enum_members_doc, "'* ``$compat_name``: ' + $enum_qualname.$enum_member.__doc__";
+                            }
                         }
                     }
                     $enum_decl = fix_annotations($enum_decl);
@@ -1084,19 +1173,25 @@ while ($LINE_IDX < $LINE_COUNT){
         }
     }
 
-    $IS_OVERRIDE = 1 if ( $LINE =~ m/\boverride\b/);
-    $IS_OVERRIDE = 1 if ( $LINE =~ m/\bFINAL\b/);
+    if( $LINE =~ /.*\/\/\!\</ ) {
+      exit_with_error("\"\\\\!<\" doxygen command must only be used for enum documentation")
+    }
+
+    $IS_OVERRIDE_OR_MAKE_PRIVATE = PREPEND_CODE_VIRTUAL if ( $LINE =~ m/\boverride\b/);
+    $IS_OVERRIDE_OR_MAKE_PRIVATE = PREPEND_CODE_VIRTUAL if ( $LINE =~ m/\bFINAL\b/);
+    $IS_OVERRIDE_OR_MAKE_PRIVATE = PREPEND_CODE_MAKE_PRIVATE if ( $LINE =~ m/\bSIP_MAKE_PRIVATE\b/);
 
     # keyword fixes
     do {no warnings 'uninitialized';
         $LINE =~ s/^(\s*template\s*<)(?:class|typename) (\w+>)(.*)$/$1$2$3/;
         $LINE =~ s/\s*\boverride\b//;
+        $LINE =~ s/\s*\bSIP_MAKE_PRIVATE\b//;
         $LINE =~ s/\s*\bFINAL\b/ \${SIP_FINAL}/;
         $LINE =~ s/\s*\bextern \b//;
         $LINE =~ s/\s*\bMAYBE_UNUSED \b//;
         $LINE =~ s/\s*\bNODISCARD \b//;
         $LINE =~ s/\s*\bQ_DECL_DEPRECATED\b//;
-        $LINE =~ s/^(\s*)?(const )?(virtual |static )?inline /$1$2$3/;
+        $LINE =~ s/^(\s*)?(const |virtual |static )*inline /$1$2/;
         $LINE =~ s/\bconstexpr\b/const/;
         $LINE =~ s/\bnullptr\b/0/g;
         $LINE =~ s/\s*=\s*default\b//g;
@@ -1131,18 +1226,18 @@ while ($LINE_IDX < $LINE_COUNT){
     };
 
     # remove struct member assignment
-    # https://regex101.com/r/tWRGkY/2
-    if ( $SIP_RUN != 1 && $ACCESS[$#ACCESS] == PUBLIC && $LINE =~ m/^(\s*\w+[\w<> *&:,]* \*?\w+) = [\-\w\:\.]+(<\w+( \*)?>)?(\([^()]*\))?\s*;/ ){
+    # https://regex101.com/r/OUwV75/1
+    if ( $SIP_RUN != 1 && $ACCESS[$#ACCESS] == PUBLIC && $LINE =~ m/^(\s*\w+[\w<> *&:,]* \*?\w+) = ([\-\w\:\.]+(< *\w+( \*)? *>)?)+(\([^()]*\))?\s*;/ ){
         dbg_info("remove struct member assignment");
         $LINE = "$1;";
     }
 
     # catch Q_DECLARE_FLAGS
     if ( $LINE =~ m/^(\s*)Q_DECLARE_FLAGS\(\s*(.*?)\s*,\s*(.*?)\s*\)\s*$/ ){
-        my $ACTUAL_CLASS = $CLASSNAME[$#CLASSNAME];
+        my $ACTUAL_CLASS = $#CLASSNAME >= 0 ? $CLASSNAME[$#CLASSNAME].'::' : '';
         dbg_info("Declare flags: $ACTUAL_CLASS");
-        $LINE = "$1typedef QFlags<${ACTUAL_CLASS}::$3> $2;\n";
-        $QFLAG_HASH{"${ACTUAL_CLASS}::$2"} = "${ACTUAL_CLASS}::$3";
+        $LINE = "$1typedef QFlags<${ACTUAL_CLASS}$3> $2;\n";
+        $QFLAG_HASH{"${ACTUAL_CLASS}$2"} = "${ACTUAL_CLASS}$3";
     }
     # catch Q_DECLARE_OPERATORS_FOR_FLAGS
     if ( $LINE =~ m/^(\s*)Q_DECLARE_OPERATORS_FOR_FLAGS\(\s*(.*?)\s*\)\s*$/ ){
@@ -1155,24 +1250,35 @@ while ($LINE_IDX < $LINE_COUNT){
 
     do {no warnings 'uninitialized';
         # remove keywords
-        if ( $IS_OVERRIDE == 1 ){
-            # handle multiline definition to add virtual keyword on opening line
+        if ( $IS_OVERRIDE_OR_MAKE_PRIVATE != PREPEND_CODE_NO ){
+            # handle multiline definition to add virtual keyword or making private on opening line
             if ( $MULTILINE_DEFINITION != MULTILINE_NO ){
-                my $virtual_line = $LINE;
-                my $virtual_line_idx = $LINE_IDX;
-                dbg_info("handle multiline definition to add virtual keyword on opening line");
-                while ( $virtual_line !~ m/^[^()]*\(([^()]*\([^()]*\)[^()]*)*[^()]*$/){
-                    $virtual_line_idx--;
-                    $virtual_line = $INPUT_LINES[$virtual_line_idx];
-                    $virtual_line_idx >= 0 or exit_with_error('could not reach opening definition');
+                my $rolling_line = $LINE;
+                my $rolling_line_idx = $LINE_IDX;
+                dbg_info("handle multiline definition to add virtual keyword or making private on opening line");
+                while ( $rolling_line !~ m/^[^()]*\(([^()]*\([^()]*\)[^()]*)*[^()]*$/){
+                    $rolling_line_idx--;
+                    $rolling_line = $INPUT_LINES[$rolling_line_idx];
+                    $rolling_line_idx >= 0 or exit_with_error('could not reach opening definition');
                 }
-                if ( $virtual_line !~ m/^(\s*)virtual\b(.*)$/ ){
-                    my $idx = $#OUTPUT-$LINE_IDX+$virtual_line_idx+2;
-                    #print "len: $#OUTPUT line_idx: $LINE_IDX virt: $virtual_line_idx\n"idx: $idx\n$OUTPUT[$idx]\n";
-                    $OUTPUT[$idx] = fix_annotations($virtual_line =~ s/^(\s*?)\b(.*)$/$1 virtual $2\n/r);
+                if ( $IS_OVERRIDE_OR_MAKE_PRIVATE == PREPEND_CODE_VIRTUAL && $rolling_line !~ m/^(\s*)virtual\b(.*)$/ ){
+                    my $idx = $#OUTPUT-$LINE_IDX+$rolling_line_idx+2;
+                    #print "len: $#OUTPUT line_idx: $LINE_IDX virt: $rolling_line_idx\n"idx: $idx\n$OUTPUT[$idx]\n";
+                    $OUTPUT[$idx] = fix_annotations($rolling_line =~ s/^(\s*?)\b(.*)$/$1 virtual $2\n/r);
+                }
+                elsif ( $IS_OVERRIDE_OR_MAKE_PRIVATE == PREPEND_CODE_MAKE_PRIVATE ) {
+                    dbg_info("prepending private access");
+                    my $idx = $#OUTPUT-$LINE_IDX+$rolling_line_idx+2;
+                    my $private_access = $LAST_ACCESS_SECTION_LINE =~ s/(protected|public)/private/r;
+                    splice @OUTPUT, $idx, 0, $private_access . "\n";
+                    $OUTPUT[$idx+1] = fix_annotations($rolling_line) . "\n";
                 }
             }
-            elsif ( $LINE !~ m/^(\s*)virtual\b(.*)$/ ){
+            elsif ( $IS_OVERRIDE_OR_MAKE_PRIVATE == PREPEND_CODE_MAKE_PRIVATE ) {
+                dbg_info("prepending private access");
+                $LINE = $LAST_ACCESS_SECTION_LINE =~ s/(protected|public)/private/r . "\n" . $LINE . "\n";
+            }
+            elsif (  $IS_OVERRIDE_OR_MAKE_PRIVATE == PREPEND_CODE_VIRTUAL && $LINE !~ m/^(\s*)virtual\b(.*)$/ ){
                 #sip often requires the virtual keyword to be present, or it chokes on covariant return types
                 #in overridden methods
                 dbg_info('adding virtual keyword for overridden method');
@@ -1184,12 +1290,12 @@ while ($LINE_IDX < $LINE_COUNT){
         $PYTHON_SIGNATURE = detect_and_remove_following_body_or_initializerlist();
 
         # remove inline declarations
-        if ( $LINE =~  m/^(\s*)?(static |const )*(([\w:]+(<.*?>)?\s+(\*|&)?)?(\w+)( (?:const*?))*)\s*(\{.*\});(\s*\/\/.*)?$/ ){
+        if ( $LINE =~  m/^(\s*)?(static |const )*(([(?:long )\w:]+(<.*?>)?\s+(\*|&)?)?(\w+)( (?:const*?))*)\s*(\{.*\});(\s*\/\/.*)?$/ ){
             my $newline = "$1$3;";
             $LINE = $newline;
         }
 
-        if ( $LINE =~  m/^\s*(?:const |virtual |static |inline )*(?!explicit)([\w:]+(?:<.*?>)?)\s+(?:\*|&)?(?:\w+|operator.{1,2})\(.*$/ ){
+        if ( $LINE =~  m/^\s*(?:const |virtual |static |inline )*(?!explicit)([(?:long )\w:]+(?:<.*?>)?)\s+(?:\*|&)?(?:\w+|operator.{1,2})\(.*$/ ){
             if ($1 !~ m/(void|SIP_PYOBJECT|operator|return|QFlag)/ ){
                 $RETURN_TYPE = $1;
                 # replace :: with . (changes c++ style namespace/class directives to Python style)
@@ -1224,7 +1330,8 @@ while ($LINE_IDX < $LINE_COUNT){
         # support Docstring for template based classes in SIP 4.19.7+
         $COMMENT_TEMPLATE_DOCSTRING = 1;
     }
-    elsif ( $LINE =~ m/\/\// ||
+    elsif ( $MULTILINE_DEFINITION == MULTILINE_NO &&
+           ($LINE =~ m/\/\// ||
             $LINE =~ m/^\s*typedef / ||
             $LINE =~ m/\s*struct / ||
             $LINE =~ m/operator\[\]\(/ ||
@@ -1233,12 +1340,14 @@ while ($LINE_IDX < $LINE_COUNT){
             $LINE =~ m/^\s*%\w+(.*)?$/ ||
             $LINE =~ m/^\s*namespace\s+\w+/ ||
             $LINE =~ m/^\s*(virtual\s*)?~/ ||
-            detect_non_method_member() == 1 ){
+            detect_non_method_member() == 1
+           )
+          ){
         dbg_info('skipping comment');
         dbg_info('because typedef') if ($LINE =~ m/\s*typedef.*?(?!SIP_DOC_TEMPLATE)/);
         $COMMENT = '';
         $RETURN_TYPE = '';
-        $IS_OVERRIDE = 0;
+        $IS_OVERRIDE_OR_MAKE_PRIVATE = PREPEND_CODE_NO;
     }
 
     $LINE = fix_constants($LINE);
@@ -1247,9 +1356,29 @@ while ($LINE_IDX < $LINE_COUNT){
     # fix astyle placing space after % character
     $LINE =~ s/\/\s+GetWrapper\s+\//\/GetWrapper\//;
 
+    # handle enum/flags QgsSettingsEntryEnumFlag
+    if ( $LINE =~ m/^(\s*)const QgsSettingsEntryEnumFlag<(.*)> (.+);$/ ) {
+      my $prep_line = "class QgsSettingsEntryEnumFlag_$3
+{
+%TypeHeaderCode
+#include \"" .basename($headerfile) . "\"
+#include \"qgssettingsentry.h\"
+typedef QgsSettingsEntryEnumFlag<$2> QgsSettingsEntryEnumFlag_$3;
+%End
+  public:
+    QgsSettingsEntryEnumFlag_$3( const QString &key, QgsSettings::Section section, const $2 &defaultValue, const QString &description = QString() );
+    QString key( const QString &dynamicKeyPart = QString() ) const;
+    $2 value( const QString &dynamicKeyPart = QString(), bool useDefaultValueOverride = false, const $2 &defaultValueOverride = $2() ) const;
+};";
+    $LINE = "$1const QgsSettingsEntryEnumFlag_$3 $3;";
+    $COMMENT = '';
+    write_output("ENF", "$prep_line\n", "prepend");
+    }
+
     write_output("NOR", "$LINE\n");
-    if ($PYTHON_SIGNATURE ne ''){
-        write_output("PSI", "$PYTHON_SIGNATURE\n");
+
+    if ($PYTHON_SIGNATURE ne '') {
+      write_output("PSI", "$PYTHON_SIGNATURE\n");
     }
 
     # multiline definition (parenthesis left open)
@@ -1288,7 +1417,8 @@ while ($LINE_IDX < $LINE_COUNT){
     # write comment
     if ( $LINE =~ m/^\s*$/ )
     {
-        $IS_OVERRIDE = 0;
+        dbg_info("no more override / private");
+        $IS_OVERRIDE_OR_MAKE_PRIVATE = PREPEND_CODE_NO;
         next;
     }
     if ( $LINE =~ m/^\s*template\s*<.*>/ ){
@@ -1296,7 +1426,7 @@ while ($LINE_IDX < $LINE_COUNT){
         next;
     }
     if ( $COMMENT !~ m/^\s*$/ || $RETURN_TYPE ne ''){
-        if ( $IS_OVERRIDE == 1 && $COMMENT =~ m/^\s*$/ ){
+        if ( $IS_OVERRIDE_OR_MAKE_PRIVATE != PREPEND_CODE_VIRTUAL && $COMMENT =~ m/^\s*$/ ){
             # overridden method with no new docs - so don't create a Docstring and use
             # parent class Docstring
         }
@@ -1395,10 +1525,16 @@ while ($LINE_IDX < $LINE_COUNT){
         }
         $COMMENT = '';
         $RETURN_TYPE = '';
-        $IS_OVERRIDE = 0;
+        if ($IS_OVERRIDE_OR_MAKE_PRIVATE == PREPEND_CODE_MAKE_PRIVATE){
+          write_output("MKP", $LAST_ACCESS_SECTION_LINE);
+        }
+        $IS_OVERRIDE_OR_MAKE_PRIVATE = PREPEND_CODE_NO;
     }
     else {
-        $IS_OVERRIDE = 0;
+        if ($IS_OVERRIDE_OR_MAKE_PRIVATE == PREPEND_CODE_MAKE_PRIVATE){
+          write_output("MKP", $LAST_ACCESS_SECTION_LINE);
+        }
+        $IS_OVERRIDE_OR_MAKE_PRIVATE = PREPEND_CODE_NO;
     }
 }
 

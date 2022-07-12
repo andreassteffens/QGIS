@@ -9,9 +9,10 @@
 
 
 
+
 class QgsMapDecoration
 {
-%Docstring
+%Docstring(signature="appended")
 Interface for map decorations.
 
 .. versionadded:: 3.0

@@ -25,6 +25,7 @@
 #include "qgswfsutils.h" // for isCompatibleType()
 
 #include <algorithm>
+#include <QIcon>
 
 const QString QgsOapifProvider::OAPIF_PROVIDER_KEY = QStringLiteral( "OAPIF" );
 const QString QgsOapifProvider::OAPIF_PROVIDER_DESCRIPTION = QStringLiteral( "OGC API - Features data provider" );
@@ -73,7 +74,7 @@ bool QgsOapifProvider::init()
   const bool forceRefresh = false;
 
   const QString url = QgsDataSourceUri( mShared->mURI.uri() ).param( QgsWFSConstants::URI_PARAM_URL );
-  int pos = url.indexOf( '?' );
+  const int pos = url.indexOf( '?' );
   if ( pos >= 0 )
   {
     mShared->mExtraQueryParameters = url.mid( pos + 1 );
@@ -199,7 +200,7 @@ QgsWkbTypes::Type QgsOapifProvider::wkbType() const
   return mShared->mWKBType;
 }
 
-long QgsOapifProvider::featureCount() const
+long long QgsOapifProvider::featureCount() const
 {
   if ( mUpdateFeatureCountAtNextFeatureCountRequest )
   {
@@ -209,7 +210,7 @@ long QgsOapifProvider::featureCount() const
     QgsFeatureRequest request;
     request.setNoAttributes();
     auto iter = getFeatures( request );
-    int count = 0;
+    long long count = 0;
     bool countExact = true;
     while ( iter.nextFeature( f ) )
     {
@@ -254,7 +255,7 @@ bool QgsOapifProvider::isValid() const
 
 QgsVectorDataProvider::Capabilities QgsOapifProvider::capabilities() const
 {
-  return QgsVectorDataProvider::SelectAtId | QgsVectorDataProvider::ReadLayerMetadata;
+  return QgsVectorDataProvider::SelectAtId | QgsVectorDataProvider::ReadLayerMetadata | QgsVectorDataProvider::Capability::ReloadData;
 }
 
 bool QgsOapifProvider::empty() const
@@ -289,7 +290,7 @@ bool QgsOapifProvider::setSubsetString( const QString &filter, bool updateFeatur
 
   if ( !filter.isEmpty() )
   {
-    QgsExpression filterExpression( filter );
+    const QgsExpression filterExpression( filter );
     if ( !filterExpression.isValid() )
     {
       QgsMessageLog::logMessage( filterExpression.parserErrorString(), tr( "OAPIF" ) );
@@ -335,7 +336,17 @@ const QString &QgsOapifProvider::clientSideFilterExpression() const
   return mShared->mClientSideFilterExpression;
 }
 
+void QgsOapifProvider::handlePostCloneOperations( QgsVectorDataProvider *source )
+{
+  mShared = qobject_cast<QgsOapifProvider *>( source )  ->mShared;
+}
+
 QString QgsOapifProvider::name() const
+{
+  return OAPIF_PROVIDER_KEY;
+}
+
+QString QgsOapifProvider::providerKey()
 {
   return OAPIF_PROVIDER_KEY;
 }
@@ -365,7 +376,7 @@ QString QgsOapifSharedData::appendExtraQueryParameters( const QString &url ) con
 {
   if ( mExtraQueryParameters.isEmpty() || url.indexOf( mExtraQueryParameters ) > 0 )
     return url;
-  int nPos = url.indexOf( '?' );
+  const int nPos = url.indexOf( '?' );
   if ( nPos < 0 )
     return url + '?' + mExtraQueryParameters;
   return url + '&' + mExtraQueryParameters;
@@ -412,7 +423,7 @@ static QString getDateTimeValueAsString( const QVariant &v )
 
 static bool isDateTimeField( const QgsFields &fields, const QString &fieldName )
 {
-  int idx = fields.indexOf( fieldName );
+  const int idx = fields.indexOf( fieldName );
   if ( idx >= 0 )
   {
     const auto type = fields.at( idx ).type();
@@ -612,14 +623,14 @@ void QgsOapifFeatureDownloaderImpl::createProgressDialog()
   CONNECT_PROGRESS_DIALOG( QgsOapifFeatureDownloaderImpl );
 }
 
-void QgsOapifFeatureDownloaderImpl::run( bool serializeFeatures, int maxFeatures )
+void QgsOapifFeatureDownloaderImpl::run( bool serializeFeatures, long long maxFeatures )
 {
   QEventLoop loop;
   connect( this, &QgsOapifFeatureDownloaderImpl::doStop, &loop, &QEventLoop::quit );
 
   const bool useProgressDialog = ( !mShared->mHideProgressDialog && maxFeatures != 1 );
 
-  qint64 maxTotalFeatures = 0;
+  long long maxTotalFeatures = 0;
   if ( maxFeatures > 0 && mShared->mMaxFeatures > 0 )
   {
     maxTotalFeatures = std::min( maxFeatures, mShared->mMaxFeatures );
@@ -633,13 +644,13 @@ void QgsOapifFeatureDownloaderImpl::run( bool serializeFeatures, int maxFeatures
     maxTotalFeatures = mShared->mMaxFeatures;
   }
 
-  qint64 totalDownloadedFeatureCount = 0;
+  long long totalDownloadedFeatureCount = 0;
   bool interrupted = false;
   bool success = true;
   QString errorMessage;
   QString url;
 
-  int maxFeaturesThisRequest = maxTotalFeatures;
+  long long maxFeaturesThisRequest = maxTotalFeatures;
   if ( mShared->mPageSize > 0 )
   {
     if ( maxFeaturesThisRequest > 0 )
@@ -670,10 +681,10 @@ void QgsOapifFeatureDownloaderImpl::run( bool serializeFeatures, int maxFeatures
   if ( !rect.isNull() )
   {
     // Clamp to avoid server errors.
-    double minx = std::max( -180.0, rect.xMinimum() );
-    double miny = std::max( -90.0, rect.yMinimum() );
-    double maxx = std::min( 180.0, rect.xMaximum() );
-    double maxy = std::min( 90.0, rect.yMaximum() );
+    const double minx = std::max( -180.0, rect.xMinimum() );
+    const double miny = std::max( -90.0, rect.yMinimum() );
+    const double maxx = std::min( 180.0, rect.xMaximum() );
+    const double maxy = std::min( 90.0, rect.yMaximum() );
     if ( minx > 180.0 || miny > 90.0 || maxx  < -180.0 || maxy < -90.0 )
     {
       // completely out of range. Servers could error out
@@ -749,7 +760,7 @@ void QgsOapifFeatureDownloaderImpl::run( bool serializeFeatures, int maxFeatures
       const auto srcAttrs = f.attributes();
       for ( int j = 0; j < dstFields.size(); j++ )
       {
-        int srcIdx = srcFields.indexOf( dstFields[j].name() );
+        const int srcIdx = srcFields.indexOf( dstFields[j].name() );
         if ( srcIdx >= 0 )
         {
           const QVariant &v = srcAttrs.value( srcIdx );
@@ -807,5 +818,15 @@ QgsOapifProvider *QgsOapifProviderMetadata::createProvider( const QString &uri, 
   return new QgsOapifProvider( uri, options, flags );
 }
 
+QList<QgsMapLayerType> QgsOapifProviderMetadata::supportedLayerTypes() const
+{
+  return { QgsMapLayerType::VectorLayer };
+}
+
 QgsOapifProviderMetadata::QgsOapifProviderMetadata():
   QgsProviderMetadata( QgsOapifProvider::OAPIF_PROVIDER_KEY, QgsOapifProvider::OAPIF_PROVIDER_DESCRIPTION ) {}
+
+QIcon QgsOapifProviderMetadata::icon() const
+{
+  return QgsApplication::getThemeIcon( QStringLiteral( "mIconWfs.svg" ) );
+}

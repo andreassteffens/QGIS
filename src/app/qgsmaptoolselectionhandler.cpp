@@ -100,7 +100,7 @@ bool QgsDistanceWidget::eventFilter( QObject *obj, QEvent *ev )
 QgsMapToolSelectionHandler::QgsMapToolSelectionHandler( QgsMapCanvas *canvas, QgsMapToolSelectionHandler::SelectionMode selectionMode )
   : mCanvas( canvas )
   , mSelectionMode( selectionMode )
-  , mSnapIndicator( qgis::make_unique< QgsSnapIndicator >( canvas ) )
+  , mSnapIndicator( std::make_unique< QgsSnapIndicator >( canvas ) )
   , mIdentifyMenu( new QgsIdentifyMenu( mCanvas ) )
 {
   mIdentifyMenu->setAllowMultipleReturn( false );
@@ -212,7 +212,7 @@ void QgsMapToolSelectionHandler::selectFeaturesMoveEvent( QgsMapMouseEvent *e )
 
 void QgsMapToolSelectionHandler::selectFeaturesReleaseEvent( QgsMapMouseEvent *e )
 {
-  QPoint point = e->pos() - mInitDragPos;
+  const QPoint point = e->pos() - mInitDragPos;
   if ( !mSelectionActive || ( point.manhattanLength() < QApplication::startDragDistance() ) )
   {
     mSelectionActive = false;
@@ -248,38 +248,25 @@ void QgsMapToolSelectionHandler::selectPolygonPressEvent( QgsMapMouseEvent *e )
   // Handle immediate right-click on feature to show context menu
   if ( !mSelectionRubberBand && ( e->button() == Qt::RightButton ) )
   {
-    QList<QgsMapToolIdentify::IdentifyResult> results;
-    QMap< QString, QString > derivedAttributes;
+    const QList<QgsMapToolIdentify::IdentifyResult> results = QgsIdentifyMenu::findFeaturesOnCanvas( e, mCanvas, { QgsWkbTypes::PolygonGeometry } );
 
-    const QgsPointXY mapPoint = toMapCoordinates( e->pos() );
-    double x = mapPoint.x(), y = mapPoint.y();
-    double sr = QgsMapTool::searchRadiusMU( mCanvas );
-
-    const QList<QgsMapLayer *> layers = mCanvas->layers();
-    for ( auto layer : layers )
-    {
-      if ( layer->type() == QgsMapLayerType::VectorLayer )
-      {
-        auto vectorLayer = static_cast<QgsVectorLayer *>( layer );
-        if ( vectorLayer->geometryType() == QgsWkbTypes::PolygonGeometry )
-        {
-          QgsFeatureIterator fit = vectorLayer->getFeatures( QgsFeatureRequest()
-                                   .setDestinationCrs( mCanvas->mapSettings().destinationCrs(), mCanvas->mapSettings().transformContext() )
-                                   .setFilterRect( QgsRectangle( x - sr, y - sr, x + sr, y + sr ) )
-                                   .setFlags( QgsFeatureRequest::ExactIntersect ) );
-          QgsFeature f;
-          while ( fit.nextFeature( f ) )
-          {
-            results << QgsMapToolIdentify::IdentifyResult( vectorLayer, f, derivedAttributes );
-          }
-        }
-      }
-    }
-
-    QPoint globalPos = mCanvas->mapToGlobal( QPoint( e->pos().x() + 5, e->pos().y() + 5 ) );
+    const QPoint globalPos = mCanvas->mapToGlobal( QPoint( e->pos().x() + 5, e->pos().y() + 5 ) );
     const QList<QgsMapToolIdentify::IdentifyResult> selectedFeatures = mIdentifyMenu->exec( results, globalPos );
     if ( !selectedFeatures.empty() && selectedFeatures[0].mFeature.hasGeometry() )
-      setSelectedGeometry( selectedFeatures[0].mFeature.geometry(), e->modifiers() );
+    {
+      QgsCoordinateTransform transform = mCanvas->mapSettings().layerTransform( selectedFeatures.at( 0 ).mLayer );
+      QgsGeometry geom = selectedFeatures[0].mFeature.geometry();
+      try
+      {
+        geom.transform( transform );
+      }
+      catch ( QgsCsException & )
+      {
+        QgsDebugMsg( QStringLiteral( "Could not transform geometry to map CRS" ) );
+      }
+
+      setSelectedGeometry( geom, e->modifiers() );
+    }
 
     return;
   }
@@ -389,7 +376,7 @@ void QgsMapToolSelectionHandler::selectRadiusReleaseEvent( QgsMapMouseEvent *e )
 
 void QgsMapToolSelectionHandler::initRubberBand()
 {
-  mSelectionRubberBand = qgis::make_unique<QgsRubberBand>( mCanvas, QgsWkbTypes::PolygonGeometry );
+  mSelectionRubberBand = std::make_unique<QgsRubberBand>( mCanvas, QgsWkbTypes::PolygonGeometry );
   mSelectionRubberBand->setFillColor( mFillColor );
   mSelectionRubberBand->setStrokeColor( mStrokeColor );
 }
@@ -450,9 +437,9 @@ void QgsMapToolSelectionHandler::updateRadiusRubberband( double radius )
   mSelectionRubberBand->reset( QgsWkbTypes::PolygonGeometry );
   for ( int i = 0; i <= RADIUS_SEGMENTS; ++i )
   {
-    double theta = i * ( 2.0 * M_PI / RADIUS_SEGMENTS );
-    QgsPointXY radiusPoint( mRadiusCenter.x() + radius * std::cos( theta ),
-                            mRadiusCenter.y() + radius * std::sin( theta ) );
+    const double theta = i * ( 2.0 * M_PI / RADIUS_SEGMENTS );
+    const QgsPointXY radiusPoint( mRadiusCenter.x() + radius * std::cos( theta ),
+                                  mRadiusCenter.y() + radius * std::sin( theta ) );
     mSelectionRubberBand->addPoint( radiusPoint, false );
   }
   mSelectionRubberBand->closePoints( true );
@@ -460,7 +447,7 @@ void QgsMapToolSelectionHandler::updateRadiusRubberband( double radius )
 
 void QgsMapToolSelectionHandler::updateRadiusFromEdge( QgsPointXY &radiusEdge )
 {
-  double radius = std::sqrt( mRadiusCenter.sqrDist( radiusEdge ) );
+  const double radius = std::sqrt( mRadiusCenter.sqrDist( radiusEdge ) );
   if ( mDistanceWidget )
   {
     mDistanceWidget->setDistance( radius );

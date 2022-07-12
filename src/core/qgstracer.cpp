@@ -24,8 +24,9 @@
 #include "qgsvectorlayer.h"
 #include "qgsexception.h"
 #include "qgsrenderer.h"
-#include "qgssettings.h"
+#include "qgssettingsregistrycore.h"
 #include "qgsexpressioncontextutils.h"
+#include "qgsrendercontext.h"
 
 #include <queue>
 #include <vector>
@@ -35,7 +36,7 @@ typedef std::pair<int, double> DijkstraQueueItem; // first = vertex index, secon
 // utility comparator for queue items based on distance
 struct comp
 {
-  bool operator()( DijkstraQueueItem a, DijkstraQueueItem b )
+  bool operator()( DijkstraQueueItem a, DijkstraQueueItem b ) const
   {
     return a.second > b.second;
   }
@@ -253,9 +254,6 @@ QVector<QgsPointXY> shortestPath( const QgsTracerGraph &g, int v1, int v2 )
   }
 
   std::reverse( path.begin(), path.end() );
-  //Q_FOREACH (int x, path)
-  //  qDebug("e: %d", x);
-
   std::reverse( points.begin(), points.end() );
   return points;
 }
@@ -386,7 +384,7 @@ void resetGraph( QgsTracerGraph &g )
   g.joinedVertices = 0;
 
   // fix vertices of deactivated edges
-  for ( int eIdx : qgis::as_const( g.inactiveEdges ) )
+  for ( int eIdx : std::as_const( g.inactiveEdges ) )
   {
     if ( eIdx >= g.e.count() )
       continue;
@@ -487,14 +485,14 @@ bool QgsTracer::initGraph()
 
   t1.start();
   int featuresCounted = 0;
-  bool enableInvisibleFeature = QgsSettings().value( QStringLiteral( "/qgis/digitizing/snap_invisible_feature" ), false ).toBool();
-  for ( const QgsVectorLayer *vl : qgis::as_const( mLayers ) )
+  for ( const QgsVectorLayer *vl : std::as_const( mLayers ) )
   {
     QgsFeatureRequest request;
     bool filter = false;
     std::unique_ptr< QgsFeatureRenderer > renderer;
     std::unique_ptr<QgsRenderContext> ctx;
 
+    bool enableInvisibleFeature = QgsSettingsRegistryCore::settingsDigitizingSnapInvisibleFeature.value();
     if ( !enableInvisibleFeature && mRenderContext && vl->renderer() )
     {
       renderer.reset( vl->renderer()->clone() );
@@ -590,8 +588,8 @@ bool QgsTracer::initGraph()
   Q_UNUSED( timeNoding )
   Q_UNUSED( timeNodingCall )
   Q_UNUSED( timeMake )
-  QgsDebugMsg( QStringLiteral( "tracer extract %1 ms, noding %2 ms (call %3 ms), make %4 ms" )
-               .arg( timeExtract ).arg( timeNoding ).arg( timeNodingCall ).arg( timeMake ) );
+  QgsDebugMsgLevel( QStringLiteral( "tracer extract %1 ms, noding %2 ms (call %3 ms), make %4 ms" )
+                    .arg( timeExtract ).arg( timeNoding ).arg( timeNodingCall ).arg( timeMake ), 2 );
 
   return true;
 }
@@ -606,7 +604,7 @@ void QgsTracer::setLayers( const QList<QgsVectorLayer *> &layers )
   if ( mLayers == layers )
     return;
 
-  for ( QgsVectorLayer *layer : qgis::as_const( mLayers ) )
+  for ( QgsVectorLayer *layer : std::as_const( mLayers ) )
   {
     disconnect( layer, &QgsVectorLayer::featureAdded, this, &QgsTracer::onFeatureAdded );
     disconnect( layer, &QgsVectorLayer::featureDeleted, this, &QgsTracer::onFeatureDeleted );
@@ -663,14 +661,14 @@ void QgsTracer::setOffset( double offset )
 void QgsTracer::offsetParameters( int &quadSegments, int &joinStyle, double &miterLimit )
 {
   quadSegments = mOffsetSegments;
-  joinStyle = mOffsetJoinStyle;
+  joinStyle = static_cast< int >( mOffsetJoinStyle );
   miterLimit = mOffsetMiterLimit;
 }
 
 void QgsTracer::setOffsetParameters( int quadSegments, int joinStyle, double miterLimit )
 {
   mOffsetSegments = quadSegments;
-  mOffsetJoinStyle = joinStyle;
+  mOffsetJoinStyle = static_cast< Qgis::JoinStyle >( joinStyle );
   mOffsetMiterLimit = miterLimit;
 }
 
@@ -768,7 +766,7 @@ QVector<QgsPointXY> QgsTracer::findShortestPath( const QgsPointXY &p1, const Qgs
 
   Q_UNUSED( tPrep )
   Q_UNUSED( tPath )
-  QgsDebugMsg( QStringLiteral( "path timing: prep %1 ms, path %2 ms" ).arg( tPrep ).arg( tPath ) );
+  QgsDebugMsgLevel( QStringLiteral( "path timing: prep %1 ms, path %2 ms" ).arg( tPrep ).arg( tPath ), 2 );
 
   resetGraph( *mGraph );
 

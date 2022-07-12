@@ -13,7 +13,7 @@
 
 class QgsLayerTreeNode : QObject
 {
-%Docstring
+%Docstring(signature="appended")
 This class is a base class for nodes in a layer tree.
 
 Layer tree is a hierarchical structure consisting of group and layer nodes:
@@ -22,7 +22,7 @@ Layer tree is a hierarchical structure consisting of group and layer nodes:
 - layer nodes point to map layers, they do not contain further children
 
 Layer trees may be used for organization of layers, typically a layer tree
-is exposed to the user using QgsLayerTreeView widget which shows the tree
+is exposed to the user using :py:class:`QgsLayerTreeView` widget which shows the tree
 and allows manipulation with the tree.
 
 Ownership of nodes: every node is owned by its parent. Therefore once node
@@ -86,9 +86,15 @@ Custom properties that have already been used within QGIS:
 
     ~QgsLayerTreeNode();
 
+    SIP_PYOBJECT __repr__();
+%MethodCode
+    QString str = QStringLiteral( "<QgsLayerTreeNode: %1>" ).arg( sipCpp->name() );
+    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
+%End
+
     NodeType nodeType() const;
 %Docstring
-Find out about type of the node. It is usually shorter to use convenience functions from QgsLayerTree namespace for that
+Find out about type of the node. It is usually shorter to use convenience functions from :py:class:`QgsLayerTree` namespace for that
 %End
     QgsLayerTreeNode *parent();
 %Docstring
@@ -98,6 +104,7 @@ Gets pointer to the parent. If parent is ``None``, the node is a root node
 %Docstring
 Gets list of children of the node. Children are owned by the parent
 %End
+
 
     virtual QString name() const = 0;
 %Docstring
@@ -306,7 +313,7 @@ Read common XML elements.
 Write common XML elements.
 %End
 
-    void insertChildrenPrivate( int index, QList<QgsLayerTreeNode *> nodes );
+    void insertChildrenPrivate( int index, const QList<QgsLayerTreeNode *> &nodes );
 %Docstring
 Low-level insertion of children to the node. The children must not have any parent yet!
 %End
@@ -316,6 +323,7 @@ Low-level removal of children from the node.
 %End
 
   protected:
+
 
 };
 

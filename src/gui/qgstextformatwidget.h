@@ -154,10 +154,11 @@ class GUI_EXPORT QgsTextFormatWidget : public QWidget, public QgsExpressionConte
     void setPreviewBackground( const QColor &color );
 
     /**
-     * Controls whether data defined alignment buttons are enabled.
-     * \param enable set to TRUE to enable alignment controls
+     * Update the enabled state of the data defined alignment buttons.
+     *
+     * \deprecated QGIS 3.24
      */
-    void enableDataDefinedAlignment( bool enable );
+    Q_DECL_DEPRECATED void enableDataDefinedAlignment( bool enable ) SIP_DEPRECATED { Q_UNUSED( enable ) }
 
     QgsExpressionContext createExpressionContext() const override;
 
@@ -192,7 +193,7 @@ class GUI_EXPORT QgsTextFormatWidget : public QWidget, public QgsExpressionConte
     //! Associated vector layer
     QgsVectorLayer *mLayer = nullptr;
 
-    QgsSymbolLayerReferenceList mMaskedSymbolLayers;
+    QList<QgsSymbolLayerReference> mMaskedSymbolLayers;
 
     //! Geometry type for layer, if known
     QgsWkbTypes::GeometryType mGeomType = QgsWkbTypes::UnknownGeometry;
@@ -209,7 +210,7 @@ class GUI_EXPORT QgsTextFormatWidget : public QWidget, public QgsExpressionConte
      * Sets the current text settings from a style entry.
      * \since QGIS 3.10
      */
-    virtual void setFormatFromStyle( const QString &name, QgsStyle::StyleEntity type );
+    virtual void setFormatFromStyle( const QString &name, QgsStyle::StyleEntity type, const QString &stylePath );
 
     /**
      * Saves the current text settings to a style entry.
@@ -267,7 +268,6 @@ class GUI_EXPORT QgsTextFormatWidget : public QWidget, public QgsExpressionConte
   private slots:
     void optionsStackedWidget_CurrentChanged( int indx );
     void showBackgroundRadius( bool show );
-    void showBackgroundPenStyle( bool show );
     void mShapeSVGPathLineEdit_textChanged( const QString &text );
     void onSubstitutionsChanged( const QgsStringReplacementCollection &substitutions );
     void previewScaleChanged( double scale );
@@ -284,8 +284,12 @@ class GUI_EXPORT QgsTextFormatWidget : public QWidget, public QgsExpressionConte
     void mFontMaxPixelSpinBox_valueChanged( int px );
     void mBufferUnitWidget_changed();
     void mMaskBufferUnitWidget_changed();
-    void mCoordXDDBtn_changed( );
-    void mCoordYDDBtn_changed( );
+    void mCoordXDDBtn_changed();
+    void mCoordXDDBtn_activated( bool isActive );
+    void mCoordYDDBtn_changed();
+    void mCoordYDDBtn_activated( bool isActive );
+    void mCoordPointDDBtn_changed();
+    void mCoordPointDDBtn_activated( bool isActive );
     void mShapeTypeCmbBx_currentIndexChanged( int index );
     void mShapeRotationCmbBx_currentIndexChanged( int index );
     void mShapeSVGParamsBtn_clicked();
@@ -309,6 +313,8 @@ class GUI_EXPORT QgsTextFormatWidget : public QWidget, public QgsExpressionConte
     void updateBufferFrameStatus();
     void updateShadowFrameStatus();
     void updateCalloutFrameStatus();
+    void updateDataDefinedAlignment();
+    void overlapModeChanged();
 };
 
 

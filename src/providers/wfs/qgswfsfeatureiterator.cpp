@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <QDir>
 #include <QTimer>
+#include <QUrlQuery>
 
 QgsWFSFeatureHitsAsyncRequest::QgsWFSFeatureHitsAsyncRequest( QgsWFSDataSourceURI &uri )
   : QgsWfsRequest( uri )
@@ -106,7 +107,7 @@ QString QgsWFSFeatureDownloaderImpl::sanitizeFilter( QString filter )
   return filter;
 }
 
-QUrl QgsWFSFeatureDownloaderImpl::buildURL( qint64 startIndex, int maxFeatures, bool forHits )
+QUrl QgsWFSFeatureDownloaderImpl::buildURL( qint64 startIndex, long long maxFeatures, bool forHits )
 {
   QUrl getFeatureUrl( mShared->mURI.requestUrl( QStringLiteral( "GetFeature" ) ) );
   QUrlQuery query( getFeatureUrl );
@@ -122,7 +123,7 @@ QUrl QgsWFSFeatureDownloaderImpl::buildURL( qint64 startIndex, int maxFeatures, 
   else
   {
     QSet<QString> setNamespaces;
-    for ( const QgsOgcUtils::LayerProperties &layerProperties : qgis::as_const( mShared->mLayerPropertiesList ) )
+    for ( const QgsOgcUtils::LayerProperties &layerProperties : std::as_const( mShared->mLayerPropertiesList ) )
     {
       if ( !typenames.isEmpty() )
         typenames += QLatin1Char( ',' );
@@ -138,8 +139,13 @@ QUrl QgsWFSFeatureDownloaderImpl::buildURL( qint64 startIndex, int maxFeatures, 
     }
   }
   if ( mShared->mWFSVersion.startsWith( QLatin1String( "2.0" ) ) )
+  {
     query.addQueryItem( QStringLiteral( "TYPENAMES" ),  typenames );
-  query.addQueryItem( QStringLiteral( "TYPENAME" ),  typenames );
+  }
+  else
+  {
+    query.addQueryItem( QStringLiteral( "TYPENAME" ),  typenames );
+  }
 
   if ( forHits )
   {
@@ -225,7 +231,7 @@ QUrl QgsWFSFeatureDownloaderImpl::buildURL( qint64 startIndex, int maxFeatures, 
     doc.firstChildElement().appendChild( andElem );
 
     QSet<QString> setNamespaceURI;
-    for ( const QgsOgcUtils::LayerProperties &props : qgis::as_const( mShared->mLayerPropertiesList ) )
+    for ( const QgsOgcUtils::LayerProperties &props : std::as_const( mShared->mLayerPropertiesList ) )
     {
       if ( !props.mNamespacePrefix.isEmpty() && !props.mNamespaceURI.isEmpty() &&
            !setNamespaceURI.contains( props.mNamespaceURI ) )
@@ -367,7 +373,7 @@ void QgsWFSFeatureDownloaderImpl::createProgressDialog()
   CONNECT_PROGRESS_DIALOG( QgsWFSFeatureDownloaderImpl );
 }
 
-void QgsWFSFeatureDownloaderImpl::run( bool serializeFeatures, int maxFeatures )
+void QgsWFSFeatureDownloaderImpl::run( bool serializeFeatures, long long maxFeatures )
 {
   bool success = true;
 
@@ -423,9 +429,7 @@ void QgsWFSFeatureDownloaderImpl::run( bool serializeFeatures, int maxFeatures )
     {
       break;
     }
-    int maxFeaturesThisRequest = static_cast<int>(
-                                   std::min( maxTotalFeatures - mTotalDownloadedFeatureCount,
-                                       static_cast<qint64>( std::numeric_limits<int>::max() ) ) );
+    long long maxFeaturesThisRequest = maxTotalFeatures - mTotalDownloadedFeatureCount;
     if ( mShared->mPageSize > 0 )
     {
       if ( maxFeaturesThisRequest > 0 )
@@ -454,7 +458,7 @@ void QgsWFSFeatureDownloaderImpl::run( bool serializeFeatures, int maxFeatures )
              true, /* forceRefresh */
              false /* cache */ );
 
-    int featureCountForThisResponse = 0;
+    long long featureCountForThisResponse = 0;
     bool bytesStillAvailableInReply = false;
     // Loop until there is no data coming from the current request
     while ( true )

@@ -14,7 +14,7 @@
 
 class QgsRenderContext : QgsTemporalRangeObject
 {
-%Docstring
+%Docstring(signature="appended")
 Contains information about the context of a rendering operation.
 
 The context of a rendering operation defines properties such as
@@ -31,60 +31,28 @@ to be rendered etc.
 
     QgsRenderContext( const QgsRenderContext &rh );
 
-    enum Flag
-    {
-      DrawEditingInfo,
-      ForceVectorOutput,
-      UseAdvancedEffects,
-      UseRenderingOptimization,
-      DrawSelection,
-      DrawSymbolBounds,
-      RenderMapTile,
-      Antialiasing,
-      RenderPartialOutput,
-      RenderPreviewJob,
-      RenderBlocking,
-      RenderSymbolPreview,
-      LosslessImageRendering,
-      ApplyScalingWorkaroundForTextRendering,
-      Render3DMap,
-      ApplyClipAfterReprojection,
-    };
-    typedef QFlags<QgsRenderContext::Flag> Flags;
-
-
-    enum TextRenderFormat
-    {
-      // refs for below dox: https://github.com/qgis/QGIS/pull/1286#issuecomment-39806854
-      // https://github.com/qgis/QGIS/pull/8573#issuecomment-445585826
-
-      TextFormatAlwaysOutlines,
-
-      TextFormatAlwaysText,
-    };
-
-    void setFlags( QgsRenderContext::Flags flags );
+    void setFlags( Qgis::RenderContextFlags flags );
 %Docstring
 Set combination of flags that will be used for rendering.
 
 .. versionadded:: 2.14
 %End
 
-    void setFlag( Flag flag, bool on = true );
+    void setFlag( Qgis::RenderContextFlag flag, bool on = true );
 %Docstring
 Enable or disable a particular flag (other flags are not affected)
 
 .. versionadded:: 2.14
 %End
 
-    Flags flags() const;
+    Qgis::RenderContextFlags flags() const;
 %Docstring
 Returns combination of flags used for rendering.
 
 .. versionadded:: 2.14
 %End
 
-    bool testFlag( Flag flag ) const;
+    bool testFlag( Qgis::RenderContextFlag flag ) const;
 %Docstring
 Check whether a particular flag is enabled.
 
@@ -280,12 +248,50 @@ per millimeter.
 .. seealso:: :py:func:`setScaleFactor`
 %End
 
+    double dpiTarget() const;
+%Docstring
+Returns the targeted DPI for rendering.
+
+.. seealso:: :py:func:`setDpiTarget`
+
+.. versionadded:: 3.20
+%End
+
     bool renderingStopped() const;
 %Docstring
 Returns ``True`` if the rendering operation has been stopped and any ongoing
 rendering should be canceled immediately.
 
+.. note::
+
+   Since QGIS 3.22 the :py:func:`~QgsRenderContext.feedback` member exists as an alternative means of cancellation support.
+
 .. seealso:: :py:func:`setRenderingStopped`
+
+.. seealso:: :py:func:`feedback`
+%End
+
+    void setFeedback( QgsFeedback *feedback );
+%Docstring
+Attach a ``feedback`` object that can be queried regularly during rendering to check
+if rendering should be canceled.
+
+Ownership of ``feedback`` is NOT transferred, and the caller must take care that it exists
+for the lifetime of the render context.
+
+.. seealso:: :py:func:`feedback`
+
+.. versionadded:: 3.22
+%End
+
+    QgsFeedback *feedback() const;
+%Docstring
+Returns the feedback object that can be queried regularly during rendering to check
+if rendering should be canceled, if set. Maybe be ``None``.
+
+.. seealso:: :py:func:`setFeedback`
+
+.. versionadded:: 3.22
 %End
 
     bool forceVectorOutput() const;
@@ -326,6 +332,27 @@ for the rendered map, eg 1000.0 for a 1:1000 map render.
 %End
 
 
+    double symbologyReferenceScale() const;
+%Docstring
+Returns the symbology reference scale.
+
+This represents the desired scale denominator for the rendered map, eg 1000.0 for a 1:1000 map render.
+A value of -1 indicates that symbology scaling by reference scale is disabled.
+
+The symbology reference scale is an optional property which specifies the reference
+scale at which symbology in paper units (such a millimeters or points) is fixed
+to. For instance, if the scale is 1000 then a 2mm thick line will be rendered at
+exactly 2mm thick when a map is rendered at 1:1000, or 1mm thick when rendered at 1:2000, or 4mm thick at 1:500.
+
+.. seealso:: :py:func:`setSymbologyReferenceScale`
+
+.. seealso:: :py:func:`rendererScale`
+
+.. versionadded:: 3.22
+%End
+
+
+
     QColor selectionColor() const;
 %Docstring
 Returns the color to use when rendering selected features.
@@ -354,7 +381,7 @@ Sets the current coordinate transform for the context.
 This represents the coordinate transform required to transform the layer
 which is being rendered back to the CRS of the rendered map.
 
-Set to an invalid QgsCoordinateTransform to indicate that no transformation is required.
+Set to an invalid :py:class:`QgsCoordinateTransform` to indicate that no transformation is required.
 
 .. seealso:: :py:func:`coordinateTransform`
 %End
@@ -407,13 +434,21 @@ Sets whether edit markers should be drawn during the render operation.
 Sets whether the rendering operation has been ``stopped`` and any ongoing
 rendering should be canceled immediately.
 
+.. note::
+
+   Since QGIS 3.22 the :py:func:`~QgsRenderContext.feedback` member exists as an alternative means of cancellation support.
+
 .. seealso:: :py:func:`renderingStopped`
+
+.. seealso:: :py:func:`feedback`
+
+.. seealso:: :py:func:`setFeedback`
 %End
 
     void setDistanceArea( const QgsDistanceArea &distanceArea );
 %Docstring
 A general purpose distance and area calculator, capable of performing ellipsoid based calculations.
-Will be used to convert meter distances to active MapUnit values for QgsUnitTypes.RenderMetersInMapUnits
+Will be used to convert meter distances to active MapUnit values for :py:class:`QgsUnitTypes`.RenderMetersInMapUnits
 
 .. versionadded:: 3.0
 %End
@@ -427,12 +462,40 @@ per millimeter.
 .. seealso:: :py:func:`scaleFactor`
 %End
 
+    void setDpiTarget( double dpi );
+%Docstring
+Sets the targeted ``dpi`` for rendering.
+
+.. seealso:: :py:func:`dpiTarget`
+
+.. versionadded:: 3.20
+%End
+
     void setRendererScale( double scale );
 %Docstring
 Sets the renderer map scale. This should match the desired scale denominator
 for the rendered map, eg 1000.0 for a 1:1000 map render.
 
 .. seealso:: :py:func:`rendererScale`
+%End
+
+    void setSymbologyReferenceScale( double scale );
+%Docstring
+Sets the symbology reference ``scale``.
+
+This should match the desired scale denominator for the rendered map, eg 1000.0 for a 1:1000 map render.
+Set to -1 to disable symbology scaling by reference scale.
+
+The symbology reference scale is an optional property which specifies the reference
+scale at which symbology in paper units (such a millimeters or points) is fixed
+to. For instance, if ``scale`` is set to 1000 then a 2mm thick line will be rendered at
+exactly 2mm thick when a map is rendered at 1:1000, or 1mm thick when rendered at 1:2000, or 4mm thick at 1:500.
+
+.. seealso:: :py:func:`symbologyReferenceScale`
+
+.. seealso:: :py:func:`rendererScale`
+
+.. versionadded:: 3.22
 %End
 
     void setPainter( QPainter *p );
@@ -475,6 +538,7 @@ of any faster raster shortcuts.
 
 .. seealso:: :py:func:`forceVectorOutput`
 %End
+
 
 
     void setSelectionColor( const QColor &color );
@@ -626,10 +690,14 @@ Gets segmentation tolerance type (maximum angle or maximum difference between cu
 %End
 
 
-    double convertToPainterUnits( double size, QgsUnitTypes::RenderUnit unit, const QgsMapUnitScale &scale = QgsMapUnitScale() ) const;
+    double convertToPainterUnits( double size, QgsUnitTypes::RenderUnit unit, const QgsMapUnitScale &scale = QgsMapUnitScale(), Qgis::RenderSubcomponentProperty property = Qgis::RenderSubcomponentProperty::Generic ) const;
 %Docstring
 Converts a size from the specified units to painter units (pixels). The conversion respects the limits
 specified by the optional scale parameter.
+
+Since QGIS 3.22 the optional ``property`` argument can be used to specify the associated property. This
+is used in some contexts to refine the converted size. For example, a Qgis.RenderSubcomponentProperty.BlurSize
+property will be limited to a suitably fast range when the render context has the Qgis.RenderContextFlag.RenderSymbolPreview set.
 
 .. seealso:: :py:func:`convertToMapUnits`
 
@@ -657,14 +725,14 @@ Converts a size from map units to the specified units.
 
     double convertMetersToMapUnits( double meters ) const;
 %Docstring
-Convert meter distances to active MapUnit values for QgsUnitTypes.RenderMetersInMapUnits
+Convert meter distances to active MapUnit values for :py:class:`QgsUnitTypes`.RenderMetersInMapUnits
 \note
 When the :py:func:`~QgsRenderContext.sourceCrs` is geographic, the center of the Extent will be used
 
 .. versionadded:: 3.0
 %End
 
-    TextRenderFormat textRenderFormat() const;
+    Qgis::TextRenderFormat textRenderFormat() const;
 %Docstring
 Returns the text render format, which dictates how text is rendered (e.g. as paths or real text objects).
 
@@ -673,7 +741,7 @@ Returns the text render format, which dictates how text is rendered (e.g. as pat
 .. versionadded:: 3.4.3
 %End
 
-    void setTextRenderFormat( TextRenderFormat format );
+    void setTextRenderFormat( Qgis::TextRenderFormat format );
 %Docstring
 Sets the text render ``format``, which dictates how text is rendered (e.g. as paths or real text objects).
 
@@ -839,7 +907,7 @@ Sets a ``geometry`` to use to clip features at render time.
 
 .. note::
 
-   This is not usually set directly, but rather specified by calling QgsMapSettings::py:func:`~QgsRenderContext.addClippingRegion`
+   This is not usually set directly, but rather specified by calling :py:class:`QgsMapSettings`::py:func:`~QgsRenderContext.addClippingRegion`
    prior to constructing a QgsRenderContext.
 
 .. seealso:: :py:func:`featureClipGeometry`
@@ -867,10 +935,170 @@ rendering using QBrush objects.
 .. versionadded:: 3.16
 %End
 
+
+    QgsDoubleRange zRange() const;
+%Docstring
+Returns the range of z-values which should be rendered.
+
+.. seealso:: :py:func:`setZRange`
+
+.. versionadded:: 3.18
+%End
+
+    void setZRange( const QgsDoubleRange &range );
+%Docstring
+Sets the ``range`` of z-values which should be rendered.
+
+.. seealso:: :py:func:`zRange`
+
+.. versionadded:: 3.18
+%End
+
+    QSize outputSize() const;
+%Docstring
+Returns the size of the resulting rendered image, in pixels.
+
+.. seealso:: :py:func:`deviceOutputSize`
+
+.. seealso:: :py:func:`setOutputSize`
+
+.. versionadded:: 3.22
+%End
+
+    void setOutputSize( QSize size );
+%Docstring
+Sets the ``size`` of the resulting rendered image, in pixels.
+
+.. seealso:: :py:func:`outputSize`
+
+.. versionadded:: 3.22
+%End
+
+    float devicePixelRatio() const;
+%Docstring
+Returns the device pixel ratio.
+
+Common values are 1 for normal-dpi displays and 2 for high-dpi "retina" displays.
+
+.. seealso:: :py:func:`setDevicePixelRatio`
+
+.. versionadded:: 3.22
+%End
+
+    void setDevicePixelRatio( float ratio );
+%Docstring
+Sets the device pixel ``ratio``.
+
+Common values are 1 for normal-dpi displays and 2 for high-dpi "retina" displays.
+
+.. seealso:: :py:func:`devicePixelRatio`
+
+.. versionadded:: 3.22
+%End
+
+    QSize deviceOutputSize() const;
+%Docstring
+Returns the device output size of the render.
+
+This is equivalent to the output size multiplicated by the device pixel ratio.
+
+.. seealso:: :py:func:`outputSize`
+
+.. seealso:: :py:func:`devicePixelRatio`
+
+.. seealso:: :py:func:`setOutputSize`
+
+.. versionadded:: 3.22
+%End
+
+    void setImageFormat( QImage::Format format );
+%Docstring
+Sets QImage ``format`` which should be used for QImages created
+during rendering.
+
+.. seealso:: :py:func:`imageFormat`
+
+.. versionadded:: 3.22
+%End
+
+    QImage::Format imageFormat() const;
+%Docstring
+Returns the QImage format which should be used for QImages created
+during rendering.
+
+.. seealso:: :py:func:`setImageFormat`
+
+.. versionadded:: 3.22
+%End
+
+    Qgis::RendererUsage rendererUsage() const;
+%Docstring
+Returns the renderer usage
+
+.. seealso:: :py:func:`setRendererUsage`
+
+.. versionadded:: 3.24
+%End
+
+    void setRendererUsage( Qgis::RendererUsage usage );
+%Docstring
+Sets the renderer usage
+
+.. note::
+
+   This usage not alter how the map gets rendered but the intention is that data provider
+   knows the context of rendering and may report that to the backend.
+
+.. seealso:: :py:func:`rendererUsage`
+
+.. versionadded:: 3.24
+%End
+
+    double frameRate() const;
+%Docstring
+Returns the frame rate of the map, for maps which are part of an animation.
+
+Returns -1 if the map is not associated with an animation.
+
+.. seealso:: :py:func:`setFrameRate`
+
+.. versionadded:: 3.26
+%End
+
+    void setFrameRate( double rate );
+%Docstring
+Sets the frame ``rate`` of the map (in frames per second), for maps which are part of an animation.
+
+Defaults to -1 if the map is not associated with an animation.
+
+.. seealso:: :py:func:`frameRate`
+
+.. versionadded:: 3.26
+%End
+
+    long long currentFrame() const;
+%Docstring
+Returns the current frame number of the map (in frames per second), for maps which are part of an animation.
+
+Returns -1 if the map is not associated with an animation.
+
+.. seealso:: :py:func:`setCurrentFrame`
+
+.. versionadded:: 3.26
+%End
+
+    void setCurrentFrame( long long frame );
+%Docstring
+Sets the current ``frame`` of the map, for maps which are part of an animation.
+
+Defaults to -1 if the map is not associated with an animation.
+
+.. seealso:: :py:func:`currentFrame`
+
+.. versionadded:: 3.26
+%End
+
 };
-
-QFlags<QgsRenderContext::Flag> operator|(QgsRenderContext::Flag f1, QFlags<QgsRenderContext::Flag> f2);
-
 
 
 /************************************************************************

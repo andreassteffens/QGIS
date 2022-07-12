@@ -21,6 +21,7 @@
 #include <QDir>
 #include <QDesktopServices>
 #include <QSvgGenerator>
+#include <QBuffer>
 
 //qgis includes...
 #include <qgsmaplayer.h>
@@ -33,6 +34,9 @@
 #include <qgsfillsymbollayer.h>
 #include "qgslinesymbollayer.h"
 #include "qgsproperty.h"
+#include "qgslinesymbol.h"
+#include "qgsmarkersymbol.h"
+#include "qgsfillsymbol.h"
 
 //qgis test includes
 #include "qgsrenderchecker.h"
@@ -57,16 +61,28 @@ class TestQgsPointPatternFillSymbol : public QObject
 
     void pointPatternFillSymbol();
     void pointPatternFillSymbolVector();
+    void viewportPointPatternFillSymbol();
+    void viewportPointPatternFillSymbolVector();
     void offsettedPointPatternFillSymbol();
     void offsettedPointPatternFillSymbolVector();
     void dataDefinedSubSymbol();
     void zeroSpacedPointPatternFillSymbol();
     void zeroSpacedPointPatternFillSymbolVector();
+    void pointPatternFillNoClip();
+    void pointPatternFillCompletelyWithin();
+    void pointPatternFillCentroidWithin();
+    void pointPatternFillDataDefinedClip();
+    void pointPatternRandomOffset();
+    void pointPatternRandomOffsetPercent();
+    void pointPatternRandomOffsetDataDefined();
+    void pointPatternAngle();
+    void pointPatternAngleDataDefined();
+    void pointPatternAngleViewport();
 
   private:
     bool mTestHasError =  false ;
 
-    bool imageCheck( const QString &type );
+    bool imageCheck( const QString &type, QgsVectorLayer *layer = nullptr );
     QgsMapSettings mMapSettings;
     QgsVectorLayer *mpPolysLayer = nullptr;
     QgsPointPatternFillSymbolLayer *mPointPatternFill = nullptr;
@@ -86,14 +102,14 @@ void TestQgsPointPatternFillSymbol::initTestCase()
   QgsApplication::showSettings();
 
   //create some objects that will be used in all tests...
-  QString myDataDir( TEST_DATA_DIR ); //defined in CmakeLists.txt
+  const QString myDataDir( TEST_DATA_DIR ); //defined in CmakeLists.txt
   mTestDataDir = myDataDir + '/';
 
   //
   //create a poly layer that will be used in all tests...
   //
-  QString myPolysFileName = mTestDataDir + "polys.shp";
-  QFileInfo myPolyFileInfo( myPolysFileName );
+  const QString myPolysFileName = mTestDataDir + "polys.shp";
+  const QFileInfo myPolyFileInfo( myPolysFileName );
   mpPolysLayer = new QgsVectorLayer( myPolyFileInfo.filePath(),
                                      myPolyFileInfo.completeBaseName(), QStringLiteral( "ogr" ) );
 
@@ -118,7 +134,7 @@ void TestQgsPointPatternFillSymbol::initTestCase()
 }
 void TestQgsPointPatternFillSymbol::cleanupTestCase()
 {
-  QString myReportFile = QDir::tempPath() + "/qgistest.html";
+  const QString myReportFile = QDir::tempPath() + "/qgistest.html";
   QFile myFile( myReportFile );
   if ( myFile.open( QIODevice::WriteOnly | QIODevice::Append ) )
   {
@@ -134,7 +150,7 @@ void TestQgsPointPatternFillSymbol::pointPatternFillSymbol()
 {
   mReport += QLatin1String( "<h2>Point pattern fill symbol renderer test</h2>\n" );
 
-  QgsStringMap properties;
+  QVariantMap properties;
   properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
   properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
   properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
@@ -149,7 +165,7 @@ void TestQgsPointPatternFillSymbol::pointPatternFillSymbolVector()
 {
   mReport += QLatin1String( "<h2>Point pattern fill symbol renderer test</h2>\n" );
 
-  QgsStringMap properties;
+  QVariantMap properties;
   properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
   properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
   properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
@@ -157,9 +173,13 @@ void TestQgsPointPatternFillSymbol::pointPatternFillSymbolVector()
   QgsMarkerSymbol *pointSymbol = QgsMarkerSymbol::createSimple( properties );
 
   mPointPatternFill->setSubSymbol( pointSymbol );
-  mMapSettings.setFlag( QgsMapSettings::ForceVectorOutput, true );
-  bool res = imageCheck( "symbol_pointfill_vector" );
-  mMapSettings.setFlag( QgsMapSettings::ForceVectorOutput, false );
+  mPointPatternFill->setDistanceX( 10 );
+  mPointPatternFill->setDistanceY( 10 );
+  mMapSettings.setFlag( Qgis::MapSettingsFlag::ForceVectorOutput, true );
+  const bool res = imageCheck( "symbol_pointfill_vector" );
+  mMapSettings.setFlag( Qgis::MapSettingsFlag::ForceVectorOutput, false );
+  mPointPatternFill->setDistanceX( 15 );
+  mPointPatternFill->setDistanceY( 15 );
   QVERIFY( res );
 
   // also confirm that output is indeed vector!
@@ -172,7 +192,7 @@ void TestQgsPointPatternFillSymbol::pointPatternFillSymbolVector()
   QPainter p;
   p.begin( &generator );
 
-  mMapSettings.setFlag( QgsMapSettings::ForceVectorOutput, true );
+  mMapSettings.setFlag( Qgis::MapSettingsFlag::ForceVectorOutput, true );
   mMapSettings.setOutputSize( QSize( 100, 100 ) );
   mMapSettings.setExtent( mpPolysLayer->extent() );
   mMapSettings.setOutputDpi( 96 );
@@ -185,17 +205,78 @@ void TestQgsPointPatternFillSymbol::pointPatternFillSymbolVector()
   job.start();
   job.waitForFinished();
   p.end();
-  mMapSettings.setFlag( QgsMapSettings::ForceVectorOutput, false );
+  mMapSettings.setFlag( Qgis::MapSettingsFlag::ForceVectorOutput, false );
 
-  QByteArray ba = buffer.data();
+  const QByteArray ba = buffer.data();
   QVERIFY( ba.contains( "fill=\"#ff0000\"" ) );
+}
+
+void TestQgsPointPatternFillSymbol::viewportPointPatternFillSymbol()
+{
+  mReport += QLatin1String( "<h2>Viewport coordinate reference point pattern fill symbol renderer test</h2>\n" );
+
+  std::unique_ptr< QgsVectorLayer> layer = std::make_unique< QgsVectorLayer>( mTestDataDir + "polys.shp" );
+  QVERIFY( layer->isValid() );
+
+  QgsVectorSimplifyMethod simplifyMethod;
+  simplifyMethod.setSimplifyHints( QgsVectorSimplifyMethod::NoSimplification );
+  layer->setSimplifyMethod( simplifyMethod );
+
+  //setup gradient fill
+  QgsPointPatternFillSymbolLayer *pointPatternFill = new QgsPointPatternFillSymbolLayer();
+  QgsFillSymbol *fillSymbol = new QgsFillSymbol();
+  fillSymbol->changeSymbolLayer( 0, pointPatternFill );
+  layer->setRenderer( new QgsSingleSymbolRenderer( fillSymbol ) );
+
+  QVariantMap properties;
+  properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
+  properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
+  properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
+  properties.insert( QStringLiteral( "size" ), QStringLiteral( "5.0" ) );
+  QgsMarkerSymbol *pointSymbol = QgsMarkerSymbol::createSimple( properties );
+  pointPatternFill->setSubSymbol( pointSymbol );
+  pointPatternFill->setCoordinateReference( Qgis::SymbolCoordinateReference::Viewport );
+  QVERIFY( imageCheck( "symbol_pointfill_viewport", layer.get() ) );
+}
+
+void TestQgsPointPatternFillSymbol::viewportPointPatternFillSymbolVector()
+{
+  mReport += QLatin1String( "<h2>Viewport coordinate reference point pattern fill symbol renderer test</h2>\n" );
+
+  std::unique_ptr< QgsVectorLayer> layer = std::make_unique< QgsVectorLayer>( mTestDataDir + "polys.shp" );
+  QVERIFY( layer->isValid() );
+
+  QgsVectorSimplifyMethod simplifyMethod;
+  simplifyMethod.setSimplifyHints( QgsVectorSimplifyMethod::NoSimplification );
+  layer->setSimplifyMethod( simplifyMethod );
+
+  //setup gradient fill
+  QgsPointPatternFillSymbolLayer *pointPatternFill = new QgsPointPatternFillSymbolLayer();
+  QgsFillSymbol *fillSymbol = new QgsFillSymbol();
+  fillSymbol->changeSymbolLayer( 0, pointPatternFill );
+  layer->setRenderer( new QgsSingleSymbolRenderer( fillSymbol ) );
+
+  QVariantMap properties;
+  properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
+  properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
+  properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
+  properties.insert( QStringLiteral( "size" ), QStringLiteral( "5.0" ) );
+  QgsMarkerSymbol *pointSymbol = QgsMarkerSymbol::createSimple( properties );
+
+  pointPatternFill->setSubSymbol( pointSymbol );
+  pointPatternFill->setDistanceX( 10 );
+  pointPatternFill->setDistanceY( 10 );
+  pointPatternFill->setCoordinateReference( Qgis::SymbolCoordinateReference::Viewport );
+  mMapSettings.setFlag( Qgis::MapSettingsFlag::ForceVectorOutput, true );
+  QVERIFY( imageCheck( "symbol_pointfill_viewport_vector", layer.get() ) );
+  mMapSettings.setFlag( Qgis::MapSettingsFlag::ForceVectorOutput, false );
 }
 
 void TestQgsPointPatternFillSymbol::offsettedPointPatternFillSymbol()
 {
   mReport += QLatin1String( "<h2>Offsetted point pattern fill symbol renderer test</h2>\n" );
 
-  QgsStringMap properties;
+  QVariantMap properties;
   properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
   properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
   properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
@@ -222,7 +303,7 @@ void TestQgsPointPatternFillSymbol::offsettedPointPatternFillSymbolVector()
 {
   mReport += QLatin1String( "<h2>Offsetted point pattern fill symbol renderer test</h2>\n" );
 
-  QgsStringMap properties;
+  QVariantMap properties;
   properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
   properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
   properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
@@ -239,9 +320,9 @@ void TestQgsPointPatternFillSymbol::offsettedPointPatternFillSymbolVector()
   // With offset values greater than the pattern size (i.e. distance * 2 ), offsets values are modulos of offset against distance
   mPointPatternFill->setOffsetX( 19 );
   mPointPatternFill->setOffsetY( 19 );
-  mMapSettings.setFlag( QgsMapSettings::ForceVectorOutput, true );
-  bool res = imageCheck( "symbol_pointfill_offset_vector" );
-  mMapSettings.setFlag( QgsMapSettings::ForceVectorOutput, false );
+  mMapSettings.setFlag( Qgis::MapSettingsFlag::ForceVectorOutput, true );
+  const bool res = imageCheck( "symbol_pointfill_offset_vector" );
+  mMapSettings.setFlag( Qgis::MapSettingsFlag::ForceVectorOutput, false );
   mPointPatternFill->setOffsetX( 0 );
   mPointPatternFill->setOffsetY( 0 );
   QVERIFY( res );
@@ -251,7 +332,7 @@ void TestQgsPointPatternFillSymbol::dataDefinedSubSymbol()
 {
   mReport += QLatin1String( "<h2>Point pattern symbol data defined sub symbol test</h2>\n" );
 
-  QgsStringMap properties;
+  QVariantMap properties;
   properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
   properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
   properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
@@ -267,7 +348,7 @@ void TestQgsPointPatternFillSymbol::zeroSpacedPointPatternFillSymbol()
 {
   mReport += QLatin1String( "<h2>Zero distance point pattern fill symbol renderer test</h2>\n" );
 
-  QgsStringMap properties;
+  QVariantMap properties;
   properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
   properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
   properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
@@ -286,7 +367,7 @@ void TestQgsPointPatternFillSymbol::zeroSpacedPointPatternFillSymbolVector()
 {
   mReport += QLatin1String( "<h2>Zero distance point pattern fill symbol renderer test</h2>\n" );
 
-  QgsStringMap properties;
+  QVariantMap properties;
   properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
   properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
   properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
@@ -298,9 +379,286 @@ void TestQgsPointPatternFillSymbol::zeroSpacedPointPatternFillSymbolVector()
   mPointPatternFill->setDistanceY( 15 );
   mPointPatternFill->setOffsetX( 4 );
   mPointPatternFill->setOffsetY( 4 );
-  mMapSettings.setFlag( QgsMapSettings::ForceVectorOutput, true );
-  bool res = imageCheck( "pointfill_zero_space" );
-  mMapSettings.setFlag( QgsMapSettings::ForceVectorOutput, false );
+  mMapSettings.setFlag( Qgis::MapSettingsFlag::ForceVectorOutput, true );
+  const bool res = imageCheck( "pointfill_zero_space" );
+  mMapSettings.setFlag( Qgis::MapSettingsFlag::ForceVectorOutput, false );
+  QVERIFY( res );
+}
+
+void TestQgsPointPatternFillSymbol::pointPatternFillNoClip()
+{
+  mReport += QLatin1String( "<h2>Point pattern no clip mode</h2>\n" );
+
+  std::unique_ptr< QgsVectorLayer> layer = std::make_unique< QgsVectorLayer>( mTestDataDir + "polys.shp" );
+  QVERIFY( layer->isValid() );
+
+  QgsPointPatternFillSymbolLayer *pointPatternFill = new QgsPointPatternFillSymbolLayer();
+  QgsFillSymbol *fillSymbol = new QgsFillSymbol();
+  fillSymbol->changeSymbolLayer( 0, pointPatternFill );
+  layer->setRenderer( new QgsSingleSymbolRenderer( fillSymbol ) );
+  QVariantMap properties;
+  properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
+  properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
+  properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
+  properties.insert( QStringLiteral( "size" ), QStringLiteral( "5.0" ) );
+  QgsMarkerSymbol *pointSymbol = QgsMarkerSymbol::createSimple( properties );
+
+  pointPatternFill->setSubSymbol( pointSymbol );
+  pointPatternFill->setDistanceX( 10 );
+  pointPatternFill->setDistanceY( 10 );
+  pointPatternFill->setClipMode( Qgis::MarkerClipMode::NoClipping );
+  const bool res = imageCheck( "symbol_pointfill_no_clip", layer.get() );
+  QVERIFY( res );
+}
+
+void TestQgsPointPatternFillSymbol::pointPatternFillCompletelyWithin()
+{
+  mReport += QLatin1String( "<h2>Point pattern completely within</h2>\n" );
+
+  std::unique_ptr< QgsVectorLayer> layer = std::make_unique< QgsVectorLayer>( mTestDataDir + "polys.shp" );
+  QVERIFY( layer->isValid() );
+
+  QgsPointPatternFillSymbolLayer *pointPatternFill = new QgsPointPatternFillSymbolLayer();
+  QgsFillSymbol *fillSymbol = new QgsFillSymbol();
+  fillSymbol->changeSymbolLayer( 0, pointPatternFill );
+  layer->setRenderer( new QgsSingleSymbolRenderer( fillSymbol ) );
+  QVariantMap properties;
+  properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
+  properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
+  properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
+  properties.insert( QStringLiteral( "size" ), QStringLiteral( "5.0" ) );
+  QgsMarkerSymbol *pointSymbol = QgsMarkerSymbol::createSimple( properties );
+
+  pointPatternFill->setSubSymbol( pointSymbol );
+  pointPatternFill->setDistanceX( 10 );
+  pointPatternFill->setDistanceY( 10 );
+  pointPatternFill->setClipMode( Qgis::MarkerClipMode::CompletelyWithin );
+  const bool res = imageCheck( "symbol_pointfill_completely_within", layer.get() );
+  QVERIFY( res );
+}
+
+void TestQgsPointPatternFillSymbol::pointPatternFillCentroidWithin()
+{
+  mReport += QLatin1String( "<h2>Point pattern centroid within</h2>\n" );
+
+  std::unique_ptr< QgsVectorLayer> layer = std::make_unique< QgsVectorLayer>( mTestDataDir + "polys.shp" );
+  QVERIFY( layer->isValid() );
+
+  QgsPointPatternFillSymbolLayer *pointPatternFill = new QgsPointPatternFillSymbolLayer();
+  QgsFillSymbol *fillSymbol = new QgsFillSymbol();
+  fillSymbol->changeSymbolLayer( 0, pointPatternFill );
+  layer->setRenderer( new QgsSingleSymbolRenderer( fillSymbol ) );
+  QVariantMap properties;
+  properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
+  properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
+  properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
+  properties.insert( QStringLiteral( "size" ), QStringLiteral( "5.0" ) );
+  QgsMarkerSymbol *pointSymbol = QgsMarkerSymbol::createSimple( properties );
+
+  pointPatternFill->setSubSymbol( pointSymbol );
+  pointPatternFill->setDistanceX( 10 );
+  pointPatternFill->setDistanceY( 10 );
+  pointPatternFill->setClipMode( Qgis::MarkerClipMode::CentroidWithin );
+  const bool res = imageCheck( "symbol_pointfill_centroid_within", layer.get() );
+  QVERIFY( res );
+}
+
+void TestQgsPointPatternFillSymbol::pointPatternFillDataDefinedClip()
+{
+  mReport += QLatin1String( "<h2>Point pattern data defined clip</h2>\n" );
+
+  std::unique_ptr< QgsVectorLayer> layer = std::make_unique< QgsVectorLayer>( mTestDataDir + "polys.shp" );
+  QVERIFY( layer->isValid() );
+
+  QgsPointPatternFillSymbolLayer *pointPatternFill = new QgsPointPatternFillSymbolLayer();
+  QgsFillSymbol *fillSymbol = new QgsFillSymbol();
+  fillSymbol->changeSymbolLayer( 0, pointPatternFill );
+  layer->setRenderer( new QgsSingleSymbolRenderer( fillSymbol ) );
+  QVariantMap properties;
+  properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
+  properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
+  properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
+  properties.insert( QStringLiteral( "size" ), QStringLiteral( "5.0" ) );
+  QgsMarkerSymbol *pointSymbol = QgsMarkerSymbol::createSimple( properties );
+
+  pointPatternFill->setSubSymbol( pointSymbol );
+  pointPatternFill->setDistanceX( 10 );
+  pointPatternFill->setDistanceY( 10 );
+  pointPatternFill->setClipMode( Qgis::MarkerClipMode::Shape );
+  pointPatternFill->dataDefinedProperties().setProperty( QgsSymbolLayer::PropertyMarkerClipping, QgsProperty::fromExpression( QStringLiteral( "case when $id % 4 = 0 then 'shape' when $id % 4 = 1 then 'centroid_within' when $id % 4 = 2 then 'completely_within' else 'no' end" ) ) );
+  const bool res = imageCheck( "symbol_pointfill_datadefined_clip", layer.get() );
+  QVERIFY( res );
+}
+
+void TestQgsPointPatternFillSymbol::pointPatternRandomOffset()
+{
+  mReport += QLatin1String( "<h2>Point pattern random offset</h2>\n" );
+
+  std::unique_ptr< QgsVectorLayer> layer = std::make_unique< QgsVectorLayer>( mTestDataDir + "polys.shp" );
+  QVERIFY( layer->isValid() );
+
+  QgsPointPatternFillSymbolLayer *pointPatternFill = new QgsPointPatternFillSymbolLayer();
+  QgsFillSymbol *fillSymbol = new QgsFillSymbol();
+  fillSymbol->changeSymbolLayer( 0, pointPatternFill );
+  layer->setRenderer( new QgsSingleSymbolRenderer( fillSymbol ) );
+  QVariantMap properties;
+  properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
+  properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
+  properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
+  properties.insert( QStringLiteral( "size" ), QStringLiteral( "5.0" ) );
+  QgsMarkerSymbol *pointSymbol = QgsMarkerSymbol::createSimple( properties );
+
+  pointPatternFill->setSubSymbol( pointSymbol );
+  pointPatternFill->setDistanceX( 10 );
+  pointPatternFill->setDistanceY( 10 );
+  pointPatternFill->setMaximumRandomDeviationX( 5 );
+  pointPatternFill->setMaximumRandomDeviationY( 3 );
+  pointPatternFill->setSeed( 1 );
+
+  const bool res = imageCheck( "symbol_pointfill_random_offset", layer.get() );
+  QVERIFY( res );
+}
+
+void TestQgsPointPatternFillSymbol::pointPatternRandomOffsetPercent()
+{
+  mReport += QLatin1String( "<h2>Point pattern random offset in percent</h2>\n" );
+
+  std::unique_ptr< QgsVectorLayer> layer = std::make_unique< QgsVectorLayer>( mTestDataDir + "polys.shp" );
+  QVERIFY( layer->isValid() );
+
+  QgsPointPatternFillSymbolLayer *pointPatternFill = new QgsPointPatternFillSymbolLayer();
+  QgsFillSymbol *fillSymbol = new QgsFillSymbol();
+  fillSymbol->changeSymbolLayer( 0, pointPatternFill );
+  layer->setRenderer( new QgsSingleSymbolRenderer( fillSymbol ) );
+  QVariantMap properties;
+  properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
+  properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
+  properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
+  properties.insert( QStringLiteral( "size" ), QStringLiteral( "5.0" ) );
+  QgsMarkerSymbol *pointSymbol = QgsMarkerSymbol::createSimple( properties );
+
+  pointPatternFill->setSubSymbol( pointSymbol );
+  pointPatternFill->setDistanceX( 10 );
+  pointPatternFill->setDistanceY( 10 );
+  pointPatternFill->setMaximumRandomDeviationX( 50 );
+  pointPatternFill->setMaximumRandomDeviationY( 30 );
+  pointPatternFill->setRandomDeviationXUnit( QgsUnitTypes::RenderPercentage );
+  pointPatternFill->setRandomDeviationYUnit( QgsUnitTypes::RenderPercentage );
+  pointPatternFill->setSeed( 1 );
+
+  const bool res = imageCheck( "symbol_pointfill_percent_random_offset", layer.get() );
+  QVERIFY( res );
+}
+
+void TestQgsPointPatternFillSymbol::pointPatternRandomOffsetDataDefined()
+{
+  mReport += QLatin1String( "<h2>Point pattern data defined random offset</h2>\n" );
+
+  std::unique_ptr< QgsVectorLayer> layer = std::make_unique< QgsVectorLayer>( mTestDataDir + "polys.shp" );
+  QVERIFY( layer->isValid() );
+
+  QgsPointPatternFillSymbolLayer *pointPatternFill = new QgsPointPatternFillSymbolLayer();
+  QgsFillSymbol *fillSymbol = new QgsFillSymbol();
+  fillSymbol->changeSymbolLayer( 0, pointPatternFill );
+  layer->setRenderer( new QgsSingleSymbolRenderer( fillSymbol ) );
+  QVariantMap properties;
+  properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
+  properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
+  properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
+  properties.insert( QStringLiteral( "size" ), QStringLiteral( "5.0" ) );
+  QgsMarkerSymbol *pointSymbol = QgsMarkerSymbol::createSimple( properties );
+
+  pointPatternFill->setSubSymbol( pointSymbol );
+  pointPatternFill->setDistanceX( 10 );
+  pointPatternFill->setDistanceY( 10 );
+  pointPatternFill->dataDefinedProperties().setProperty( QgsSymbolLayer::PropertyRandomOffsetX, QgsProperty::fromExpression( QStringLiteral( "case when $id % 2 = 0 then 5 else 10 end" ) ) );
+  pointPatternFill->dataDefinedProperties().setProperty( QgsSymbolLayer::PropertyRandomOffsetY, QgsProperty::fromExpression( QStringLiteral( "case when $id % 2 = 0 then 3 else 6 end" ) ) );
+  pointPatternFill->dataDefinedProperties().setProperty( QgsSymbolLayer::PropertyRandomSeed, QgsProperty::fromExpression( QStringLiteral( "case when $id % 2 = 0 then 1 else 2 end" ) ) );
+
+  const bool res = imageCheck( "symbol_pointfill_data_defined_random_offset", layer.get() );
+  QVERIFY( res );
+}
+
+void TestQgsPointPatternFillSymbol::pointPatternAngle()
+{
+  mReport += QLatin1String( "<h2>Point pattern angle</h2>\n" );
+
+  std::unique_ptr< QgsVectorLayer> layer = std::make_unique< QgsVectorLayer>( mTestDataDir + "polys.shp" );
+  QVERIFY( layer->isValid() );
+
+  QgsPointPatternFillSymbolLayer *pointPatternFill = new QgsPointPatternFillSymbolLayer();
+  QgsFillSymbol *fillSymbol = new QgsFillSymbol();
+  fillSymbol->changeSymbolLayer( 0, pointPatternFill );
+  layer->setRenderer( new QgsSingleSymbolRenderer( fillSymbol ) );
+  QVariantMap properties;
+  properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
+  properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
+  properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
+  properties.insert( QStringLiteral( "size" ), QStringLiteral( "5.0" ) );
+  QgsMarkerSymbol *pointSymbol = QgsMarkerSymbol::createSimple( properties );
+
+  pointPatternFill->setSubSymbol( pointSymbol );
+  pointPatternFill->setDistanceX( 10 );
+  pointPatternFill->setDistanceY( 6 );
+  pointPatternFill->setAngle( 25 );
+
+  const bool res = imageCheck( "symbol_pointfill_angle", layer.get() );
+  QVERIFY( res );
+}
+
+void TestQgsPointPatternFillSymbol::pointPatternAngleDataDefined()
+{
+  mReport += QLatin1String( "<h2>Point pattern angle data defined</h2>\n" );
+
+  std::unique_ptr< QgsVectorLayer> layer = std::make_unique< QgsVectorLayer>( mTestDataDir + "polys.shp" );
+  QVERIFY( layer->isValid() );
+
+  QgsPointPatternFillSymbolLayer *pointPatternFill = new QgsPointPatternFillSymbolLayer();
+  QgsFillSymbol *fillSymbol = new QgsFillSymbol();
+  fillSymbol->changeSymbolLayer( 0, pointPatternFill );
+  layer->setRenderer( new QgsSingleSymbolRenderer( fillSymbol ) );
+  QVariantMap properties;
+  properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
+  properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
+  properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
+  properties.insert( QStringLiteral( "size" ), QStringLiteral( "5.0" ) );
+  QgsMarkerSymbol *pointSymbol = QgsMarkerSymbol::createSimple( properties );
+
+  pointPatternFill->setSubSymbol( pointSymbol );
+  pointPatternFill->setDistanceX( 10 );
+  pointPatternFill->setDistanceY( 6 );
+  pointPatternFill->setAngle( 25 );
+  pointPatternFill->dataDefinedProperties().setProperty( QgsSymbolLayer::PropertyAngle, QgsProperty::fromExpression( QStringLiteral( "case when $id % 2 = 0 then -10 else 25 end" ) ) );
+
+  const bool res = imageCheck( "symbol_pointfill_data_defined_angle", layer.get() );
+  QVERIFY( res );
+}
+
+void TestQgsPointPatternFillSymbol::pointPatternAngleViewport()
+{
+  mReport += QLatin1String( "<h2>Point pattern angle viewport mode</h2>\n" );
+
+  std::unique_ptr< QgsVectorLayer> layer = std::make_unique< QgsVectorLayer>( mTestDataDir + "polys.shp" );
+  QVERIFY( layer->isValid() );
+
+  QgsPointPatternFillSymbolLayer *pointPatternFill = new QgsPointPatternFillSymbolLayer();
+  QgsFillSymbol *fillSymbol = new QgsFillSymbol();
+  fillSymbol->changeSymbolLayer( 0, pointPatternFill );
+  layer->setRenderer( new QgsSingleSymbolRenderer( fillSymbol ) );
+  QVariantMap properties;
+  properties.insert( QStringLiteral( "color" ), QStringLiteral( "0,0,0,255" ) );
+  properties.insert( QStringLiteral( "outline_color" ), QStringLiteral( "#000000" ) );
+  properties.insert( QStringLiteral( "name" ), QStringLiteral( "circle" ) );
+  properties.insert( QStringLiteral( "size" ), QStringLiteral( "5.0" ) );
+  QgsMarkerSymbol *pointSymbol = QgsMarkerSymbol::createSimple( properties );
+
+  pointPatternFill->setSubSymbol( pointSymbol );
+  pointPatternFill->setDistanceX( 10 );
+  pointPatternFill->setDistanceY( 6 );
+  pointPatternFill->setCoordinateReference( Qgis::SymbolCoordinateReference::Viewport );
+  pointPatternFill->setAngle( 25 );
+
+  const bool res = imageCheck( "symbol_pointfill_viewport_angle", layer.get() );
   QVERIFY( res );
 }
 
@@ -309,17 +667,22 @@ void TestQgsPointPatternFillSymbol::zeroSpacedPointPatternFillSymbolVector()
 //
 
 
-bool TestQgsPointPatternFillSymbol::imageCheck( const QString &testType )
+bool TestQgsPointPatternFillSymbol::imageCheck( const QString &testType, QgsVectorLayer *layer )
 {
+  if ( !layer )
+    layer = mpPolysLayer;
+
+  mMapSettings.setLayers( {layer } );
+
   //use the QgsRenderChecker test utility class to
   //ensure the rendered output matches our control image
-  mMapSettings.setExtent( mpPolysLayer->extent() );
+  mMapSettings.setExtent( layer->extent() );
   mMapSettings.setOutputDpi( 96 );
   QgsRenderChecker myChecker;
   myChecker.setControlPathPrefix( QStringLiteral( "symbol_pointpatternfill" ) );
   myChecker.setControlName( "expected_" + testType );
   myChecker.setMapSettings( mMapSettings );
-  bool myResultFlag = myChecker.runTest( testType );
+  const bool myResultFlag = myChecker.runTest( testType );
   mReport += myChecker.report();
   return myResultFlag;
 }

@@ -176,9 +176,12 @@ class buildvrt(GdalAlgorithm):
         return "gdalbuildvrt"
 
     def getConsoleCommands(self, parameters, context, feedback, executing=True):
-        arguments = []
-        arguments.append('-resolution')
-        arguments.append(self.RESOLUTION_OPTIONS[self.parameterAsEnum(parameters, self.RESOLUTION, context)][1])
+        arguments = [
+            '-overwrite',
+            '-resolution',
+            self.RESOLUTION_OPTIONS[self.parameterAsEnum(parameters, self.RESOLUTION, context)][1]
+        ]
+
         if self.parameterAsBoolean(parameters, buildvrt.SEPARATE, context):
             arguments.append('-separate')
         if self.parameterAsBoolean(parameters, buildvrt.PROJ_DIFFERENCE, context):

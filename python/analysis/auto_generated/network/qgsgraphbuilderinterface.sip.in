@@ -16,9 +16,9 @@
 
 class QgsGraphBuilderInterface
 {
-%Docstring
+%Docstring(signature="appended")
 Determine interface for creating a graph. Contains the settings of the graph.
-QgsGraphBuilder and QgsGraphDirector both use a "builder" design pattern
+:py:class:`QgsGraphBuilder` and :py:class:`QgsGraphDirector` both use a "builder" design pattern
 %End
 
 %TypeHeaderCode
@@ -50,12 +50,12 @@ Default constructor
 Returns destinaltion CRS
 %End
 
-    bool coordinateTransformationEnabled();
+    bool coordinateTransformationEnabled() const;
 %Docstring
 Returns coordinate transformation enabled
 %End
 
-    double topologyTolerance();
+    double topologyTolerance() const;
 %Docstring
 Returns topology tolerance
 %End

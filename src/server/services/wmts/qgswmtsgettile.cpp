@@ -35,49 +35,49 @@ namespace QgsWmts
     const QgsWmtsParameters params( QUrlQuery( request.url() ) );
 
     // WMS query
-    QUrlQuery query = translateWmtsParamToWmsQueryItem( QStringLiteral( "GetMap" ), params, project, serverIface );
+    const QUrlQuery query = translateWmtsParamToWmsQueryItem( QStringLiteral( "GetMap" ), params, project, serverIface );
 
-	QString strCacheMaxAge;
-	if (!params.layer().isEmpty())
-	{
-		QString strLayer = params.layer();
-		if(!strLayer.isEmpty())
-		{ 
-			// Use layer ids
-			bool useLayerIds = QgsServerProjectUtils::wmsUseLayerIds(*project);
+    QString strCacheMaxAge;
+    if (!params.layer().isEmpty())
+    {
+      QString strLayer = params.layer();
+      if(!strLayer.isEmpty())
+      {
+        // Use layer ids
+        bool useLayerIds = QgsServerProjectUtils::wmsUseLayerIds(*project);
 
-			for (QgsMapLayer *layer : project->mapLayers(true))
-			{
-				QString name = layer->name();
-				if (useLayerIds)
-					name = layer->id();
-				else if (!layer->shortName().isEmpty())
-					name = layer->shortName();
+        for (QgsMapLayer *layer : project->mapLayers(true))
+        {
+          QString name = layer->name();
+          if (useLayerIds)
+            name = layer->id();
+          else if (!layer->shortName().isEmpty())
+            name = layer->shortName();
 
-				if (strLayer.compare(name, Qt::CaseInsensitive) != 0)
-					continue;
+          if (strLayer.compare(name, Qt::CaseInsensitive) != 0)
+            continue;
 
-				QList<QgsLayerMetadata::Constraint> qlistConstraints = layer->metadata().constraints();
-				for (int iMeta = 0; iMeta < qlistConstraints.length(); iMeta++)
-				{
-					if (qlistConstraints[iMeta].type.compare("sb:CACHE_MAX_AGE", Qt::CaseInsensitive) == 0)
-					{
-						strCacheMaxAge = qlistConstraints[iMeta].constraint;
-						break;
-					}
-				}
-				
-				break;
-			}
-		}
+          QList<QgsLayerMetadata::Constraint> qlistConstraints = layer->metadata().constraints();
+          for (int iMeta = 0; iMeta < qlistConstraints.length(); iMeta++)
+          {
+            if (qlistConstraints[iMeta].type.compare("sb:CACHE_MAX_AGE", Qt::CaseInsensitive) == 0)
+            {
+              strCacheMaxAge = qlistConstraints[iMeta].constraint;
+              break;
+            }
+          }
 
-		if (strCacheMaxAge.isEmpty())
-		{
-			QStringList qlistMetadata = project->metadata().keywords("sb:CACHE_MAX_AGE");
-			if (qlistMetadata.count() > 0)
-				strCacheMaxAge = qlistMetadata[0];
-		}
-	}
+          break;
+        }
+      }
+
+      if (strCacheMaxAge.isEmpty())
+      {
+        QStringList qlistMetadata = project->metadata().keywords("sb:CACHE_MAX_AGE");
+        if (qlistMetadata.count() > 0)
+          strCacheMaxAge = qlistMetadata[0];
+      }
+    }
 
     // Get cached image
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
@@ -85,7 +85,7 @@ namespace QgsWmts
     QgsServerCacheManager *cacheManager = serverIface->cacheManager();
     if ( cacheManager )
     {
-      QgsWmtsParameters::Format f = params.format();
+      const QgsWmtsParameters::Format f = params.format();
       QString contentType;
       QString saveFormat;
       std::unique_ptr<QImage> image;
@@ -93,49 +93,49 @@ namespace QgsWmts
       {
         contentType = QStringLiteral( "image/jpeg" );
         saveFormat = QStringLiteral( "JPEG" );
-        image = qgis::make_unique<QImage>( 256, 256, QImage::Format_RGB32 );
+        image = std::make_unique<QImage>( 256, 256, QImage::Format_RGB32 );
       }
       else
       {
         contentType = QStringLiteral( "image/png" );
         saveFormat = QStringLiteral( "PNG" );
-        image = qgis::make_unique<QImage>( 256, 256, QImage::Format_ARGB32_Premultiplied );
+        image = std::make_unique<QImage>( 256, 256, QImage::Format_ARGB32_Premultiplied );
       }
 
-      QByteArray content = cacheManager->getCachedImage( project, request, accessControl );
+      const QByteArray content = cacheManager->getCachedImage( project, request, accessControl );
       if ( !content.isEmpty() && image->loadFromData( content ) )
       {
         response.setHeader( QStringLiteral( "Content-Type" ), contentType );
         image->save( response.io(), qPrintable( saveFormat ) );
 
-		if (!strCacheMaxAge.isEmpty())
-			response.setHeader(QStringLiteral("Cache-Control"), QStringLiteral("public, max-age=%1").arg(strCacheMaxAge));
+        if (!strCacheMaxAge.isEmpty())
+          response.setHeader(QStringLiteral("Cache-Control"), QStringLiteral("public, max-age=%1").arg(strCacheMaxAge));
 
-		response.setHeader(QStringLiteral("X-QGIS-FROM-CACHE"), QStringLiteral("true"));
+        response.setHeader(QStringLiteral("X-QGIS-FROM-CACHE"), QStringLiteral("true"));
 
         return;
       }
     }
 #endif
 
-    QgsServerParameters wmsParams( query );
-    QgsServerRequest wmsRequest( "?" + query.query( QUrl::FullyDecoded ) );
+    const QgsServerParameters wmsParams( query );
+    const QgsServerRequest wmsRequest( "?" + query.query( QUrl::FullyDecoded ) );
 
-	QgsService *service = serverIface->serviceRegistry()->getService( wmsParams.service(), wmsParams.version() );
+    QgsService *service = serverIface->serviceRegistry()->getService( wmsParams.service(), wmsParams.version() );
     service->executeRequest( wmsRequest, response, project );
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
     if ( cacheManager )
     {
-      QByteArray content = response.data();
+      const QByteArray content = response.data();
       if ( !content.isEmpty() )
         cacheManager->setCachedImage( &content, project, request, accessControl );
     }
 #endif
 
-	if (!strCacheMaxAge.isEmpty())
-		response.setHeader(QStringLiteral("Cache-Control"), QStringLiteral("public, max-age=%1").arg(strCacheMaxAge));
+    if (!strCacheMaxAge.isEmpty())
+      response.setHeader(QStringLiteral("Cache-Control"), QStringLiteral("public, max-age=%1").arg(strCacheMaxAge));
 
-	response.setHeader(QStringLiteral("X-QGIS-FROM-CACHE"), QStringLiteral("false"));
+    response.setHeader(QStringLiteral("X-QGIS-FROM-CACHE"), QStringLiteral("false"));
   }
 
 } // namespace QgsWmts

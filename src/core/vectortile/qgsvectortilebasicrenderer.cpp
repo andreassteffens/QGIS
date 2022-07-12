@@ -23,6 +23,9 @@
 #include "qgsmarkersymbollayer.h"
 #include "qgssymbollayerutils.h"
 #include "qgsvectortileutils.h"
+#include "qgsfillsymbol.h"
+#include "qgslinesymbol.h"
+#include "qgsmarkersymbol.h"
 
 QgsVectorTileBasicRendererStyle::QgsVectorTileBasicRendererStyle( const QString &stName, const QString &laName, QgsWkbTypes::GeometryType geomType )
   : mStyleName( stName )
@@ -120,7 +123,7 @@ void QgsVectorTileBasicRenderer::startRender( QgsRenderContext &context, int til
   Q_UNUSED( context )
   Q_UNUSED( tileRange )
   // figure out required fields for different layers
-  for ( const QgsVectorTileBasicRendererStyle &layerStyle : qgis::as_const( mStyles ) )
+  for ( const QgsVectorTileBasicRendererStyle &layerStyle : std::as_const( mStyles ) )
   {
     if ( layerStyle.isActive( tileZoom ) )
     {
@@ -145,7 +148,7 @@ QMap<QString, QSet<QString> > QgsVectorTileBasicRenderer::usedAttributes( const 
 QSet<QString> QgsVectorTileBasicRenderer::requiredLayers( QgsRenderContext &, int tileZoom ) const
 {
   QSet< QString > res;
-  for ( const QgsVectorTileBasicRendererStyle &layerStyle : qgis::as_const( mStyles ) )
+  for ( const QgsVectorTileBasicRendererStyle &layerStyle : std::as_const( mStyles ) )
   {
     if ( layerStyle.isActive( tileZoom ) )
     {
@@ -165,9 +168,9 @@ void QgsVectorTileBasicRenderer::renderTile( const QgsVectorTileRendererData &ti
   const QgsVectorTileFeatures tileData = tile.features();
   int zoomLevel = tile.id().zoomLevel();
 
-  for ( const QgsVectorTileBasicRendererStyle &layerStyle : qgis::as_const( mStyles ) )
+  for ( const QgsVectorTileBasicRendererStyle &layerStyle : std::as_const( mStyles ) )
   {
-    if ( !layerStyle.isActive( zoomLevel ) )
+    if ( !layerStyle.isActive( zoomLevel ) || !layerStyle.symbol() )
       continue;
 
     QgsExpressionContextScope *scope = new QgsExpressionContextScope( QObject::tr( "Layer" ) ); // will be deleted by popper
@@ -179,7 +182,13 @@ void QgsVectorTileBasicRenderer::renderTile( const QgsVectorTileRendererData &ti
 
     QgsSymbol *sym = layerStyle.symbol();
     sym->startRender( context, QgsFields() );
-    if ( layerStyle.layerName().isEmpty() )
+    if ( layerStyle.layerName() == QLatin1String( "background" ) )
+    {
+      QgsFillSymbol *fillSym = dynamic_cast<QgsFillSymbol *>( sym );
+      if ( fillSym )
+        fillSym->renderPolygon( tile.tilePolygon(), nullptr, nullptr, context );
+    }
+    else if ( layerStyle.layerName().isEmpty() )
     {
       // matching all layers
       for ( QString layerName : tileData.keys() )
@@ -202,6 +211,15 @@ void QgsVectorTileBasicRenderer::renderTile( const QgsVectorTileRendererData &ti
             QgsFeature exterior = f;
             exterior.setGeometry( QgsGeometry( f.geometry().constGet()->boundary() ) );
             sym->renderFeature( exterior, context );
+          }
+          else if ( featureType == QgsWkbTypes::PolygonGeometry && layerStyle.geometryType() == QgsWkbTypes::PointGeometry )
+          {
+            // be tolerant and permit rendering polygons with a point layer style, as some style definitions use this approach
+            // to render the polygon center
+            QgsFeature centroid = f;
+            const QgsRectangle boundingBox = f.geometry().boundingBox();
+            centroid.setGeometry( f.geometry().poleOfInaccessibility( std::min( boundingBox.width(), boundingBox.height() ) / 20 ) );
+            sym->renderFeature( centroid, context );
           }
         }
       }
@@ -227,6 +245,15 @@ void QgsVectorTileBasicRenderer::renderTile( const QgsVectorTileRendererData &ti
           QgsFeature exterior = f;
           exterior.setGeometry( QgsGeometry( f.geometry().constGet()->boundary() ) );
           sym->renderFeature( exterior, context );
+        }
+        else if ( featureType == QgsWkbTypes::PolygonGeometry && layerStyle.geometryType() == QgsWkbTypes::PointGeometry )
+        {
+          // be tolerant and permit rendering polygons with a point layer style, as some style definitions use this approach
+          // to render the polygon center
+          QgsFeature centroid = f;
+          const QgsRectangle boundingBox = f.geometry().boundingBox();
+          centroid.setGeometry( f.geometry().poleOfInaccessibility( std::min( boundingBox.width(), boundingBox.height() ) / 20 ) );
+          sym->renderFeature( centroid, context );
         }
       }
     }
@@ -315,12 +342,15 @@ QList<QgsVectorTileBasicRendererStyle> QgsVectorTileBasicRenderer::simpleStyle(
   QgsMarkerSymbol *markerSymbol = new QgsMarkerSymbol( QgsSymbolLayerList() << markerSymbolLayer );
 
   QgsVectorTileBasicRendererStyle st1( QStringLiteral( "Polygons" ), QString(), QgsWkbTypes::PolygonGeometry );
+  st1.setFilterExpression( QStringLiteral( "geometry_type($geometry)='Polygon'" ) );
   st1.setSymbol( fillSymbol );
 
   QgsVectorTileBasicRendererStyle st2( QStringLiteral( "Lines" ), QString(), QgsWkbTypes::LineGeometry );
+  st2.setFilterExpression( QStringLiteral( "geometry_type($geometry)='Line'" ) );
   st2.setSymbol( lineSymbol );
 
   QgsVectorTileBasicRendererStyle st3( QStringLiteral( "Points" ), QString(), QgsWkbTypes::PointGeometry );
+  st3.setFilterExpression( QStringLiteral( "geometry_type($geometry)='Point'" ) );
   st3.setSymbol( markerSymbol );
 
   QList<QgsVectorTileBasicRendererStyle> lst;

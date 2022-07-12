@@ -45,12 +45,19 @@ QgsMeshContours::QgsMeshContours( QgsMeshLayer *layer )
   if ( mMeshLayer->dataProvider()->contains( QgsMesh::ElementType::Edge ) )
     return;
 
-  mNativeMesh.reset( new QgsMesh() );
-  mMeshLayer->dataProvider()->populateMesh( mNativeMesh.get() );
-
-  mTriangularMesh.reset( new QgsTriangularMesh );
-  mTriangularMesh->update( mNativeMesh.get() );
+  mMeshLayer->dataProvider()->populateMesh( &mNativeMesh );
+  mTriangularMesh.update( &mNativeMesh );
 }
+
+QgsMeshContours::QgsMeshContours( const QgsTriangularMesh &triangularMesh,
+                                  const QgsMesh &nativeMesh,
+                                  const QVector<double> &datasetValues,
+                                  const QgsMeshDataBlock scalarActiveFaceFlagValues ):
+  mTriangularMesh( triangularMesh )
+  , mNativeMesh( nativeMesh )
+  , mDatasetValues( datasetValues )
+  , mScalarActiveFaceFlagValues( scalarActiveFaceFlagValues )
+{}
 
 QgsMeshContours::~QgsMeshContours() = default;
 
@@ -62,13 +69,19 @@ QgsGeometry QgsMeshContours::exportPolygons(
   QgsFeedback *feedback
 )
 {
-  // Check if the layer/mesh is valid
-  if ( !mTriangularMesh )
+  if ( !mMeshLayer )
     return QgsGeometry();
 
+  populateCache( index, method );
+
+  return exportPolygons( min_value, max_value, feedback );
+}
+
+QgsGeometry QgsMeshContours::exportPolygons( double min_value, double max_value, QgsFeedback *feedback )
+{
   if ( min_value > max_value )
   {
-    double tmp = max_value;
+    const double tmp = max_value;
     max_value = min_value;
     min_value = tmp;
   }
@@ -76,21 +89,20 @@ QgsGeometry QgsMeshContours::exportPolygons(
   QVector<QgsGeometry> multiPolygon;
 
   // STEP 1: Get Data
-  populateCache( index, method );
-  const QVector<QgsMeshVertex> vertices = mTriangularMesh->vertices();
-  const QVector<int> &trianglesToNativeFaces = mTriangularMesh->trianglesToNativeFaces();
+  const QVector<QgsMeshVertex> vertices = mTriangularMesh.vertices();
+  const QVector<int> &trianglesToNativeFaces = mTriangularMesh.trianglesToNativeFaces();
 
   // STEP 2: For each triangle get the contour line
-  for ( int i = 0; i < mTriangularMesh->triangles().size(); ++i )
+  for ( int i = 0; i < mTriangularMesh.triangles().size(); ++i )
   {
     if ( feedback && feedback->isCanceled() )
       break;
 
-    int nativeIndex = trianglesToNativeFaces.at( i );
+    const int nativeIndex = trianglesToNativeFaces.at( i );
     if ( !mScalarActiveFaceFlagValues.active( nativeIndex ) )
       continue;
 
-    const QgsMeshFace &triangle = mTriangularMesh->triangles().at( i );
+    const QgsMeshFace &triangle = mTriangularMesh.triangles().at( i );
     const int indices[3] =
     {
       triangle.at( 0 ),
@@ -133,8 +145,8 @@ QgsGeometry QgsMeshContours::exportPolygons(
     {
       QVector<QgsMeshVertex> ring = coords;
       ring.push_back( coords[0] );
-      std::unique_ptr< QgsLineString > ext = qgis::make_unique< QgsLineString> ( coords );
-      std::unique_ptr< QgsPolygon > poly = qgis::make_unique< QgsPolygon >();
+      std::unique_ptr< QgsLineString > ext = std::make_unique< QgsLineString> ( coords );
+      std::unique_ptr< QgsPolygon > poly = std::make_unique< QgsPolygon >();
       poly->setExteriorRing( ext.release() );
       multiPolygon.push_back( QgsGeometry( std::move( poly ) ) );
       continue;
@@ -233,8 +245,8 @@ QgsGeometry QgsMeshContours::exportPolygons(
     // add if the polygon is not degraded
     if ( ring.size() > 2 )
     {
-      std::unique_ptr< QgsLineString > ext = qgis::make_unique< QgsLineString> ( ring );
-      std::unique_ptr< QgsPolygon > poly = qgis::make_unique< QgsPolygon >();
+      std::unique_ptr< QgsLineString > ext = std::make_unique< QgsLineString> ( ring );
+      std::unique_ptr< QgsPolygon > poly = std::make_unique< QgsPolygon >();
       poly->setExteriorRing( ext.release() );
       multiPolygon.push_back( QgsGeometry( std::move( poly ) ) );
     }
@@ -247,7 +259,7 @@ QgsGeometry QgsMeshContours::exportPolygons(
   }
   else
   {
-    QgsGeometry res = QgsGeometry::unaryUnion( multiPolygon );
+    const QgsGeometry res = QgsGeometry::unaryUnion( multiPolygon );
     return res;
   }
 }
@@ -258,28 +270,34 @@ QgsGeometry QgsMeshContours::exportLines( const QgsMeshDatasetIndex &index,
     QgsFeedback *feedback )
 {
   // Check if the layer/mesh is valid
-  if ( !mTriangularMesh )
+  if ( !mMeshLayer )
     return QgsGeometry();
 
+  populateCache( index, method );
+
+  return exportLines( value, feedback );
+}
+
+QgsGeometry QgsMeshContours::exportLines( double value, QgsFeedback *feedback )
+{
   std::unique_ptr<QgsMultiLineString> multiLineString( new QgsMultiLineString() );
   QSet<QPair<int, int>> exactEdges;
 
   // STEP 1: Get Data
-  populateCache( index, method );
-  QVector<QgsMeshVertex> vertices = mTriangularMesh->vertices();
-  const QVector<int> &trianglesToNativeFaces = mTriangularMesh->trianglesToNativeFaces();
+  const QVector<QgsMeshVertex> vertices = mTriangularMesh.vertices();
+  const QVector<int> &trianglesToNativeFaces = mTriangularMesh.trianglesToNativeFaces();
 
   // STEP 2: For each triangle get the contour line
-  for ( int i = 0; i < mTriangularMesh->triangles().size(); ++i )
+  for ( int i = 0; i < mTriangularMesh.triangles().size(); ++i )
   {
     if ( feedback && feedback->isCanceled() )
       break;
 
-    int nativeIndex = trianglesToNativeFaces.at( i );
+    const int nativeIndex = trianglesToNativeFaces.at( i );
     if ( !mScalarActiveFaceFlagValues.active( nativeIndex ) )
       continue;
 
-    const QgsMeshFace &triangle = mTriangularMesh->triangles().at( i );
+    const QgsMeshFace &triangle = mTriangularMesh.triangles().at( i );
 
     const int indices[3] =
     {
@@ -382,17 +400,20 @@ QgsGeometry QgsMeshContours::exportLines( const QgsMeshDatasetIndex &index,
 
 void QgsMeshContours::populateCache( const QgsMeshDatasetIndex &index, QgsMeshRendererScalarSettings::DataResamplingMethod method )
 {
+  if ( !mMeshLayer )
+    return;
+
   if ( mCachedIndex != index )
   {
-    bool scalarDataOnVertices = mMeshLayer->dataProvider()->datasetGroupMetadata( index ).dataType() == QgsMeshDatasetGroupMetadata::DataOnVertices;
-    int count =  scalarDataOnVertices ? mNativeMesh->vertices.count() : mNativeMesh->faces.count();
+    const bool scalarDataOnVertices = mMeshLayer->dataProvider()->datasetGroupMetadata( index ).dataType() == QgsMeshDatasetGroupMetadata::DataOnVertices;
+    const int count =  scalarDataOnVertices ? mNativeMesh.vertices.count() : mNativeMesh.faces.count();
 
     // populate scalar values
-    QgsMeshDataBlock vals = QgsMeshLayerUtils::datasetValues(
-                              mMeshLayer,
-                              index,
-                              0,
-                              count );
+    const QgsMeshDataBlock vals = QgsMeshLayerUtils::datasetValues(
+                                    mMeshLayer,
+                                    index,
+                                    0,
+                                    count );
     if ( vals.isValid() )
     {
       // vals could be scalar or vectors, for contour rendering we want always magnitude
@@ -407,15 +428,15 @@ void QgsMeshContours::populateCache( const QgsMeshDatasetIndex &index, QgsMeshRe
     mScalarActiveFaceFlagValues = mMeshLayer->dataProvider()->areFacesActive(
                                     index,
                                     0,
-                                    mNativeMesh->faces.count() );
+                                    mNativeMesh.faces.count() );
 
     // for data on faces, there could be request to interpolate the data to vertices
     if ( ( !scalarDataOnVertices ) )
     {
       mDatasetValues = QgsMeshLayerUtils::interpolateFromFacesData(
                          mDatasetValues,
-                         mNativeMesh.get(),
-                         mTriangularMesh.get(),
+                         &mNativeMesh,
+                         &mTriangularMesh,
                          &mScalarActiveFaceFlagValues,
                          method
                        );

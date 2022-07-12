@@ -54,11 +54,11 @@ my $translators= {
 	'fr' => 'Arnaud Morvan, Augustin Roche, Didier Vanden Berghe, Dofabien, Etienne Trimaille, Harrissou Sant-anna, Jean-Roc Morreale, Jérémy Garniaux, Loïc Buscoz, Lsam, Marc-André Saia, Marie Silvestre, Mathieu Bossaert, Mathieu Lattes, Mayeul Kauffmann, Médéric Ribreux, Mehdi Semchaoui, Michael Douchin, Nicolas Boisteault, Nicolas Rochard, Pascal Obstetar, Robin Prest, Rod Bera, Stéphane Henriod, Stéphane Possamai, sylther, Sylvain Badey, Sylvain Maillard, Vincent Picavet, Xavier Tardieu, Yann Leveille-Menez, yoda89, Vincent Bré',
 	'gl' => 'Xan Vieiro',
 	'hi' => 'Harish Kumar Solanki',
-	'hu' => 'Zoltan Siki, Zoltan Toldi',
+	'hu' => 'Zoltan Siki, Zoltan Toldi, Peter Bathory',
 	'hr' => 'Zoran Jankovic',
 	'is' => 'Ásta Kristín Óladóttir, Thordur Ivarsson, Sveinn í Felli',
 	'id' => 'Emir Hartato, Muhammad Iqnaul Haq Siregar, Trias Aditya, Januar V. Simarmata, I Made Anombawa',  #spellok
-	'it' => 'Marco Braida, Stefano Campus, Roberta Castelli, Francesco D\'Amore, Eleonora D\'Elia, Simone Falceri, Giulio Fattori, Matteo Ghetta, Federico Gianoli, Marco Grisolia, Italang, Luca76, Pipep, Valerio Pinna, Alberto Vallortigara, Giuseppe Mattiozzi (documentation)',
+	'it' => 'Marco Braida, Stefano Campus, Roberta Castelli, Francesco D\'Amore, Eleonora D\'Elia, Simone Falceri, Giulio Fattori, Matteo Ghetta, Federico Gianoli, Marco Grisolia, Italang, Luca76, Pipep, Valerio Pinna, Alberto Vallortigara, Salvatore Fiandaca (reporter), Giuseppe Mattiozzi (documentation)',
 	'ja' => 'BABA Yoshihiko, Yoichi Kayama, Minoru Akagi, Takayuki Nuimura, Takayuki Mizutani, Norihiro Yamate, Kohei Tomita',
 	'ka' => 'Shota Murtskhvaladze, George Machitidze',
 	'km' => 'Khoem Sokhem',
@@ -93,7 +93,7 @@ my $translators= {
 	'uk' => 'Alexander Bruy, Daria Svidzinska, Svitlana Shulik, Alesya Shushova',
 	'vi' => 'Phùng Văn Doanh, Bùi Hữu Mạnh, Nguyễn Văn Thanh, Nguyễn Hữu Phúc, Cao Minh Tu',
 	'zh-Hant' => 'Calvin Ngei, Zhang Jun, Richard Xie, Dennis Raylin Chen',
-	'zh-Hans' => 'Calvin Ngei, Lisashen, Wang Shuai',
+	'zh-Hans' => 'Calvin Ngei, Lisashen, Wang Shuai, Xu Baocai',
 };
 
 my $maxn;

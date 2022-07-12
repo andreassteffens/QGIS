@@ -22,13 +22,15 @@
 #include "gdal.h"
 #include "qgis_analysis.h"
 #include "qgsogrutils.h"
+#include "qgsconfig.h"
 
 class QgsFeedback;
 
 /**
  * \ingroup analysis
  * \brief Base class for raster analysis methods that work with a 3x3 cell filter and calculate the value of each cell based on
-the cell value and the eight neighbour cells.
+ * the cell value and the eight neighbour cells.
+ *
  * Common examples are slope and aspect calculation in DEMs. Subclasses only implement
  * the method that calculates the new value from the nine values. Everything else (reading file, writing file) is done by this subclass
  */

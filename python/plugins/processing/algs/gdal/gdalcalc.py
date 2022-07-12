@@ -27,6 +27,7 @@ from qgis.core import (QgsProcessingException,
                        QgsProcessingParameterBand,
                        QgsProcessingParameterNumber,
                        QgsProcessingParameterEnum,
+                       QgsProcessingParameterExtent,
                        QgsProcessingParameterString,
                        QgsProcessingParameterRasterDestination)
 from processing.algs.gdal.GdalAlgorithm import GdalAlgorithm
@@ -49,6 +50,7 @@ class gdalcalc(GdalAlgorithm):
     BAND_E = 'BAND_E'
     BAND_F = 'BAND_F'
     FORMULA = 'FORMULA'
+    EXTENT = 'PROJWIN'
     OUTPUT = 'OUTPUT'
     NO_DATA = 'NO_DATA'
     OPTIONS = 'OPTIONS'
@@ -87,10 +89,11 @@ class gdalcalc(GdalAlgorithm):
                 self.tr('Input layer C'),
                 optional=True))
         self.addParameter(
-            QgsProcessingParameterBand(self.BAND_C,
-                                       self.tr('Number of raster band for C'),
-                                       parentLayerParameterName=self.INPUT_C,
-                                       optional=True))
+            QgsProcessingParameterBand(
+                self.BAND_C,
+                self.tr('Number of raster band for C'),
+                parentLayerParameterName=self.INPUT_C,
+                optional=True))
         self.addParameter(
             QgsProcessingParameterRasterLayer(
                 self.INPUT_D,
@@ -137,6 +140,14 @@ class gdalcalc(GdalAlgorithm):
                 type=QgsProcessingParameterNumber.Double,
                 defaultValue=None,
                 optional=True))
+
+        if GdalUtils.version() >= 3030000:
+            extent_param = QgsProcessingParameterExtent(self.EXTENT,
+                                                        self.tr('Output extent'),
+                                                        optional=True)
+            extent_param.setHelp(self.tr('Custom extent of the output raster'))
+            self.addParameter(extent_param)
+
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.RTYPE,
@@ -181,7 +192,13 @@ class gdalcalc(GdalAlgorithm):
     def commandName(self):
         return 'gdal_calc'
 
+    def processAlgorithm(self, parameters, context, feedback):
+        if GdalUtils.version() < 3030000 and self.EXTENT in parameters.keys():
+            raise QgsProcessingException(self.tr('The output extent option is only available on GDAL 3.3 or later'))
+        return GdalAlgorithm.processAlgorithm(self, parameters, context, feedback)
+
     def getConsoleCommands(self, parameters, context, feedback, executing=True):
+
         out = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         self.setOutputValue(self.OUTPUT, out)
         formula = self.parameterAsString(parameters, self.FORMULA, context)
@@ -190,18 +207,30 @@ class gdalcalc(GdalAlgorithm):
         else:
             noData = None
 
-        arguments = []
-        arguments.append('--calc "{}"'.format(formula))
-        arguments.append('--format')
-        arguments.append(GdalUtils.getFormatShortNameFromFilename(out))
-        arguments.append('--type')
-        arguments.append(self.TYPE[self.parameterAsEnum(parameters, self.RTYPE, context)])
+        arguments = [
+            '--overwrite',
+            f'--calc "{formula}"',
+            '--format',
+            GdalUtils.getFormatShortNameFromFilename(out),
+            '--type',
+            self.TYPE[self.parameterAsEnum(parameters, self.RTYPE, context)]
+        ]
+
         if noData is not None:
             arguments.append('--NoDataValue')
             arguments.append(noData)
         layer = self.parameterAsRasterLayer(parameters, self.INPUT_A, context)
         if layer is None:
             raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT_A))
+
+        bbox = self.parameterAsExtent(parameters, self.EXTENT, context, layer.crs())
+        if not bbox.isNull():
+            arguments.append('--projwin')
+            arguments.append(str(bbox.xMinimum()))
+            arguments.append(str(bbox.yMaximum()))
+            arguments.append(str(bbox.xMaximum()))
+            arguments.append(str(bbox.yMinimum()))
+
         arguments.append('-A')
         arguments.append(layer.source())
         if self.parameterAsString(parameters, self.BAND_A, context):

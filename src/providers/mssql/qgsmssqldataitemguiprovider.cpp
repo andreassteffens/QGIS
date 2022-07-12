@@ -33,11 +33,11 @@ void QgsMssqlDataItemGuiProvider::populateContextMenu( QgsDataItem *item, QMenu 
     connect( actionNew, &QAction::triggered, this, [rootItem] { newConnection( rootItem ); } );
     menu->addAction( actionNew );
 
-    QAction *actionSaveServers = new QAction( tr( "Save Connections…" ), this );
+    QAction *actionSaveServers = new QAction( tr( "Save Connections…" ), menu );
     connect( actionSaveServers, &QAction::triggered, this, [] { saveConnections(); } );
     menu->addAction( actionSaveServers );
 
-    QAction *actionLoadServers = new QAction( tr( "Load Connections…" ), this );
+    QAction *actionLoadServers = new QAction( tr( "Load Connections…" ), menu );
     connect( actionLoadServers, &QAction::triggered, this, [rootItem] { loadConnections( rootItem ); } );
     menu->addAction( actionLoadServers );
   }
@@ -58,7 +58,7 @@ void QgsMssqlDataItemGuiProvider::populateContextMenu( QgsDataItem *item, QMenu 
     connect( actionEdit, &QAction::triggered, this, [connItem] { editConnection( connItem ); } );
     menu->addAction( actionEdit );
 
-    QAction *actionDelete = new QAction( tr( "Delete Connection" ), menu );
+    QAction *actionDelete = new QAction( tr( "Remove Connection" ), menu );
     connect( actionDelete, &QAction::triggered, this, [connItem] { deleteConnection( connItem ); } );
     menu->addAction( actionDelete );
 
@@ -103,7 +103,7 @@ bool QgsMssqlDataItemGuiProvider::deleteLayer( QgsLayerItem *item, QgsDataItemGu
   {
     QgsMssqlConnectionItem *connItem = qobject_cast<QgsMssqlConnectionItem *>( layerItem->parent() ? layerItem->parent()->parent() : nullptr );
     const QgsMssqlLayerProperty &layerInfo = layerItem->layerInfo();
-    QString typeName = layerInfo.isView ? tr( "View" ) : tr( "Table" );
+    const QString typeName = layerInfo.isView ? tr( "View" ) : tr( "Table" );
 
     if ( QMessageBox::question( nullptr, QObject::tr( "Delete %1" ).arg( typeName ),
                                 QObject::tr( "Are you sure you want to delete [%1].[%2]?" ).arg( layerInfo.schemaName, layerInfo.tableName ),
@@ -175,13 +175,14 @@ void QgsMssqlDataItemGuiProvider::editConnection( QgsDataItem *item )
   {
     // the parent should be updated
     item->parent()->refreshConnections();
+    item->refresh();
   }
 }
 
 void QgsMssqlDataItemGuiProvider::deleteConnection( QgsDataItem *item )
 {
-  if ( QMessageBox::question( nullptr, QObject::tr( "Delete Connection" ),
-                              QObject::tr( "Are you sure you want to delete the connection to %1?" ).arg( item->name() ),
+  if ( QMessageBox::question( nullptr, QObject::tr( "Remove Connection" ),
+                              QObject::tr( "Are you sure you want to remove the connection to %1?" ).arg( item->name() ),
                               QMessageBox::Yes | QMessageBox::No, QMessageBox::No ) != QMessageBox::Yes )
     return;
 
@@ -192,11 +193,11 @@ void QgsMssqlDataItemGuiProvider::deleteConnection( QgsDataItem *item )
 
 void QgsMssqlDataItemGuiProvider::createSchema( QgsMssqlConnectionItem *connItem )
 {
-  QString schemaName = QInputDialog::getText( nullptr, tr( "Create Schema" ), tr( "Schema name:" ) );
+  const QString schemaName = QInputDialog::getText( nullptr, tr( "Create Schema" ), tr( "Schema name:" ) );
   if ( schemaName.isEmpty() )
     return;
 
-  QString uri = connItem->connInfo();
+  const QString uri = connItem->connInfo();
   QString error;
   if ( !QgsMssqlConnection::createSchema( uri, schemaName, &error ) )
   {
@@ -221,7 +222,7 @@ void QgsMssqlDataItemGuiProvider::truncateTable( QgsMssqlLayerItem *layerItem )
     return;
 
   QString errCause;
-  bool res = QgsMssqlConnection::truncateTable( layerItem->uri(), &errCause );
+  const bool res = QgsMssqlConnection::truncateTable( layerItem->uri(), &errCause );
   if ( !res )
   {
     QMessageBox::warning( nullptr, tr( "Truncate Table" ), errCause );
@@ -240,8 +241,8 @@ void QgsMssqlDataItemGuiProvider::saveConnections()
 
 void QgsMssqlDataItemGuiProvider::loadConnections( QgsDataItem *item )
 {
-  QString fileName = QFileDialog::getOpenFileName( nullptr, tr( "Load Connections" ), QDir::homePath(),
-                     tr( "XML files (*.xml *.XML)" ) );
+  const QString fileName = QFileDialog::getOpenFileName( nullptr, tr( "Load Connections" ), QDir::homePath(),
+                           tr( "XML files (*.xml *.XML)" ) );
   if ( fileName.isEmpty() )
   {
     return;

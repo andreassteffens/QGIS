@@ -47,6 +47,9 @@ class test_filter(QgsLocatorFilter):
     def displayName(self):
         return 'test_' + self.identifier
 
+    def description(self):
+        return 'test_description'
+
     def prefix(self):
         return self._prefix
 
@@ -142,6 +145,43 @@ class TestQgsLocator(unittest.TestCase):
         l.fetchResults('a', context)
 
         for i in range(100):
+            sleep(0.002)
+            QCoreApplication.processEvents()
+
+        self.assertEqual(set(got_hit._results_), {'a0', 'a1', 'a2', 'b0', 'b1', 'b2'})
+
+    def testFetchingResultsDelayed(self):
+
+        def got_hit(result):
+            got_hit._results_.append(result.displayString)
+
+        got_hit._results_ = []
+
+        context = QgsLocatorContext()
+
+        # one filter
+        l = QgsLocator()
+        filter_a = test_filter('a')
+        filter_a.setFetchResultsDelay(100)
+
+        l.registerFilter(filter_a)
+
+        l.foundResult.connect(got_hit)
+        l.fetchResults('a', context)
+
+        for i in range(500):
+            sleep(0.002)
+            QCoreApplication.processEvents()
+
+        self.assertEqual(set(got_hit._results_), {'a0', 'a1', 'a2'})
+
+        # two filters
+        filter_b = test_filter('b')
+        l.registerFilter(filter_b)
+        got_hit._results_ = []
+        l.fetchResults('a', context)
+
+        for i in range(500):
             sleep(0.002)
             QCoreApplication.processEvents()
 

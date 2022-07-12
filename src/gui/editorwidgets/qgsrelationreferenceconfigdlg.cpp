@@ -42,6 +42,13 @@ QgsRelationReferenceConfigDlg::QgsRelationReferenceConfigDlg( QgsVectorLayer *vl
       mComboRelation->addItem( QStringLiteral( "%1 (%2)" ).arg( relation.id(), relation.referencedLayerId() ), relation.id() );
     else
       mComboRelation->addItem( QStringLiteral( "%1 (%2)" ).arg( relation.name(), relation.referencedLayerId() ), relation.id() );
+
+    QStandardItemModel *model = qobject_cast<QStandardItemModel *>( mComboRelation->model() );
+    QStandardItem *item = model->item( model->rowCount() - 1 );
+    item->setFlags( relation.type() == QgsRelation::Generated
+                    ? item->flags() & ~Qt::ItemIsEnabled
+                    : item->flags() | Qt::ItemIsEnabled );
+
     if ( auto *lReferencedLayer = relation.referencedLayer() )
     {
       mExpressionWidget->setField( lReferencedLayer->displayExpression() );
@@ -123,8 +130,8 @@ void QgsRelationReferenceConfigDlg::setConfig( const QVariantMap &config )
 
 void QgsRelationReferenceConfigDlg::relationChanged( int idx )
 {
-  QString relName = mComboRelation->itemData( idx ).toString();
-  QgsRelation rel = QgsProject::instance()->relationManager()->relation( relName );
+  const QString relName = mComboRelation->itemData( idx ).toString();
+  const QgsRelation rel = QgsProject::instance()->relationManager()->relation( relName );
 
   mReferencedLayer = rel.referencedLayer();
   mExpressionWidget->setLayer( mReferencedLayer ); // set even if 0

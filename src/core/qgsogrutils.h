@@ -27,6 +27,11 @@
 #include "cpl_conv.h"
 #include "cpl_string.h"
 
+class QgsCoordinateReferenceSystem;
+class QgsFieldDomain;
+
+class QTextCodec;
+
 namespace gdal
 {
 
@@ -39,7 +44,7 @@ namespace gdal
     /**
      * Destroys an OGR data \a source, using the correct gdal calls.
      */
-    void CORE_EXPORT operator()( OGRDataSourceH source );
+    void CORE_EXPORT operator()( OGRDataSourceH source ) const;
 
   };
 
@@ -52,7 +57,7 @@ namespace gdal
     /**
      * Destroys an OGR \a geometry, using the correct gdal calls.
      */
-    void CORE_EXPORT operator()( OGRGeometryH geometry );
+    void CORE_EXPORT operator()( OGRGeometryH geometry ) const;
 
   };
 
@@ -65,7 +70,7 @@ namespace gdal
     /**
      * Destroys an OGR field \a definition, using the correct gdal calls.
      */
-    void CORE_EXPORT operator()( OGRFieldDefnH definition );
+    void CORE_EXPORT operator()( OGRFieldDefnH definition ) const;
 
   };
 
@@ -78,7 +83,7 @@ namespace gdal
     /**
      * Destroys an OGR \a feature, using the correct gdal calls.
      */
-    void CORE_EXPORT operator()( OGRFeatureH feature );
+    void CORE_EXPORT operator()( OGRFeatureH feature ) const;
 
   };
 
@@ -91,7 +96,7 @@ namespace gdal
     /**
      * Destroys an gdal \a dataset, using the correct gdal calls.
      */
-    void CORE_EXPORT operator()( GDALDatasetH datasource );
+    void CORE_EXPORT operator()( GDALDatasetH datasource ) const;
 
   };
 
@@ -104,7 +109,7 @@ namespace gdal
     /**
      * Destroys GDAL warp \a options, using the correct gdal calls.
      */
-    void CORE_EXPORT operator()( GDALWarpOptions *options );
+    void CORE_EXPORT operator()( GDALWarpOptions *options ) const;
 
   };
 
@@ -161,6 +166,19 @@ namespace gdal
 class CORE_EXPORT QgsOgrUtils
 {
   public:
+
+    /**
+     * Converts an OGRField \a value of the specified \a type into a QVariant.
+     * \since QGIS 3.20
+     */
+    static QVariant OGRFieldtoVariant( const OGRField *value, OGRFieldType type );
+
+    /**
+     * Converts a QVariant to an OGRField value.
+     *
+     * \since QGIS 3.26
+     */
+    static std::unique_ptr<OGRField> variantToOGRField( const QVariant &value );
 
     /**
      * Reads an OGR feature and converts it to a QgsFeature.
@@ -287,6 +305,15 @@ class CORE_EXPORT QgsOgrUtils
     static QgsCoordinateReferenceSystem OGRSpatialReferenceToCrs( OGRSpatialReferenceH srs );
 
     /**
+     * Returns a OGRSpatialReferenceH corresponding to the specified \a crs object.
+     *
+     * \note Caller must release the returned object with OSRRelease.
+     *
+     * \since QGIS 3.22
+     */
+    static OGRSpatialReferenceH crsToOGRSpatialReference( const QgsCoordinateReferenceSystem &crs );
+
+    /**
      * Reads the encoding of the shapefile at the specified \a path (where \a path is the
      * location of the ".shp" file).
      *
@@ -320,6 +347,77 @@ class CORE_EXPORT QgsOgrUtils
      * \since QGIS 3.12
      */
     static QString readShapefileEncodingFromLdid( const QString &path );
+
+    /**
+     * Parses an OGR style \a string to a variant map containing the style string components.
+     *
+     * \since QGIS 3.20
+     */
+    static QVariantMap parseStyleString( const QString &string );
+
+    /**
+     * Creates a new QgsSymbol matching an OGR style \a string.
+     *
+     * \since QGIS 3.20
+     */
+    static std::unique_ptr< QgsSymbol > symbolFromStyleString( const QString &string, Qgis::SymbolType type ) SIP_FACTORY;
+
+    /**
+     * Converts an OGR field type and sub type to the best matching QVariant::Type equivalent.
+     *
+     * \param ogrType OGR field type
+     * \param ogrSubType OGR field sub type
+     * \param variantType will be set to matching QVariant type
+     * \param variantSubType will be set to matching QVariant sub type, for list, map and other complex OGR field types.
+     *
+     * \note Not available in Python bindings
+     * \since QGIS 3.26
+     */
+    static void ogrFieldTypeToQVariantType( OGRFieldType ogrType, OGRFieldSubType ogrSubType, QVariant::Type &variantType, QVariant::Type &variantSubType ) SIP_SKIP;
+
+    /**
+     * Converts an QVariant type to the best matching OGR field type and sub type.
+     *
+     * \param variantType QVariant field type
+     * \param ogrType will be set to matching OGR type
+     * \param ogrSubType will be set to matching OGR sub type
+     *
+     * \note Not available in Python bindings
+     * \since QGIS 3.26
+     */
+    static void variantTypeToOgrFieldType( QVariant::Type variantType, OGRFieldType &ogrType, OGRFieldSubType &ogrSubType ) SIP_SKIP;
+
+    /**
+     * Converts a string to a variant, using the provider OGR field \a type and \a subType to determine the most appropriate
+     * variant type.
+     *
+     * \note Not available in Python bindings
+     * \since QGIS 3.26
+     */
+    static QVariant stringToVariant( OGRFieldType type, OGRFieldSubType subType, const QString &string ) SIP_SKIP;
+
+#ifndef SIP_RUN
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,3,0)
+
+    /**
+     * Converts an OGR field domain definition to a QgsFieldDomain equivalent.
+     *
+     * \note Requires GDAL >= 3.3
+     * \note Not available in Python bindings
+     * \since QGIS 3.26
+     */
+    static std::unique_ptr< QgsFieldDomain > convertFieldDomain( OGRFieldDomainH domain );
+
+    /**
+     * Converts a QGIS field domain definition to an OGR field domain equivalent.
+     *
+     * \note Requires GDAL >= 3.3
+     * \note Not available in Python bindings
+     * \since QGIS 3.26
+     */
+    static OGRFieldDomainH convertFieldDomain( const QgsFieldDomain *domain );
+#endif
+#endif
 };
 
 #endif // QGSOGRUTILS_H

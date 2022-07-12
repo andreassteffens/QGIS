@@ -78,17 +78,20 @@ class QgsFieldPrivate : public QSharedData
       , flags( other.flags )
       , defaultValueDefinition( other.defaultValueDefinition )
       , constraints( other.constraints )
+      , isReadOnly( other.isReadOnly )
     {
     }
 
     ~QgsFieldPrivate() = default;
 
+    // TODO c++20 - replace with = default
     bool operator==( const QgsFieldPrivate &other ) const
     {
       return ( ( name == other.name ) && ( type == other.type ) && ( subType == other.subType )
                && ( length == other.length ) && ( precision == other.precision )
                && ( alias == other.alias ) && ( defaultValueDefinition == other.defaultValueDefinition )
-               && ( constraints == other.constraints )  && ( flags == other.flags ) );
+               && ( constraints == other.constraints )  && ( flags == other.flags )
+               && ( isReadOnly == other.isReadOnly ) );
     }
 
     //! Name
@@ -125,6 +128,9 @@ class QgsFieldPrivate : public QSharedData
     QgsFieldConstraints constraints;
 
     QgsEditorWidgetSetup editorWidgetSetup;
+
+    //! Read-only
+    bool isReadOnly = false;
 
   private:
     QgsFieldPrivate &operator=( const QgsFieldPrivate & ) = delete;

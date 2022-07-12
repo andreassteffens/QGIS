@@ -12,9 +12,9 @@
 
 class QgsTextDocument
 {
-%Docstring
+%Docstring(signature="appended")
 
-Represents a document consisting of one or more QgsTextBlock objects.
+Represents a document consisting of one or more :py:class:`QgsTextBlock` objects.
 
 .. warning::
 
@@ -62,9 +62,12 @@ Appends a ``block`` to the document.
 Reserves the specified ``count`` of blocks for optimised block appending.
 %End
 
+
     const QgsTextBlock &at( int index ) const /Factory/;
 %Docstring
 Returns the block at the specified ``index``.
+
+:raises KeyError: if no block exists at the specified index.
 %End
 %MethodCode
     if ( a0 < 0 || a0 >= sipCpp->size() )
@@ -113,7 +116,7 @@ argument controls whether the lines should be wrapped to an ideal maximum of ``a
 if ``False`` then the lines are wrapped to an ideal minimum length of ``autoWrapLength`` characters.
 %End
 
-    void applyCapitalization( QgsStringUtils::Capitalization capitalization );
+    void applyCapitalization( Qgis::Capitalization capitalization );
 %Docstring
 Applies a ``capitalization`` style to the document's text.
 

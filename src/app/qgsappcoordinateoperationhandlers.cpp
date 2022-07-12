@@ -63,11 +63,18 @@ QgsAppMissingGridHandler::QgsAppMissingGridHandler( QObject *parent )
     emit fallbackOperationOccurred( sourceCrs, destinationCrs, desired );
   } );
 
+  QgsCoordinateTransform::setDynamicCrsToDynamicCrsWarningHandler( [ = ]( const QgsCoordinateReferenceSystem & sourceCrs,
+      const QgsCoordinateReferenceSystem & destinationCrs )
+  {
+    emit dynamicToDynamicWarning( sourceCrs, destinationCrs );
+  } );
+
   connect( this, &QgsAppMissingGridHandler::missingRequiredGrid, this, &QgsAppMissingGridHandler::onMissingRequiredGrid, Qt::QueuedConnection );
   connect( this, &QgsAppMissingGridHandler::missingPreferredGrid, this, &QgsAppMissingGridHandler::onMissingPreferredGrid, Qt::QueuedConnection );
   connect( this, &QgsAppMissingGridHandler::coordinateOperationCreationError, this, &QgsAppMissingGridHandler::onCoordinateOperationCreationError, Qt::QueuedConnection );
   connect( this, &QgsAppMissingGridHandler::missingGridUsedByContextHandler, this, &QgsAppMissingGridHandler::onMissingGridUsedByContextHandler, Qt::QueuedConnection );
   connect( this, &QgsAppMissingGridHandler::fallbackOperationOccurred, this, &QgsAppMissingGridHandler::onFallbackOperationOccurred, Qt::QueuedConnection );
+  connect( this, &QgsAppMissingGridHandler::dynamicToDynamicWarning, this, &QgsAppMissingGridHandler::onDynamicToDynamicWarning, Qt::QueuedConnection );
 
   connect( QgsProject::instance(), &QgsProject::cleared, this, [ = ]
   {
@@ -105,7 +112,7 @@ void QgsAppMissingGridHandler::onMissingRequiredGrid( const QgsCoordinateReferen
                                       grid.shortName );
 
   QgsMessageBar *bar = QgisApp::instance()->messageBar();
-  QgsMessageBarItem *widget = bar->createMessage( QString(), shortMessage );
+  QgsMessageBarItem *widget = QgsMessageBar::createMessage( QString(), shortMessage );
   QPushButton *detailsButton = new QPushButton( tr( "Details" ) );
   connect( detailsButton, &QPushButton::clicked, this, [longMessage, downloadMessage, bar, widget, gridName]
   {
@@ -121,7 +128,7 @@ void QgsAppMissingGridHandler::onMissingRequiredGrid( const QgsCoordinateReferen
   } );
 
   widget->layout()->addWidget( detailsButton );
-  bar->pushWidget( widget, Qgis::Critical, 0 );
+  bar->pushWidget( widget, Qgis::MessageLevel::Critical, 0 );
 }
 
 void QgsAppMissingGridHandler::onMissingPreferredGrid( const QgsCoordinateReferenceSystem &sourceCrs, const QgsCoordinateReferenceSystem &destinationCrs, const QgsDatumTransform::TransformDetails &preferredOperation, const QgsDatumTransform::TransformDetails &availableOperation )
@@ -139,7 +146,7 @@ void QgsAppMissingGridHandler::onMissingPreferredGrid( const QgsCoordinateRefere
   {
     if ( !grid.isAvailable )
     {
-      QString m = tr( "This transformation requires the grid file “%1”, which is not available for use on the system." ).arg( grid.shortName );
+      const QString m = tr( "This transformation requires the grid file “%1”, which is not available for use on the system." ).arg( grid.shortName );
       gridName = grid.shortName;
       if ( !grid.url.isEmpty() )
       {
@@ -173,7 +180,7 @@ void QgsAppMissingGridHandler::onMissingPreferredGrid( const QgsCoordinateRefere
                               + gridMessage + accuracyMessage;
 
   QgsMessageBar *bar = QgisApp::instance()->messageBar();
-  QgsMessageBarItem *widget = bar->createMessage( QString(), shortMessage );
+  QgsMessageBarItem *widget = QgsMessageBar::createMessage( QString(), shortMessage );
   QPushButton *detailsButton = new QPushButton( tr( "Details" ) );
   connect( detailsButton, &QPushButton::clicked, this, [longMessage, downloadMessage, gridName, widget, bar]
   {
@@ -189,7 +196,7 @@ void QgsAppMissingGridHandler::onMissingPreferredGrid( const QgsCoordinateRefere
   } );
 
   widget->layout()->addWidget( detailsButton );
-  bar->pushWidget( widget, Qgis::Warning, 0 );
+  bar->pushWidget( widget, Qgis::MessageLevel::Warning, 0 );
 }
 
 void QgsAppMissingGridHandler::onCoordinateOperationCreationError( const QgsCoordinateReferenceSystem &sourceCrs, const QgsCoordinateReferenceSystem &destinationCrs, const QString &error )
@@ -201,7 +208,7 @@ void QgsAppMissingGridHandler::onCoordinateOperationCreationError( const QgsCoor
   const QString longMessage = tr( "<p>No transform is available between <i>%1</i> and <i>%2</i>.</p><p style=\"color: red\">%3</p>" ).arg( sourceCrs.userFriendlyIdentifier(), destinationCrs.userFriendlyIdentifier(), error );
 
   QgsMessageBar *bar = QgisApp::instance()->messageBar();
-  QgsMessageBarItem *widget = bar->createMessage( QString(), shortMessage );
+  QgsMessageBarItem *widget = QgsMessageBar::createMessage( QString(), shortMessage );
   QPushButton *detailsButton = new QPushButton( tr( "Details" ) );
   connect( detailsButton, &QPushButton::clicked, this, [longMessage]
   {
@@ -213,7 +220,7 @@ void QgsAppMissingGridHandler::onCoordinateOperationCreationError( const QgsCoor
   } );
 
   widget->layout()->addWidget( detailsButton );
-  bar->pushWidget( widget, Qgis::Critical, 0 );
+  bar->pushWidget( widget, Qgis::MessageLevel::Critical, 0 );
 }
 
 void QgsAppMissingGridHandler::onMissingGridUsedByContextHandler( const QgsCoordinateReferenceSystem &sourceCrs, const QgsCoordinateReferenceSystem &destinationCrs, const QgsDatumTransform::TransformDetails &desired )
@@ -232,7 +239,7 @@ void QgsAppMissingGridHandler::onMissingGridUsedByContextHandler( const QgsCoord
     if ( !grid.isAvailable )
     {
       gridName = grid.shortName;
-      QString m = tr( "This transformation requires the grid file “%1”, which is not available for use on the system." ).arg( grid.shortName );
+      const QString m = tr( "This transformation requires the grid file “%1”, which is not available for use on the system." ).arg( grid.shortName );
       if ( !grid.url.isEmpty() )
       {
         if ( !grid.packageName.isEmpty() )
@@ -258,7 +265,7 @@ void QgsAppMissingGridHandler::onMissingGridUsedByContextHandler( const QgsCoord
                               + tr( "<p>The operation specified for use in the project is:</p><p><code>%1</code></p>" ).arg( desired.proj ) ;
 
   QgsMessageBar *bar = QgisApp::instance()->messageBar();
-  QgsMessageBarItem *widget = bar->createMessage( QString(), shortMessage );
+  QgsMessageBarItem *widget = QgsMessageBar::createMessage( QString(), shortMessage );
   QPushButton *detailsButton = new QPushButton( tr( "Details" ) );
   connect( detailsButton, &QPushButton::clicked, this, [longMessage, gridName, downloadMessage, bar, widget]
   {
@@ -274,7 +281,7 @@ void QgsAppMissingGridHandler::onMissingGridUsedByContextHandler( const QgsCoord
   } );
 
   widget->layout()->addWidget( detailsButton );
-  bar->pushWidget( widget, Qgis::Critical, 0 );
+  bar->pushWidget( widget, Qgis::MessageLevel::Critical, 0 );
 }
 
 void QgsAppMissingGridHandler::onFallbackOperationOccurred( const QgsCoordinateReferenceSystem &sourceCrs, const QgsCoordinateReferenceSystem &destinationCrs, const QString &desired )
@@ -286,7 +293,7 @@ void QgsAppMissingGridHandler::onFallbackOperationOccurred( const QgsCoordinateR
   const QString longMessage = tr( "<p>An alternative, ballpark-only transform was used when transforming coordinates between <i>%1</i> and <i>%2</i>. The results may not match those obtained by using the preferred operation:</p><code>%3</code><p style=\"font-weight: bold\">Possibly an incorrect choice of operation was made for transformations between these reference systems. Check the Project Properties and ensure that the selected transform operations are applicable over the whole extent of the current project." ).arg( sourceCrs.userFriendlyIdentifier(), destinationCrs.userFriendlyIdentifier(), desired );
 
   QgsMessageBar *bar = QgisApp::instance()->messageBar();
-  QgsMessageBarItem *widget = bar->createMessage( QString(), shortMessage );
+  QgsMessageBarItem *widget = QgsMessageBar::createMessage( QString(), shortMessage );
   QPushButton *detailsButton = new QPushButton( tr( "Details" ) );
   connect( detailsButton, &QPushButton::clicked, this, [longMessage]
   {
@@ -298,7 +305,31 @@ void QgsAppMissingGridHandler::onFallbackOperationOccurred( const QgsCoordinateR
   } );
 
   widget->layout()->addWidget( detailsButton );
-  bar->pushWidget( widget, Qgis::Warning, 0 );
+  bar->pushWidget( widget, Qgis::MessageLevel::Warning, 0 );
+}
+
+void QgsAppMissingGridHandler::onDynamicToDynamicWarning( const QgsCoordinateReferenceSystem &sourceCrs, const QgsCoordinateReferenceSystem &destinationCrs )
+{
+  if ( !shouldWarnAboutDynamicCrsForCurrentProject( sourceCrs, destinationCrs ) )
+    return;
+
+  const QString shortMessage = tr( "Cannot transform between dynamic CRS at difference coordinate epochs" );
+  const QString longMessage = tr( "<p>Transformation between %1 and %2 is not currently supported.</p><p><b>The results will be unpredictable and should not be used for high accuracy work.</b>" ).arg( sourceCrs.userFriendlyIdentifier(), destinationCrs.userFriendlyIdentifier() );
+
+  QgsMessageBar *bar = QgisApp::instance()->messageBar();
+  QgsMessageBarItem *widget = QgsMessageBar::createMessage( QString(), shortMessage );
+  QPushButton *detailsButton = new QPushButton( tr( "Details" ) );
+  connect( detailsButton, &QPushButton::clicked, this, [longMessage]
+  {
+    // dlg has deleted on close
+    QgsMessageOutput * dlg( QgsMessageOutput::createMessageOutput() );
+    dlg->setTitle( tr( "Unsupported Transformation" ) );
+    dlg->setMessage( longMessage, QgsMessageOutput::MessageHtml );
+    dlg->showMessage();
+  } );
+
+  widget->layout()->addWidget( detailsButton );
+  bar->pushWidget( widget, Qgis::MessageLevel::Critical, 0 );
 }
 
 bool QgsAppMissingGridHandler::shouldWarnAboutPair( const QgsCoordinateReferenceSystem &source, const QgsCoordinateReferenceSystem &dest )
@@ -331,5 +362,16 @@ bool QgsAppMissingGridHandler::shouldWarnAboutBallparkPairForCurrentProject( con
   }
 
   mAlreadyWarnedBallparkPairsForProject.append( qMakePair( source, dest ) );
+  return true;
+}
+
+bool QgsAppMissingGridHandler::shouldWarnAboutDynamicCrsForCurrentProject( const QgsCoordinateReferenceSystem &source, const QgsCoordinateReferenceSystem &dest )
+{
+  if ( mAlreadyWarnedDynamicCrsForProject.contains( qMakePair( source, dest ) ) || mAlreadyWarnedDynamicCrsForProject.contains( qMakePair( dest, source ) ) )
+  {
+    return false;
+  }
+
+  mAlreadyWarnedDynamicCrsForProject.append( qMakePair( source, dest ) );
   return true;
 }

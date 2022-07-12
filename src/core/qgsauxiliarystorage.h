@@ -24,8 +24,9 @@
 #include "qgsdiagramrenderer.h"
 #include "qgsvectorlayerjoininfo.h"
 #include "qgsproperty.h"
-#include "qgsspatialiteutils.h"
+#include "qgssqliteutils.h"
 #include "qgsvectorlayer.h"
+#include "qgscallout.h"
 #include <QString>
 
 class QgsProject;
@@ -88,6 +89,11 @@ class CORE_EXPORT QgsAuxiliaryLayer : public QgsVectorLayer
     % End
 #endif
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Woverloaded-virtual"
+#endif
+
     /**
      * Returns a new instance equivalent to this one. The underlying table
      * is duplicate for the layer given in parameter. Note that the current
@@ -96,6 +102,9 @@ class CORE_EXPORT QgsAuxiliaryLayer : public QgsVectorLayer
      * \param layer The layer for which the clone is made
      */
     QgsAuxiliaryLayer *clone( QgsVectorLayer *layer ) const SIP_FACTORY;
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
     /**
      * An auxiliary layer is not spatial. This method returns a spatial
@@ -202,10 +211,11 @@ class CORE_EXPORT QgsAuxiliaryLayer : public QgsVectorLayer
      *
      * \param property The property to create
      * \param vlayer The vector layer
+     * \param overwriteExisting since QGIS 3.22, controls whether an existing property should be completely overwritten or upgraded to a coalesce("new aux field", 'existing' || 'property' || 'expression') type property
      *
      * \returns The index of the auxiliary field or -1
      */
-    static int createProperty( QgsPalLayerSettings::Property property, QgsVectorLayer *vlayer );
+    static int createProperty( QgsPalLayerSettings::Property property, QgsVectorLayer *vlayer, bool overwriteExisting = true );
 
     /**
      * Creates if necessary a new auxiliary field for a diagram's property and
@@ -213,10 +223,24 @@ class CORE_EXPORT QgsAuxiliaryLayer : public QgsVectorLayer
      *
      * \param property The property to create
      * \param vlayer The vector layer
+     * \param overwriteExisting since QGIS 3.22, controls whether an existing property should be completely overwritten or upgraded to a coalesce("new aux field", 'existing' || 'property' || 'expression') type property
      *
      * \returns The index of the auxiliary field or -1
      */
-    static int createProperty( QgsDiagramLayerSettings::Property property, QgsVectorLayer *vlayer );
+    static int createProperty( QgsDiagramLayerSettings::Property property, QgsVectorLayer *vlayer, bool overwriteExisting = true );
+
+    /**
+     * Creates if necessary a new auxiliary field for a callout's property and
+     * activates this property in settings.
+     *
+     * \param property The property to create
+     * \param vlayer The vector layer
+     * \param overwriteExisting since QGIS 3.22, controls whether an existing property should be completely overwritten or upgraded to a coalesce("new aux field", 'existing' || 'property' || 'expression') type property
+     *
+     * \returns The index of the auxiliary field or -1
+     * \since QGIS 3.20
+     */
+    static int createProperty( QgsCallout::Property property, QgsVectorLayer *vlayer, bool overwriteExisting = true );
 
     /**
      * Creates a new auxiliary field from a property definition.
@@ -404,14 +428,14 @@ class CORE_EXPORT QgsAuxiliaryStorage
     static bool exists( const QgsProject &project );
 
   private:
-    spatialite_database_unique_ptr open( const QString &filename = QString() );
-    spatialite_database_unique_ptr open( const QgsProject &project );
+    sqlite3_database_unique_ptr open( const QString &filename = QString() );
+    sqlite3_database_unique_ptr open( const QgsProject &project );
 
     void initTmpFileName();
 
     static QString filenameForProject( const QgsProject &project );
-    static spatialite_database_unique_ptr createDB( const QString &filename );
-    static spatialite_database_unique_ptr openDB( const QString &filename );
+    static sqlite3_database_unique_ptr createDB( const QString &filename );
+    static sqlite3_database_unique_ptr openDB( const QString &filename );
     static bool tableExists( const QString &table, sqlite3 *handler );
     static bool createTable( const QString &type, const QString &table, sqlite3 *handler, QString &errorMsg );
 

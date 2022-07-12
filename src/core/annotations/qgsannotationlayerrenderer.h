@@ -23,8 +23,12 @@
 #include "qgis_sip.h"
 #include "qgsmaplayerrenderer.h"
 #include "qgsannotationitem.h"
+#include <tuple>
+#include <vector>
+#include <memory>
 
 class QgsAnnotationLayer;
+class QgsPaintEffect;
 
 /**
  * \ingroup core
@@ -44,10 +48,13 @@ class CORE_EXPORT QgsAnnotationLayerRenderer : public QgsMapLayerRenderer
     ~QgsAnnotationLayerRenderer() override;
     QgsFeedback *feedback() const override;
     bool render() override;
+    bool forceRasterRender() const override;
 
   private:
-    QVector< QgsAnnotationItem *> mItems;
+    std::vector < std::pair< QString, std::unique_ptr< QgsAnnotationItem > > > mItems;
     std::unique_ptr< QgsFeedback > mFeedback;
+    double mLayerOpacity = 1.0;
+    std::unique_ptr< QgsPaintEffect > mPaintEffect;
 
 };
 

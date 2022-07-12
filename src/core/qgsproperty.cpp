@@ -21,6 +21,9 @@
 #include "qgsfeature.h"
 #include "qgssymbollayerutils.h"
 #include "qgscolorramp.h"
+#include "qgsexpressionnodeimpl.h"
+
+#include <QRegularExpression>
 
 QgsPropertyDefinition::QgsPropertyDefinition( const QString &name, const QString &description, QgsPropertyDefinition::StandardPropertyTemplate type, const QString &origin, const QString &comment )
   : mName( name )
@@ -202,6 +205,28 @@ QString QgsPropertyDefinition::trString()
 // QgsProperty
 //
 
+QVariantMap QgsProperty::propertyMapToVariantMap( const QMap<QString, QgsProperty> &propertyMap )
+{
+  QVariantMap variantMap;
+  QMap<QString, QgsProperty>::const_iterator it = propertyMap.constBegin();
+  for ( ; it != propertyMap.constEnd(); ++it )
+    variantMap.insert( it.key(), it.value().toVariant() );
+  return variantMap;
+}
+
+QMap<QString, QgsProperty> QgsProperty::variantMapToPropertyMap( const QVariantMap &variantMap )
+{
+  QMap<QString, QgsProperty> propertyMap;
+  QVariantMap::const_iterator it = variantMap.constBegin();
+  for ( ; it != variantMap.constEnd(); ++it )
+  {
+    QgsProperty property;
+    if ( property.loadVariant( it.value() ) )
+      propertyMap.insert( it.key(), property );
+  }
+  return propertyMap;
+}
+
 QgsProperty::QgsProperty()
 {
   d = new QgsPropertyPrivate();
@@ -268,6 +293,38 @@ bool QgsProperty::isActive() const
   return d->type != InvalidProperty && d->active;
 }
 
+bool QgsProperty::isStaticValueInContext( const QgsExpressionContext &context, QVariant &staticValue ) const
+{
+  staticValue = QVariant();
+  switch ( d->type )
+  {
+    case InvalidProperty:
+      return true;
+
+    case StaticProperty:
+      staticValue = d->staticValue;
+      return true;
+
+    case FieldBasedProperty:
+      return false;
+
+    case ExpressionBasedProperty:
+    {
+      QgsExpression exp = d->expression;
+      if ( exp.prepare( &context ) && exp.rootNode() )
+      {
+        if ( exp.rootNode()->hasCachedStaticValue() )
+        {
+          staticValue = exp.rootNode()->cachedStaticValue();
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+  return false;
+}
+
 void QgsProperty::setActive( bool active )
 {
   d.detach();
@@ -313,11 +370,20 @@ QgsProperty::operator bool() const
 void QgsProperty::setExpressionString( const QString &expression )
 {
   d.detach();
-  d->type = ExpressionBasedProperty;
   d->expressionString = expression;
   d->expression = QgsExpression( expression );
   d->expressionPrepared = false;
   d->expressionIsInvalid = false;
+
+  if ( d->expressionString.isEmpty() )
+  {
+    d->active = false;
+    d->type = InvalidProperty;
+  }
+  else
+  {
+    d->type = ExpressionBasedProperty;
+  }
 }
 
 QString QgsProperty::expressionString() const
@@ -367,7 +433,7 @@ bool QgsProperty::prepare( const QgsExpressionContext &context ) const
     {
       d.detach();
       // cache field index to avoid subsequent lookups
-      QgsFields f = context.fields();
+      const QgsFields f = context.fields();
       d->cachedFieldIdx = f.lookupField( d->fieldName );
       return true;
     }
@@ -442,7 +508,7 @@ QSet<QString> QgsProperty::referencedFields( const QgsExpressionContext &context
 
 bool QgsProperty::isProjectColor() const
 {
-  QRegularExpression rx( QStringLiteral( "^project_color\\('.*'\\)$" ) );
+  const QRegularExpression rx( QStringLiteral( "^project_color\\('.*'\\)$" ) );
   return d->type == QgsProperty::ExpressionBasedProperty && !d->expressionString.isEmpty()
          && rx.match( d->expressionString ).hasMatch();
 }
@@ -466,7 +532,7 @@ QVariant QgsProperty::propertyValue( const QgsExpressionContext &context, const 
 
     case FieldBasedProperty:
     {
-      QgsFeature f = context.feature();
+      const QgsFeature f = context.feature();
       if ( !f.isValid() )
         return defaultValue;
 
@@ -542,7 +608,7 @@ QVariant QgsProperty::value( const QgsExpressionContext &context, const QVariant
 QDateTime QgsProperty::valueAsDateTime( const QgsExpressionContext &context, const QDateTime &defaultDateTime, bool *ok ) const
 {
   bool valOk = false;
-  QVariant val = value( context, defaultDateTime, &valOk );
+  const QVariant val = value( context, defaultDateTime, &valOk );
 
   if ( !valOk || val.isNull() )
   {
@@ -574,7 +640,7 @@ QDateTime QgsProperty::valueAsDateTime( const QgsExpressionContext &context, con
 QString QgsProperty::valueAsString( const QgsExpressionContext &context, const QString &defaultString, bool *ok ) const
 {
   bool valOk = false;
-  QVariant val = value( context, defaultString, &valOk );
+  const QVariant val = value( context, defaultString, &valOk );
 
   if ( !valOk || val.isNull() )
   {
@@ -596,7 +662,7 @@ QColor QgsProperty::valueAsColor( const QgsExpressionContext &context, const QCo
     *ok = false;
 
   bool valOk = false;
-  QVariant val = value( context, defaultColor, &valOk );
+  const QVariant val = value( context, defaultColor, &valOk );
 
   if ( !valOk || val.isNull() )
     return defaultColor;
@@ -627,13 +693,13 @@ double QgsProperty::valueAsDouble( const QgsExpressionContext &context, double d
     *ok = false;
 
   bool valOk = false;
-  QVariant val = value( context, defaultValue, &valOk );
+  const QVariant val = value( context, defaultValue, &valOk );
 
   if ( !valOk || val.isNull() )
     return defaultValue;
 
   bool convertOk = false;
-  double dbl = val.toDouble( &convertOk );
+  const double dbl = val.toDouble( &convertOk );
   if ( !convertOk )
     return defaultValue;
   else
@@ -650,17 +716,17 @@ int QgsProperty::valueAsInt( const QgsExpressionContext &context, int defaultVal
     *ok = false;
 
   bool valOk = false;
-  QVariant val = value( context, defaultValue, &valOk );
+  const QVariant val = value( context, defaultValue, &valOk );
 
   if ( !valOk || val.isNull() )
     return defaultValue;
 
   bool convertOk = false;
-  int integer = val.toInt( &convertOk );
+  const int integer = val.toInt( &convertOk );
   if ( !convertOk )
   {
     //one more option to try
-    double dbl = val.toDouble( &convertOk );
+    const double dbl = val.toDouble( &convertOk );
     if ( convertOk )
     {
       if ( ok )
@@ -686,7 +752,7 @@ bool QgsProperty::valueAsBool( const QgsExpressionContext &context, bool default
     *ok = false;
 
   bool valOk = false;
-  QVariant val = value( context, defaultValue, &valOk );
+  const QVariant val = value( context, defaultValue, &valOk );
 
   if ( !valOk || val.isNull() )
     return defaultValue;
@@ -736,7 +802,7 @@ QVariant QgsProperty::toVariant() const
 
 bool QgsProperty::loadVariant( const QVariant &property )
 {
-  QVariantMap propertyMap = property.toMap();
+  const QVariantMap propertyMap = property.toMap();
 
   d.detach();
   d->active = propertyMap.value( QStringLiteral( "active" ) ).toBool();
@@ -776,13 +842,13 @@ bool QgsProperty::loadVariant( const QVariant &property )
   d->transformer = nullptr;
 
 
-  QVariant transform = propertyMap.value( QStringLiteral( "transformer" ) );
+  const QVariant transform = propertyMap.value( QStringLiteral( "transformer" ) );
 
   if ( transform.isValid() )
   {
-    QVariantMap transformerMap = transform.toMap();
+    const QVariantMap transformerMap = transform.toMap();
 
-    QgsPropertyTransformer::Type type = static_cast< QgsPropertyTransformer::Type >( transformerMap.value( QStringLiteral( "t" ), QgsPropertyTransformer::GenericNumericTransformer ).toInt() );
+    const QgsPropertyTransformer::Type type = static_cast< QgsPropertyTransformer::Type >( transformerMap.value( QStringLiteral( "t" ), QgsPropertyTransformer::GenericNumericTransformer ).toInt() );
     std::unique_ptr< QgsPropertyTransformer > transformer( QgsPropertyTransformer::create( type ) );
 
     if ( transformer )

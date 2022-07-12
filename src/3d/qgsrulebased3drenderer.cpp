@@ -107,7 +107,7 @@ void QgsRuleBased3DRenderer::Rule::initFilter()
 void QgsRuleBased3DRenderer::Rule::updateElseRules()
 {
   mElseRules.clear();
-  for ( Rule *rule : qgis::as_const( mChildren ) )
+  for ( Rule *rule : std::as_const( mChildren ) )
   {
     if ( rule->isElse() )
       mElseRules << rule;
@@ -143,7 +143,7 @@ const QgsRuleBased3DRenderer::Rule *QgsRuleBased3DRenderer::Rule::findRuleByKey(
   if ( key == mRuleKey )
     return this;
 
-  for ( Rule *rule : qgis::as_const( mChildren ) )
+  for ( Rule *rule : std::as_const( mChildren ) )
   {
     const Rule *r = rule->findRuleByKey( key );
     if ( r )
@@ -157,7 +157,7 @@ QgsRuleBased3DRenderer::Rule *QgsRuleBased3DRenderer::Rule::findRuleByKey( const
   if ( key == mRuleKey )
     return this;
 
-  for ( Rule *rule : qgis::as_const( mChildren ) )
+  for ( Rule *rule : std::as_const( mChildren ) )
   {
     Rule *r = rule->findRuleByKey( key );
     if ( r )
@@ -172,7 +172,7 @@ QgsRuleBased3DRenderer::Rule *QgsRuleBased3DRenderer::Rule::clone() const
   Rule *newrule = new Rule( symbol, mFilterExp, mDescription );
   newrule->setActive( mIsActive );
   // clone children
-  for ( Rule *rule : qgis::as_const( mChildren ) )
+  for ( Rule *rule : std::as_const( mChildren ) )
     newrule->appendChild( rule->clone() );
   return newrule;
 }
@@ -258,7 +258,7 @@ void QgsRuleBased3DRenderer::Rule::createHandlers( QgsVectorLayer *layer, QgsRul
   }
 
   // call recursively
-  for ( Rule *rule : qgis::as_const( mChildren ) )
+  for ( Rule *rule : std::as_const( mChildren ) )
   {
     rule->createHandlers( layer, handlers );
   }
@@ -284,7 +284,7 @@ void QgsRuleBased3DRenderer::Rule::prepare( const Qgs3DRenderContext &context, Q
   }
 
   // call recursively
-  for ( Rule *rule : qgis::as_const( mChildren ) )
+  for ( Rule *rule : std::as_const( mChildren ) )
   {
     rule->prepare( context, attributeNames, handlers );
   }
@@ -304,31 +304,33 @@ QgsRuleBased3DRenderer::Rule::RegisterResult QgsRuleBased3DRenderer::Rule::regis
     registered = true;
   }
 
-  bool willRegisterSomething = false;
+  bool matchedAChild = false;
 
   // call recursively
-  for ( Rule *rule : qgis::as_const( mChildren ) )
+  for ( Rule *rule : std::as_const( mChildren ) )
   {
     // Don't process else rules yet
     if ( !rule->isElse() )
     {
-      RegisterResult res = rule->registerFeature( feature, context, handlers );
-      // consider inactive items as "registered" so the else rule will ignore them
-      willRegisterSomething |= ( res == Registered || res == Inactive );
-      registered |= willRegisterSomething;
+      const RegisterResult res = rule->registerFeature( feature, context, handlers );
+      // consider inactive items as "matched" so the else rule will ignore them
+      matchedAChild |= ( res == Registered || res == Inactive );
+      registered |= matchedAChild;
     }
   }
 
   // If none of the rules passed then we jump into the else rules and process them.
-  if ( !willRegisterSomething )
+  if ( !matchedAChild )
   {
-    for ( Rule *rule : qgis::as_const( mElseRules ) )
+    for ( Rule *rule : std::as_const( mElseRules ) )
     {
-      registered |= rule->registerFeature( feature, context, handlers ) != Filtered;
+      const RegisterResult res = rule->registerFeature( feature, context, handlers );
+      matchedAChild |= ( res == Registered || res == Inactive );
+      registered |= res != Filtered;
     }
   }
 
-  if ( !mIsActive )
+  if ( !mIsActive || ( matchedAChild && !registered ) )
     return Inactive;
   else if ( registered )
     return Registered;
@@ -386,10 +388,16 @@ Qt3DCore::QEntity *QgsRuleBased3DRenderer::createEntity( const Qgs3DMapSettings 
   if ( !vl )
     return nullptr;
 
-  double zMin, zMax;
-  Qgs3DUtils::estimateVectorLayerZRange( vl, zMin, zMax );
+  // we start with a maximal z range (based on a number similar to the radius of the Earth),
+  // because we can't know this upfront. There's too many
+  // factors to consider eg vertex z data, terrain heights, data defined offsets and extrusion heights,...
+  // This range will be refined after populating the nodes to the actual z range of the generated chunks nodes.
+  // Assuming the vertical height is in meter, then it's extremely unlikely that a real vertical
+  // height will exceed this amount!
+  constexpr double MINIMUM_VECTOR_Z_ESTIMATE = -5000000;
+  constexpr double MAXIMUM_VECTOR_Z_ESTIMATE = 5000000;
 
-  return new QgsRuleBasedChunkedEntity( vl, zMin, zMax, tilingSettings(), mRootRule, map );
+  return new QgsRuleBasedChunkedEntity( vl, MINIMUM_VECTOR_Z_ESTIMATE, MAXIMUM_VECTOR_Z_ESTIMATE, tilingSettings(), mRootRule, map );
 }
 
 void QgsRuleBased3DRenderer::writeXml( QDomElement &elem, const QgsReadWriteContext &context ) const

@@ -40,6 +40,7 @@ class QgsMetadataWidget;
 class QgsTreeWidgetItem;
 class QgsLayerCapabilitiesModel;
 class QgsBearingNumericFormat;
+class QgsGeographicCoordinateNumericFormat;
 class QgsOptionsPageWidget;
 
 /**
@@ -62,7 +63,7 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
     void setCurrentPage( const QString & );
 
     /**
-       Every project has a title
+      * Every project has a title
      */
     QString title() const;
     void title( QString const &title );
@@ -79,11 +80,6 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
      * Slot called when apply button is pressed or dialog is accepted
      */
     void apply();
-
-    /**
-     * Slot to show the projections tab when the dialog is opened
-     */
-    void showProjectionsTab();
 
     /**
      * Let the user add a scale to the list of project scales
@@ -164,15 +160,6 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
     void pbnSbFillLayerShortNames_clicked();
 
     /**
-     * Slots for Styles
-     */
-    void pbtnStyleManager_clicked();
-    void pbtnStyleMarker_clicked();
-    void pbtnStyleLine_clicked();
-    void pbtnStyleFill_clicked();
-    void pbtnStyleColorRamp_clicked();
-
-    /**
      * Slot to link WMTS checkboxes in tree widget
      */
     void twWmtsItemChanged( QTreeWidgetItem *item, int column );
@@ -204,6 +191,7 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
   private slots:
 
     void customizeBearingFormat();
+    void customizeGeographicCoordinateFormat();
 
     /**
      * Sets the start and end dates input values from the project
@@ -217,6 +205,10 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
      */
     void calculateFromLayersButton_clicked();
 
+    void addStyleDatabase();
+    void removeStyleDatabase();
+    void newStyleDatabase();
+
   private:
 
     /**
@@ -227,9 +219,7 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
     //! Formats for displaying coordinates
     enum CoordinateFormat
     {
-      DecimalDegrees, //!< Decimal degrees
-      DegreesMinutes, //!< Degrees, decimal minutes
-      DegreesMinutesSeconds, //!< Degrees, minutes, seconds
+      Geographic, //!< Geographic
       MapUnits, //!< Show coordinates in map units
     };
 
@@ -245,9 +235,6 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
     QgsCoordinateReferenceSystem mCrs;
 
     void checkPageWidgetNameMap();
-
-    void populateStyles();
-    void editSymbol( QComboBox *cbo );
 
     /**
      * Reset the Python macros
@@ -269,6 +256,7 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
     QList< QgsOptionsPageWidget * > mAdditionalProjectPropertiesWidgets;
 
     std::unique_ptr< QgsBearingNumericFormat > mBearingFormat;
+    std::unique_ptr< QgsGeographicCoordinateNumericFormat > mGeographicCoordinateFormat;
 
     //! populate WMTS tree
     void populateWmtsTree( const QgsLayerTreeGroup *treeGroup, QgsTreeWidgetItem *treeItem );
@@ -304,6 +292,7 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
     static const char *GEO_NONE_DESC;
 
     void updateGuiForMapUnits();
+    void addStyleDatabasePrivate( bool createNew );
 
     void showHelp();
 

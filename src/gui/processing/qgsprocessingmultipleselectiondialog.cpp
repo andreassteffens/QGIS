@@ -20,6 +20,10 @@
 #include "qgsvectorlayer.h"
 #include "qgsmeshlayer.h"
 #include "qgsrasterlayer.h"
+#include "qgspluginlayer.h"
+#include "qgspointcloudlayer.h"
+#include "qgsannotationlayer.h"
+#include "qgsproject.h"
 #include "processing/models/qgsprocessingmodelchildparametersource.h"
 #include <QStandardItemModel>
 #include <QStandardItem>
@@ -27,6 +31,7 @@
 #include <QLineEdit>
 #include <QToolButton>
 #include <QFileDialog>
+#include <QDirIterator>
 
 ///@cond NOT_STABLE
 
@@ -90,9 +95,15 @@ QVariantList QgsProcessingMultipleSelectionPanelWidget::selectedOptions() const
   bool hasModelSources = false;
   for ( int i = 0; i < mModel->rowCount(); ++i )
   {
-    if ( mModel->item( i )->checkState() == Qt::Checked )
+    QStandardItem *item = mModel->item( i );
+    if ( !item )
     {
-      const QVariant option = mModel->item( i )->data( Qt::UserRole );
+      continue;
+    }
+
+    if ( item->checkState() == Qt::Checked )
+    {
+      const QVariant option = item->data( Qt::UserRole );
 
       if ( option.canConvert< QgsProcessingModelChildParameterSource >() )
         hasModelSources = true;
@@ -177,7 +188,7 @@ void QgsProcessingMultipleSelectionPanelWidget::populateList( const QVariantList
     remainingOptions.removeAll( option );
   }
 
-  for ( const QVariant &option : qgis::as_const( remainingOptions ) )
+  for ( const QVariant &option : std::as_const( remainingOptions ) )
   {
     addOption( option, mValueFormatter( option ), false );
   }
@@ -204,7 +215,7 @@ void QgsProcessingMultipleSelectionPanelWidget::addOption( const QVariant &value
     }
   }
 
-  std::unique_ptr< QStandardItem > item = qgis::make_unique< QStandardItem >( title );
+  std::unique_ptr< QStandardItem > item = std::make_unique< QStandardItem >( title );
   item->setData( value, Qt::UserRole );
   item->setCheckState( selected ? Qt::Checked : Qt::Unchecked );
   item->setCheckable( true );
@@ -332,6 +343,24 @@ void QgsProcessingMultipleInputPanelWidget::addDirectory()
 
 void QgsProcessingMultipleInputPanelWidget::populateFromProject( QgsProject *project )
 {
+  connect( project, &QgsProject::layerRemoved, this, [&]( const QString & layerId )
+  {
+    for ( int i = 0; i < mModel->rowCount(); ++i )
+    {
+      const QStandardItem *item = mModel->item( i );
+      if ( item->data( Qt::UserRole ) == layerId )
+      {
+        bool isChecked = ( item->checkState() == Qt::Checked );
+        mModel->removeRow( i );
+
+        if ( isChecked )
+          emit selectionChanged();
+
+        break;
+      }
+    }
+  } );
+
   QgsSettings settings;
   auto addLayer = [&]( const QgsMapLayer * layer )
   {
@@ -344,6 +373,9 @@ void QgsProcessingMultipleInputPanelWidget::populateFromProject( QgsProject *pro
 
 
     QString id = layer->id();
+    if ( layer == project->mainAnnotationLayer() )
+      id = QStringLiteral( "main" );
+
     for ( int i = 0; i < mModel->rowCount(); ++i )
     {
       // try to match project layers to current layers
@@ -388,6 +420,39 @@ void QgsProcessingMultipleInputPanelWidget::populateFromProject( QgsProject *pro
       break;
     }
 
+    case QgsProcessing::TypePlugin:
+    {
+      const QList<QgsPluginLayer *> options = QgsProcessingUtils::compatiblePluginLayers( project, false );
+      for ( const QgsPluginLayer *layer : options )
+      {
+        addLayer( layer );
+      }
+
+      break;
+    }
+
+    case QgsProcessing::TypeAnnotation:
+    {
+      const QList<QgsAnnotationLayer *> options = QgsProcessingUtils::compatibleAnnotationLayers( project, false );
+      for ( const QgsAnnotationLayer *layer : options )
+      {
+        addLayer( layer );
+      }
+
+      break;
+    }
+
+    case QgsProcessing::TypePointCloud:
+    {
+      const QList<QgsPointCloudLayer *> options = QgsProcessingUtils::compatiblePointCloudLayers( project, false );
+      for ( const QgsPointCloudLayer *layer : options )
+      {
+        addLayer( layer );
+      }
+
+      break;
+    }
+
     case QgsProcessing::TypeVector:
     case QgsProcessing::TypeVectorAnyGeometry:
     {
@@ -414,6 +479,21 @@ void QgsProcessingMultipleInputPanelWidget::populateFromProject( QgsProject *pro
       }
       const QList<QgsMeshLayer *> meshes = QgsProcessingUtils::compatibleMeshLayers( project );
       for ( const QgsMeshLayer *layer : meshes )
+      {
+        addLayer( layer );
+      }
+      const QList<QgsPluginLayer *> plugins = QgsProcessingUtils::compatiblePluginLayers( project );
+      for ( const QgsPluginLayer *layer : plugins )
+      {
+        addLayer( layer );
+      }
+      const QList<QgsPointCloudLayer *> pointClouds = QgsProcessingUtils::compatiblePointCloudLayers( project );
+      for ( const QgsPointCloudLayer *layer : pointClouds )
+      {
+        addLayer( layer );
+      }
+      const QList<QgsAnnotationLayer *> annotations = QgsProcessingUtils::compatibleAnnotationLayers( project );
+      for ( const QgsAnnotationLayer *layer : annotations )
       {
         addLayer( layer );
       }

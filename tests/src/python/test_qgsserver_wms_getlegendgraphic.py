@@ -20,6 +20,7 @@ import os
 os.environ['QT_HASH_SEED'] = '1'
 
 import re
+import json
 import urllib.request
 import urllib.parse
 import urllib.error
@@ -30,7 +31,19 @@ from qgis.PyQt.QtCore import QSize
 import osgeo.gdal  # NOQA
 
 from test_qgsserver_wms import TestQgsServerWMSTestBase
-from qgis.core import QgsProject
+from qgis.core import (
+    QgsProject,
+    QgsMarkerSymbol,
+    QgsRuleBasedRenderer,
+    QgsVectorLayer,
+)
+
+from qgis.server import (
+    QgsBufferServerRequest,
+    QgsBufferServerResponse,
+    QgsServer,
+    QgsServerRequest,
+)
 
 # Strip path and content length because path may vary
 RE_STRIP_UNCHECKABLE = br'MAP=[^"]+|Content-Length: \d+'
@@ -1008,6 +1021,49 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
                                  "&FORMAT=application/json",
                                  "wms_getlegendgraphic_json_multiple_symbol",
                                  'test_project_wms_grouped_layers.qgs')
+
+    def testJsonSymbolMaxMinScale(self):
+        """Test min/max scale in symbol json export"""
+
+        project = QgsProject()
+        layer = QgsVectorLayer("Point?field=fldtxt:string",
+                               "layer1", "memory")
+
+        symbol = QgsMarkerSymbol.createSimple(
+            {'name': 'square', 'color': 'red'})
+
+        scale_min = 10000
+        scale_max = 1000
+        rule = QgsRuleBasedRenderer.Rule(symbol, scale_min, scale_max, '')
+        rootrule = QgsRuleBasedRenderer.Rule(None)
+        rootrule.appendChild(rule)
+        layer.setRenderer(QgsRuleBasedRenderer(rootrule))
+
+        project.addMapLayers([layer])
+
+        server = QgsServer()
+        request = QgsBufferServerRequest("/?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic" +
+                                         "&LAYERS=layer1" +
+                                         "&FORMAT=application/json")
+        response = QgsBufferServerResponse()
+        server.handleRequest(request, response, project)
+        j = json.loads(bytes(response.body()))
+        node = j['nodes'][0]
+        self.assertEqual(node['scaleMaxDenom'], 1000)
+        self.assertEqual(node['scaleMinDenom'], 10000)
+
+    def testLegendPlaceholderIcon(self):
+        qs = "?" + "&".join(["%s=%s" % i for i in list({
+            "MAP": self.testdata_path + 'test_project_legend_placeholder_image.qgs',
+            "SERVICE": "WMS",
+            "VERSION": "1.3",
+            "REQUEST": "GetLegendGraphic",
+            "LAYER": "landsat",
+            "FORMAT": "image/png",
+        }.items())])
+
+        r, h = self._result(self._execute_request(qs))
+        self._img_diff_error(r, h, "WMS_GetLegendGraphic_Legend_Placeholder_Icon")
 
 
 if __name__ == '__main__':

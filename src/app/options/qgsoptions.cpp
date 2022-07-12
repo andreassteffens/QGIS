@@ -24,6 +24,7 @@
 #include "qgsgdalutils.h"
 #include "qgshighlight.h"
 #include "qgsmapcanvas.h"
+#include "qgsmaprendererjob.h"
 #include "qgsprojectionselectiondialog.h"
 #include "qgscoordinatereferencesystem.h"
 #include "qgstolerance.h"
@@ -53,6 +54,8 @@
 #include "qgsunittypes.h"
 #include "qgsclipboard.h"
 #include "qgssettings.h"
+#include "qgssettingsregistrycore.h"
+#include "qgssettingsregistrygui.h"
 #include "qgsoptionswidgetfactory.h"
 #include "qgslocatorwidget.h"
 #include "qgslocatoroptionswidget.h"
@@ -60,8 +63,10 @@
 #include "qgswelcomepage.h"
 #include "qgsnewsfeedparser.h"
 #include "qgsbearingnumericformat.h"
+#include "qgscoordinatenumericformat.h"
 #include "qgssublayersdialog.h"
 #include "options/qgsadvancedoptions.h"
+#include "qgslayout.h"
 
 #ifdef HAVE_OPENCL
 #include "qgsopenclutils.h"
@@ -78,6 +83,7 @@
 #include <QStyleFactory>
 #include <QMessageBox>
 #include <QNetworkDiskCache>
+#include <QStandardPaths>
 
 #include <limits>
 #include <sqlite3.h>
@@ -99,6 +105,53 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
 
 {
   setupUi( this );
+
+  mTreeModel = new QStandardItemModel( this );
+  mTreeModel->appendRow( createItem( QCoreApplication::translate( "QgsOptionsBase", "General" ), QCoreApplication::translate( "QgsOptionsBase", "General" ), QStringLiteral( "propertyicons/general.svg" ) ) );
+  mTreeModel->appendRow( createItem( QCoreApplication::translate( "QgsOptionsBase", "System" ), QCoreApplication::translate( "QgsOptionsBase", "System" ), QStringLiteral( "propertyicons/system.svg" ) ) );
+
+  QStandardItem *crsGroup = new QStandardItem( QCoreApplication::translate( "QgsOptionsBase", "CRS and Transforms" ) );
+  crsGroup->setData( QStringLiteral( "crs_and_transforms" ) );
+  crsGroup->setToolTip( tr( "CRS and Transforms" ) );
+  crsGroup->setSelectable( false );
+  crsGroup->appendRow( createItem( QCoreApplication::translate( "QgsOptionsBase", "CRS Handling" ), QCoreApplication::translate( "QgsOptionsBase", "General CRS handling" ), QStringLiteral( "propertyicons/CRS.svg" ) ) );
+  crsGroup->appendRow( createItem( QCoreApplication::translate( "QgsOptionsBase", "Coordinate Transforms" ), QCoreApplication::translate( "QgsOptionsBase", "Coordinate transformations and operations" ), QStringLiteral( "transformation.svg" ) ) );
+  mTreeModel->appendRow( crsGroup );
+
+  QStandardItem *dataSources = createItem( QCoreApplication::translate( "QgsOptionsBase", "Data Sources" ), QCoreApplication::translate( "QgsOptionsBase", "Data sources" ), QStringLiteral( "propertyicons/attributes.svg" ) );
+  mTreeModel->appendRow( dataSources );
+  dataSources->appendRow( createItem( QCoreApplication::translate( "QgsOptionsBase", "GDAL" ), QCoreApplication::translate( "QgsOptionsBase", "GDAL" ), QStringLiteral( "propertyicons/gdal.svg" ) ) );
+
+  mTreeModel->appendRow( createItem( QCoreApplication::translate( "QgsOptionsBase", "Rendering" ), QCoreApplication::translate( "QgsOptionsBase", "Rendering" ), QStringLiteral( "propertyicons/rendering.svg" ) ) );
+  mTreeModel->appendRow( createItem( QCoreApplication::translate( "QgsOptionsBase", "Canvas & Legend" ), QCoreApplication::translate( "QgsOptionsBase", "Canvas and legend" ), QStringLiteral( "propertyicons/overlay.svg" ) ) );
+
+  QStandardItem *mapTools = createItem( QCoreApplication::translate( "QgsOptionsBase", "Map Tools" ), QCoreApplication::translate( "QgsOptionsBase", "Map tools" ), QStringLiteral( "propertyicons/map_tools.svg" ) );
+  mTreeModel->appendRow( mapTools );
+  mapTools->appendRow( createItem( QCoreApplication::translate( "QgsOptionsBase", "Digitizing" ), QCoreApplication::translate( "QgsOptionsBase", "Digitizing" ), QStringLiteral( "propertyicons/digitizing.svg" ) ) );
+
+  mTreeModel->appendRow( createItem( QCoreApplication::translate( "QgsOptionsBase", "Colors" ), QCoreApplication::translate( "QgsOptionsBase", "Colors" ), QStringLiteral( "propertyicons/colors.svg" ) ) );
+  mTreeModel->appendRow( createItem( QCoreApplication::translate( "QgsOptionsBase", "Layouts" ), QCoreApplication::translate( "QgsOptionsBase", "Print layouts" ), QStringLiteral( "mIconLayout.svg" ) ) );
+  mTreeModel->appendRow( createItem( QCoreApplication::translate( "QgsOptionsBase", "Variables" ), QCoreApplication::translate( "QgsOptionsBase", "Variables" ), QStringLiteral( "mIconExpression.svg" ) ) );
+  mTreeModel->appendRow( createItem( QCoreApplication::translate( "QgsOptionsBase", "Authentication" ), QCoreApplication::translate( "QgsOptionsBase", "Authentication" ), QStringLiteral( "locked.svg" ) ) );
+  mTreeModel->appendRow( createItem( QCoreApplication::translate( "QgsOptionsBase", "Network" ), QCoreApplication::translate( "QgsOptionsBase", "Network" ), QStringLiteral( "propertyicons/network_and_proxy.svg" ) ) );
+
+  QStandardItem *gpsGroup = new QStandardItem( QCoreApplication::translate( "QgsOptionsBase", "GPS" ) );
+  gpsGroup->setData( QStringLiteral( "gps" ) );
+  gpsGroup->setToolTip( tr( "GPS" ) );
+  gpsGroup->setSelectable( false );
+  mTreeModel->appendRow( gpsGroup );
+
+  mTreeModel->appendRow( createItem( QCoreApplication::translate( "QgsOptionsBase", "Locator" ), tr( "Locator" ), QStringLiteral( "search.svg" ) ) );
+  mTreeModel->appendRow( createItem( QCoreApplication::translate( "QgsOptionsBase", "Acceleration" ), tr( "GPU acceleration" ), QStringLiteral( "mIconGPU.svg" ) ) );
+
+  QStandardItem *ideGroup = new QStandardItem( QCoreApplication::translate( "QgsOptionsBase", "IDE" ) );
+  ideGroup->setData( QStringLiteral( "ide" ) );
+  ideGroup->setToolTip( tr( "Development and Scripting Settings" ) );
+  ideGroup->setSelectable( false );
+  mTreeModel->appendRow( ideGroup );
+
+  mOptionsTreeView->setModel( mTreeModel );
+
   connect( cbxProjectDefaultNew, &QCheckBox::toggled, this, &QgsOptions::cbxProjectDefaultNew_toggled );
   connect( leLayerGlobalCrs, &QgsProjectionSelectionWidget::crsChanged, this, &QgsOptions::leLayerGlobalCrs_crsChanged );
   connect( lstRasterDrivers, &QTreeWidget::itemDoubleClicked, this, &QgsOptions::lstRasterDrivers_itemDoubleClicked );
@@ -111,13 +164,28 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   connect( mCustomVariablesChkBx, &QCheckBox::toggled, this, &QgsOptions::mCustomVariablesChkBx_toggled );
   connect( mCurrentVariablesQGISChxBx, &QCheckBox::toggled, this, &QgsOptions::mCurrentVariablesQGISChxBx_toggled );
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsOptions::showHelp );
-  connect( cboGlobalLocale, qgis::overload< int >::of( &QComboBox::currentIndexChanged ), this, [ = ]( int ) { updateSampleLocaleText( ); } );
+  connect( cboGlobalLocale, qOverload< int >( &QComboBox::currentIndexChanged ), this, [ = ]( int ) { updateSampleLocaleText( ); } );
   connect( cbShowGroupSeparator, &QCheckBox::toggled, this, [ = ]( bool ) { updateSampleLocaleText(); } );
 
   // QgsOptionsDialogBase handles saving/restoring of geometry, splitter and current tab states,
   // switching vertical tabs between icon/text to icon-only modes (splitter collapsed to left),
   // and connecting QDialogButtonBox's accepted/rejected signals to dialog's accept/reject slots
   initOptionsBase( false );
+  // disconnect default connection setup by initOptionsBase for accepting dialog, and insert logic
+  // to validate widgets before allowing dialog to be closed
+  disconnect( mOptButtonBox, &QDialogButtonBox::accepted, this, &QDialog::accept );
+  connect( mOptButtonBox, &QDialogButtonBox::accepted, this, [ = ]
+  {
+    for ( QgsOptionsPageWidget *widget : std::as_const( mAdditionalOptionWidgets ) )
+    {
+      if ( !widget->isValid() )
+      {
+        setCurrentPage( widget->objectName() );
+        return;
+      }
+    }
+    accept();
+  } );
 
   // stylesheet setup
   mStyleSheetBuilder = QgisApp::instance()->styleSheetBuilder();
@@ -171,7 +239,7 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   mSettings = new QgsSettings();
 
   double identifyValue = mSettings->value( QStringLiteral( "/Map/searchRadiusMM" ), Qgis::DEFAULT_SEARCH_RADIUS_MM ).toDouble();
-  QgsDebugMsg( QStringLiteral( "Standard Identify radius setting read from settings file: %1" ).arg( identifyValue ) );
+  QgsDebugMsgLevel( QStringLiteral( "Standard Identify radius setting read from settings file: %1" ).arg( identifyValue ), 3 );
   if ( identifyValue <= 0.0 )
     identifyValue = Qgis::DEFAULT_SEARCH_RADIUS_MM;
   spinBoxIdentifyValue->setMinimum( 0.0 );
@@ -355,7 +423,7 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
 
   //Network timeout
   mNetworkTimeoutSpinBox->setValue( QgsNetworkAccessManager::timeout() );
-  mNetworkTimeoutSpinBox->setClearValue( 60000 );
+  mNetworkTimeoutSpinBox->setClearValue( QgsNetworkAccessManager::settingsNetworkTimeout.defaultValue() );
   leUserAgent->setText( mSettings->value( QStringLiteral( "/qgis/networkAndProxy/userAgent" ), "Mozilla/5.0" ).toString() );
 
   // WMS capabilities expiry time
@@ -374,7 +442,7 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   mAuthSettings->setDataprovider( QStringLiteral( "proxy" ) );
   QString authcfg = mSettings->value( QStringLiteral( "proxy/authcfg" ) ).toString();
   mAuthSettings->setConfigId( authcfg );
-  mAuthSettings->setWarningText( mAuthSettings->formattedWarning( QgsAuthSettingsWidget::UserSettings ) );
+  mAuthSettings->setWarningText( QgsAuthSettingsWidget::formattedWarning( QgsAuthSettingsWidget::UserSettings ) );
 
   //Web proxy settings
   grpProxy->setChecked( mSettings->value( QStringLiteral( "proxy/proxyEnabled" ), false ).toBool() );
@@ -414,7 +482,7 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   mCacheSize->setMinimum( 0 );
   mCacheSize->setMaximum( std::numeric_limits<int>::max() );
   mCacheSize->setSingleStep( 1024 );
-  qint64 cacheSize = mSettings->value( QStringLiteral( "cache/size" ), 50 * 1024 * 1024 ).toLongLong();
+  qint64 cacheSize = mSettings->value( QStringLiteral( "cache/size" ), 256 * 1024 * 1024 ).toLongLong();
   mCacheSize->setValue( static_cast<int>( cacheSize / 1024 ) );
   mCacheSize->setClearValue( 50 * 1024 );
   connect( mBrowseCacheDirectory, &QAbstractButton::clicked, this, &QgsOptions::browseCacheDirectory );
@@ -447,11 +515,11 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   spinBoxAttrTableRowCache->setSpecialValueText( tr( "All" ) );
 
   cmbPromptSublayers->clear();
-  cmbPromptSublayers->addItem( tr( "Always" ), QgsSublayersDialog::PromptAlways );
-  cmbPromptSublayers->addItem( tr( "If Needed" ), QgsSublayersDialog::PromptIfNeeded ); //this means, prompt if there are sublayers but no band in the main dataset
-  cmbPromptSublayers->addItem( tr( "Never" ), QgsSublayersDialog::PromptNever );
-  cmbPromptSublayers->addItem( tr( "Load All" ), QgsSublayersDialog::PromptLoadAll ); // check if this is true
-  cmbPromptSublayers->setCurrentIndex( cmbPromptSublayers->findData( mSettings->enumValue( QStringLiteral( "/qgis/promptForSublayers" ), QgsSublayersDialog::PromptAlways ) ) );
+  cmbPromptSublayers->addItem( tr( "Always" ), static_cast< int >( Qgis::SublayerPromptMode::AlwaysAsk ) );
+  cmbPromptSublayers->addItem( tr( "If Needed" ), static_cast< int >( Qgis::SublayerPromptMode::AskExcludingRasterBands ) ); //this means, prompt if there are sublayers but no band in the main dataset
+  cmbPromptSublayers->addItem( tr( "Never" ), static_cast< int >( Qgis::SublayerPromptMode::NeverAskSkip ) );
+  cmbPromptSublayers->addItem( tr( "Load All" ), static_cast< int >( Qgis::SublayerPromptMode::NeverAskLoadAll ) );
+  cmbPromptSublayers->setCurrentIndex( cmbPromptSublayers->findData( static_cast< int >( mSettings->enumValue( QStringLiteral( "/qgis/promptForSublayers" ), Qgis::SublayerPromptMode::AlwaysAsk ) ) ) );
 
   // Scan for valid items in the browser dock
   cmbScanItemsInBrowser->clear();
@@ -471,8 +539,10 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   if ( index == -1 ) index = 1;
   cmbScanZipInBrowser->setCurrentIndex( index );
 
+  mCheckMonitorDirectories->setChecked( mSettings->value( QStringLiteral( "/qgis/monitorDirectoriesInBrowser" ), true ).toBool() );
+
   // log rendering events, for userspace debugging
-  mLogCanvasRefreshChkBx->setChecked( mSettings->value( QStringLiteral( "/Map/logCanvasRefreshEvent" ), false ).toBool() );
+  mLogCanvasRefreshChkBx->setChecked( QgsMapRendererJob::settingsLogCanvasRefreshEvent.value() );
 
   //set the default projection behavior radio buttons
   const QgsOptions::UnknownLayerCrsBehavior mode = QgsSettings().enumValue( QStringLiteral( "/projections/unknownCrsBehavior" ), QgsOptions::UnknownLayerCrsBehavior::NoAction, QgsSettings::App );
@@ -517,6 +587,14 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
       radProjectUseDefaultCrs->setChecked( true );
       break;
   }
+
+  const double crsAccuracyWarningThreshold = mSettings->value( QStringLiteral( "/projections/crsAccuracyWarningThreshold" ), 0.0, QgsSettings::App ).toDouble();
+  mCrsAccuracySpin->setMinimumWidth( QFontMetrics( font() ).horizontalAdvance( '0' ) * 20 );
+  mCrsAccuracySpin->setClearValue( 0.0, tr( "Always show" ) );
+  mCrsAccuracySpin->setValue( crsAccuracyWarningThreshold );
+
+  const bool crsAccuracyIndicator = mSettings->value( QStringLiteral( "/projections/crsAccuracyIndicator" ), false, QgsSettings::App ).toBool();
+  mCrsAccuracyIndicatorCheck->setChecked( crsAccuracyIndicator );
 
   mShowDatumTransformDialogCheckBox->setChecked( mSettings->value( QStringLiteral( "/projections/promptWhenMultipleTransformsExist" ), false, QgsSettings::App ).toBool() );
 
@@ -575,7 +653,7 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   mAngleUnitsComboBox->setCurrentIndex( mAngleUnitsComboBox->findData( unit ) );
 
   // set decimal places of the measure tool
-  int decimalPlaces = mSettings->value( QStringLiteral( "/qgis/measure/decimalplaces" ), "3" ).toInt();
+  int decimalPlaces = mSettings->value( QStringLiteral( "/qgis/measure/decimalplaces" ), 3 ).toInt();
   mDecimalPlacesSpinBox->setClearValue( 3 );
   mDecimalPlacesSpinBox->setRange( 0, 12 );
   mDecimalPlacesSpinBox->setValue( decimalPlaces );
@@ -698,13 +776,13 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   // but the checkbox is true to use QPixmap
   chkAddedVisibility->setChecked( mSettings->value( QStringLiteral( "/qgis/new_layers_visible" ), true ).toBool() );
   cbxLegendClassifiers->setChecked( mSettings->value( QStringLiteral( "/qgis/showLegendClassifiers" ), false ).toBool() );
+  mShowFeatureCountByDefaultCheckBox->setChecked( QgsSettingsRegistryCore::settingsLayerTreeShowFeatureCountForNewLayers.value() );
   cbxHideSplash->setChecked( mSettings->value( QStringLiteral( "/qgis/hideSplash" ), false ).toBool() );
   cbxShowNews->setChecked( !mSettings->value( QStringLiteral( "%1/disabled" ).arg( QgsNewsFeedParser::keyForFeed( QgsWelcomePage::newsFeedUrl() ) ), false, QgsSettings::Core ).toBool() );
   mDataSourceManagerNonModal->setChecked( mSettings->value( QStringLiteral( "/qgis/dataSourceManagerNonModal" ), false ).toBool() );
   cbxCheckVersion->setChecked( mSettings->value( QStringLiteral( "/qgis/checkVersion" ), true ).toBool() );
   cbxCheckVersion->setVisible( mSettings->value( QStringLiteral( "/qgis/allowVersionCheck" ), true ).toBool() );
   cbxAttributeTableDocked->setChecked( mSettings->value( QStringLiteral( "/qgis/dockAttributeTable" ), false ).toBool() );
-  cbxCompileExpressions->setChecked( mSettings->value( QStringLiteral( "/qgis/compileExpressions" ), true ).toBool() );
 
   mComboCopyFeatureFormat->addItem( tr( "Plain Text, No Geometry" ), QgsClipboard::AttributesOnly );
   mComboCopyFeatureFormat->addItem( tr( "Plain Text, WKT Geometry" ), QgsClipboard::AttributesWithWKT );
@@ -726,6 +804,8 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   // Map Tips delay
   mMapTipsDelaySpinBox->setValue( mSettings->value( QStringLiteral( "qgis/mapTipsDelay" ), 850 ).toInt() );
   mMapTipsDelaySpinBox->setClearValue( 850 );
+
+  mRespectScreenDpiCheckBox->setChecked( QgsSettingsRegistryGui::settingsRespectScreenDPI.value() );
 
   //
   // Raster properties
@@ -813,9 +893,18 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   Qgis::PythonMacroMode pyMacroMode = mSettings->enumValue( QStringLiteral( "/qgis/enableMacros" ), Qgis::PythonMacroMode::Ask );
   mEnableMacrosComboBox->setCurrentIndex( mEnableMacrosComboBox->findData( QVariant::fromValue( pyMacroMode ) ) );
 
-  QgsProject::FileFormat defaultProjectFileFormat = mSettings->enumValue( QStringLiteral( "/qgis/defaultProjectFileFormat" ), QgsProject::FileFormat::Qgz );
-  mFileFormatQgzButton->setChecked( defaultProjectFileFormat == QgsProject::FileFormat::Qgz );
-  mFileFormatQgsButton->setChecked( defaultProjectFileFormat == QgsProject::FileFormat::Qgs );
+  mDefaultPathsComboBox->addItem( tr( "Absolute" ), static_cast< int >( Qgis::FilePathType::Absolute ) );
+  mDefaultPathsComboBox->addItem( tr( "Relative" ), static_cast< int >( Qgis::FilePathType::Relative ) );
+  mDefaultPathsComboBox->setCurrentIndex(
+    mDefaultPathsComboBox->findData(
+      static_cast< int >(
+        mSettings->value( QStringLiteral( "/qgis/defaultProjectPathsRelative" ), QVariant( true ) ).toBool() ? Qgis::FilePathType::Relative : Qgis::FilePathType::Absolute )
+    )
+  );
+
+  Qgis::ProjectFileFormat defaultProjectFileFormat = mSettings->enumValue( QStringLiteral( "/qgis/defaultProjectFileFormat" ), Qgis::ProjectFileFormat::Qgz );
+  mFileFormatQgzButton->setChecked( defaultProjectFileFormat == Qgis::ProjectFileFormat::Qgz );
+  mFileFormatQgsButton->setChecked( defaultProjectFileFormat == Qgis::ProjectFileFormat::Qgs );
 
   // templates
   cbxProjectDefaultNew->setChecked( mSettings->value( QStringLiteral( "/qgis/newProjectDefault" ), QVariant( false ) ).toBool() );
@@ -1013,9 +1102,9 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   //
   QString currentLocale = QLocale().name();
   lblSystemLocale->setText( tr( "Detected active locale on your system: %1" ).arg( currentLocale ) );
-  QString userLocale = mSettings->value( QStringLiteral( "locale/userLocale" ), QString( ) ).toString();
-  bool showGroupSeparator = mSettings->value( QStringLiteral( "locale/showGroupSeparator" ), false ).toBool();
-  QString globalLocale = mSettings->value( QStringLiteral( "locale/globalLocale" ), currentLocale ).toString();
+  QString userLocale = QgsApplication::settingsLocaleUserLocale.value();
+  bool showGroupSeparator = QgsApplication::settingsLocaleShowGroupSeparator.value();
+  QString globalLocale = QgsApplication::settingsLocaleGlobalLocale.value();
   const QStringList language18nList( i18nList() );
   for ( const auto &l : language18nList )
   {
@@ -1042,53 +1131,55 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
 
   cboTranslation->setCurrentIndex( cboTranslation->findData( userLocale ) );
   cboGlobalLocale->setCurrentIndex( cboGlobalLocale->findData( globalLocale ) );
-  bool localeOverrideFlag = mSettings->value( QStringLiteral( "locale/overrideFlag" ), false ).toBool();
-  grpLocale->setChecked( localeOverrideFlag );
+  grpLocale->setChecked( QgsApplication::settingsLocaleOverrideFlag.value() );
   cbShowGroupSeparator->setChecked( showGroupSeparator );
 
 
   //set elements in digitizing tab
-  mLineWidthSpinBox->setValue( mSettings->value( QStringLiteral( "/qgis/digitizing/line_width" ), 1 ).toInt() );
-  red = mSettings->value( QStringLiteral( "/qgis/digitizing/line_color_red" ), 255 ).toInt();
-  green = mSettings->value( QStringLiteral( "/qgis/digitizing/line_color_green" ), 0 ).toInt();
-  blue = mSettings->value( QStringLiteral( "/qgis/digitizing/line_color_blue" ), 0 ).toInt();
-  alpha = mSettings->value( QStringLiteral( "/qgis/digitizing/line_color_alpha" ), 200 ).toInt();
-  mLineColorToolButton->setColor( QColor( red, green, blue, alpha ) );
+  mLineWidthSpinBox->setValue( QgsSettingsRegistryCore::settingsDigitizingLineWidth.value() );
+  mLineColorToolButton->setColor( QColor( QgsSettingsRegistryCore::settingsDigitizingLineColorRed.value(),
+                                          QgsSettingsRegistryCore::settingsDigitizingLineColorGreen.value(),
+                                          QgsSettingsRegistryCore::settingsDigitizingLineColorBlue.value(),
+                                          QgsSettingsRegistryCore::settingsDigitizingLineColorAlpha.value() ) );
   mLineColorToolButton->setAllowOpacity( true );
   mLineColorToolButton->setContext( QStringLiteral( "gui" ) );
   mLineColorToolButton->setDefaultColor( QColor( 255, 0, 0, 200 ) );
 
-  red = mSettings->value( QStringLiteral( "/qgis/digitizing/fill_color_red" ), 255 ).toInt();
-  green = mSettings->value( QStringLiteral( "/qgis/digitizing/fill_color_green" ), 0 ).toInt();
-  blue = mSettings->value( QStringLiteral( "/qgis/digitizing/fill_color_blue" ), 0 ).toInt();
-  alpha = mSettings->value( QStringLiteral( "/qgis/digitizing/fill_color_alpha" ), 30 ).toInt();
-  mFillColorToolButton->setColor( QColor( red, green, blue, alpha ) );
+  mFillColorToolButton->setColor( QColor( QgsSettingsRegistryCore::settingsDigitizingFillColorRed.value(),
+                                          QgsSettingsRegistryCore::settingsDigitizingFillColorGreen.value(),
+                                          QgsSettingsRegistryCore::settingsDigitizingFillColorBlue.value(),
+                                          QgsSettingsRegistryCore::settingsDigitizingFillColorAlpha.value() ) );
   mFillColorToolButton->setAllowOpacity( true );
   mFillColorToolButton->setContext( QStringLiteral( "gui" ) );
   mFillColorToolButton->setDefaultColor( QColor( 255, 0, 0, 30 ) );
 
-  mLineGhostCheckBox->setChecked( mSettings->value( QStringLiteral( "/qgis/digitizing/line_ghost" ), false ).toBool() );
+  mLineGhostCheckBox->setChecked( QgsSettingsRegistryCore::settingsDigitizingLineGhost.value() );
 
-  mDefaultZValueSpinBox->setValue(
-    mSettings->value( QStringLiteral( "/qgis/digitizing/default_z_value" ), Qgis::DEFAULT_Z_COORDINATE ).toDouble()
+  mDefaultZValueSpinBox->setValue( QgsSettingsRegistryCore::settingsDigitizingDefaultZValue.value() );
+  mDefaultZValueSpinBox->setClearValue( QgsSettingsRegistryCore::settingsDigitizingDefaultZValue.defaultValue() );
+
+  mDefaultMValueSpinBox->setValue(
+    mSettings->value( QStringLiteral( "/qgis/digitizing/default_m_value" ), Qgis::DEFAULT_M_COORDINATE ).toDouble()
   );
-  mDefaultZValueSpinBox->setClearValue( Qgis::DEFAULT_Z_COORDINATE );
+  mDefaultMValueSpinBox->setClearValue( Qgis::DEFAULT_M_COORDINATE );
 
   //default snap mode
-  mSnappingEnabledDefault->setChecked( mSettings->value( QStringLiteral( "/qgis/digitizing/default_snap_enabled" ),  false ).toBool() );
-  mDefaultSnapModeComboBox->addItem( tr( "No Snapping" ), QgsSnappingConfig::NoSnapFlag );
-  mDefaultSnapModeComboBox->addItem( tr( "Vertex" ), QgsSnappingConfig::VertexFlag );
-  mDefaultSnapModeComboBox->addItem( tr( "Segment" ), QgsSnappingConfig::SegmentFlag );
-  mDefaultSnapModeComboBox->addItem( tr( "Centroid" ), QgsSnappingConfig::CentroidFlag );
-  mDefaultSnapModeComboBox->addItem( tr( "Middle of Segments" ), QgsSnappingConfig::MiddleOfSegmentFlag );
-  mDefaultSnapModeComboBox->addItem( tr( "Area" ), QgsSnappingConfig::AreaFlag );
-  QgsSnappingConfig::SnappingTypeFlag defaultSnapMode = mSettings->flagValue( QStringLiteral( "/qgis/digitizing/default_snap_type" ),  QgsSnappingConfig::VertexFlag );
-  mDefaultSnapModeComboBox->setCurrentIndex( mDefaultSnapModeComboBox->findData( static_cast<int>( defaultSnapMode ) ) );
-  mDefaultSnappingToleranceSpinBox->setValue( mSettings->value( QStringLiteral( "/qgis/digitizing/default_snapping_tolerance" ), Qgis::DEFAULT_SNAP_TOLERANCE ).toDouble() );
-  mDefaultSnappingToleranceSpinBox->setClearValue( Qgis::DEFAULT_SNAP_TOLERANCE );
-  mSearchRadiusVertexEditSpinBox->setValue( mSettings->value( QStringLiteral( "/qgis/digitizing/search_radius_vertex_edit" ), 10 ).toDouble() );
-  mSearchRadiusVertexEditSpinBox->setClearValue( 10 );
-  QgsTolerance::UnitType defSnapUnits = mSettings->enumValue( QStringLiteral( "/qgis/digitizing/default_snapping_tolerance_unit" ), Qgis::DEFAULT_SNAP_UNITS );
+  mSnappingEnabledDefault->setChecked( QgsSettingsRegistryCore::settingsDigitizingDefaultSnapEnabled.value() );
+
+  for ( Qgis::SnappingType type : qgsEnumList<Qgis::SnappingType>() )
+  {
+    mDefaultSnapTypeComboBox->addItem( QgsSnappingConfig::snappingTypeToIcon( type ),
+                                       QgsSnappingConfig::snappingTypeToString( type ),
+                                       QVariant::fromValue( type ) );
+  }
+
+  Qgis::SnappingTypes defaultSnapType = QgsSettingsRegistryCore::settingsDigitizingDefaultSnapType.value();
+  mDefaultSnapTypeComboBox->setCurrentIndex( mDefaultSnapTypeComboBox->findData( static_cast<int>( defaultSnapType ) ) );
+  mDefaultSnappingToleranceSpinBox->setValue( QgsSettingsRegistryCore::settingsDigitizingDefaultSnappingTolerance.value() );
+  mDefaultSnappingToleranceSpinBox->setClearValue( QgsSettingsRegistryCore::settingsDigitizingDefaultSnappingTolerance.defaultValue() );
+  mSearchRadiusVertexEditSpinBox->setValue( QgsSettingsRegistryCore::settingsDigitizingSearchRadiusVertexEdit.value() );
+  mSearchRadiusVertexEditSpinBox->setClearValue( QgsSettingsRegistryCore::settingsDigitizingSearchRadiusVertexEdit.defaultValue() );
+  QgsTolerance::UnitType defSnapUnits = QgsSettingsRegistryCore::settingsDigitizingDefaultSnappingToleranceUnit.value();
   if ( defSnapUnits == QgsTolerance::ProjectUnits || defSnapUnits == QgsTolerance::LayerUnits )
   {
     index = mDefaultSnappingToleranceComboBox->findText( tr( "map units" ) );
@@ -1098,7 +1189,7 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
     index = mDefaultSnappingToleranceComboBox->findText( tr( "pixels" ) );
   }
   mDefaultSnappingToleranceComboBox->setCurrentIndex( index );
-  QgsTolerance::UnitType defRadiusUnits = mSettings->enumValue( QStringLiteral( "/qgis/digitizing/search_radius_vertex_edit_unit" ), QgsTolerance::Pixels );
+  QgsTolerance::UnitType defRadiusUnits = QgsSettingsRegistryCore::settingsDigitizingSearchRadiusVertexEditUnit.value();
   if ( defRadiusUnits == QgsTolerance::ProjectUnits || defRadiusUnits == QgsTolerance::LayerUnits )
   {
     index = mSearchRadiusVertexEditComboBox->findText( tr( "map units" ) );
@@ -1109,12 +1200,12 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   }
   mSearchRadiusVertexEditComboBox->setCurrentIndex( index );
 
-  mSnappingMarkerColorButton->setColor( mSettings->value( QStringLiteral( "/qgis/digitizing/snap_color" ), QColor( Qt::magenta ) ).value<QColor>() );
-  mSnappingTooltipsCheckbox->setChecked( mSettings->value( QStringLiteral( "/qgis/digitizing/snap_tooltip" ), false ).toBool() );
-  mEnableSnappingOnInvisibleFeatureCheckbox->setChecked( mSettings->value( QStringLiteral( "/qgis/digitizing/snap_invisible_feature" ), false ).toBool() );
+  mSnappingMarkerColorButton->setColor( QgsSettingsRegistryCore::settingsDigitizingSnapColor.value() );
+  mSnappingTooltipsCheckbox->setChecked( QgsSettingsRegistryCore::settingsDigitizingSnapTooltip.value() );
+  mEnableSnappingOnInvisibleFeatureCheckbox->setChecked( QgsSettingsRegistryCore::settingsDigitizingSnapInvisibleFeature.value() );
 
   //vertex marker
-  mMarkersOnlyForSelectedCheckBox->setChecked( mSettings->value( QStringLiteral( "/qgis/digitizing/marker_only_for_selected" ), true ).toBool() );
+  mMarkersOnlyForSelectedCheckBox->setChecked( QgsSettingsRegistryCore::settingsDigitizingMarkerOnlyForSelected.value() );
 
   mMarkerStyleComboBox->addItem( tr( "Semi Transparent Circle" ) );
   mMarkerStyleComboBox->addItem( tr( "Cross" ) );
@@ -1125,7 +1216,7 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   mValidateGeometries->addItem( tr( "QGIS" ) );
   mValidateGeometries->addItem( tr( "GEOS" ) );
 
-  QString markerStyle = mSettings->value( QStringLiteral( "/qgis/digitizing/marker_style" ), "Cross" ).toString();
+  QString markerStyle = QgsSettingsRegistryCore::settingsDigitizingMarkerStyle.value();
   if ( markerStyle == QLatin1String( "SemiTransparentCircle" ) )
   {
     mMarkerStyleComboBox->setCurrentIndex( mMarkerStyleComboBox->findText( tr( "Semi Transparent Circle" ) ) );
@@ -1138,33 +1229,33 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   {
     mMarkerStyleComboBox->setCurrentIndex( mMarkerStyleComboBox->findText( tr( "None" ) ) );
   }
-  mMarkerSizeSpinBox->setValue( mSettings->value( QStringLiteral( "/qgis/digitizing/marker_size_mm" ), 2.0 ).toDouble() );
-  mMarkerSizeSpinBox->setClearValue( 2.0 );
+  mMarkerSizeSpinBox->setValue( QgsSettingsRegistryCore::settingsDigitizingMarkerSizeMm.value() );
+  mMarkerSizeSpinBox->setClearValue( QgsSettingsRegistryCore::settingsDigitizingMarkerSizeMm.defaultValue() );
 
-  chkReuseLastValues->setChecked( mSettings->value( QStringLiteral( "/qgis/digitizing/reuseLastValues" ), false ).toBool() );
-  chkDisableAttributeValuesDlg->setChecked( mSettings->value( QStringLiteral( "/qgis/digitizing/disable_enter_attribute_values_dialog" ), false ).toBool() );
-  mValidateGeometries->setCurrentIndex( mSettings->value( QStringLiteral( "/qgis/digitizing/validate_geometries" ), 1 ).toInt() );
+  chkReuseLastValues->setChecked( QgsSettingsRegistryCore::settingsDigitizingReuseLastValues.value() );
+  chkDisableAttributeValuesDlg->setChecked( QgsSettingsRegistryCore::settingsDigitizingDisableEnterAttributeValuesDialog.value() );
+  mValidateGeometries->setCurrentIndex( QgsSettingsRegistryCore::settingsDigitizingValidateGeometries.value() );
 
   mSnappingMainDialogComboBox->clear();
   mSnappingMainDialogComboBox->addItem( tr( "Dialog" ), "dialog" );
   mSnappingMainDialogComboBox->addItem( tr( "Dock" ), "dock" );
   mSnappingMainDialogComboBox->setCurrentIndex( mSnappingMainDialogComboBox->findData( mSettings->value( QStringLiteral( "/qgis/mainSnappingWidgetMode" ), "dialog" ).toString() ) );
 
-  mOffsetJoinStyleComboBox->addItem( tr( "Round" ), QgsGeometry::JoinStyleRound );
-  mOffsetJoinStyleComboBox->addItem( tr( "Miter" ), QgsGeometry::JoinStyleMiter );
-  mOffsetJoinStyleComboBox->addItem( tr( "Bevel" ), QgsGeometry::JoinStyleBevel );
-  QgsGeometry::JoinStyle joinStyleSetting = mSettings->enumValue( QStringLiteral( "/qgis/digitizing/offset_join_style" ), QgsGeometry::JoinStyleRound );
-  mOffsetJoinStyleComboBox->setCurrentIndex( mOffsetJoinStyleComboBox->findData( joinStyleSetting ) );
-  mOffsetQuadSegSpinBox->setValue( mSettings->value( QStringLiteral( "/qgis/digitizing/offset_quad_seg" ), 8 ).toInt() );
-  mOffsetQuadSegSpinBox->setClearValue( 8 );
-  mCurveOffsetMiterLimitComboBox->setValue( mSettings->value( QStringLiteral( "/qgis/digitizing/offset_miter_limit" ), 5.0 ).toDouble() );
-  mCurveOffsetMiterLimitComboBox->setClearValue( 5.0 );
+  mOffsetJoinStyleComboBox->addItem( tr( "Round" ), static_cast< int >( Qgis::JoinStyle::Round ) );
+  mOffsetJoinStyleComboBox->addItem( tr( "Miter" ), static_cast< int >( Qgis::JoinStyle::Miter ) );
+  mOffsetJoinStyleComboBox->addItem( tr( "Bevel" ), static_cast< int >( Qgis::JoinStyle::Bevel ) );
+  Qgis::JoinStyle joinStyleSetting = QgsSettingsRegistryCore::settingsDigitizingOffsetJoinStyle.value();
+  mOffsetJoinStyleComboBox->setCurrentIndex( mOffsetJoinStyleComboBox->findData( static_cast< int >( joinStyleSetting ) ) );
+  mOffsetQuadSegSpinBox->setValue( QgsSettingsRegistryCore::settingsDigitizingOffsetQuadSeg.value() );
+  mOffsetQuadSegSpinBox->setClearValue( QgsSettingsRegistryCore::settingsDigitizingOffsetQuadSeg.defaultValue() );
+  mCurveOffsetMiterLimitComboBox->setValue( QgsSettingsRegistryCore::settingsDigitizingOffsetMiterLimit.value() );
+  mCurveOffsetMiterLimitComboBox->setClearValue( QgsSettingsRegistryCore::settingsDigitizingOffsetMiterLimit.defaultValue() );
 
-  mTracingConvertToCurveCheckBox->setChecked( mSettings->value( QStringLiteral( "/qgis/digitizing/convert_to_curve" ), false ).toBool() );
-  mTracingCustomAngleToleranceSpinBox->setValue( mSettings->value( QStringLiteral( "/qgis/digitizing/convert_to_curve_angle_tolerance" ), 1e-6 ).toDouble() );
-  mTracingCustomAngleToleranceSpinBox->setClearValue( 1e-6 );
-  mTracingCustomDistanceToleranceSpinBox->setValue( mSettings->value( QStringLiteral( "/qgis/digitizing/convert_to_curve_distance_tolerance" ), 1e-6 ).toDouble() );
-  mTracingCustomDistanceToleranceSpinBox->setClearValue( 1e-6 );
+  mTracingConvertToCurveCheckBox->setChecked( QgsSettingsRegistryCore::settingsDigitizingConvertToCurve.value() );
+  mTracingCustomAngleToleranceSpinBox->setValue( QgsSettingsRegistryCore::settingsDigitizingConvertToCurveAngleTolerance.value() );
+  mTracingCustomAngleToleranceSpinBox->setClearValue( QgsSettingsRegistryCore::settingsDigitizingConvertToCurveAngleTolerance.defaultValue() );
+  mTracingCustomDistanceToleranceSpinBox->setValue( QgsSettingsRegistryCore::settingsDigitizingConvertToCurveDistanceTolerance.value() );
+  mTracingCustomDistanceToleranceSpinBox->setClearValue( QgsSettingsRegistryCore::settingsDigitizingConvertToCurveDistanceTolerance.defaultValue() );
 
   // load gdal driver list only when gdal tab is first opened
   mLoadedGdalDriverList = false;
@@ -1185,21 +1276,18 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   // ensure advanced factory is always last
   QgsAdvancedSettingsOptionsFactory advancedFactory;
   factories << &advancedFactory;
-  for ( QgsOptionsWidgetFactory *factory : qgis::as_const( factories ) )
+  for ( QgsOptionsWidgetFactory *factory : std::as_const( factories ) )
   {
-    QListWidgetItem *item = new QListWidgetItem();
-    item->setIcon( factory->icon() );
-    item->setText( factory->title() );
-    item->setToolTip( factory->title() );
-
-    mOptionsListWidget->addItem( item );
-
     QgsOptionsPageWidget *page = factory->createWidget( this );
     if ( !page )
       continue;
 
     mAdditionalOptionWidgets << page;
-    mOptionsStackedWidget->addWidget( page );
+    const QString beforePage = factory->pagePositionHint();
+    if ( beforePage.isEmpty() )
+      addPage( factory->title(), factory->title(), factory->icon(), page, factory->path() );
+    else
+      insertPage( factory->title(), factory->title(), factory->icon(), page, beforePage, factory->path() );
 
     if ( QgsAdvancedSettingsWidget *advancedPage = qobject_cast< QgsAdvancedSettingsWidget * >( page ) )
     {
@@ -1234,7 +1322,7 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
         {
           mGPUInfoTextBrowser->setText( QgsOpenClUtils::deviceDescription( mOpenClDevicesCombo->currentData().toString() ) );
         };
-        connect( mOpenClDevicesCombo, qgis::overload< int >::of( &QComboBox::currentIndexChanged ), infoUpdater );
+        connect( mOpenClDevicesCombo, qOverload< int >( &QComboBox::currentIndexChanged ), infoUpdater );
         mOpenClDevicesCombo->setCurrentIndex( mOpenClDevicesCombo->findData( QgsOpenClUtils::deviceId( QgsOpenClUtils::activeDevice() ) ) );
         infoUpdater( -1 );
         mOpenClContainerWidget->show();
@@ -1282,7 +1370,9 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   connect( mRestoreDefaultWindowStateBtn, &QAbstractButton::clicked, this, &QgsOptions::restoreDefaultWindowState );
 
   mBearingFormat.reset( QgsLocalDefaultSettings::bearingFormat() );
+  mCoordinateFormat.reset( QgsLocalDefaultSettings::geographicCoordinateFormat() );
   connect( mCustomizeBearingFormatButton, &QPushButton::clicked, this, &QgsOptions::customizeBearingFormat );
+  connect( mCustomizeCoordinateFormatButton, &QPushButton::clicked, this, &QgsOptions::customizeCoordinateFormat );
 
   restoreOptionsBaseUi();
 
@@ -1299,33 +1389,58 @@ QgsOptions::~QgsOptions()
 
 void QgsOptions::checkPageWidgetNameMap()
 {
-  const QMap< QString, int > pageNames = QgisApp::instance()->optionsPagesMap();
+  const QMap< QString, QString > pageNames = QgisApp::instance()->optionsPagesMap();
 
-  Q_ASSERT_X( pageNames.count() == mOptionsListWidget->count(), "QgsOptions::checkPageWidgetNameMap()", "QgisApp::optionsPagesMap() is outdated, contains too many entries" );
-  for ( int idx = 0; idx < mOptionsListWidget->count(); ++idx )
+  std::function<void( const QModelIndex & )> traverseModel;
+
+  // traverse through the model, collecting all entries which correspond to pages
+  QStringList pageTitles;
+  traverseModel = [&]( const QModelIndex & parent )
   {
-    QWidget *currentPage = mOptionsStackedWidget->widget( idx );
-    QListWidgetItem *item = mOptionsListWidget->item( idx );
-    if ( currentPage && item )
+    for ( int row = 0; row < mTreeModel->rowCount( parent ); ++row )
     {
-      const QString title = item->text();
-      Q_ASSERT_X( pageNames.contains( title ), "QgsOptions::checkPageWidgetNameMap()", QStringLiteral( "QgisApp::optionsPagesMap() is outdated, please update. Missing %1" ).arg( title ).toLocal8Bit().constData() );
-      Q_ASSERT_X( pageNames.value( title ) == idx, "QgsOptions::checkPageWidgetNameMap()", QStringLiteral( "QgisApp::optionsPagesMap() is outdated, please update. %1 should be %2 not %3" ).arg( title ).arg( idx ).arg( pageNames.value( title ) ).toLocal8Bit().constData() );
+      const QModelIndex currentIndex = mTreeModel->index( row, 0, parent );
+
+      if ( mTreeModel->itemFromIndex( currentIndex )->isSelectable() )
+        pageTitles << currentIndex.data().toString();
+
+      traverseModel( currentIndex );
     }
+  };
+  traverseModel( QModelIndex() );
+  Q_ASSERT_X( pageNames.count() == pageTitles.count(), "QgsOptions::checkPageWidgetNameMap()", "QgisApp::optionsPagesMap() is outdated, contains too many entries" );
+
+  int page = 0;
+  for ( const QString &pageTitle : std::as_const( pageTitles ) )
+  {
+    QWidget *currentPage = mOptionsStackedWidget->widget( page );
+    Q_ASSERT_X( pageNames.contains( pageTitle ), "QgsOptions::checkPageWidgetNameMap()", QStringLiteral( "QgisApp::optionsPagesMap() is outdated, please update. Missing %1" ).arg( pageTitle ).toLocal8Bit().constData() );
+    Q_ASSERT_X( pageNames.value( pageTitle ) == currentPage->objectName() || pageNames.value( pageTitle ) == pageTitle, "QgsOptions::checkPageWidgetNameMap()", QStringLiteral( "QgisApp::optionsPagesMap() is outdated, please update. %1 should be %2 or %1 not %3" ).arg( pageTitle ).arg( currentPage->objectName() ).arg( pageNames.value( pageTitle ) ).toLocal8Bit().constData() );
+
+    page++;
   }
 }
 
 void QgsOptions::setCurrentPage( const QString &pageWidgetName )
 {
   //find the page with a matching widget name
-  for ( int idx = 0; idx < mOptionsStackedWidget->count(); ++idx )
+  for ( int page = 0; page < mOptionsStackedWidget->count(); ++page )
   {
-    QWidget *currentPage = mOptionsStackedWidget->widget( idx );
+    QWidget *currentPage = mOptionsStackedWidget->widget( page );
     if ( currentPage->objectName() == pageWidgetName )
     {
       //found the page, set it as current
-      mOptionsStackedWidget->setCurrentIndex( idx );
+      mOptionsStackedWidget->setCurrentIndex( page );
       return;
+    }
+    else if ( mTreeProxyModel )
+    {
+      const QModelIndex sourceIndex = mTreeProxyModel->pageNumberToSourceIndex( page );
+      if ( sourceIndex.data().toString() == pageWidgetName || sourceIndex.data( Qt::UserRole + 1 ).toString() == pageWidgetName )
+      {
+        mOptionsStackedWidget->setCurrentIndex( page );
+        return;
+      }
     }
   }
 }
@@ -1430,6 +1545,15 @@ void QgsOptions::selectProjectOnLaunch()
 
 void QgsOptions::saveOptions()
 {
+  for ( QgsOptionsPageWidget *widget : std::as_const( mAdditionalOptionWidgets ) )
+  {
+    if ( !widget->isValid() )
+    {
+      setCurrentPage( widget->objectName() );
+      return;
+    }
+  }
+
   QgsSettings settings;
 
   mSettings->setValue( QStringLiteral( "UI/UITheme" ), cmbUITheme->currentText() );
@@ -1465,14 +1589,14 @@ void QgsOptions::saveOptions()
   {
     pathsList << mListSVGPaths->item( i )->text();
   }
-  mSettings->setValue( QStringLiteral( "svg/searchPathsForSVG" ), pathsList );
+  QgsApplication::setSvgPaths( pathsList );
 
   pathsList.clear();
   for ( int i = 0; i < mListComposerTemplatePaths->count(); ++i )
   {
     pathsList << mListComposerTemplatePaths->item( i )->text();
   }
-  mSettings->setValue( QStringLiteral( "Layout/searchPathsForTemplates" ), pathsList, QgsSettings::Core );
+  QgsLayout::settingsSearchPathForTemplates.setValue( pathsList );
 
   pathsList.clear();
   for ( int r = 0; r < mLocalizedDataPathListWidget->count(); r++ )
@@ -1550,6 +1674,7 @@ void QgsOptions::saveOptions()
 
   bool showLegendClassifiers = mSettings->value( QStringLiteral( "/qgis/showLegendClassifiers" ), false ).toBool();
   mSettings->setValue( QStringLiteral( "/qgis/showLegendClassifiers" ), cbxLegendClassifiers->isChecked() );
+  QgsSettingsRegistryCore::settingsLayerTreeShowFeatureCountForNewLayers.setValue( mShowFeatureCountByDefaultCheckBox->isChecked() );
   mSettings->setValue( QStringLiteral( "/qgis/hideSplash" ), cbxHideSplash->isChecked() );
   mSettings->setValue( QStringLiteral( "%1/disabled" ).arg( QgsNewsFeedParser::keyForFeed( QgsWelcomePage::newsFeedUrl() ) ), !cbxShowNews->isChecked(), QgsSettings::Core );
 
@@ -1559,15 +1684,15 @@ void QgsOptions::saveOptions()
   mSettings->setEnumValue( QStringLiteral( "/qgis/attributeTableBehavior" ), ( QgsAttributeTableFilterModel::FilterMode )cmbAttrTableBehavior->currentData().toInt() );
   mSettings->setValue( QStringLiteral( "/qgis/attributeTableView" ), mAttrTableViewComboBox->currentData() );
   mSettings->setValue( QStringLiteral( "/qgis/attributeTableRowCache" ), spinBoxAttrTableRowCache->value() );
-  mSettings->setEnumValue( QStringLiteral( "/qgis/promptForSublayers" ), ( QgsSublayersDialog::PromptMode )cmbPromptSublayers->currentData().toInt() );
+  mSettings->setEnumValue( QStringLiteral( "/qgis/promptForSublayers" ), static_cast< Qgis::SublayerPromptMode >( cmbPromptSublayers->currentData().toInt() ) );
 
   mSettings->setValue( QStringLiteral( "/qgis/scanItemsInBrowser2" ),
                        cmbScanItemsInBrowser->currentData().toString() );
   mSettings->setValue( QStringLiteral( "/qgis/scanZipInBrowser2" ),
                        cmbScanZipInBrowser->currentData().toString() );
-  mSettings->setValue( QStringLiteral( "/qgis/mainSnappingWidgetMode" ), mSnappingMainDialogComboBox->currentData() );
+  mSettings->setValue( QStringLiteral( "/qgis/monitorDirectoriesInBrowser" ), mCheckMonitorDirectories->isChecked() );
 
-  mSettings->setValue( QStringLiteral( "/qgis/compileExpressions" ), cbxCompileExpressions->isChecked() );
+  mSettings->setValue( QStringLiteral( "/qgis/mainSnappingWidgetMode" ), mSnappingMainDialogComboBox->currentData() );
 
   mSettings->setValue( QStringLiteral( "/qgis/legendsymbolMinimumSize" ), mLegendSymbolMinimumSizeSpinBox->value() );
   mSettings->setValue( QStringLiteral( "/qgis/legendsymbolMaximumSize" ), mLegendSymbolMaximumSizeSpinBox->value() );
@@ -1576,6 +1701,8 @@ void QgsOptions::saveOptions()
 
   mSettings->setValue( QStringLiteral( "/qgis/defaultLegendGraphicResolution" ), mLegendGraphicResolutionSpinBox->value() );
   mSettings->setValue( QStringLiteral( "/qgis/mapTipsDelay" ), mMapTipsDelaySpinBox->value() );
+  QgsSettingsRegistryGui::settingsRespectScreenDPI.setValue( mRespectScreenDpiCheckBox->isChecked() );
+
   mSettings->setEnumValue( QStringLiteral( "/qgis/copyFeatureFormat" ), ( QgsClipboard::CopyFormat )mComboCopyFeatureFormat->currentData().toInt() );
   QgisApp::instance()->setMapTipsDelay( mMapTipsDelaySpinBox->value() );
 
@@ -1632,7 +1759,10 @@ void QgsOptions::saveOptions()
   }
   mSettings->setEnumValue( QStringLiteral( "/qgis/enableMacros" ), mEnableMacrosComboBox->currentData().value<Qgis::PythonMacroMode>() );
 
-  mSettings->setEnumValue( QStringLiteral( "/qgis/defaultProjectFileFormat" ), mFileFormatQgsButton->isChecked() ? QgsProject::FileFormat::Qgs : QgsProject::FileFormat::Qgz );
+  mSettings->setValue( QStringLiteral( "/qgis/defaultProjectPathsRelative" ),
+                       static_cast< Qgis::FilePathType >( mDefaultPathsComboBox->currentData().toInt() ) == Qgis::FilePathType::Relative );
+
+  mSettings->setEnumValue( QStringLiteral( "/qgis/defaultProjectFileFormat" ), mFileFormatQgsButton->isChecked() ? Qgis::ProjectFileFormat::Qgs : Qgis::ProjectFileFormat::Qgz );
 
   QgsApplication::setNullRepresentation( leNullValue->text() );
   mSettings->setValue( QStringLiteral( "/qgis/style" ), cmbStyle->currentText() );
@@ -1666,7 +1796,7 @@ void QgsOptions::saveOptions()
   mSettings->setValue( QStringLiteral( "/Raster/cumulativeCutUpper" ), mRasterCumulativeCutUpperDoubleSpinBox->value() / 100.0 );
 
   // log rendering events, for userspace debugging
-  mSettings->setValue( QStringLiteral( "/Map/logCanvasRefreshEvent" ), mLogCanvasRefreshChkBx->isChecked() );
+  QgsMapRendererJob::settingsLogCanvasRefreshEvent.setValue( mLogCanvasRefreshChkBx->isChecked() );
 
   //check behavior so default projection when new layer is added with no
   //projection defined...
@@ -1691,6 +1821,8 @@ void QgsOptions::saveOptions()
   mSettings->setValue( QStringLiteral( "/projections/defaultProjectCrs" ), leProjectGlobalCrs->crs().authid(), QgsSettings::App );
   mSettings->setEnumValue( QStringLiteral( "/projections/newProjectCrsBehavior" ), radProjectUseCrsOfFirstLayer->isChecked() ? QgsGui::UseCrsOfFirstLayerAdded : QgsGui::UsePresetCrs, QgsSettings::App );
   mSettings->setValue( QStringLiteral( "/projections/promptWhenMultipleTransformsExist" ), mShowDatumTransformDialogCheckBox->isChecked(), QgsSettings::App );
+  mSettings->setValue( QStringLiteral( "/projections/crsAccuracyWarningThreshold" ), mCrsAccuracySpin->value(), QgsSettings::App );
+  mSettings->setValue( QStringLiteral( "/projections/crsAccuracyIndicator" ), mCrsAccuracyIndicatorCheck->isChecked(), QgsSettings::App );
 
   //measurement settings
   mSettings->setValue( QStringLiteral( "measure/planimetric" ), mPlanimetricMeasurementsComboBox->isChecked(), QgsSettings::Core );
@@ -1732,65 +1864,66 @@ void QgsOptions::saveOptions()
   mSettings->setValue( QStringLiteral( "/qgis/zoom_factor" ), zoomFactorValue() );
 
   //digitizing
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/line_width" ), mLineWidthSpinBox->value() );
+  QgsSettingsRegistryCore::settingsDigitizingLineWidth.setValue( mLineWidthSpinBox->value() );
   QColor digitizingColor = mLineColorToolButton->color();
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/line_color_red" ), digitizingColor.red() );
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/line_color_green" ), digitizingColor.green() );
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/line_color_blue" ), digitizingColor.blue() );
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/line_color_alpha" ), digitizingColor.alpha() );
+  QgsSettingsRegistryCore::settingsDigitizingLineColorRed.setValue( digitizingColor.red() );
+  QgsSettingsRegistryCore::settingsDigitizingLineColorGreen.setValue( digitizingColor.green() );
+  QgsSettingsRegistryCore::settingsDigitizingLineColorBlue.setValue( digitizingColor.blue() );
+  QgsSettingsRegistryCore::settingsDigitizingLineColorAlpha.setValue( digitizingColor.alpha() );
 
   digitizingColor = mFillColorToolButton->color();
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/fill_color_red" ), digitizingColor.red() );
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/fill_color_green" ), digitizingColor.green() );
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/fill_color_blue" ), digitizingColor.blue() );
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/fill_color_alpha" ), digitizingColor.alpha() );
+  QgsSettingsRegistryCore::settingsDigitizingFillColorRed.setValue( digitizingColor.red() );
+  QgsSettingsRegistryCore::settingsDigitizingFillColorGreen.setValue( digitizingColor.green() );
+  QgsSettingsRegistryCore::settingsDigitizingFillColorBlue.setValue( digitizingColor.blue() );
+  QgsSettingsRegistryCore::settingsDigitizingFillColorAlpha.setValue( digitizingColor.alpha() );
 
-  settings.setValue( QStringLiteral( "/qgis/digitizing/line_ghost" ), mLineGhostCheckBox->isChecked() );
+  QgsSettingsRegistryCore::settingsDigitizingLineGhost.setValue( mLineGhostCheckBox->isChecked() );
 
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/default_z_value" ), mDefaultZValueSpinBox->value() );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue.setValue( mDefaultZValueSpinBox->value() );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultMValue.setValue( mDefaultMValueSpinBox->value() );
 
   //default snap mode
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/default_snap_enabled" ), mSnappingEnabledDefault->isChecked() );
-  mSettings->setFlagValue( QStringLiteral( "/qgis/digitizing/default_snap_type" ), static_cast<QgsSnappingConfig::SnappingTypeFlag>( mDefaultSnapModeComboBox->currentData().toInt() ) );
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/default_snapping_tolerance" ), mDefaultSnappingToleranceSpinBox->value() );
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/search_radius_vertex_edit" ), mSearchRadiusVertexEditSpinBox->value() );
-  mSettings->setEnumValue( QStringLiteral( "/qgis/digitizing/default_snapping_tolerance_unit" ),
-                           ( mDefaultSnappingToleranceComboBox->currentIndex() == 0 ? QgsTolerance::ProjectUnits : QgsTolerance::Pixels ) );
-  mSettings->setEnumValue( QStringLiteral( "/qgis/digitizing/search_radius_vertex_edit_unit" ),
-                           ( mSearchRadiusVertexEditComboBox->currentIndex()  == 0 ? QgsTolerance::ProjectUnits : QgsTolerance::Pixels ) );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultSnapEnabled.setValue( mSnappingEnabledDefault->isChecked() );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultSnapType.setValue( static_cast<Qgis::SnappingType>( mDefaultSnapTypeComboBox->currentData().toInt() ) );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultSnappingTolerance.setValue( mDefaultSnappingToleranceSpinBox->value() );
+  QgsSettingsRegistryCore::settingsDigitizingSearchRadiusVertexEdit.setValue( mSearchRadiusVertexEditSpinBox->value() );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultSnappingToleranceUnit.setValue(
+    ( mDefaultSnappingToleranceComboBox->currentIndex() == 0 ? QgsTolerance::ProjectUnits : QgsTolerance::Pixels ) );
+  QgsSettingsRegistryCore::settingsDigitizingSearchRadiusVertexEditUnit.setValue(
+    ( mSearchRadiusVertexEditComboBox->currentIndex()  == 0 ? QgsTolerance::ProjectUnits : QgsTolerance::Pixels ) );
 
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/snap_color" ), mSnappingMarkerColorButton->color() );
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/snap_tooltip" ), mSnappingTooltipsCheckbox->isChecked() );
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/snap_invisible_feature" ), mEnableSnappingOnInvisibleFeatureCheckbox->isChecked() );
+  QgsSettingsRegistryCore::settingsDigitizingSnapColor.setValue( mSnappingMarkerColorButton->color() );
+  QgsSettingsRegistryCore::settingsDigitizingSnapTooltip.setValue( mSnappingTooltipsCheckbox->isChecked() );
+  QgsSettingsRegistryCore::settingsDigitizingSnapInvisibleFeature.setValue( mEnableSnappingOnInvisibleFeatureCheckbox->isChecked() );
 
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/marker_only_for_selected" ), mMarkersOnlyForSelectedCheckBox->isChecked() );
+  QgsSettingsRegistryCore::settingsDigitizingMarkerOnlyForSelected.setValue( mMarkersOnlyForSelectedCheckBox->isChecked() );
 
   QString markerComboText = mMarkerStyleComboBox->currentText();
   if ( markerComboText == tr( "Semi Transparent Circle" ) )
   {
-    mSettings->setValue( QStringLiteral( "/qgis/digitizing/marker_style" ), "SemiTransparentCircle" );
+    QgsSettingsRegistryCore::settingsDigitizingMarkerStyle.setValue( QStringLiteral( "SemiTransparentCircle" ) );
   }
   else if ( markerComboText == tr( "Cross" ) )
   {
-    mSettings->setValue( QStringLiteral( "/qgis/digitizing/marker_style" ), "Cross" );
+    QgsSettingsRegistryCore::settingsDigitizingMarkerStyle.setValue( QStringLiteral( "Cross" ) );
   }
   else if ( markerComboText == tr( "None" ) )
   {
-    mSettings->setValue( QStringLiteral( "/qgis/digitizing/marker_style" ), "None" );
+    QgsSettingsRegistryCore::settingsDigitizingMarkerStyle.setValue( QStringLiteral( "None" ) );
   }
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/marker_size_mm" ), ( mMarkerSizeSpinBox->value() ) );
+  QgsSettingsRegistryCore::settingsDigitizingMarkerSizeMm.setValue( mMarkerSizeSpinBox->value() );
 
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/reuseLastValues" ), chkReuseLastValues->isChecked() );
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/disable_enter_attribute_values_dialog" ), chkDisableAttributeValuesDlg->isChecked() );
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/validate_geometries" ), mValidateGeometries->currentIndex() );
+  QgsSettingsRegistryCore::settingsDigitizingReuseLastValues.setValue( chkReuseLastValues->isChecked() );
+  QgsSettingsRegistryCore::settingsDigitizingDisableEnterAttributeValuesDialog.setValue( chkDisableAttributeValuesDlg->isChecked() );
+  QgsSettingsRegistryCore::settingsDigitizingValidateGeometries.setValue( mValidateGeometries->currentIndex() );
 
-  mSettings->setEnumValue( QStringLiteral( "/qgis/digitizing/offset_join_style" ), mOffsetJoinStyleComboBox->currentData().value<QgsGeometry::JoinStyle>() );
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/offset_quad_seg" ), mOffsetQuadSegSpinBox->value() );
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/offset_miter_limit" ), mCurveOffsetMiterLimitComboBox->value() );
+  QgsSettingsRegistryCore::settingsDigitizingOffsetJoinStyle.setValue( mOffsetJoinStyleComboBox->currentData().value<Qgis::JoinStyle>() );
+  QgsSettingsRegistryCore::settingsDigitizingOffsetQuadSeg.setValue( mOffsetQuadSegSpinBox->value() );
+  QgsSettingsRegistryCore::settingsDigitizingOffsetMiterLimit.setValue( mCurveOffsetMiterLimitComboBox->value() );
 
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/convert_to_curve" ), mTracingConvertToCurveCheckBox->isChecked() );
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/convert_to_curve_angle_tolerance" ), mTracingCustomAngleToleranceSpinBox->value() );
-  mSettings->setValue( QStringLiteral( "/qgis/digitizing/convert_to_curve_distance_tolerance" ), mTracingCustomDistanceToleranceSpinBox->value() );
+  QgsSettingsRegistryCore::settingsDigitizingConvertToCurve.setValue( mTracingConvertToCurveCheckBox->isChecked() );
+  QgsSettingsRegistryCore::settingsDigitizingConvertToCurveAngleTolerance.setValue( mTracingCustomAngleToleranceSpinBox->value() );
+  QgsSettingsRegistryCore::settingsDigitizingConvertToCurveDistanceTolerance.setValue( mTracingCustomDistanceToleranceSpinBox->value() );
 
   // default scale list
   QString myPaths;
@@ -1849,14 +1982,15 @@ void QgsOptions::saveOptions()
   //
   // Locale settings
   //
-  mSettings->setValue( QStringLiteral( "locale/userLocale" ), cboTranslation->currentData().toString() );
-  mSettings->setValue( QStringLiteral( "locale/overrideFlag" ), grpLocale->isChecked() );
-  mSettings->setValue( QStringLiteral( "locale/globalLocale" ), cboGlobalLocale->currentData( ).toString() );
+  QgsApplication::settingsLocaleUserLocale.setValue( cboTranslation->currentData().toString() );
+  QgsApplication::settingsLocaleOverrideFlag.setValue( grpLocale->isChecked() );
+  QgsApplication::settingsLocaleGlobalLocale.setValue( cboGlobalLocale->currentData( ).toString() );
 
   // Number settings
-  mSettings->setValue( QStringLiteral( "locale/showGroupSeparator" ), cbShowGroupSeparator->isChecked( ) );
+  QgsApplication::settingsLocaleShowGroupSeparator.setValue( cbShowGroupSeparator->isChecked( ) );
 
   QgsLocalDefaultSettings::setBearingFormat( mBearingFormat.get() );
+  QgsLocalDefaultSettings::setGeographicCoordinateFormat( mCoordinateFormat.get() );
 
 #ifdef HAVE_OPENCL
   // OpenCL settings
@@ -1890,8 +2024,7 @@ void QgsOptions::saveOptions()
 
   mLocatorOptionsWidget->commitChanges();
 
-  const auto constMAdditionalOptionWidgets = mAdditionalOptionWidgets;
-  for ( QgsOptionsPageWidget *widget : constMAdditionalOptionWidgets )
+  for ( QgsOptionsPageWidget *widget : std::as_const( mAdditionalOptionWidgets ) )
   {
     widget->apply();
   }
@@ -2052,6 +2185,7 @@ void QgsOptions::addCustomEnvVarRow( const QString &varName, const QString &varV
   varApplyCmbBx->addItem( tr( "Unset" ), QVariant( "unset" ) );
   varApplyCmbBx->addItem( tr( "Prepend" ), QVariant( "prepend" ) );
   varApplyCmbBx->addItem( tr( "Append" ), QVariant( "append" ) );
+  varApplyCmbBx->addItem( tr( "Skip" ), QVariant( "skip" ) );
   varApplyCmbBx->setCurrentIndex( varApply.isEmpty() ? 0 : varApplyCmbBx->findData( QVariant( varApply ) ) );
 
   QFont cbf = varApplyCmbBx->font();
@@ -2115,7 +2249,7 @@ void QgsOptions::addPluginPath()
                     this,
                     tr( "Choose a directory" ),
                     QDir::toNativeSeparators( QDir::homePath() ),
-                    QFileDialog::ShowDirsOnly
+                    QFileDialog::Options()
                   );
 
   if ( ! myDir.isEmpty() )
@@ -2195,7 +2329,7 @@ void QgsOptions::addTemplatePath()
                     this,
                     tr( "Choose a directory" ),
                     QDir::toNativeSeparators( QDir::homePath() ),
-                    QFileDialog::ShowDirsOnly
+                    QFileDialog::Options()
                   );
 
   if ( ! myDir.isEmpty() )
@@ -2222,7 +2356,7 @@ void QgsOptions::addSVGPath()
                     this,
                     tr( "Choose a directory" ),
                     QDir::toNativeSeparators( QDir::homePath() ),
-                    QFileDialog::ShowDirsOnly
+                    QFileDialog::Options()
                   );
 
   if ( ! myDir.isEmpty() )
@@ -2271,7 +2405,7 @@ void QgsOptions::browseCacheDirectory()
                     this,
                     tr( "Choose a directory" ),
                     QDir::toNativeSeparators( mCacheDirectory->text() ),
-                    QFileDialog::ShowDirsOnly
+                    QFileDialog::Options()
                   );
 
   if ( !myDir.isEmpty() )
@@ -2350,7 +2484,7 @@ void QgsOptions::loadGdalDriverList()
       driversType[myGdalDriverDescription] = QgsMapLayerType::VectorLayer;
     }
 
-    QgsDebugMsg( QStringLiteral( "driver #%1 - %2" ).arg( i ).arg( myGdalDriverDescription ) );
+    QgsDebugMsgLevel( QStringLiteral( "driver #%1 - %2" ).arg( i ).arg( myGdalDriverDescription ), 2 );
 
     // get driver R/W flags, adopted from GDALGeneralCmdLineProcessor()
     QString driverFlags = "";
@@ -2400,11 +2534,11 @@ void QgsOptions::loadGdalDriverList()
   // sort list case insensitive - no existing function for this!
   QMap<QString, QString> strMap;
 
-  for ( const QString &str : qgis::as_const( myDrivers ) )
+  for ( const QString &str : std::as_const( myDrivers ) )
     strMap.insert( str.toLower(), str );
   myDrivers = strMap.values();
 
-  for ( const QString &myName : qgis::as_const( myDrivers ) )
+  for ( const QString &myName : std::as_const( myDrivers ) )
   {
     QTreeWidgetItem *mypItem = new QTreeWidgetItem( QStringList( myName ) );
     if ( mySkippedDrivers.contains( myName ) )
@@ -2443,13 +2577,13 @@ void QgsOptions::loadGdalDriverList()
 
   // populate cmbEditCreateOptions with gdal write drivers - sorted, GTiff first
   strMap.clear();
-  for ( const QString &str : qgis::as_const( myGdalWriteDrivers ) )
+  for ( const QString &str : std::as_const( myGdalWriteDrivers ) )
     strMap.insert( str.toLower(), str );
   myGdalWriteDrivers = strMap.values();
   myGdalWriteDrivers.removeAll( QStringLiteral( "Gtiff" ) );
   myGdalWriteDrivers.prepend( QStringLiteral( "GTiff" ) );
   cmbEditCreateOptions->clear();
-  for ( const QString &myName : qgis::as_const( myGdalWriteDrivers ) )
+  for ( const QString &myName : std::as_const( myGdalWriteDrivers ) )
   {
     cmbEditCreateOptions->addItem( myName );
   }
@@ -2664,7 +2798,7 @@ void QgsOptions::addLocalizedDataPath()
                     this,
                     tr( "Choose a Directory" ),
                     QDir::homePath(),
-                    QFileDialog::ShowDirsOnly
+                    QFileDialog::Options()
                   );
 
   if ( ! myDir.isEmpty() )
@@ -2820,7 +2954,7 @@ double QgsOptions::zoomFactorValue()
 void QgsOptions::setZoomFactorValue()
 {
   // Set the percent value for zoom factor spin box. This function is for converting the decimal zoom factor value in the qgis setting to the percent zoom factor value.
-  if ( mSettings->value( QStringLiteral( "/qgis/zoom_factor" ), 2 ) <= 1.01 )
+  if ( mSettings->value( QStringLiteral( "/qgis/zoom_factor" ), 2 ).toDouble() <= 1.01 )
   {
     spinZoomFactor->setValue( spinZoomFactor->minimum() );
   }
@@ -2837,7 +2971,7 @@ void QgsOptions::showHelp()
   QString link;
 
   // give first priority to created pages which have specified a help key
-  for ( const QgsOptionsPageWidget *widget : qgis::as_const( mAdditionalOptionWidgets ) )
+  for ( const QgsOptionsPageWidget *widget : std::as_const( mAdditionalOptionWidgets ) )
   {
     if ( widget == activeTab )
     {
@@ -2873,5 +3007,15 @@ void QgsOptions::customizeBearingFormat()
   if ( dlg.exec() )
   {
     mBearingFormat.reset( dlg.format() );
+  }
+}
+
+void QgsOptions::customizeCoordinateFormat()
+{
+  QgsGeographicCoordinateNumericFormatDialog dlg( mCoordinateFormat.get(), false, this );
+  dlg.setWindowTitle( tr( "Coordinate Format" ) );
+  if ( dlg.exec() )
+  {
+    mCoordinateFormat.reset( dlg.format() );
   }
 }

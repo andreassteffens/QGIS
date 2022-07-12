@@ -17,12 +17,14 @@
 
 #include <QMainWindow>
 
-#include "qgsdataitem.h"
+#include "qgsconnectionsitem.h"
+#include "qgsdatacollectionitem.h"
 #include "qgsdataitemprovider.h"
+#include "qgsdatabaseschemaitem.h"
+#include "qgslayeritem.h"
 
 #include "qgspostgresconn.h"
 #include "qgsmimedatautils.h"
-#include "qgsvectorlayerexporter.h"
 #include "qgswkbtypes.h"
 
 class QgsPGRootItem;
@@ -40,8 +42,6 @@ class QgsPGRootItem : public QgsConnectionsRootItem
 
     QVariant sortKey() const override { return 3; }
 
-    static QMainWindow *sMainWindow;
-
   public slots:
     void onConnectionsChanged();
 };
@@ -55,6 +55,7 @@ class QgsPGConnectionItem : public QgsDataCollectionItem
     QVector<QgsDataItem *> createChildren() override;
     bool equal( const QgsDataItem *other ) override;
 
+    using QgsDataCollectionItem::handleDrop;
     bool handleDrop( const QMimeData *data, const QString &toSchema );
 
   signals:
@@ -92,7 +93,7 @@ class QgsPGLayerItem : public QgsLayerItem
     Q_OBJECT
 
   public:
-    QgsPGLayerItem( QgsDataItem *parent, const QString &name, const QString &path, QgsLayerItem::LayerType layerType, const QgsPostgresLayerProperty &layerProperties );
+    QgsPGLayerItem( QgsDataItem *parent, const QString &name, const QString &path, Qgis::BrowserLayerType layerType, const QgsPostgresLayerProperty &layerProperties );
 
     QString createUri();
 

@@ -158,7 +158,7 @@ void QgsTextDocument::splitLines( const QString &wrapCharacter, int autoWrapLeng
       {
         QStringList autoWrappedLines;
         autoWrappedLines.reserve( thisParts.count() );
-        for ( const QString &line : qgis::as_const( thisParts ) )
+        for ( const QString &line : std::as_const( thisParts ) )
         {
           autoWrappedLines.append( QgsStringUtils::wordWrap( line, autoWrapLength, useMaxLineLengthWhenAutoWrapping ).split( '\n' ) );
         }
@@ -187,7 +187,7 @@ void QgsTextDocument::splitLines( const QString &wrapCharacter, int autoWrapLeng
   }
 }
 
-void QgsTextDocument::applyCapitalization( QgsStringUtils::Capitalization capitalization )
+void QgsTextDocument::applyCapitalization( Qgis::Capitalization capitalization )
 {
   for ( QgsTextBlock &block : mBlocks )
   {

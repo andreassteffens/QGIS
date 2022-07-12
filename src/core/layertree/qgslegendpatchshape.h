@@ -19,7 +19,10 @@ email                : nyall dot dawson at gmail dot com
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgssymbol.h"
+#include "qgis.h"
+#include "qgsgeometry.h"
+
+class QgsReadWriteContext;
 
 /**
  * \ingroup core
@@ -50,7 +53,7 @@ class CORE_EXPORT QgsLegendPatchShape
      * If \a preserveAspectRatio is TRUE, then the patch shape should preserve its aspect ratio when
      * it is resized to fit a desired legend patch size.
      */
-    QgsLegendPatchShape( QgsSymbol::SymbolType type,
+    QgsLegendPatchShape( Qgis::SymbolType type,
                          const QgsGeometry &geometry,
                          bool preserveAspectRatio = true );
 
@@ -65,14 +68,14 @@ class CORE_EXPORT QgsLegendPatchShape
      *
      * \see setSymbolType()
      */
-    QgsSymbol::SymbolType symbolType() const;
+    Qgis::SymbolType symbolType() const;
 
     /**
      * Sets the symbol \a type associated with this patch.
      *
      * \see symbolType()
      */
-    void setSymbolType( QgsSymbol::SymbolType type );
+    void setSymbolType( Qgis::SymbolType type );
 
     /**
      * Returns the geometry for the patch shape.
@@ -120,11 +123,42 @@ class CORE_EXPORT QgsLegendPatchShape
     void setPreserveAspectRatio( bool preserve );
 
     /**
+     * Returns TRUE if the patch shape should by resized to the desired target size
+     * when rendering.
+     *
+     * Resizing to the target size is the default behavior.
+     *
+     * \see setScaleToOutputSize()
+     * \since QGIS 3.22
+     */
+    bool scaleToOutputSize() const;
+
+    /**
+     * Sets whether the patch shape should by resized to the desired target size
+     * when rendering.
+     *
+     * Resizing to the target size is the default behavior.
+     *
+     * \see scaleToOutputSize()
+     * \since QGIS 3.22
+     */
+    void setScaleToOutputSize( bool scale );
+
+    /**
+     * Returns the patch shape's geometry, scaled to the given size.
+     *
+     * Note that if scaleToOutputSize() is FALSE then no scaling will be applied.
+     *
+     * \since QGIS 3.22
+     */
+    QgsGeometry scaledGeometry( QSizeF size ) const;
+
+    /**
      * Converts the patch shape to a set of QPolygonF objects representing
      * how the patch should be drawn for a symbol of the given \a type at the specified \a size (as
      * geometry parts and rings).
      */
-    QList< QList< QPolygonF > > toQPolygonF( QgsSymbol::SymbolType type, QSizeF size ) const;
+    QList< QList< QPolygonF > > toQPolygonF( Qgis::SymbolType type, QSizeF size ) const;
 
     /**
      * Read settings from a DOM \a element.
@@ -139,9 +173,10 @@ class CORE_EXPORT QgsLegendPatchShape
     void writeXml( QDomElement &element, QDomDocument &doc, const QgsReadWriteContext &context ) const;
 
   private:
-    QgsSymbol::SymbolType mSymbolType = QgsSymbol::Fill;
+    Qgis::SymbolType mSymbolType = Qgis::SymbolType::Fill;
     QgsGeometry mGeometry;
     bool mPreserveAspectRatio = true;
+    bool mScaleToTargetSize = true;
 
 };
 

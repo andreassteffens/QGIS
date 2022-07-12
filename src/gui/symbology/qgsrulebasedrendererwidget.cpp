@@ -61,14 +61,16 @@ QgsRuleBasedRendererWidget::QgsRuleBasedRendererWidget( QgsVectorLayer *layer, Q
 
   if ( renderer )
   {
-    mRenderer.reset( QgsRuleBasedRenderer::convertFromRenderer( renderer ) );
+    mRenderer.reset( QgsRuleBasedRenderer::convertFromRenderer( renderer, layer ) );
   }
   if ( !mRenderer )
   {
     // some default options
     QgsSymbol *symbol = QgsSymbol::defaultSymbol( mLayer->geometryType() );
 
-    mRenderer = qgis::make_unique< QgsRuleBasedRenderer >( symbol );
+    mRenderer = std::make_unique< QgsRuleBasedRenderer >( symbol );
+    if ( renderer )
+      renderer->copyRendererData( mRenderer.get() );
   }
 
   setupUi( this );
@@ -353,7 +355,7 @@ void QgsRuleBasedRendererWidget::setSymbolLevels( const QList<QgsLegendSymbolIte
   if ( !mRenderer )
     return;
 
-  for ( const QgsLegendSymbolItem &legendSymbol : qgis::as_const( levels ) )
+  for ( const QgsLegendSymbolItem &legendSymbol : std::as_const( levels ) )
   {
     QgsSymbol *sym = legendSymbol.symbol();
     for ( int layer = 0; layer < sym->symbolLayerCount(); layer++ )
@@ -647,10 +649,10 @@ void QgsRuleBasedRendererWidget::countFeatures()
   req.setSubsetOfAttributes( mRenderer->usedAttributes( renderContext ), mLayer->fields() );
   QgsFeatureIterator fit = mLayer->getFeatures( req );
 
-  int nFeatures = mLayer->featureCount();
-  QProgressDialog p( tr( "Calculating feature count." ), tr( "Abort" ), 0, nFeatures );
+  long long nFeatures = mLayer->featureCount();
+  QProgressDialog p( tr( "Calculating feature count." ), tr( "Abort" ), 0, 100 );
   p.setWindowModality( Qt::WindowModal );
-  int featuresCounted = 0;
+  long long featuresCounted = 0;
 
   QgsFeature f;
   while ( fit.nextFeature( f ) )
@@ -680,7 +682,7 @@ void QgsRuleBasedRendererWidget::countFeatures()
       {
         p.setMaximum( 0 );
       }
-      p.setValue( featuresCounted );
+      p.setValue( static_cast< double >( featuresCounted ) / nFeatures * 100.0 );
       if ( p.wasCanceled() )
       {
         return;
@@ -789,7 +791,7 @@ QgsRendererRulePropsDialog::QgsRendererRulePropsDialog( QgsRuleBasedRenderer::Ru
   scrollArea->setWidget( mPropsWidget );
   layout->addWidget( buttonBox );
   this->setWindowTitle( "Edit Rule" );
-  QgsGui::instance()->enableAutoGeometryRestore( this );
+  QgsGui::enableAutoGeometryRestore( this );
 
   connect( buttonBox, &QDialogButtonBox::accepted, this, &QgsRendererRulePropsDialog::accept );
   connect( buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject );
@@ -1004,7 +1006,7 @@ QVariant QgsRuleBasedRendererModel::data( const QModelIndex &index, int role ) c
   }
   else if ( role == Qt::TextAlignmentRole )
   {
-    return ( index.column() == 2 || index.column() == 3 ) ? Qt::AlignRight : Qt::AlignLeft;
+    return ( index.column() == 2 || index.column() == 3 ) ? static_cast<Qt::Alignment::Int>( Qt::AlignRight ) : static_cast<Qt::Alignment::Int>( Qt::AlignLeft );
   }
   else if ( role == Qt::FontRole && index.column() == 1 )
   {

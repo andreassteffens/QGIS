@@ -42,7 +42,7 @@ QgsMaskingWidget::QgsMaskingWidget( QWidget *parent ) :
 void QgsMaskingWidget::onSelectionChanged()
 {
   // display message if configuration is not consistent
-  bool printMessage = mMaskTargetsWidget->selection().empty() != mMaskSourcesWidget->selection().empty();
+  const bool printMessage = mMaskTargetsWidget->selection().empty() != mMaskSourcesWidget->selection().empty();
 
   if ( mMessageBarItem && !printMessage )
   {
@@ -51,7 +51,7 @@ void QgsMaskingWidget::onSelectionChanged()
   }
   else if ( !mMessageBarItem && printMessage )
   {
-    mMessageBarItem = new QgsMessageBarItem( tr( "Select both sources and symbol layers or your configuration will be lost" ), Qgis::Warning, 0, this );
+    mMessageBarItem = new QgsMessageBarItem( tr( "Select both sources and symbol layers or your configuration will be lost" ), Qgis::MessageLevel::Warning, 0, this );
     mMessageBar->pushItem( mMessageBarItem );
   }
 
@@ -127,14 +127,14 @@ void QgsMaskingWidget::populate()
   QgsMaskSourceSelectionWidget::MaskSource source;
   for ( auto layerIt = layers.begin(); layerIt != layers.end(); layerIt++ )
   {
-    QString layerId = layerIt.key();
+    const QString layerId = layerIt.key();
     QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( layerIt.value() );
     if ( ! vl )
       continue;
 
     // collect symbol layer masks
-    QList<QPair<QgsSymbolLayerId, QList<QgsSymbolLayerReference>>> slMasks = symbolLayerMasks( vl );
-    for ( auto p : slMasks )
+    const QList<QPair<QgsSymbolLayerId, QList<QgsSymbolLayerReference>>> slMasks = symbolLayerMasks( vl );
+    for ( const QPair<QgsSymbolLayerId, QList<QgsSymbolLayerReference>> &p : slMasks )
     {
       const QgsSymbolLayerId &sourceSymbolLayerId = p.first;
       for ( const QgsSymbolLayerReference &ref : p.second )
@@ -153,7 +153,7 @@ void QgsMaskingWidget::populate()
     }
 
     // collect label masks
-    QHash<QString, QHash<QString, QSet<QgsSymbolLayerId>>> labelMasks = QgsVectorLayerUtils::labelMasks( vl );
+    QHash<QString, QgsMaskedLayers> labelMasks = QgsVectorLayerUtils::labelMasks( vl );
     for ( auto it = labelMasks.begin(); it != labelMasks.end(); it++ )
     {
       const QString &ruleKey = it.key();
@@ -162,7 +162,7 @@ void QgsMaskingWidget::populate()
         if ( it2.key() == mLayer->id() )
         {
           // merge with masked symbol layers
-          maskedSymbolLayers.unite( it2.value() );
+          maskedSymbolLayers.unite( it2.value().symbolLayerIds );
           // add the mask source
           source.layerId = layerId;
           source.isLabeling = true;
@@ -199,7 +199,7 @@ void QgsMaskingWidget::apply()
       {
         QgsMaskMarkerSymbolLayer *maskSl = const_cast<QgsMaskMarkerSymbolLayer *>( static_cast<const QgsMaskMarkerSymbolLayer *>( sl ) );
 
-        QgsSymbolLayerReferenceList masks = maskSl->masks();
+        const QgsSymbolLayerReferenceList masks = maskSl->masks();
         QgsSymbolLayerReferenceList newMasks;
         for ( const QgsSymbolLayerReference &ref : masks )
         {
@@ -230,14 +230,14 @@ void QgsMaskingWidget::apply()
     // Now reset label masks
     if ( ! vl->labeling() )
       continue;
-    for ( QString labelProvider : vl->labeling()->subProviders() )
+    for ( const QString &labelProvider : vl->labeling()->subProviders() )
     {
       // clear symbol layers
       QgsPalLayerSettings settings = vl->labeling()->settings( labelProvider );
       QgsTextFormat format = settings.format();
       if ( ! format.mask().enabled() )
         continue;
-      QgsSymbolLayerReferenceList masks = format.mask().maskedSymbolLayers();
+      const QgsSymbolLayerReferenceList masks = format.mask().maskedSymbolLayers();
       QgsSymbolLayerReferenceList newMasks;
       for ( const QgsSymbolLayerReference &ref : masks )
       {
@@ -269,7 +269,7 @@ void QgsMaskingWidget::apply()
   // trigger refresh of the current layer
   mLayer->triggerRepaint();
   // trigger refresh of dependent layers (i.e. mask source layers)
-  for ( QString layerId : layersToRefresh )
+  for ( const QString &layerId : layersToRefresh )
   {
     QgsMapLayer *layer = QgsProject::instance()->mapLayer( layerId );
     layer->triggerRepaint();

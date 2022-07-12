@@ -21,9 +21,9 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
+#include "qgis.h"
 #include "qgsrange.h"
 #include "qgsmaplayertemporalproperties.h"
-#include "qgsrasterdataprovidertemporalcapabilities.h"
 
 /**
  * \class QgsRasterLayerTemporalProperties
@@ -47,29 +47,21 @@ class CORE_EXPORT QgsRasterLayerTemporalProperties : public QgsMapLayerTemporalP
 
     bool isVisibleInTemporalRange( const QgsDateTimeRange &range ) const override;
     QgsDateTimeRange calculateTemporalExtent( QgsMapLayer *layer ) const override SIP_SKIP;
-
-    /**
-     * Mode of the raster temporal properties
-     **/
-    enum TemporalMode
-    {
-      ModeFixedTemporalRange = 0, //!< Mode when temporal properties have fixed start and end datetimes.
-      ModeTemporalRangeFromDataProvider = 1, //!< Mode when raster layer delegates temporal range handling to the dataprovider.
-    };
+    QList< QgsDateTimeRange > allTemporalRanges( QgsMapLayer *layer ) const override;
 
     /**
      * Returns the temporal properties mode.
      *
      *\see setMode()
-    **/
-    TemporalMode mode() const;
+    */
+    Qgis::RasterTemporalMode mode() const;
 
     /**
      * Sets the temporal properties \a mode.
      *
      *\see mode()
-    **/
-    void setMode( TemporalMode mode );
+    */
+    void setMode( Qgis::RasterTemporalMode mode );
 
     /**
      * Returns flags associated to the temporal property.
@@ -81,16 +73,16 @@ class CORE_EXPORT QgsRasterLayerTemporalProperties : public QgsMapLayerTemporalP
      * layers or bands in the data provider.
      *
      *\see setIntervalHandlingMethod()
-    **/
-    QgsRasterDataProviderTemporalCapabilities::IntervalHandlingMethod intervalHandlingMethod() const;
+    */
+    Qgis::TemporalIntervalMatchMethod intervalHandlingMethod() const;
 
     /**
      * Sets the desired \a method to use when resolving a temporal interval to matching
      * layers or bands in the data provider.
      *
      *\see intervalHandlingMethod()
-    **/
-    void setIntervalHandlingMethod( QgsRasterDataProviderTemporalCapabilities::IntervalHandlingMethod method );
+    */
+    void setIntervalHandlingMethod( Qgis::TemporalIntervalMatchMethod method );
 
     /**
      * Sets a temporal \a range to apply to the whole layer. All bands from
@@ -111,7 +103,7 @@ class CORE_EXPORT QgsRasterLayerTemporalProperties : public QgsMapLayerTemporalP
      * QgsRasterLayerTemporalProperties::ModeFixedTemporalRange
      *
      * \see setFixedTemporalRange()
-    **/
+    */
     const QgsDateTimeRange &fixedTemporalRange() const;
 
     QDomElement writeXml( QDomElement &element, QDomDocument &doc, const QgsReadWriteContext &context ) override;
@@ -123,10 +115,10 @@ class CORE_EXPORT QgsRasterLayerTemporalProperties : public QgsMapLayerTemporalP
   private:
 
     //! Temporal layer mode.
-    TemporalMode mMode = ModeFixedTemporalRange;
+    Qgis::RasterTemporalMode mMode = Qgis::RasterTemporalMode::FixedTemporalRange;
 
     //! Temporal layer data fetch mode.
-    QgsRasterDataProviderTemporalCapabilities::IntervalHandlingMethod mIntervalHandlingMethod = QgsRasterDataProviderTemporalCapabilities::MatchUsingWholeRange;
+    Qgis::TemporalIntervalMatchMethod mIntervalHandlingMethod = Qgis::TemporalIntervalMatchMethod::MatchUsingWholeRange;
 
     //! Represents fixed temporal range.
     QgsDateTimeRange mFixedRange;

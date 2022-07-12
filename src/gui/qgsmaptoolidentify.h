@@ -35,6 +35,10 @@ class QgsMapCanvas;
 class QgsMeshLayer;
 class QgsHighlight;
 class QgsIdentifyMenu;
+class QgsPointCloudLayer;
+class QgsPointCloudLayerElevationProperties;
+class QgsFeatureRenderer;
+class QgsExpressionContext;
 
 /**
  * \ingroup gui
@@ -68,7 +72,8 @@ class GUI_EXPORT QgsMapToolIdentify : public QgsMapTool
       RasterLayer = 2,
       MeshLayer = 4, //!< \since QGIS 3.6
       VectorTileLayer = 8,  //!< \since QGIS 3.14
-      AllLayers = VectorLayer | RasterLayer | MeshLayer | VectorTileLayer
+      PointCloudLayer = 16, //!< \since QGIS 3.18
+      AllLayers = VectorLayer | RasterLayer | MeshLayer | VectorTileLayer | PointCloudLayer
     };
     Q_DECLARE_FLAGS( LayerType, Type )
     Q_FLAG( LayerType )
@@ -143,6 +148,21 @@ class GUI_EXPORT QgsMapToolIdentify : public QgsMapTool
      * this menu can also be customized
      */
     QgsIdentifyMenu *identifyMenu() { return mIdentifyMenu; }
+
+    /**
+     * Converts point cloud identification results from variant maps to QgsMapToolIdentify::IdentifyResult and apply some formatting
+     * \note : the converted variant maps are pushed at the back of \a results without cleaning what's in it previously
+     * \since QGIS 3.18
+     */
+    static void fromPointCloudIdentificationToIdentifyResults( QgsPointCloudLayer *layer, const QVector<QVariantMap> &identified, QList<QgsMapToolIdentify::IdentifyResult> &results ) SIP_SKIP;
+
+    /**
+     * Converts elevation profile identification results from variant maps to QgsMapToolIdentify::IdentifyResult and apply some formatting
+     * \note Not available in Python bindings
+     * \note The converted variant maps are pushed at the back of \a results without cleaning what's in it previously
+     * \since QGIS 3.26
+     */
+    void fromElevationProfileLayerIdentificationToIdentifyResults( QgsMapLayer *layer, const QVector<QVariantMap> &identified, QList<QgsMapToolIdentify::IdentifyResult> &results ) SIP_SKIP;
 
   public slots:
     void formatChanged( QgsRasterLayer *layer );
@@ -230,8 +250,10 @@ class GUI_EXPORT QgsMapToolIdentify : public QgsMapTool
     bool identifyLayer( QList<QgsMapToolIdentify::IdentifyResult> *results, QgsMapLayer *layer, const QgsGeometry &geometry, const QgsRectangle &viewExtent, double mapUnitsPerPixel, QgsMapToolIdentify::LayerType layerType = AllLayers, const QgsIdentifyContext &identifyContext = QgsIdentifyContext() );
     bool identifyRasterLayer( QList<QgsMapToolIdentify::IdentifyResult> *results, QgsRasterLayer *layer, const QgsGeometry &geometry, const QgsRectangle &viewExtent, double mapUnitsPerPixel, const QgsIdentifyContext &identifyContext = QgsIdentifyContext() );
     bool identifyVectorLayer( QList<QgsMapToolIdentify::IdentifyResult> *results, QgsVectorLayer *layer, const QgsGeometry &geometry, const QgsIdentifyContext &identifyContext = QgsIdentifyContext() );
+    int identifyVectorLayer( QList<QgsMapToolIdentify::IdentifyResult> *results, QgsVectorLayer *layer, const QgsFeatureList &features, QgsFeatureRenderer *renderer, const QMap< QString, QString >  &commonDerivedAttributes, const std::function< QMap< QString, QString > ( const QgsFeature & ) > &derivedAttributes, QgsRenderContext &context );
     bool identifyMeshLayer( QList<QgsMapToolIdentify::IdentifyResult> *results, QgsMeshLayer *layer, const QgsGeometry &geometry, const QgsIdentifyContext &identifyContext = QgsIdentifyContext() );
     bool identifyVectorTileLayer( QList<QgsMapToolIdentify::IdentifyResult> *results, QgsVectorTileLayer *layer, const QgsGeometry &geometry, const QgsIdentifyContext &identifyContext = QgsIdentifyContext() );
+    bool identifyPointCloudLayer( QList<QgsMapToolIdentify::IdentifyResult> *results, QgsPointCloudLayer *layer, const QgsGeometry &geometry, const QgsIdentifyContext &identifyContext = QgsIdentifyContext() );
 
     /**
      * Desired units for distance display.

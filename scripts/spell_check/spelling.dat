@@ -1968,7 +1968,7 @@ dammage:damage
 Dardenelles:Dardanelles
 databse:database
 daugher:daughter
-deactive:deactivate
+deactive:deactivate:*
 deafault:default
 deafult:default
 deamon:daemon
@@ -3527,7 +3527,7 @@ housr:hours
 hovewer:however
 how log:how long
 howerver:however
-howver:however
+howver:however:*
 hsitorians:historians
 hstory:history
 hte:the
@@ -5713,6 +5713,7 @@ pursuades:persuades
 pususading:persuading
 puting:putting:*
 pwoer:power
+pryamid:pyramid
 pyscic:psychic
 pythin:python
 qgsi:qgis
@@ -5881,7 +5882,7 @@ refects:reflects
 refedendum:referendum
 refence:reference
 refences:references
-referal:referral
+referal:referral:*
 referece:reference
 refereces:references
 refered:referred

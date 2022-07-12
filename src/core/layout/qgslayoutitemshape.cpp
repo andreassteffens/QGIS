@@ -20,6 +20,7 @@
 #include "qgssymbollayerutils.h"
 #include "qgslayoutmodel.h"
 #include "qgsstyleentityvisitor.h"
+#include "qgsfillsymbol.h"
 
 #include <QPainter>
 
@@ -29,7 +30,7 @@ QgsLayoutItemShape::QgsLayoutItemShape( QgsLayout *layout )
 {
   setBackgroundEnabled( false );
   setFrameEnabled( false );
-  QgsStringMap properties;
+  QVariantMap properties;
   properties.insert( QStringLiteral( "color" ), QStringLiteral( "white" ) );
   properties.insert( QStringLiteral( "style" ), QStringLiteral( "solid" ) );
   properties.insert( QStringLiteral( "style_border" ), QStringLiteral( "solid" ) );
@@ -46,6 +47,8 @@ QgsLayoutItemShape::QgsLayoutItemShape( QgsLayout *layout )
     emit clipPathChanged();
   } );
 }
+
+QgsLayoutItemShape::~QgsLayoutItemShape() = default;
 
 QgsLayoutItemShape *QgsLayoutItemShape::create( QgsLayout *layout )
 {
@@ -121,7 +124,7 @@ void QgsLayoutItemShape::refreshSymbol( bool redraw )
 {
   if ( auto *lLayout = layout() )
   {
-    QgsRenderContext rc = QgsLayoutUtils::createRenderContextForLayout( lLayout, nullptr, lLayout->renderContext().dpi() );
+    const QgsRenderContext rc = QgsLayoutUtils::createRenderContextForLayout( lLayout, nullptr, lLayout->renderContext().dpi() );
     mMaxSymbolBleed = ( 25.4 / lLayout->renderContext().dpi() ) * QgsSymbolLayerUtils::estimateMaxSymbolBleed( mShapeStyleSymbol.get(), rc );
   }
 
@@ -198,7 +201,7 @@ void QgsLayoutItemShape::draw( QgsLayoutItemRenderContext &context )
 
   const double scale = context.renderContext().convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters );
 
-  QVector<QPolygonF> rings; //empty list
+  const QVector<QPolygonF> rings; //empty list
 
   symbol()->startRender( context.renderContext() );
   symbol()->renderPolygon( calculatePolygon( scale ), &rings, nullptr, context.renderContext() );
@@ -211,9 +214,9 @@ QPolygonF QgsLayoutItemShape::calculatePolygon( double scale ) const
 
   //shapes with curves must be enlarged before conversion to QPolygonF, or
   //the curves are approximated too much and appear jaggy
-  QTransform t = QTransform::fromScale( 100, 100 );
+  const QTransform t = QTransform::fromScale( 100, 100 );
   //inverse transform used to scale created polygons back to expected size
-  QTransform ti = t.inverted();
+  const QTransform ti = t.inverted();
 
   switch ( mShape )
   {
@@ -222,7 +225,7 @@ QPolygonF QgsLayoutItemShape::calculatePolygon( double scale ) const
       //create an ellipse
       QPainterPath ellipsePath;
       ellipsePath.addEllipse( QRectF( 0, 0, rect().width() * scale, rect().height() * scale ) );
-      QPolygonF ellipsePoly = ellipsePath.toFillPolygon( t );
+      const QPolygonF ellipsePoly = ellipsePath.toFillPolygon( t );
       shapePolygon = ti.map( ellipsePoly );
       break;
     }
@@ -232,9 +235,9 @@ QPolygonF QgsLayoutItemShape::calculatePolygon( double scale ) const
       if ( mCornerRadius.length() > 0 )
       {
         QPainterPath roundedRectPath;
-        double radius = mLayout->convertToLayoutUnits( mCornerRadius ) * scale;
+        const double radius = mLayout->convertToLayoutUnits( mCornerRadius ) * scale;
         roundedRectPath.addRoundedRect( QRectF( 0, 0, rect().width() * scale, rect().height() * scale ), radius, radius );
-        QPolygonF roundedPoly = roundedRectPath.toFillPolygon( t );
+        const QPolygonF roundedPoly = roundedRectPath.toFillPolygon( t );
         shapePolygon = ti.map( roundedPoly );
       }
       else
@@ -260,7 +263,7 @@ bool QgsLayoutItemShape::writePropertiesToElement( QDomElement &element, QDomDoc
   element.setAttribute( QStringLiteral( "shapeType" ), mShape );
   element.setAttribute( QStringLiteral( "cornerRadiusMeasure" ), mCornerRadius.encodeMeasurement() );
 
-  QDomElement shapeStyleElem = QgsSymbolLayerUtils::saveSymbol( QString(), mShapeStyleSymbol.get(), document, context );
+  const QDomElement shapeStyleElem = QgsSymbolLayerUtils::saveSymbol( QString(), mShapeStyleSymbol.get(), document, context );
   element.appendChild( shapeStyleElem );
 
   return true;
@@ -274,7 +277,7 @@ bool QgsLayoutItemShape::readPropertiesFromElement( const QDomElement &element, 
   else
     mCornerRadius = QgsLayoutMeasurement( element.attribute( QStringLiteral( "cornerRadius" ), QStringLiteral( "0" ) ).toDouble() );
 
-  QDomElement shapeStyleSymbolElem = element.firstChildElement( QStringLiteral( "symbol" ) );
+  const QDomElement shapeStyleSymbolElem = element.firstChildElement( QStringLiteral( "symbol" ) );
   if ( !shapeStyleSymbolElem.isNull() )
   {
     mShapeStyleSymbol.reset( QgsSymbolLayerUtils::loadSymbol<QgsFillSymbol>( shapeStyleSymbolElem, context ) );

@@ -16,6 +16,7 @@
  ***************************************************************************/
 
 #include "qgslocator.h"
+#include "qgsmessagelog.h"
 #include "qgssettings.h"
 #include <QtConcurrent>
 #include <functional>
@@ -30,7 +31,8 @@ const QList<QString> QgsLocator::CORE_FILTERS = QList<QString>() << QStringLiter
     <<  QStringLiteral( "bookmarks" )
     <<  QStringLiteral( "optionpages" )
     <<  QStringLiteral( "edit_features" )
-    <<  QStringLiteral( "goto" );
+    <<  QStringLiteral( "goto" )
+    <<  QStringLiteral( "nominatimgeocoder" ) ;
 
 QgsLocator::QgsLocator( QObject *parent )
   : QObject( parent )
@@ -94,10 +96,9 @@ void QgsLocator::registerFilter( QgsLocatorFilter *filter )
   filter->setParent( this );
 
   // restore settings
-  QgsSettings settings;
-  bool enabled = settings.value( QStringLiteral( "locator_filters/enabled_%1" ).arg( filter->name() ), true, QgsSettings::Section::Gui ).toBool();
-  bool byDefault = settings.value( QStringLiteral( "locator_filters/default_%1" ).arg( filter->name() ), filter->useWithoutPrefix(), QgsSettings::Section::Gui ).toBool();
-  QString prefix = settings.value( QStringLiteral( "locator_filters/prefix_%1" ).arg( filter->name() ), filter->prefix(), QgsSettings::Section::Gui ).toString();
+  bool enabled = QgsLocator::settingsLocatorFilterEnabled.value( filter->name() );
+  bool byDefault = QgsLocator::settingsLocatorFilterDefault.valueWithDefaultOverride( filter->useWithoutPrefix(), filter->name() );
+  QString prefix = QgsLocator::settingsLocatorFilterPrefix.valueWithDefaultOverride( filter->prefix(), filter->name() );
   if ( prefix.isEmpty() )
   {
     prefix = filter->prefix();
@@ -151,10 +152,10 @@ void QgsLocator::fetchResults( const QString &string, const QgsLocatorContext &c
 
   QList< QgsLocatorFilter * > activeFilters;
   QString searchString = string;
-  QString prefix = searchString.left( std::max( searchString.indexOf( ' ' ), 0 ) );
+  QString prefix = searchString.left( std::max( static_cast<int>( searchString.indexOf( ' ' ) ), 0 ) );
   if ( !prefix.isEmpty() )
   {
-    for ( QgsLocatorFilter *filter : qgis::as_const( mFilters ) )
+    for ( QgsLocatorFilter *filter : std::as_const( mFilters ) )
     {
       if ( filter->activePrefix().compare( prefix, Qt::CaseInsensitive ) == 0 && filter->enabled() )
       {
@@ -169,7 +170,7 @@ void QgsLocator::fetchResults( const QString &string, const QgsLocatorContext &c
   }
   else
   {
-    for ( QgsLocatorFilter *filter : qgis::as_const( mFilters ) )
+    for ( QgsLocatorFilter *filter : std::as_const( mFilters ) )
     {
       if ( filter->useWithoutPrefix() && filter->enabled() )
       {
@@ -179,10 +180,15 @@ void QgsLocator::fetchResults( const QString &string, const QgsLocatorContext &c
   }
 
   QList< QgsLocatorFilter *> threadedFilters;
-  for ( QgsLocatorFilter *filter : qgis::as_const( activeFilters ) )
+  for ( QgsLocatorFilter *filter : std::as_const( activeFilters ) )
   {
     filter->clearPreviousResults();
     std::unique_ptr< QgsLocatorFilter > clone( filter->clone() );
+    if ( ! clone )
+    {
+      QgsMessageLog::logMessage( tr( "QgsLocatorFilter '%1' could not provide a valid clone" ).arg( filter->name() ), QString(), Qgis::MessageLevel::Critical );
+      continue;
+    }
     connect( clone.get(), &QgsLocatorFilter::resultFetched, clone.get(), [this, filter]( QgsLocatorResult result )
     {
       result.filter = filter;
@@ -210,13 +216,21 @@ void QgsLocator::fetchResults( const QString &string, const QgsLocatorContext &c
   }
 
   mActiveThreads.clear();
-  for ( QgsLocatorFilter *filter : qgis::as_const( threadedFilters ) )
+  for ( QgsLocatorFilter *filter : std::as_const( threadedFilters ) )
   {
     QThread *thread = new QThread();
     mActiveThreads.append( thread );
     filter->moveToThread( thread );
     connect( thread, &QThread::started, filter, [filter, searchString, context, feedback]
     {
+      int delay = filter->fetchResultsDelay();
+      while ( delay > 0 )
+      {
+        if ( feedback->isCanceled() )
+          break;
+        QThread::msleep( 50 );
+        delay -= 50;
+      }
       if ( !feedback->isCanceled() )
         filter->fetchResults( searchString, context, feedback );
       filter->emit finished();
@@ -257,7 +271,7 @@ bool QgsLocator::isRunning() const
 
 void QgsLocator::clearPreviousResults()
 {
-  for ( QgsLocatorFilter *filter : qgis::as_const( mFilters ) )
+  for ( QgsLocatorFilter *filter : std::as_const( mFilters ) )
   {
     if ( filter->enabled() )
     {

@@ -92,7 +92,7 @@ void QgsNmeaConnection::processStringBuffer()
     {
       if ( dollarIndex != -1 )
       {
-        QString substring = mStringBuffer.mid( dollarIndex, endSentenceIndex );
+        const QString substring = mStringBuffer.mid( dollarIndex, endSentenceIndex );
         QByteArray ba = substring.toLocal8Bit();
         if ( substring.startsWith( QLatin1String( "$GPGGA" ) ) || substring.startsWith( QLatin1String( "$GNGGA" ) ) )
         {
@@ -188,7 +188,18 @@ void QgsNmeaConnection::processGgaSentence( const char *data, int len )
     mLastGPSInformation.longitude = nmea_ndeg2degree( longitude );
     mLastGPSInformation.latitude = nmea_ndeg2degree( latitude );
     mLastGPSInformation.elevation = result.elv;
+    mLastGPSInformation.elevation_diff = result.diff;
+
     mLastGPSInformation.quality = result.sig;
+    if ( result.sig >= 0 && result.sig <= 8 )
+    {
+      mLastGPSInformation.qualityIndicator = static_cast<Qgis::GpsQualityIndicator>( result.sig );
+    }
+    else
+    {
+      mLastGPSInformation.qualityIndicator = Qgis::GpsQualityIndicator::Unknown;
+    }
+
     mLastGPSInformation.satellitesUsed = result.satinuse;
   }
 }
@@ -199,14 +210,16 @@ void QgsNmeaConnection::processGstSentence( const char *data, int len )
   if ( nmea_parse_GPGST( data, len, &result ) )
   {
     //update mLastGPSInformation
-    double sig_lat = result.sig_lat;
-    double sig_lon = result.sig_lon;
-    double sig_alt = result.sig_alt;
+    const double sig_lat = result.sig_lat;
+    const double sig_lon = result.sig_lon;
+    const double sig_alt = result.sig_alt;
 
     // Horizontal RMS
     mLastGPSInformation.hacc = sqrt( ( pow( sig_lat, 2 ) + pow( sig_lon, 2 ) ) / 2.0 );
     // Vertical RMS
     mLastGPSInformation.vacc = sig_alt;
+    // 3D RMS
+    mLastGPSInformation.hvacc = sqrt( ( pow( sig_lat, 2 ) + pow( sig_lon, 2 ) + pow( sig_alt, 2 ) ) / 3.0 );
   }
 }
 
@@ -264,8 +277,8 @@ void QgsNmeaConnection::processRmcSentence( const char *data, int len )
     mLastGPSInformation.status = result.status;  // A,V
 
     //date and time
-    QDate date( result.utc.year + 1900, result.utc.mon + 1, result.utc.day );
-    QTime time( result.utc.hour, result.utc.min, result.utc.sec, result.utc.msec ); // added msec part
+    const QDate date( result.utc.year + 1900, result.utc.mon + 1, result.utc.day );
+    const QTime time( result.utc.hour, result.utc.min, result.utc.sec, result.utc.msec ); // added msec part
     if ( date.isValid() && time.isValid() )
     {
       mLastGPSInformation.utcDateTime.setTimeSpec( Qt::UTC );
@@ -275,6 +288,62 @@ void QgsNmeaConnection::processRmcSentence( const char *data, int len )
       QgsDebugMsgLevel( mLastGPSInformation.utcDateTime.toString(), 2 );
       QgsDebugMsgLevel( QStringLiteral( "local time:" ), 2 );
       QgsDebugMsgLevel( mLastGPSInformation.utcDateTime.toLocalTime().toString(), 2 );
+    }
+
+    // convert mode to signal (aka quality) indicator
+    // (see https://gitlab.com/fhuberts/nmealib/-/blob/master/src/info.c#L27)
+    if ( result.status == 'A' )
+    {
+      if ( result.mode == 'A' )
+      {
+        mLastGPSInformation.quality = static_cast<int>( Qgis::GpsQualityIndicator::GPS );
+        mLastGPSInformation.qualityIndicator = Qgis::GpsQualityIndicator::GPS;
+      }
+      else if ( result.mode == 'D' )
+      {
+        mLastGPSInformation.quality = static_cast<int>( Qgis::GpsQualityIndicator::DGPS );
+        mLastGPSInformation.qualityIndicator = Qgis::GpsQualityIndicator::DGPS;
+      }
+      else if ( result.mode == 'P' )
+      {
+        mLastGPSInformation.quality = static_cast<int>( Qgis::GpsQualityIndicator::PPS );
+        mLastGPSInformation.qualityIndicator = Qgis::GpsQualityIndicator::PPS;
+      }
+      else if ( result.mode == 'R' )
+      {
+        mLastGPSInformation.quality = static_cast<int>( Qgis::GpsQualityIndicator::RTK );
+        mLastGPSInformation.qualityIndicator = Qgis::GpsQualityIndicator::RTK;
+      }
+      else if ( result.mode == 'F' )
+      {
+        mLastGPSInformation.quality = static_cast<int>( Qgis::GpsQualityIndicator::FloatRTK );
+        mLastGPSInformation.qualityIndicator = Qgis::GpsQualityIndicator::FloatRTK;
+      }
+      else if ( result.mode == 'E' )
+      {
+        mLastGPSInformation.quality = static_cast<int>( Qgis::GpsQualityIndicator::Estimated );
+        mLastGPSInformation.qualityIndicator = Qgis::GpsQualityIndicator::Estimated;
+      }
+      else if ( result.mode == 'M' )
+      {
+        mLastGPSInformation.quality = static_cast<int>( Qgis::GpsQualityIndicator::Manual );
+        mLastGPSInformation.qualityIndicator = Qgis::GpsQualityIndicator::Manual;
+      }
+      else if ( result.mode == 'S' )
+      {
+        mLastGPSInformation.quality = static_cast<int>( Qgis::GpsQualityIndicator::Simulation );
+        mLastGPSInformation.qualityIndicator = Qgis::GpsQualityIndicator::Simulation;
+      }
+      else
+      {
+        mLastGPSInformation.quality = static_cast<int>( Qgis::GpsQualityIndicator::Unknown );
+        mLastGPSInformation.qualityIndicator = Qgis::GpsQualityIndicator::Unknown;
+      }
+    }
+    else
+    {
+      mLastGPSInformation.quality = static_cast<int>( Qgis::GpsQualityIndicator::Invalid );
+      mLastGPSInformation.qualityIndicator = Qgis::GpsQualityIndicator::Invalid;
     }
   }
 }
@@ -295,7 +364,7 @@ void QgsNmeaConnection::processGsvSentence( const char *data, int len )
 
     for ( int i = 0; i < NMEA_SATINPACK; ++i )
     {
-      nmeaSATELLITE currentSatellite = result.sat_data[i];
+      const nmeaSATELLITE currentSatellite = result.sat_data[i];
       QgsSatelliteInfo satelliteInfo;
       satelliteInfo.azimuth = currentSatellite.azimuth;
       satelliteInfo.elevation = currentSatellite.elv;

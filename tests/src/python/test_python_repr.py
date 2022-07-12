@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """QGIS Unit tests for core additions
 
+From build dir, run: ctest -R PyPythonRepr -V
+
 .. note:: This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
@@ -14,13 +16,54 @@ import qgis  # NOQA
 
 from PyQt5.QtCore import QVariant
 from qgis.testing import unittest, start_app
-from qgis.core import QgsGeometry, QgsPoint, QgsPointXY, QgsCircle, QgsCircularString, QgsCompoundCurve,\
-    QgsCurvePolygon, QgsEllipse, QgsLineString, QgsMultiCurve, QgsRectangle, QgsExpression, QgsField, QgsError,\
-    QgsMimeDataUtils, QgsVector, QgsVector3D, QgsVectorLayer, QgsReferencedPointXY, QgsReferencedRectangle,\
-    QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProject, QgsClassificationRange, QgsBookmark, \
-    QgsLayoutMeasurement, QgsLayoutPoint, QgsLayoutSize, QgsUnitTypes, QgsConditionalStyle, QgsTableCell, QgsProperty, \
-    QgsVertexId, QgsReferencedGeometry, QgsProviderRegistry, QgsRasterLayer, QgsAnnotationLayer, \
-    QgsVectorTileLayer, QgsMeshLayer, QgsDataSourceUri
+from qgis.core import (
+    QgsGeometry,
+    QgsPoint,
+    QgsPointXY,
+    QgsCircle,
+    QgsCircularString,
+    QgsCompoundCurve,
+    QgsCurvePolygon,
+    QgsEllipse,
+    QgsLineString,
+    QgsMultiCurve,
+    QgsRectangle,
+    QgsExpression,
+    QgsField,
+    QgsError,
+    QgsMimeDataUtils,
+    QgsVector,
+    QgsVector3D,
+    QgsVectorLayer,
+    QgsReferencedPointXY,
+    QgsReferencedRectangle,
+    QgsCoordinateReferenceSystem,
+    QgsCoordinateTransform,
+    QgsProject,
+    QgsClassificationRange,
+    QgsBookmark,
+    QgsLayoutMeasurement,
+    QgsLayoutPoint,
+    QgsLayoutSize,
+    QgsUnitTypes,
+    QgsConditionalStyle,
+    QgsTableCell,
+    QgsProperty,
+    QgsVertexId,
+    QgsReferencedGeometry,
+    QgsProviderRegistry,
+    QgsRasterLayer,
+    QgsAnnotationLayer,
+    QgsPointCloudLayer,
+    QgsVectorTileLayer,
+    QgsMeshLayer,
+    QgsDataSourceUri,
+    QgsDoubleRange,
+    QgsIntRange,
+    QgsDefaultValue,
+    QgsRendererRange,
+    QgsRendererCategory
+)
 
 start_app()
 
@@ -144,8 +187,12 @@ class TestPython__repr__(unittest.TestCase):
         self.assertEqual(g.__repr__(), '<QgsReferencedGeometry: Point (1 2) (EPSG:4326)>')
 
     def testQgsCoordinateReferenceSystem(self):
+        crs = QgsCoordinateReferenceSystem()
+        self.assertEqual(crs.__repr__(), '<QgsCoordinateReferenceSystem: invalid>')
         crs = QgsCoordinateReferenceSystem('EPSG:4326')
         self.assertEqual(crs.__repr__(), '<QgsCoordinateReferenceSystem: EPSG:4326>')
+        crs.setCoordinateEpoch(2021.3)
+        self.assertEqual(crs.__repr__(), '<QgsCoordinateReferenceSystem: EPSG:4326 @ 2021.3>')
         crs = QgsCoordinateReferenceSystem('EPSG:3111')
         self.assertEqual(crs.__repr__(), '<QgsCoordinateReferenceSystem: EPSG:3111>')
 
@@ -195,6 +242,8 @@ class TestPython__repr__(unittest.TestCase):
         self.assertEqual(ml.__repr__(), "<QgsMeshLayer: 'QGIS搖滾' (Invalid)>")
         al = QgsAnnotationLayer('QGIS搖滾', QgsAnnotationLayer.LayerOptions(QgsProject.instance().transformContext()))
         self.assertEqual(al.__repr__(), "<QgsAnnotationLayer: 'QGIS搖滾'>")
+        pcl = QgsPointCloudLayer('', 'QGIS搖滾', 'pc')
+        self.assertEqual(pcl.__repr__(), "<QgsPointCloudLayer: 'QGIS搖滾' (Invalid)>")
         vtl = QgsVectorTileLayer('', 'QGIS搖滾')
         self.assertEqual(vtl.__repr__(), "<QgsVectorTileLayer: 'QGIS搖滾'>")
 
@@ -257,16 +306,48 @@ class TestPython__repr__(unittest.TestCase):
 
     def testQgsVertexId(self):
         v = QgsVertexId()
-        self.assertEqual(v.__repr__(), '<QgsVertexId: -1,-1,-1>')
+        self.assertEqual(v.__repr__(), '<QgsVertexId: -1,-1,-1 Segment>')
         v = QgsVertexId(1, 2, 3)
-        self.assertEqual(v.__repr__(), '<QgsVertexId: 1,2,3>')
+        self.assertEqual(v.__repr__(), '<QgsVertexId: 1,2,3 Segment>')
         v = QgsVertexId(1, 2, 3, _type=QgsVertexId.CurveVertex)
-        self.assertEqual(v.__repr__(), '<QgsVertexId: 1,2,3 CurveVertex>')
+        self.assertEqual(v.__repr__(), '<QgsVertexId: 1,2,3 Curve>')
+
+    def testProviderMetadata(self):
+        self.assertEqual(QgsProviderRegistry.instance().providerMetadata('ogr').__repr__(), '<QgsProviderMetadata: ogr>')
 
     def testDataSourceUri(self):
         ds = QgsDataSourceUri()
         ds.setConnection(aHost='my_host', aPort='2322', aDatabase='my_db', aUsername='user', aPassword='pw')
         self.assertEqual(ds.__repr__(), "<QgsDataSourceUri: dbname='my_db' host=my_host port=2322 user='user' password='pw'>")
+
+    def testDoubleRange(self):
+        self.assertEqual(QgsDoubleRange(1, 10).__repr__(), "<QgsDoubleRange: [1, 10]>")
+        self.assertEqual(QgsDoubleRange(1, 10, False).__repr__(),
+                         "<QgsDoubleRange: (1, 10]>")
+        self.assertEqual(QgsDoubleRange(1, 10, True, False).__repr__(),
+                         "<QgsDoubleRange: [1, 10)>")
+
+    def testIntRange(self):
+        self.assertEqual(QgsIntRange(1, 10).__repr__(), "<QgsIntRange: [1, 10]>")
+        self.assertEqual(QgsIntRange(1, 10, False).__repr__(),
+                         "<QgsIntRange: (1, 10]>")
+        self.assertEqual(QgsIntRange(1, 10, True, False).__repr__(),
+                         "<QgsIntRange: [1, 10)>")
+
+    def testDefaultValue(self):
+        self.assertEqual(QgsDefaultValue().__repr__(), '<QgsDefaultValue: invalid>')
+        self.assertEqual(QgsDefaultValue('1+3').__repr__(), '<QgsDefaultValue: 1+3>')
+
+    def testRendererRange(self):
+        self.assertEqual(QgsRendererRange().__repr__(), '<QgsRendererRange: 0 - 0>')
+        self.assertEqual(QgsRendererRange(1.0, 2.0, None, None).__repr__(), '<QgsRendererRange: 1 - 2>')
+        self.assertEqual(QgsRendererRange(1.0, 2.0, None, 'my class').__repr__(), '<QgsRendererRange: 1 - 2 (my class)>')
+
+    def testRendererCategory(self):
+        self.assertEqual(QgsRendererCategory().__repr__(), '<QgsRendererCategory>')
+        self.assertEqual(QgsRendererCategory(5, None, None).__repr__(), '<QgsRendererCategory: 5>')
+        self.assertEqual(QgsRendererCategory('abc', None, None).__repr__(), '<QgsRendererCategory: abc>')
+        self.assertEqual(QgsRendererCategory('abc', None, 'my class').__repr__(), '<QgsRendererCategory: abc (my class)>')
 
 
 if __name__ == "__main__":

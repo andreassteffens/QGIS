@@ -6,20 +6,19 @@ endif()
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${QGIS_OUTPUT_DIRECTORY}/${QGIS_PLUGIN_SUBDIR})
 set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${QGIS_OUTPUT_DIRECTORY}/${QGIS_PLUGIN_SUBDIR})
 
-add_subdirectory(gps_importer)
+add_subdirectory(sb_address_services)
+add_subdirectory(sb_elevation_services)
+
 add_subdirectory(topology)
-add_subdirectory(offline_editing)
 add_subdirectory(geometry_checker)
+
+if (WITH_SPATIALITE)
+  add_subdirectory(offline_editing)
+endif()
 
 if (GRASS_FOUND)
   add_subdirectory(grass)
 endif()
-ADD_SUBDIRECTORY(sb_address_services)
-ADD_SUBDIRECTORY(sb_elevation_services)
-
-IF (GRASS_FOUND)
-  ADD_SUBDIRECTORY(grass)
-ENDIF (GRASS_FOUND)
 
 if (CUSTOM_PLUGINS)
   add_subdirectory(${CUSTOM_PLUGINS})

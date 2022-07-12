@@ -16,7 +16,7 @@
 #include "qgswfsdataitemguiprovider.h"
 
 #include "qgsmanageconnectionsdialog.h"
-#include "qgsnewhttpconnection.h"
+#include "qgswfsnewconnection.h"
 #include "qgswfsconnection.h"
 #include "qgswfsconstants.h"
 #include "qgswfsdataitems.h"
@@ -29,32 +29,32 @@ void QgsWfsDataItemGuiProvider::populateContextMenu( QgsDataItem *item, QMenu *m
 {
   if ( QgsWfsRootItem *rootItem = qobject_cast< QgsWfsRootItem * >( item ) )
   {
-    QAction *actionNew = new QAction( tr( "New Connection…" ), this );
+    QAction *actionNew = new QAction( tr( "New Connection…" ), menu );
     connect( actionNew, &QAction::triggered, this, [rootItem] { newConnection( rootItem ); } );
     menu->addAction( actionNew );
 
-    QAction *actionSaveServers = new QAction( tr( "Save Connections…" ), this );
+    QAction *actionSaveServers = new QAction( tr( "Save Connections…" ), menu );
     connect( actionSaveServers, &QAction::triggered, this, [] { saveConnections(); } );
     menu->addAction( actionSaveServers );
 
-    QAction *actionLoadServers = new QAction( tr( "Load Connections…" ), this );
+    QAction *actionLoadServers = new QAction( tr( "Load Connections…" ), menu );
     connect( actionLoadServers, &QAction::triggered, this, [rootItem] { loadConnections( rootItem ); } );
     menu->addAction( actionLoadServers );
   }
 
   if ( QgsWfsConnectionItem *connItem = qobject_cast< QgsWfsConnectionItem * >( item ) )
   {
-    QAction *actionRefresh = new QAction( tr( "Refresh" ), this );
+    QAction *actionRefresh = new QAction( tr( "Refresh" ), menu );
     connect( actionRefresh, &QAction::triggered, this, [connItem] { refreshConnection( connItem ); } );
     menu->addAction( actionRefresh );
 
     menu->addSeparator();
 
-    QAction *actionEdit = new QAction( tr( "Edit…" ), this );
+    QAction *actionEdit = new QAction( tr( "Edit Connection…" ), menu );
     connect( actionEdit, &QAction::triggered, this, [connItem] { editConnection( connItem ); } );
     menu->addAction( actionEdit );
 
-    QAction *actionDelete = new QAction( tr( "Delete" ), this );
+    QAction *actionDelete = new QAction( tr( "Remove Connection" ), menu );
     connect( actionDelete, &QAction::triggered, this, [connItem] { deleteConnection( connItem ); } );
     menu->addAction( actionDelete );
   }
@@ -62,7 +62,7 @@ void QgsWfsDataItemGuiProvider::populateContextMenu( QgsDataItem *item, QMenu *m
 
 void QgsWfsDataItemGuiProvider::newConnection( QgsDataItem *item )
 {
-  QgsNewHttpConnection nc( nullptr, QgsNewHttpConnection::ConnectionWfs, QgsWFSConstants::CONNECTIONS_WFS );
+  QgsWFSNewConnection nc( nullptr );
   nc.setWindowTitle( tr( "Create a New WFS Connection" ) );
 
   if ( nc.exec() )
@@ -73,7 +73,7 @@ void QgsWfsDataItemGuiProvider::newConnection( QgsDataItem *item )
 
 void QgsWfsDataItemGuiProvider::editConnection( QgsDataItem *item )
 {
-  QgsNewHttpConnection nc( nullptr, QgsNewHttpConnection::ConnectionWfs, QgsWFSConstants::CONNECTIONS_WFS, item->name() );
+  QgsWFSNewConnection nc( nullptr, item->name() );
   nc.setWindowTitle( tr( "Modify WFS Connection" ) );
 
   if ( nc.exec() )
@@ -85,7 +85,7 @@ void QgsWfsDataItemGuiProvider::editConnection( QgsDataItem *item )
 
 void QgsWfsDataItemGuiProvider::deleteConnection( QgsDataItem *item )
 {
-  if ( QMessageBox::question( nullptr, tr( "Delete Connection" ), tr( "Are you sure you want to delete the connection “%1”?" ).arg( item->name() ),
+  if ( QMessageBox::question( nullptr, tr( "Remove Connection" ), tr( "Are you sure you want to remove the connection “%1”?" ).arg( item->name() ),
                               QMessageBox::Yes | QMessageBox::No, QMessageBox::No ) != QMessageBox::Yes )
     return;
 
@@ -110,8 +110,8 @@ void QgsWfsDataItemGuiProvider::saveConnections()
 
 void QgsWfsDataItemGuiProvider::loadConnections( QgsDataItem *item )
 {
-  QString fileName = QFileDialog::getOpenFileName( nullptr, tr( "Load Connections" ), QDir::homePath(),
-                     tr( "XML files (*.xml *.XML)" ) );
+  const QString fileName = QFileDialog::getOpenFileName( nullptr, tr( "Load Connections" ), QDir::homePath(),
+                           tr( "XML files (*.xml *.XML)" ) );
   if ( fileName.isEmpty() )
   {
     return;

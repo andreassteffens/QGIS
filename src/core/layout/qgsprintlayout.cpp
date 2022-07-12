@@ -30,11 +30,11 @@ QgsPrintLayout *QgsPrintLayout::clone() const
 {
   QDomDocument currentDoc;
 
-  QgsReadWriteContext context;
-  QDomElement elem = writeXml( currentDoc, context );
+  const QgsReadWriteContext context;
+  const QDomElement elem = writeXml( currentDoc, context );
   currentDoc.appendChild( elem );
 
-  std::unique_ptr< QgsPrintLayout > newLayout = qgis::make_unique< QgsPrintLayout >( project() );
+  std::unique_ptr< QgsPrintLayout > newLayout = std::make_unique< QgsPrintLayout >( project() );
   bool ok = false;
   newLayout->loadFromTemplate( currentDoc, context, true, &ok );
   if ( !ok )
@@ -80,7 +80,7 @@ bool QgsPrintLayout::readXml( const QDomElement &layoutElement, const QDomDocume
   if ( !QgsLayout::readXml( layoutElement, document, context ) )
     return false;
 
-  QDomElement atlasElem = layoutElement.firstChildElement( QStringLiteral( "Atlas" ) );
+  const QDomElement atlasElem = layoutElement.firstChildElement( QStringLiteral( "Atlas" ) );
   mAtlas->readXml( atlasElem, document, context );
 
   setName( layoutElement.attribute( QStringLiteral( "name" ) ) );

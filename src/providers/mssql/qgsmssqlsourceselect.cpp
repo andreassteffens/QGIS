@@ -29,8 +29,11 @@
 #include "qgsvectorlayer.h"
 #include "qgssettings.h"
 #include "qgsmssqlconnection.h"
+#include "qgsmssqldatabase.h"
 #include "qgsproject.h"
 #include "qgsgui.h"
+#include "qgsiconutils.h"
+#include "qgsdbfilterproxymodel.h"
 
 #include <QFileDialog>
 #include <QInputDialog>
@@ -55,17 +58,18 @@ QWidget *QgsMssqlSourceSelectDelegate::createEditor( QWidget *parent, const QSty
   if ( index.column() == QgsMssqlTableModel::DbtmType && index.data( Qt::UserRole + 1 ).toBool() )
   {
     QComboBox *cb = new QComboBox( parent );
-    Q_FOREACH ( QgsWkbTypes::Type type,
-                QList<QgsWkbTypes::Type>()
-                << QgsWkbTypes::Point
-                << QgsWkbTypes::LineString
-                << QgsWkbTypes::Polygon
-                << QgsWkbTypes::MultiPoint
-                << QgsWkbTypes::MultiLineString
-                << QgsWkbTypes::MultiPolygon
-                << QgsWkbTypes::NoGeometry )
+    for ( const QgsWkbTypes::Type type :
+          {
+            QgsWkbTypes::Point,
+            QgsWkbTypes::LineString,
+            QgsWkbTypes::Polygon,
+            QgsWkbTypes::MultiPoint,
+            QgsWkbTypes::MultiLineString,
+            QgsWkbTypes::MultiPolygon,
+            QgsWkbTypes::NoGeometry
+          } )
     {
-      cb->addItem( QgsMssqlTableModel::iconForWkbType( type ), QgsWkbTypes::displayString( type ), type );
+      cb->addItem( QgsIconUtils::iconForWkbType( type ), QgsWkbTypes::translatedDisplayString( type ), type );
     }
     cb->setCurrentIndex( cb->findData( index.data( Qt::UserRole + 2 ).toInt() ) );
     return cb;
@@ -73,7 +77,7 @@ QWidget *QgsMssqlSourceSelectDelegate::createEditor( QWidget *parent, const QSty
 
   if ( index.column() == QgsMssqlTableModel::DbtmPkCol )
   {
-    QStringList values = index.data( Qt::UserRole + 1 ).toStringList();
+    const QStringList values = index.data( Qt::UserRole + 1 ).toStringList();
 
     if ( !values.isEmpty() )
     {
@@ -102,10 +106,10 @@ void QgsMssqlSourceSelectDelegate::setModelData( QWidget *editor, QAbstractItemM
   {
     if ( index.column() == QgsMssqlTableModel::DbtmType )
     {
-      QgsWkbTypes::Type type = static_cast< QgsWkbTypes::Type >( cb->currentData().toInt() );
+      const QgsWkbTypes::Type type = static_cast< QgsWkbTypes::Type >( cb->currentData().toInt() );
 
-      model->setData( index, QgsMssqlTableModel::iconForWkbType( type ), Qt::DecorationRole );
-      model->setData( index, type != QgsWkbTypes::Unknown ? QgsWkbTypes::displayString( type ) : tr( "Select…" ) );
+      model->setData( index, QgsIconUtils::iconForWkbType( type ), Qt::DecorationRole );
+      model->setData( index, type != QgsWkbTypes::Unknown ? QgsWkbTypes::translatedDisplayString( type ) : tr( "Select…" ) );
       model->setData( index, type, Qt::UserRole + 2 );
     }
     else if ( index.column() == QgsMssqlTableModel::DbtmPkCol )
@@ -121,10 +125,9 @@ void QgsMssqlSourceSelectDelegate::setModelData( QWidget *editor, QAbstractItemM
 }
 
 QgsMssqlSourceSelect::QgsMssqlSourceSelect( QWidget *parent, Qt::WindowFlags fl, QgsProviderRegistry::WidgetMode theWidgetMode )
-  : QgsAbstractDataSourceWidget( parent, fl, theWidgetMode )
+  : QgsAbstractDbSourceSelect( parent, fl, theWidgetMode )
 {
-  setupUi( this );
-  QgsGui::instance()->enableAutoGeometryRestore( this );
+  QgsGui::enableAutoGeometryRestore( this );
 
   connect( btnConnect, &QPushButton::clicked, this, &QgsMssqlSourceSelect::btnConnect_clicked );
   connect( cbxAllowGeometrylessTables, &QCheckBox::stateChanged, this, &QgsMssqlSourceSelect::cbxAllowGeometrylessTables_stateChanged );
@@ -133,13 +136,7 @@ QgsMssqlSourceSelect::QgsMssqlSourceSelect( QWidget *parent, Qt::WindowFlags fl,
   connect( btnDelete, &QPushButton::clicked, this, &QgsMssqlSourceSelect::btnDelete_clicked );
   connect( btnSave, &QPushButton::clicked, this, &QgsMssqlSourceSelect::btnSave_clicked );
   connect( btnLoad, &QPushButton::clicked, this, &QgsMssqlSourceSelect::btnLoad_clicked );
-  connect( mSearchGroupBox, &QGroupBox::toggled, this, &QgsMssqlSourceSelect::mSearchGroupBox_toggled );
-  connect( mSearchTableEdit, &QLineEdit::textChanged, this, &QgsMssqlSourceSelect::mSearchTableEdit_textChanged );
-  connect( mSearchColumnComboBox, &QComboBox::currentTextChanged, this, &QgsMssqlSourceSelect::mSearchColumnComboBox_currentIndexChanged );
-  connect( mSearchModeComboBox, &QComboBox::currentTextChanged, this, &QgsMssqlSourceSelect::mSearchModeComboBox_currentIndexChanged );
   connect( cmbConnections, static_cast<void ( QComboBox::* )( int )>( &QComboBox::activated ), this, &QgsMssqlSourceSelect::cmbConnections_activated );
-  connect( mTablesTreeView, &QTreeView::clicked, this, &QgsMssqlSourceSelect::mTablesTreeView_clicked );
-  connect( mTablesTreeView, &QTreeView::doubleClicked, this, &QgsMssqlSourceSelect::mTablesTreeView_doubleClicked );
   setupButtons( buttonBox );
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsMssqlSourceSelect::showHelp );
 
@@ -152,67 +149,22 @@ QgsMssqlSourceSelect::QgsMssqlSourceSelect( QWidget *parent, Qt::WindowFlags fl,
     setWindowTitle( tr( "Add MSSQL Table(s)" ) );
   }
 
-  mBuildQueryButton = new QPushButton( tr( "&Set Filter" ) );
-  mBuildQueryButton->setToolTip( tr( "Set Filter" ) );
-  mBuildQueryButton->setDisabled( true );
-
-  if ( widgetMode() != QgsProviderRegistry::WidgetMode::Manager )
-  {
-
-    buttonBox->addButton( mBuildQueryButton, QDialogButtonBox::ActionRole );
-    connect( mBuildQueryButton, &QAbstractButton::clicked, this, &QgsMssqlSourceSelect::buildQuery );
-  }
-
   populateConnectionList();
 
-  mSearchModeComboBox->addItem( tr( "Wildcard" ) );
-  mSearchModeComboBox->addItem( tr( "RegExp" ) );
-
-  mSearchColumnComboBox->addItem( tr( "All" ) );
-  mSearchColumnComboBox->addItem( tr( "Schema" ) );
-  mSearchColumnComboBox->addItem( tr( "Table" ) );
-  mSearchColumnComboBox->addItem( tr( "Type" ) );
-  mSearchColumnComboBox->addItem( tr( "Geometry column" ) );
-  mSearchColumnComboBox->addItem( tr( "Primary key column" ) );
-  mSearchColumnComboBox->addItem( tr( "SRID" ) );
-  mSearchColumnComboBox->addItem( tr( "Sql" ) );
-
-  mProxyModel.setParent( this );
-  mProxyModel.setFilterKeyColumn( -1 );
-  mProxyModel.setFilterCaseSensitivity( Qt::CaseInsensitive );
-  mProxyModel.setSourceModel( &mTableModel );
-
-  mTablesTreeView->setModel( &mProxyModel );
-  mTablesTreeView->setSortingEnabled( true );
-  mTablesTreeView->setEditTriggers( QAbstractItemView::CurrentChanged );
-  mTablesTreeView->setItemDelegate( new QgsMssqlSourceSelectDelegate( this ) );
+  mTableModel = new QgsMssqlTableModel( this );
+  init( mTableModel, new QgsMssqlSourceSelectDelegate( this ) );
 
   connect( mTablesTreeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &QgsMssqlSourceSelect::treeWidgetSelectionChanged );
 
-  QgsSettings settings;
+  const QgsSettings settings;
   mTablesTreeView->setSelectionMode( QAbstractItemView::ExtendedSelection );
-
-
-  //for Qt < 4.3.2, passing -1 to include all model columns
-  //in search does not seem to work
-  mSearchColumnComboBox->setCurrentIndex( 2 );
 
   mHoldDialogOpen->setChecked( settings.value( QStringLiteral( "Windows/MSSQLSourceSelect/HoldDialogOpen" ), false ).toBool() );
 
-  for ( int i = 0; i < mTableModel.columnCount(); i++ )
+  for ( int i = 0; i < mTableModel->columnCount(); i++ )
   {
     mTablesTreeView->setColumnWidth( i, settings.value( QStringLiteral( "Windows/MSSQLSourceSelect/columnWidths/%1" ).arg( i ), mTablesTreeView->columnWidth( i ) ).toInt() );
   }
-
-  //hide the search options by default
-  //they will be shown when the user ticks
-  //the search options group box
-  mSearchLabel->setVisible( false );
-  mSearchColumnComboBox->setVisible( false );
-  mSearchColumnsLabel->setVisible( false );
-  mSearchModeComboBox->setVisible( false );
-  mSearchModeLabel->setVisible( false );
-  mSearchTableEdit->setVisible( false );
 
   cbxAllowGeometrylessTables->setDisabled( true );
 }
@@ -229,8 +181,8 @@ void QgsMssqlSourceSelect::btnNew_clicked()
 
 void QgsMssqlSourceSelect::btnDelete_clicked()
 {
-  QString msg = tr( "Are you sure you want to remove the %1 connection and all associated settings?" )
-                .arg( cmbConnections->currentText() );
+  const QString msg = tr( "Are you sure you want to remove the %1 connection and all associated settings?" )
+                      .arg( cmbConnections->currentText() );
   if ( QMessageBox::Yes != QMessageBox::question( this, tr( "Confirm Delete" ), msg, QMessageBox::Yes | QMessageBox::No ) )
     return;
 
@@ -242,7 +194,7 @@ void QgsMssqlSourceSelect::btnDelete_clicked()
 
 void QgsMssqlSourceSelect::deleteConnection( const QString &name )
 {
-  QString key = "/MSSQL/connections/" + name;
+  const QString key = "/MSSQL/connections/" + name;
   QgsSettings settings;
   settings.remove( key + "/service" );
   settings.remove( key + "/host" );
@@ -265,8 +217,8 @@ void QgsMssqlSourceSelect::btnSave_clicked()
 
 void QgsMssqlSourceSelect::btnLoad_clicked()
 {
-  QString fileName = QFileDialog::getOpenFileName( this, tr( "Load Connections" ), QDir::homePath(),
-                     tr( "XML files (*.xml *.XML)" ) );
+  const QString fileName = QFileDialog::getOpenFileName( this, tr( "Load Connections" ), QDir::homePath(),
+                           tr( "XML files (*.xml *.XML)" ) );
   if ( fileName.isEmpty() )
   {
     return;
@@ -303,86 +255,9 @@ void QgsMssqlSourceSelect::cbxAllowGeometrylessTables_stateChanged( int )
   btnConnect_clicked();
 }
 
-void QgsMssqlSourceSelect::buildQuery()
-{
-  setSql( mTablesTreeView->currentIndex() );
-}
-
-void QgsMssqlSourceSelect::mTablesTreeView_clicked( const QModelIndex &index )
-{
-  mBuildQueryButton->setEnabled( index.parent().isValid() );
-}
-
-void QgsMssqlSourceSelect::mTablesTreeView_doubleClicked( const QModelIndex & )
-{
-  addButtonClicked();
-}
-
-void QgsMssqlSourceSelect::mSearchGroupBox_toggled( bool checked )
-{
-  if ( mSearchTableEdit->text().isEmpty() )
-    return;
-
-  mSearchTableEdit_textChanged( checked ? mSearchTableEdit->text() : QString() );
-}
-
-void QgsMssqlSourceSelect::mSearchTableEdit_textChanged( const QString &text )
-{
-  if ( mSearchModeComboBox->currentText() == tr( "Wildcard" ) )
-  {
-    mProxyModel._setFilterWildcard( text );
-  }
-  else if ( mSearchModeComboBox->currentText() == tr( "RegExp" ) )
-  {
-    mProxyModel._setFilterRegExp( text );
-  }
-}
-
-void QgsMssqlSourceSelect::mSearchColumnComboBox_currentIndexChanged( const QString &text )
-{
-  if ( text == tr( "All" ) )
-  {
-    mProxyModel.setFilterKeyColumn( -1 );
-  }
-  else if ( text == tr( "Schema" ) )
-  {
-    mProxyModel.setFilterKeyColumn( QgsMssqlTableModel::DbtmSchema );
-  }
-  else if ( text == tr( "Table" ) )
-  {
-    mProxyModel.setFilterKeyColumn( QgsMssqlTableModel::DbtmTable );
-  }
-  else if ( text == tr( "Type" ) )
-  {
-    mProxyModel.setFilterKeyColumn( QgsMssqlTableModel::DbtmType );
-  }
-  else if ( text == tr( "Geometry column" ) )
-  {
-    mProxyModel.setFilterKeyColumn( QgsMssqlTableModel::DbtmGeomCol );
-  }
-  else if ( text == tr( "Primary key column" ) )
-  {
-    mProxyModel.setFilterKeyColumn( QgsMssqlTableModel::DbtmPkCol );
-  }
-  else if ( text == tr( "SRID" ) )
-  {
-    mProxyModel.setFilterKeyColumn( QgsMssqlTableModel::DbtmSrid );
-  }
-  else if ( text == tr( "Sql" ) )
-  {
-    mProxyModel.setFilterKeyColumn( QgsMssqlTableModel::DbtmSql );
-  }
-}
-
-void QgsMssqlSourceSelect::mSearchModeComboBox_currentIndexChanged( const QString &text )
-{
-  Q_UNUSED( text )
-  mSearchTableEdit_textChanged( mSearchTableEdit->text() );
-}
-
 void QgsMssqlSourceSelect::setLayerType( const QgsMssqlLayerProperty &layerProperty )
 {
-  mTableModel.setGeometryTypesForTable( layerProperty );
+  mTableModel->setGeometryTypesForTable( layerProperty );
 }
 
 QgsMssqlSourceSelect::~QgsMssqlSourceSelect()
@@ -396,7 +271,7 @@ QgsMssqlSourceSelect::~QgsMssqlSourceSelect()
   QgsSettings settings;
   settings.setValue( QStringLiteral( "Windows/MSSQLSourceSelect/HoldDialogOpen" ), mHoldDialogOpen->isChecked() );
 
-  for ( int i = 0; i < mTableModel.columnCount(); i++ )
+  for ( int i = 0; i < mTableModel->columnCount(); i++ )
   {
     settings.setValue( QStringLiteral( "Windows/MSSQLSourceSelect/columnWidths/%1" ).arg( i ), mTablesTreeView->columnWidth( i ) );
   }
@@ -438,7 +313,7 @@ void QgsMssqlSourceSelect::addButtonClicked()
     if ( idx.column() != QgsMssqlTableModel::DbtmTable )
       continue;
 
-    QString uri = mTableModel.layerURI( mProxyModel.mapToSource( idx ), mConnInfo, mUseEstimatedMetadata, disableInvalidGeometryHandling );
+    const QString uri = mTableModel->layerURI( proxyModel()->mapToSource( idx ), mConnInfo, mUseEstimatedMetadata, disableInvalidGeometryHandling );
     if ( uri.isNull() )
       continue;
 
@@ -469,15 +344,16 @@ void QgsMssqlSourceSelect::btnConnect_clicked()
     return;
   }
 
-  QModelIndex rootItemIndex = mTableModel.indexFromItem( mTableModel.invisibleRootItem() );
-  mTableModel.removeRows( 0, mTableModel.rowCount( rootItemIndex ), rootItemIndex );
+  const QModelIndex rootItemIndex = mTableModel->indexFromItem( mTableModel->invisibleRootItem() );
+  mTableModel->removeRows( 0, mTableModel->rowCount( rootItemIndex ), rootItemIndex );
 
+  mTableModel->setConnectionName( cmbConnections->currentText() );
   // populate the table list
-  QgsSettings settings;
-  QString key = "/MSSQL/connections/" + cmbConnections->currentText();
-  QString service = settings.value( key + "/service" ).toString();
-  QString host = settings.value( key + "/host" ).toString();
-  QString database = settings.value( key + "/database" ).toString();
+  const QgsSettings settings;
+  const QString key = "/MSSQL/connections/" + cmbConnections->currentText();
+  const QString service = settings.value( key + "/service" ).toString();
+  const QString host = settings.value( key + "/host" ).toString();
+  const QString database = settings.value( key + "/database" ).toString();
   QString username;
   QString password;
   if ( settings.value( key + "/saveUsername" ).toString() == QLatin1String( "true" ) )
@@ -491,8 +367,8 @@ void QgsMssqlSourceSelect::btnConnect_clicked()
   }
 
   bool useGeometryColumns = QgsMssqlConnection::geometryColumnsOnly( cmbConnections->currentText() );
-  bool allowGeometrylessTables = cbxAllowGeometrylessTables->isChecked();
-  bool estimateMetadata = QgsMssqlConnection::useEstimatedMetadata( cmbConnections->currentText() );
+  const bool allowGeometrylessTables = cbxAllowGeometrylessTables->isChecked();
+  const bool estimateMetadata = QgsMssqlConnection::useEstimatedMetadata( cmbConnections->currentText() );
 
   mConnInfo = "dbname='" + database + '\'';
   if ( !host.isEmpty() )
@@ -505,23 +381,23 @@ void QgsMssqlSourceSelect::btnConnect_clicked()
     mConnInfo += " service='" + service + '\'';
 
   QgsDebugMsg( QStringLiteral( "GetDatabase" ) );
-  QSqlDatabase db = QgsMssqlConnection::getDatabase( service, host, database, username, password );
+  std::shared_ptr<QgsMssqlDatabase> db = QgsMssqlDatabase::connectDb( service, host, database, username, password );
 
-  if ( !QgsMssqlConnection::openDatabase( db ) )
+  if ( !db->isValid() )
   {
     // Let user know we couldn't initialize the MSSQL provider
     QMessageBox::warning( this,
-                          tr( "MSSQL Provider" ), db.lastError().text() );
+                          tr( "MSSQL Provider" ), db->errorText() );
     return;
   }
 
   // Test for geometry columns table first.  Don't use it if not found.
-  QSqlQuery q = QSqlQuery( db );
+  QSqlQuery q = QSqlQuery( db->db() );
   q.setForwardOnly( true );
 
   if ( useGeometryColumns )
   {
-    QString testquery( QStringLiteral( "SELECT count(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'geometry_columns'" ) );
+    const QString testquery( QStringLiteral( "SELECT count(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'geometry_columns'" ) );
     if ( !q.exec( testquery ) || !q.first() || q.value( 0 ).toInt() == 0 )
     {
       QMessageBox::StandardButtons reply;
@@ -539,24 +415,10 @@ void QgsMssqlSourceSelect::btnConnect_clicked()
   // Read supported layers from database
   QApplication::setOverrideCursor( Qt::WaitCursor );
 
-  // build sql statement
-  QString query( QStringLiteral( "select " ) );
-  if ( useGeometryColumns )
-  {
-    query += QLatin1String( "f_table_schema, f_table_name, f_geometry_column, srid, geometry_type, 0 from geometry_columns" );
-  }
-  else
-  {
-    query += QLatin1String( "sys.schemas.name, sys.objects.name, sys.columns.name, null, 'GEOMETRY', case when sys.objects.type = 'V' then 1 else 0 end from sys.columns join sys.types on sys.columns.system_type_id = sys.types.system_type_id and sys.columns.user_type_id = sys.types.user_type_id join sys.objects on sys.objects.object_id = sys.columns.object_id join sys.schemas on sys.objects.schema_id = sys.schemas.schema_id where (sys.types.name = 'geometry' or sys.types.name = 'geography') and (sys.objects.type = 'U' or sys.objects.type = 'V')" );
-  }
-
-  if ( allowGeometrylessTables )
-  {
-    query += QLatin1String( " union all select sys.schemas.name, sys.objects.name, null, null, 'NONE', case when sys.objects.type = 'V' then 1 else 0 end from sys.objects join sys.schemas on sys.objects.schema_id = sys.schemas.schema_id where not exists (select * from sys.columns sc1 join sys.types on sc1.system_type_id = sys.types.system_type_id where (sys.types.name = 'geometry' or sys.types.name = 'geography') and sys.objects.object_id = sc1.object_id) and (sys.objects.type = 'U' or sys.objects.type = 'V')" );
-  }
+  const QString query = QgsMssqlConnection::buildQueryForTables( cmbConnections->currentText(), allowGeometrylessTables );
 
   // issue the sql query
-  q = QSqlQuery( db );
+  q = QSqlQuery( db->db() );
   q.setForwardOnly( true );
   ( void )q.exec( query );
 
@@ -589,7 +451,7 @@ void QgsMssqlSourceSelect::btnConnect_clicked()
 
       layer.type = type;
       layer.srid = srid;
-      mTableModel.addTableEntry( layer );
+      mTableModel->addTableEntry( layer );
     }
 
     if ( mColumnTypeThread )
@@ -599,14 +461,14 @@ void QgsMssqlSourceSelect::btnConnect_clicked()
     }
 
     //if we have only one schema item, expand it by default
-    int numTopLevelItems = mTableModel.invisibleRootItem()->rowCount();
-    if ( numTopLevelItems < 2 || mTableModel.tableCount() < 20 )
+    const int numTopLevelItems = mTableModel->invisibleRootItem()->rowCount();
+    if ( numTopLevelItems < 2 || mTableModel->tableCount() < 20 )
     {
       //expand all the toplevel items
       for ( int i = 0; i < numTopLevelItems; ++i )
       {
-        mTablesTreeView->expand( mProxyModel.mapFromSource(
-                                   mTableModel.indexFromItem( mTableModel.invisibleRootItem()->child( i ) ) ) );
+        mTablesTreeView->expand( proxyModel()->mapFromSource(
+                                   mTableModel->indexFromItem( mTableModel->invisibleRootItem()->child( i ) ) ) );
       }
     }
   }
@@ -670,11 +532,10 @@ void QgsMssqlSourceSelect::setSql( const QModelIndex &index )
     return;
   }
 
-  QModelIndex idx = mProxyModel.mapToSource( index );
-  const QString tableName = mTableModel.itemFromIndex( idx.sibling( idx.row(), QgsMssqlTableModel::DbtmTable ) )->text();
+  const QString tableName = mTableModel->itemFromIndex( index.sibling( index.row(), QgsMssqlTableModel::DbtmTable ) )->text();
   const bool disableInvalidGeometryHandling = QgsMssqlConnection::isInvalidGeometryHandlingDisabled( cmbConnections->currentText() );
   const QgsVectorLayer::LayerOptions options { QgsProject::instance()->transformContext() };
-  std::unique_ptr< QgsVectorLayer > vlayer = qgis::make_unique< QgsVectorLayer>( mTableModel.layerURI( idx, mConnInfo, mUseEstimatedMetadata, disableInvalidGeometryHandling ), tableName, QStringLiteral( "mssql" ), options );
+  std::unique_ptr< QgsVectorLayer > vlayer = std::make_unique< QgsVectorLayer>( mTableModel->layerURI( index, mConnInfo, mUseEstimatedMetadata, disableInvalidGeometryHandling ), tableName, QStringLiteral( "mssql" ), options );
 
   if ( !vlayer->isValid() )
   {
@@ -685,7 +546,7 @@ void QgsMssqlSourceSelect::setSql( const QModelIndex &index )
   QgsQueryBuilder gb( vlayer.get(), this );
   if ( gb.exec() )
   {
-    mTableModel.setSql( mProxyModel.mapToSource( index ), gb.sql() );
+    mTableModel->setSql( index, gb.sql() );
   }
 }
 
@@ -720,8 +581,8 @@ QString QgsMssqlSourceSelect::fullDescription( const QString &schema, const QStr
 void QgsMssqlSourceSelect::setConnectionListPosition()
 {
   // If possible, set the item currently displayed database
-  QgsSettings settings;
-  QString toSelect = settings.value( QStringLiteral( "MSSQL/connections/selected" ) ).toString();
+  const QgsSettings settings;
+  const QString toSelect = settings.value( QStringLiteral( "MSSQL/connections/selected" ) ).toString();
   cmbConnections->setCurrentIndex( cmbConnections->findText( toSelect ) );
 
   if ( cmbConnections->currentIndex() < 0 )
@@ -731,6 +592,7 @@ void QgsMssqlSourceSelect::setConnectionListPosition()
     else
       cmbConnections->setCurrentIndex( cmbConnections->count() - 1 );
   }
+  cmbConnections_activated( cmbConnections->currentIndex() );
 }
 
 void QgsMssqlSourceSelect::setSearchExpression( const QString &regexp )

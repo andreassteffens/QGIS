@@ -143,8 +143,7 @@ namespace QgsWfs
         NONE,
         GML2,
         GML3,
-        GeoJSON,
-        XSD
+        GeoJSON
       };
 
       //! Type of results

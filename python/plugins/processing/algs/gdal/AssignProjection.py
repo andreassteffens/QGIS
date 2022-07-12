@@ -64,6 +64,11 @@ class AssignProjection(GdalAlgorithm):
     def icon(self):
         return QIcon(os.path.join(pluginPath, 'images', 'gdaltools', 'projection-add.png'))
 
+    def tags(self):
+        tags = self.tr('assign,set,transform,reproject,crs,srs').split(',')
+        tags.extend(super().tags())
+        return tags
+
     def group(self):
         return self.tr('Raster projections')
 
@@ -82,11 +87,12 @@ class AssignProjection(GdalAlgorithm):
 
         crs = self.parameterAsCrs(parameters, self.CRS, context)
 
-        arguments = []
-        arguments.append('-a_srs')
-        arguments.append(GdalUtils.gdal_crs_string(crs))
+        arguments = [
+            '-a_srs',
+            GdalUtils.gdal_crs_string(crs),
 
-        arguments.append(fileName)
+            fileName
+        ]
 
         self.setOutputValue(self.OUTPUT, fileName)
 

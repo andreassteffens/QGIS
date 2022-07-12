@@ -13,8 +13,8 @@
 
 class QgsContrastEnhancement
 {
-%Docstring
-Manipulates raster pixel values so that they enhanceContrast or clip into a
+%Docstring(signature="appended")
+Manipulates raster or point cloud pixel values so that they enhanceContrast or clip into a
 specified numerical range according to the specified
 ContrastEnhancementAlgorithm.
 %End
@@ -33,19 +33,22 @@ ContrastEnhancementAlgorithm.
       UserDefinedEnhancement
     };
 
-    QgsContrastEnhancement( Qgis::DataType datatype = Qgis::Byte );
+    QgsContrastEnhancement( Qgis::DataType datatype = Qgis::DataType::Byte );
+%Docstring
+Constructor for QgsContrastEnhancement, for the specified data type.
+%End
     QgsContrastEnhancement( const QgsContrastEnhancement &ce );
     ~QgsContrastEnhancement();
 
 
     static double maximumValuePossible( Qgis::DataType dataType );
 %Docstring
-Helper function that returns the maximum possible value for a GDAL data type.
+Helper function that returns the maximum possible value for a data type.
 %End
 
     static double minimumValuePossible( Qgis::DataType dataType );
 %Docstring
-Helper function that returns the minimum possible value for a GDAL data type.
+Helper function that returns the minimum possible value for a data type.
 %End
 
     static QString contrastEnhancementAlgorithmString( ContrastEnhancementAlgorithm algorithm );

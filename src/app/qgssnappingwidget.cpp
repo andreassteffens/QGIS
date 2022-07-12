@@ -40,9 +40,12 @@
 #include "qgssnappinglayertreemodel.h"
 #include "qgssnappingwidget.h"
 #include "qgsunittypes.h"
-#include "qgssettings.h"
+#include "qgssettingsregistrycore.h"
 #include "qgsscalewidget.h"
 
+#ifdef ENABLE_MODELTEST
+#include "modeltest.h"
+#endif
 
 class SnapTypeMenu: public QMenu
 {
@@ -89,6 +92,11 @@ QgsSnappingWidget::QgsSnappingWidget( QgsProject *project, QgsMapCanvas *canvas,
   QgsSnappingLayerTreeModel *model = new QgsSnappingLayerTreeModel( mProject, mCanvas, this );
   model->setLayerTreeModel( new QgsLayerTreeModel( mProject->layerTreeRoot(), model ) );
   mLayerTreeView->installEventFilter( this );
+
+#ifdef ENABLE_MODELTEST
+  new ModelTest( model, this );
+  new ModelTest( model->layerTreeModel(), this );
+#endif
 
   // connections
   connect( model, &QgsSnappingLayerTreeModel::rowsInserted, this, &QgsSnappingWidget::onSnappingTreeLayersChanged );
@@ -137,6 +145,7 @@ QgsSnappingWidget::QgsSnappingWidget( QgsProject *project, QgsMapCanvas *canvas,
   QMenu *avoidIntersectionsModeMenu = new QMenu( tr( "Set Avoid Overlap Mode" ), this );
   mAllowIntersectionsAction = new QAction( QIcon( QgsApplication::getThemeIcon( "/mActionAllowIntersections.svg" ) ), tr( "Allow Overlap" ), avoidIntersectionsModeMenu );
   mAvoidIntersectionsCurrentLayerAction = new QAction( QIcon( QgsApplication::getThemeIcon( "/mActionAvoidIntersectionsCurrentLayer.svg" ) ), tr( "Avoid Overlap on Active Layer" ), avoidIntersectionsModeMenu );
+  mAvoidIntersectionsCurrentLayerAction->setToolTip( tr( "Avoid Overlap on Active Layer.\nBeware that this option will be applied on all vertices of the edited geometries, even if outside the current view extent" ) );
   mAvoidIntersectionsLayersAction = new QAction( QIcon( QgsApplication::getThemeIcon( "/mActionAvoidIntersectionsLayers.svg" ) ), tr( "Follow Advanced Configuration" ), avoidIntersectionsModeMenu );
   avoidIntersectionsModeMenu->addAction( mAllowIntersectionsAction );
   avoidIntersectionsModeMenu->addAction( mAvoidIntersectionsCurrentLayerAction );
@@ -180,21 +189,19 @@ QgsSnappingWidget::QgsSnappingWidget( QgsProject *project, QgsMapCanvas *canvas,
   mTypeButton->setToolTip( tr( "Snapping Type" ) );
   mTypeButton->setPopupMode( QToolButton::InstantPopup );
   SnapTypeMenu *typeMenu = new SnapTypeMenu( tr( "Set Snapping Mode" ), this );
-  mVertexAction = new QAction( QIcon( QgsApplication::getThemeIcon( "/mIconSnappingVertex.svg" ) ), tr( "Vertex" ), typeMenu );
-  mSegmentAction = new QAction( QIcon( QgsApplication::getThemeIcon( "/mIconSnappingSegment.svg" ) ), tr( "Segment" ), typeMenu );
-  mAreaAction = new QAction( QIcon( QgsApplication::getThemeIcon( "/mIconSnappingArea.svg" ) ), tr( "Area" ), typeMenu );
-  mCentroidAction = new QAction( QIcon( QgsApplication::getThemeIcon( "/mIconSnappingCentroid.svg" ) ), tr( "Centroid" ), typeMenu );
-  mMiddleAction = new QAction( QIcon( QgsApplication::getThemeIcon( "/mIconSnappingMiddle.svg" ) ), tr( "Middle of Segments" ), typeMenu );
-  mVertexAction->setCheckable( true );
-  mSegmentAction->setCheckable( true );
-  mAreaAction->setCheckable( true );
-  mCentroidAction->setCheckable( true );
-  mMiddleAction->setCheckable( true );
-  typeMenu->addAction( mVertexAction );
-  typeMenu->addAction( mSegmentAction );
-  typeMenu->addAction( mAreaAction );
-  typeMenu->addAction( mCentroidAction );
-  typeMenu->addAction( mMiddleAction );
+
+
+  for ( Qgis::SnappingType type : qgsEnumList<Qgis::SnappingType>() )
+  {
+    if ( type == Qgis::SnappingType::NoSnap )
+      continue;
+    QAction *action = new QAction( QgsSnappingConfig::snappingTypeToIcon( type ), QgsSnappingConfig::snappingTypeToString( type ), typeMenu );
+    action->setData( QVariant::fromValue( type ) );
+    action->setCheckable( true );
+    typeMenu->addAction( action );
+    mSnappingFlagActions << action;
+  }
+
   mTypeButton->setMenu( typeMenu );
   mTypeButton->setObjectName( QStringLiteral( "SnappingTypeButton" ) );
   if ( mDisplayMode == Widget )
@@ -204,12 +211,12 @@ QgsSnappingWidget::QgsSnappingWidget( QgsProject *project, QgsMapCanvas *canvas,
   connect( mTypeButton, &QToolButton::triggered, this, &QgsSnappingWidget::typeButtonTriggered );
 
   // tolerance
-  mToleranceSpinBox = new QDoubleSpinBox();
+  mToleranceSpinBox = new QgsDoubleSpinBox();
   mToleranceSpinBox->setDecimals( 5 );
   mToleranceSpinBox->setMaximum( 99999999.990000 );
   mToleranceSpinBox->setToolTip( tr( "Snapping Tolerance in Defined Units" ) );
   mToleranceSpinBox->setObjectName( QStringLiteral( "SnappingToleranceSpinBox" ) );
-  connect( mToleranceSpinBox, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsSnappingWidget::changeTolerance );
+  connect( mToleranceSpinBox, qOverload< double >( &QgsDoubleSpinBox::valueChanged ), this, &QgsSnappingWidget::changeTolerance );
 
   // units
   mUnitsComboBox = new QComboBox();
@@ -219,7 +226,7 @@ QgsSnappingWidget::QgsSnappingWidget( QgsProject *project, QgsMapCanvas *canvas,
   mUnitsComboBox->addItem( mapCanvasDistanceUnits, QgsTolerance::ProjectUnits );
   mUnitsComboBox->setToolTip( tr( "Snapping Unit Type: Pixels (px) or Project/Map Units (%1)" ).arg( mapCanvasDistanceUnits ) );
   mUnitsComboBox->setObjectName( QStringLiteral( "SnappingUnitComboBox" ) );
-  connect( mUnitsComboBox, qgis::overload<int>::of( &QComboBox::currentIndexChanged ),
+  connect( mUnitsComboBox, qOverload<int>( &QComboBox::currentIndexChanged ),
            this, &QgsSnappingWidget::changeUnit );
 
   connect( mCanvas, &QgsMapCanvas::destinationCrsChanged, this, [ = ]
@@ -406,8 +413,7 @@ QgsSnappingWidget::QgsSnappingWidget( QgsProject *project, QgsMapCanvas *canvas,
   modeChanged();
   updateToleranceDecimals();
 
-  bool defaultSnapEnabled = QgsSettings().value( QStringLiteral( "/qgis/digitizing/default_snap_enabled" ), false ).toBool();
-  enableSnapping( defaultSnapEnabled );
+  enableSnapping( QgsSettingsRegistryCore::settingsDigitizingDefaultSnapEnabled.value() );
 
   restoreGeometry( QgsSettings().value( QStringLiteral( "/Windows/SnappingWidget/geometry" ) ).toByteArray() );
 }
@@ -429,56 +435,32 @@ void QgsSnappingWidget::projectSnapSettingsChanged()
 
   mEnabledAction->setChecked( config.enabled() );
 
-  if ( config.mode() == QgsSnappingConfig::AllLayers && mModeButton->defaultAction() != mAllLayersAction )
+  if ( config.mode() == Qgis::SnappingMode::AllLayers && mModeButton->defaultAction() != mAllLayersAction )
   {
     mModeButton->setDefaultAction( mAllLayersAction );
     modeChanged();
     updateToleranceDecimals();
   }
-  if ( config.mode() == QgsSnappingConfig::ActiveLayer && mModeButton->defaultAction() != mActiveLayerAction )
+  if ( config.mode() == Qgis::SnappingMode::ActiveLayer && mModeButton->defaultAction() != mActiveLayerAction )
   {
     mModeButton->setDefaultAction( mActiveLayerAction );
     modeChanged();
     updateToleranceDecimals();
   }
-  if ( config.mode() == QgsSnappingConfig::AdvancedConfiguration && mModeButton->defaultAction() != mAdvancedModeAction )
+  if ( config.mode() == Qgis::SnappingMode::AdvancedConfiguration && mModeButton->defaultAction() != mAdvancedModeAction )
   {
     mModeButton->setDefaultAction( mAdvancedModeAction );
     modeChanged();
     updateToleranceDecimals();
   }
 
-  // Clear
-  mVertexAction->setChecked( false );
-  mSegmentAction->setChecked( false );
-  mAreaAction->setChecked( false );
-  mCentroidAction->setChecked( false );
-  mMiddleAction->setChecked( false );
-
-  if ( config.typeFlag() & QgsSnappingConfig::VertexFlag )
+  // update snapping flag actions
+  for ( QAction *action : std::as_const( mSnappingFlagActions ) )
   {
-    mTypeButton->setDefaultAction( mVertexAction );
-    mVertexAction->setChecked( true );
-  }
-  if ( config.typeFlag() & QgsSnappingConfig::SegmentFlag )
-  {
-    mTypeButton->setDefaultAction( mSegmentAction );
-    mSegmentAction->setChecked( true );
-  }
-  if ( config.typeFlag() & QgsSnappingConfig::AreaFlag )
-  {
-    mTypeButton->setDefaultAction( mAreaAction );
-    mAreaAction->setChecked( true );
-  }
-  if ( config.typeFlag() & QgsSnappingConfig::CentroidFlag )
-  {
-    mTypeButton->setDefaultAction( mCentroidAction );
-    mCentroidAction->setChecked( true );
-  }
-  if ( config.typeFlag() & QgsSnappingConfig::MiddleOfSegmentFlag )
-  {
-    mTypeButton->setDefaultAction( mMiddleAction );
-    mMiddleAction->setChecked( true );
+    const Qgis::SnappingTypes actionFlag = static_cast<Qgis::SnappingTypes>( action->data().toInt() );
+    action->setChecked( config.typeFlag() & actionFlag );
+    if ( action->isChecked() )
+      mTypeButton->setDefaultAction( action );
   }
 
   if ( static_cast<QgsTolerance::UnitType>( mUnitsComboBox->currentData().toInt() ) != config.units() )
@@ -532,19 +514,19 @@ void QgsSnappingWidget::projectAvoidIntersectionModeChanged()
 {
   switch ( mProject->avoidIntersectionsMode() )
   {
-    case QgsProject::AvoidIntersectionsMode::AllowIntersections:
+    case Qgis::AvoidIntersectionsMode::AllowIntersections:
       mAvoidIntersectionsModeButton->setDefaultAction( mAllowIntersectionsAction );
       mAllowIntersectionsAction->setChecked( true );
       mAvoidIntersectionsCurrentLayerAction->setChecked( false );
       mAvoidIntersectionsLayersAction->setChecked( false );
       break;
-    case QgsProject::AvoidIntersectionsMode::AvoidIntersectionsCurrentLayer:
+    case Qgis::AvoidIntersectionsMode::AvoidIntersectionsCurrentLayer:
       mAvoidIntersectionsModeButton->setDefaultAction( mAvoidIntersectionsCurrentLayerAction );
       mAllowIntersectionsAction->setChecked( false );
       mAvoidIntersectionsCurrentLayerAction->setChecked( true );
       mAvoidIntersectionsLayersAction->setChecked( false );
       break;
-    case QgsProject::AvoidIntersectionsMode::AvoidIntersectionsLayers:
+    case Qgis::AvoidIntersectionsMode::AvoidIntersectionsLayers:
       mAvoidIntersectionsModeButton->setDefaultAction( mAvoidIntersectionsLayersAction );
       mAllowIntersectionsAction->setChecked( false );
       mAvoidIntersectionsCurrentLayerAction->setChecked( false );
@@ -667,15 +649,15 @@ void QgsSnappingWidget::avoidIntersectionsModeButtonTriggered( QAction *action )
     mAvoidIntersectionsModeButton->setDefaultAction( action );
     if ( action == mAllowIntersectionsAction )
     {
-      mProject->setAvoidIntersectionsMode( QgsProject::AvoidIntersectionsMode::AllowIntersections );
+      mProject->setAvoidIntersectionsMode( Qgis::AvoidIntersectionsMode::AllowIntersections );
     }
     else if ( action == mAvoidIntersectionsCurrentLayerAction )
     {
-      mProject->setAvoidIntersectionsMode( QgsProject::AvoidIntersectionsMode::AvoidIntersectionsCurrentLayer );
+      mProject->setAvoidIntersectionsMode( Qgis::AvoidIntersectionsMode::AvoidIntersectionsCurrentLayer );
     }
     else if ( action == mAvoidIntersectionsLayersAction )
     {
-      mProject->setAvoidIntersectionsMode( QgsProject::AvoidIntersectionsMode::AvoidIntersectionsLayers );
+      mProject->setAvoidIntersectionsMode( Qgis::AvoidIntersectionsMode::AvoidIntersectionsLayers );
     }
   }
 }
@@ -694,15 +676,15 @@ void QgsSnappingWidget::modeButtonTriggered( QAction *action )
     mModeButton->setDefaultAction( action );
     if ( action == mAllLayersAction )
     {
-      mConfig.setMode( QgsSnappingConfig::AllLayers );
+      mConfig.setMode( Qgis::SnappingMode::AllLayers );
     }
     else if ( action == mActiveLayerAction )
     {
-      mConfig.setMode( QgsSnappingConfig::ActiveLayer );
+      mConfig.setMode( Qgis::SnappingMode::ActiveLayer );
     }
     else if ( action == mAdvancedModeAction )
     {
-      mConfig.setMode( QgsSnappingConfig::AdvancedConfiguration );
+      mConfig.setMode( Qgis::SnappingMode::AdvancedConfiguration );
     }
     mProject->setSnappingConfig( mConfig );
     updateToleranceDecimals();
@@ -714,28 +696,28 @@ void QgsSnappingWidget::typeButtonTriggered( QAction *action )
 {
   unsigned int type = static_cast<int>( mConfig.typeFlag() );
 
-  mTypeButton->setDefaultAction( action );
-  if ( action == mVertexAction )
+  const Qgis::SnappingTypes actionFlag = static_cast<Qgis::SnappingTypes>( action->data().toInt() );
+  type ^= actionFlag;
+
+  if ( type & actionFlag )
   {
-    type ^= static_cast<int>( QgsSnappingConfig::VertexFlag );
+    // user checked the action, set as new default
+    mTypeButton->setDefaultAction( action );
   }
-  else if ( action == mSegmentAction )
+  else
   {
-    type ^= static_cast<int>( QgsSnappingConfig::SegmentFlag );
+    // user unchecked the action -- find out which ones we should set as new default action
+    for ( QAction *flagAction : std::as_const( mSnappingFlagActions ) )
+    {
+      if ( type & static_cast<Qgis::SnappingTypes>( flagAction->data().toInt() ) )
+      {
+        mTypeButton->setDefaultAction( flagAction );
+        break;
+      }
+    }
   }
-  else if ( action == mAreaAction )
-  {
-    type ^= static_cast<int>( QgsSnappingConfig::AreaFlag );
-  }
-  else if ( action == mCentroidAction )
-  {
-    type ^= static_cast<int>( QgsSnappingConfig::CentroidFlag );
-  }
-  else if ( action == mMiddleAction )
-  {
-    type ^= static_cast<int>( QgsSnappingConfig::MiddleOfSegmentFlag );
-  }
-  mConfig.setTypeFlag( static_cast<QgsSnappingConfig::SnappingTypeFlag>( type ) );
+
+  mConfig.setTypeFlag( static_cast<Qgis::SnappingTypes>( type ) );
   mProject->setSnappingConfig( mConfig );
 }
 
@@ -788,7 +770,7 @@ void QgsSnappingWidget::updateToleranceDecimals()
 
 void QgsSnappingWidget::modeChanged()
 {
-  bool advanced = mConfig.mode() == QgsSnappingConfig::AdvancedConfiguration;
+  bool advanced = mConfig.mode() == Qgis::SnappingMode::AdvancedConfiguration;
 
   if ( mDisplayMode == ToolBar )
   {

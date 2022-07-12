@@ -20,7 +20,6 @@
 #include "qgsfeaturerequest.h"
 #include "qgsvectordataprovider.h"
 #include "qgsexpression.h"
-#include "qgsmessagelog.h"
 
 QString QgsServerFeatureId::getServerFid( const QgsFeature &feature, const QgsAttributeList &pkAttributes )
 {
@@ -30,7 +29,7 @@ QString QgsServerFeatureId::getServerFid( const QgsFeature &feature, const QgsAt
   }
 
   QStringList pkValues;
-  for ( const auto &attrIdx : qgis::as_const( pkAttributes ) )
+  for ( const auto &attrIdx : std::as_const( pkAttributes ) )
   {
     pkValues.append( feature.attribute( attrIdx ).toString() );
   }
@@ -49,7 +48,6 @@ QgsFeatureRequest QgsServerFeatureId::updateFeatureRequestFromServerFids( QgsFea
       fids.insert( STRING_TO_FID( serverFid ) );
     }
     featureRequest.setFilterFids( fids );
-
     return featureRequest;
   }
 
@@ -66,7 +64,7 @@ QgsFeatureRequest QgsServerFeatureId::updateFeatureRequestFromServerFids( QgsFea
   else
   {
     QString fullExpression;
-    for ( const QString &exp : qgis::as_const( expList ) )
+    for ( const QString &exp : std::as_const( expList ) )
     {
       if ( !fullExpression.isEmpty() )
       {
