@@ -126,7 +126,8 @@ const QgsProject *QgsConfigCache::project( const QString &path, const QgsServerS
 
   if ( !mProjectCache[ strLoadingPath ] )
   {
-    std::unique_ptr<QgsProject> prj( new QgsProject() );
+    // disable the project style database -- this incurs unwanted cost and is not required
+    std::unique_ptr<QgsProject> prj( new QgsProject( nullptr, Qgis::ProjectCapabilities() ) );
 
     // This is required by virtual layers that call QgsProject::instance() inside the constructor :(
     QgsProject::setInstance( prj.get() );
@@ -149,8 +150,7 @@ const QgsProject *QgsConfigCache::project( const QString &path, const QgsServerS
 
     // Always skip original styles storage
     Qgis::ProjectReadFlags readFlags = Qgis::ProjectReadFlag::DontStoreOriginalStyles
-                                       | Qgis::ProjectReadFlag::DontLoad3DViews
-                                       | Qgis::ProjectReadFlag::DontLoadProjectStyles;
+                                       | Qgis::ProjectReadFlag::DontLoad3DViews;
     if ( settings )
     {
       // Activate trust layer metadata flag
