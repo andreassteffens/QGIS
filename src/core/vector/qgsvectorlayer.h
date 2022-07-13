@@ -1107,7 +1107,7 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer, public QgsExpressionConte
      */
     bool writeSld( QDomNode &node, QDomDocument &doc, QString &errorMessage, const QVariantMap &props = QVariantMap() ) const;
 
-    bool writeSldLabeling(QDomNode &node, const QgsStringMap &props) const SIP_SKIP;
+    bool writeSldLabeling( QDomNode &node, const QVariantMap& props = QVariantMap() ) const SIP_SKIP;
 
     bool readSld( const QDomNode &node, QString &errorMessage ) FINAL;
 

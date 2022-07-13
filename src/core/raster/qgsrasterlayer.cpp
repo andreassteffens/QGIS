@@ -174,10 +174,11 @@ QgsRasterLayer::QgsRasterLayer( const QString &uri,
     }
   }
 
+  QgsDataProvider::ProviderOptions providerOptions{ options.transformContext };
+
   if (bMetaStatsValid)
     providerOptions.sbRasterBandStatistics = listRasterStatistics;
 
-  const QgsDataProvider::ProviderOptions providerOptions { options.transformContext };
   QgsDataProvider::ReadFlags providerFlags = QgsDataProvider::ReadFlags();
   if ( options.loadDefaultStyle )
   {

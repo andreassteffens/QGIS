@@ -119,7 +119,7 @@ namespace QgsWms
     return nullptr;
   }
 
-  QgsRenderer::QgsRenderer( const QgsWmsRenderContext &context )
+  QgsRenderer::QgsRenderer( QgsWmsRenderContext &context )
     : mContext( context )
   {
     mProject = mContext.project();
@@ -139,8 +139,8 @@ namespace QgsWms
     if (!mWmsParameters.scale().isEmpty())
       scaleDenominator = mWmsParameters.scaleAsDouble();
 
-    QgsLegendSettings legendSettings = legendSettings();
-    legendSettings.sbSetScaleIndependentSymbol(true);
+    QgsLegendSettings settings = legendSettings();
+    settings.sbSetScaleIndependentSymbol(true);
 
     // get layers
     std::unique_ptr<QgsWmsRestorer> restorer;
@@ -151,7 +151,7 @@ namespace QgsWms
     configureLayers( layers );
 
     // init renderer
-    QgsLegendSettings settings = legendSettings;
+    
     QgsLegendRenderer renderer( &model, settings );
 
     // create image
@@ -3771,7 +3771,7 @@ namespace QgsWms
 
       if ( mContext.testFlag( QgsWmsRenderContext::UseSelection ) )
       {
-        setLayerSelection( layer, param.mSelection );
+        setLayerSelection( layer, param.mSelection, param.mRenderSelectionOnly );
       }
       PROFILER_END();
 

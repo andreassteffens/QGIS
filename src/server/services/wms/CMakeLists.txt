@@ -67,7 +67,7 @@ foreach(_library_type MODULE STATIC)
   target_link_libraries(${_library_name}
     qgis_core
     qgis_server
-    wmsprovider_a
+    provider_wms_a
     winmm.lib
   )
 endforeach()

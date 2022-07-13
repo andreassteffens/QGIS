@@ -213,7 +213,7 @@ QgsLayerRestorer::~QgsLayerRestorer()
                 if (!legendItem.isCheckable())
                   continue;
 
-                String strRule = legendItem.ruleKey();
+                QString strRule = legendItem.ruleKey();
                 QMultiMap<QString, bool>::iterator it = settings.mLegendItemStates.find(strRule);
                 if (it != settings.mLegendItemStates.end())
                 {

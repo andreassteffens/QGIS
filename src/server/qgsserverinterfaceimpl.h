@@ -43,8 +43,7 @@ class SERVER_EXPORT QgsServerInterfaceImpl : public QgsServerInterface
     explicit QgsServerInterfaceImpl( QgsCapabilitiesCache *capCache,
                                      QgsServiceRegistry *srvRegistry,
                                      QgsServerSettings *serverSettings,
-									 QgsConfigCache* configCache,
-		                             const QString& strTenant);
+	                                   const QString& strTenant);
 
 
     ~QgsServerInterfaceImpl() override;
@@ -92,9 +91,9 @@ class SERVER_EXPORT QgsServerInterfaceImpl : public QgsServerInterface
 
     QgsServerSettings *serverSettings() override;
 
-	QStringList sbLoadedProjects() override;
+    QStringList sbLoadedProjects() override;
 
-	const QString& sbTenant() override;
+	  const QString& sbTenant() override;
 
   private:
 
@@ -106,9 +105,8 @@ class SERVER_EXPORT QgsServerInterfaceImpl : public QgsServerInterface
     QgsRequestHandler *mRequestHandler = nullptr;
     QgsServiceRegistry *mServiceRegistry = nullptr;
     QgsServerSettings *mServerSettings = nullptr;
-	QgsConfigCache *mConfigCache = nullptr;
-
-	QString mSbTenant;
+	  
+    QString mSbTenant;
 };
 
 #endif // QGSSERVERINTERFACEIMPL_H

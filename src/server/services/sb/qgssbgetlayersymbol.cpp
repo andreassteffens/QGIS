@@ -25,6 +25,7 @@
 #include "qgsrenderer.h"
 #include "qgssymbol.h"
 #include "qgssymbollayer.h"
+#include "qgsmarkersymbol.h"
 
 #include "qgsexception.h"
 #include "qgsexpressionnodeimpl.h"
@@ -222,7 +223,7 @@ namespace QgsSb
 			  {
 				  if (listSymbols[i].ruleKey().compare(ruleName, Qt::CaseInsensitive) == 0)
 				  {
-					  if (listSymbols[i].symbol()->type() == QgsSymbol::SymbolType::Marker)
+					  if (listSymbols[i].symbol()->type() == Qgis::SymbolType::Marker)
 					  {
 						  QgsMarkerSymbol *pSymbol = (QgsMarkerSymbol*)listSymbols[i].symbol();
 

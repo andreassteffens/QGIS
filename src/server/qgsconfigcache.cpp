@@ -218,7 +218,7 @@ const QgsProject *QgsConfigCache::project( const QString &path, const QgsServerS
   return entry ? entry->second.get() : nullptr;
 }
 
-QStringList *QgsConfigCache::projectWarnings(const QString &path)
+QStringList *QgsConfigCache::sbProjectWarnings(const QString &path)
 {
   QString strPath = sbGetStandardizedPath(path);
 
@@ -228,7 +228,7 @@ QStringList *QgsConfigCache::projectWarnings(const QString &path)
   return NULL;
 }
 
-QgsMapSettings *QgsConfigCache::mapSettings(const QString &path)
+QgsMapSettings *QgsConfigCache::sbMapSettings(const QString &path)
 {
   QString strPath = sbGetStandardizedPath(path);
 
@@ -264,7 +264,7 @@ void QgsConfigCache::logLoadingLayerMessage(const QString &t1, const QList<QgsRe
 
   for (int i = 0; i < listMessages.size(); i++)
   {
-    QString strLevel = "None";
+    QString strLevel = "NOLEVEL";
     switch (listMessages[i].level())
     {
       case Qgis::Warning:
@@ -279,8 +279,8 @@ void QgsConfigCache::logLoadingLayerMessage(const QString &t1, const QList<QgsRe
       case Qgis::Success:
         strLevel = "SUCESS";
         break;
-      case Qgis::None:
-        strLevel = "NONE";
+      case Qgis::NoLevel:
+        strLevel = "NOLEVEL";
         break;
     }
 

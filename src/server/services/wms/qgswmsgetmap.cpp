@@ -80,12 +80,12 @@ namespace QgsWms
           case ImageOutputFormat::JPEG:
             strContentType = QStringLiteral("image/jpeg");
             strSaveFormat = QStringLiteral("JPEG");
-            image = qgis::make_unique<QImage>(iWidth, iHeight, QImage::Format_RGB32);
+            image = std::make_unique<QImage>(iWidth, iHeight, QImage::Format_RGB32);
             break;
           case ImageOutputFormat::PNG:
             strContentType = QStringLiteral("image/png");
             strSaveFormat = QStringLiteral("PNG");
-            image = qgis::make_unique<QImage>(iWidth, iHeight, QImage::Format_ARGB32_Premultiplied);
+            image = std::make_unique<QImage>(iWidth, iHeight, QImage::Format_ARGB32_Premultiplied);
             break;
           default:
             bTiled = false;

@@ -60,7 +60,7 @@ namespace QgsWmts
           QList<QgsLayerMetadata::Constraint> qlistConstraints = layer->metadata().constraints();
           for (int iMeta = 0; iMeta < qlistConstraints.length(); iMeta++)
           {
-            if (qlistConstraints[iMeta].type.compare("sb:CACHE_MAX_AGE", Qt::CaseInsensitive) == 0)
+            if ( qlistConstraints[iMeta].type.compare( "sb:CACHE_MAX_AGE" , Qt::CaseInsensitive ) == 0 )
             {
               strCacheMaxAge = qlistConstraints[iMeta].constraint;
               break;
@@ -73,7 +73,7 @@ namespace QgsWmts
 
       if (strCacheMaxAge.isEmpty())
       {
-        QStringList qlistMetadata = project->metadata().keywords("sb:CACHE_MAX_AGE");
+        QStringList qlistMetadata = project->metadata().keywords( "sb:CACHE_MAX_AGE" );
         if (qlistMetadata.count() > 0)
           strCacheMaxAge = qlistMetadata[0];
       }
@@ -109,9 +109,9 @@ namespace QgsWmts
         image->save( response.io(), qPrintable( saveFormat ) );
 
         if (!strCacheMaxAge.isEmpty())
-          response.setHeader(QStringLiteral("Cache-Control"), QStringLiteral("public, max-age=%1").arg(strCacheMaxAge));
+          response.setHeader( QStringLiteral( "Cache-Control" ), QStringLiteral( "public, max-age=%1" ).arg( strCacheMaxAge ) );
 
-        response.setHeader(QStringLiteral("X-QGIS-FROM-CACHE"), QStringLiteral("true"));
+        response.setHeader( QStringLiteral( "X-QGIS-FROM-CACHE" ), QStringLiteral( "true" ) );
 
         return;
       }
@@ -133,9 +133,9 @@ namespace QgsWmts
 #endif
 
     if (!strCacheMaxAge.isEmpty())
-      response.setHeader(QStringLiteral("Cache-Control"), QStringLiteral("public, max-age=%1").arg(strCacheMaxAge));
+      response.setHeader( QStringLiteral( "Cache-Control" ), QStringLiteral( "public, max-age=%1" ).arg( strCacheMaxAge ) );
 
-    response.setHeader(QStringLiteral("X-QGIS-FROM-CACHE"), QStringLiteral("false"));
+    response.setHeader( QStringLiteral(" X-QGIS-FROM-CACHE" ), QStringLiteral( "false" ) );
   }
 
 } // namespace QgsWmts

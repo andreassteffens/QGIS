@@ -139,7 +139,7 @@ class SERVER_EXPORT QgsServer : public QObject
     //! Create and return a request handler instance
     static QgsRequestHandler *createRequestHandler( const QgsServerRequest &request, QgsServerResponse &response );
 
-	static QString sbGetDecryptedProjectPath(QString strPath);
+	  static QString sbGetDecryptedProjectPath(QString strPath);
 
     // Return the server name
     static QString &serverName();
@@ -148,22 +148,19 @@ class SERVER_EXPORT QgsServer : public QObject
     static QString *sConfigFilePath;
     static QgsCapabilitiesCache *sCapabilitiesCache;
     static QgsServerInterfaceImpl *sServerInterface;
-	static sbServerCacheFilter *sSbServerCacheFilter;
+	  static sbServerCacheFilter *sSbServerCacheFilter;
     //! Initialization must run once for all servers
     static bool sInitialized;
 
     //! service registry
     static QgsServiceRegistry *sServiceRegistry;
 
-    //! cache
-    QgsConfigCache *mConfigCache = nullptr;
-	
-	QString mSbTenant;
-	sbUnloadProjectFileWatcher mSbUnloadWatcher;
+	  QString mSbTenant;
+	  sbUnloadProjectFileWatcher mSbUnloadWatcher;
 
     //! Initialize locale
     static void initLocale();
 
-	static SimpleCrypt sCrypto;
+	  static SimpleCrypt sCrypto;
 };
 #endif // QGSSERVER_H

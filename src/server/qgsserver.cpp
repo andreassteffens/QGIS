@@ -87,11 +87,10 @@ QgsServer::QgsServer(const QString& strTenant)
     abort();
   }
   init(strTenant);
-  mConfigCache = QgsConfigCache::instance();
-
+  
   QString strUnloadConfig = QDir(sSettings()->cacheDirectory()).filePath("unload_" + strTenant);
   mSbUnloadWatcher.setWatchedPath(strUnloadConfig);
-  mSbUnloadWatcher.setTimeout(sSettings()->unloadWatcherInterval());
+  mSbUnloadWatcher.setTimeout(sSettings()->sbUnloadWatcherInterval());
   mSbUnloadWatcher.start();
 }
 
@@ -104,7 +103,6 @@ QgsServer::QgsServer()
     abort();
   }
   init("");
-  mConfigCache = QgsConfigCache::instance();
 }
 
 QgsServer::~QgsServer()
@@ -236,7 +234,7 @@ int QgsServer::sbPreloadProjects()
           continue;
 
         QgsMessageLog::logMessage(QStringLiteral("Preloading project '%1' ...").arg(strLine), QStringLiteral("Server"), Qgis::Warning);
-        const QgsProject* pProject = mConfigCache->project(strLine);
+        const QgsProject* pProject = QgsConfigCache::instance()->project(strLine);
         if (pProject != NULL)
         {
           QgsMessageLog::logMessage(QStringLiteral("Preloading of project '%1' SUCCEEDED").arg(strLine), QStringLiteral("Server"), Qgis::Warning);
@@ -536,6 +534,9 @@ bool QgsServer::init(const QString& strTenant)
   //create cache for capabilities XML
   sCapabilitiesCache = new QgsCapabilitiesCache();
 
+  // Initialize config cache
+  QgsConfigCache::initialize(sSettings);
+
   QgsFontUtils::loadStandardTestFonts( QStringList() << QStringLiteral( "Roman" ) << QStringLiteral( "Bold" ) );
 
   QgsMessageLog::logMessage("[sb] This service has been modified by the great and powerful Ender. Go ahead and enjoy!", QStringLiteral("Server"), Qgis::Info);
@@ -552,10 +553,10 @@ bool QgsServer::init(const QString& strTenant)
 
   sServiceRegistry = new QgsServiceRegistry();
 
-  sServerInterface = new QgsServerInterfaceImpl( sCapabilitiesCache, sServiceRegistry, sSettings() );
+  sServerInterface = new QgsServerInterfaceImpl( sCapabilitiesCache, sServiceRegistry, sSettings(), strTenant );
   sCrypto.setKey(Q_UINT64_C(0x0c2ad4a4acb9f023));
 
-  if (!sSettings->cacheDirectory().isEmpty() && sSettings->useSbCache())
+  if (!sSettings->cacheDirectory().isEmpty() && sSettings->sbUseCache())
   {
     QString strCacheDirectory = QDir(sSettings->cacheDirectory()).filePath("sb");
     QgsMessageLog::logMessage(QStringLiteral("[sb] Initializing server cache in directory: %1").arg(strCacheDirectory), QStringLiteral("Server"), Qgis::Info);
@@ -568,9 +569,6 @@ bool QgsServer::init(const QString& strTenant)
   const QString modulePath = QgsApplication::libexecPath() + "server";
   // qDebug() << QStringLiteral( "Initializing server modules from: %1" ).arg( modulePath );
   sServiceRegistry->init( modulePath,  sServerInterface );
-
-  // Initialize config cache
-  QgsConfigCache::initialize( sSettings );
 
   sInitialized = true;
   QgsMessageLog::logMessage( QStringLiteral( "Server initialized" ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
@@ -617,7 +615,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
     }
     catch ( QgsMapServiceException &e )
     {
-      QgsMessageLog::logMessage( QStringLiteral("Parse input exception: %1").arg(emessage()), QStringLiteral( "Server" ), Qgis::MessageLevel::Critical );
+      QgsMessageLog::logMessage( QStringLiteral("Parse input exception: %1").arg(e.message()), QStringLiteral( "Server" ), Qgis::MessageLevel::Critical );
       requestHandler.setServiceException( e );
     }
 
@@ -690,7 +688,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
 
             // load the project if needed and not empty
             // Note that  QgsConfigCache::project( ... ) call QgsProject::setInstance(...)
-            project = mConfigCache->project( configFilePath, sServerInterface->serverSettings() );
+            project = QgsConfigCache::instance()->project( configFilePath, sServerInterface->serverSettings() );
           }
         }
 

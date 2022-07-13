@@ -21,6 +21,7 @@
 #include "qgsproject.h"
 
 #include <QDomDocument>
+#include <qcryptographichash.h>
 
 sbServerCacheFilter::sbServerCacheFilter( const QgsServerInterface *serverInterface, const QString &strDirectory) : QgsServerCacheFilter(serverInterface)
 {

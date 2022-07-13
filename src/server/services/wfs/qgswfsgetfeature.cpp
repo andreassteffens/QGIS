@@ -36,6 +36,7 @@
 #include "qgsjsonutils.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgswkbtypes.h"
+#include "qgsrendercontext.h"
 #include "qgsrenderer.h"
 
 #include "qgswfsgetfeature.h"
@@ -85,10 +86,10 @@ namespace QgsWfs
 
     void startGetFeature( const QgsServerRequest &request, QgsServerResponse &response, const QgsProject *project,
                           QgsWfsParameters::Format format, int prec, QgsCoordinateReferenceSystem &crs,
-                          QgsRectangle *rect, const QStringList &typeNames, const QgsServerSettings *settings );
+                          QgsRectangle *rect, const QStringList &typeNames, QgsCoordinateReferenceSystem& outputCrs, const QgsServerSettings *settings );
 
     void setGetFeature( QgsServerResponse &response, QgsWfsParameters::Format format, const QgsFeature &feature, int featIdx,
-                        const createFeatureParams &params, const QgsProject *project, , QgsExpressionContext &expressionContext, QgsVectorLayer *vlayer, const QgsAttributeList &pkAttributes = QgsAttributeList() );
+                        const createFeatureParams &params, const QgsProject *project, QgsExpressionContext &expressionContext, QgsVectorLayer *vlayer, const QgsAttributeList &pkAttributes = QgsAttributeList() );
 
     void endGetFeature( QgsServerResponse &response, QgsWfsParameters::Format format );
 
@@ -526,7 +527,7 @@ namespace QgsWfs
           }
 
           if ( iteratedFeatures == aRequest.startIndex )
-            startGetFeature( request, response, project, aRequest.outputFormat, requestPrecision, requestCrs, &requestRect, typeNameList, serverIface->serverSettings() );
+            startGetFeature( request, response, project, aRequest.outputFormat, requestPrecision, requestCrs, &requestRect, typeNameList, outputCrs, serverIface->serverSettings() );
 
           if ( iteratedFeatures >= aRequest.startIndex )
           {
@@ -536,10 +537,10 @@ namespace QgsWfs
           ++iteratedFeatures;
         }
       }
-    }
 
-    if(renderer)
-      renderer->stopRender(renderContext);
+      if (renderer)
+        renderer->stopRender(renderContext);
+    }
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
     //force restoration of original layer filters
@@ -562,7 +563,7 @@ namespace QgsWfs
         if(!outputCrs.isValid())
           outputCrs = QgsCoordinateReferenceSystem(4326, QgsCoordinateReferenceSystem::EpsgCrsId);
 
-        startGetFeature( request, response, project, aRequest.outputFormat, requestPrecision, requestCrs, &requestRect, typeNameList, serverIface->serverSettings(), outputCrs );
+        startGetFeature( request, response, project, aRequest.outputFormat, requestPrecision, requestCrs, &requestRect, typeNameList, outputCrs, serverIface->serverSettings());
       }
 
       endGetFeature( response, aRequest.outputFormat );
@@ -1195,7 +1196,7 @@ namespace QgsWfs
     }
 
     void startGetFeature( const QgsServerRequest &request, QgsServerResponse &response, const QgsProject *project, QgsWfsParameters::Format format,
-                          int prec, QgsCoordinateReferenceSystem &crs, QgsRectangle *rect, const QStringList &typeNames, const QgsServerSettings *settings, QgsCoordinateReferenceSystem &outputCrs )
+                          int prec, QgsCoordinateReferenceSystem &crs, QgsRectangle *rect, const QStringList &typeNames, QgsCoordinateReferenceSystem &outputCrs, const QgsServerSettings* settings )
     {
       QString fcString;
 

@@ -210,7 +210,8 @@ bool QgsProjectServerValidator::validate( QgsProject *project, QList<QgsProjectS
   const auto constOwsNames = owsNames;
   for (int i = 0; i < owsNames.count(); i++)
   {
-    if (!snRegExp.exactMatch(owsNames[i].first))
+    QRegularExpressionMatch match = snRegExp.match(owsNames[i].first);
+    if (!match.hasMatch())
       regExpMessages << owsNames[i].first;
 
     if (duplicateNames.contains(owsNames[i].first))

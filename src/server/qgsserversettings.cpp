@@ -569,7 +569,7 @@ int QgsServerSettings::maxThreads() const
   return value( QgsServerSettingsEnv::QGIS_SERVER_MAX_THREADS ).toInt();
 }
 
-int QgsServerSettings::unloadWatcherInterval() const
+int QgsServerSettings::sbUnloadWatcherInterval() const
 {
 	return value(QgsServerSettingsEnv::QGIS_SERVER_SB_UNLOAD_WATCHER_INTERVAL).toInt();
 }
@@ -579,7 +579,7 @@ QString QgsServerSettings::fontsDirectory() const
 	return value(QgsServerSettingsEnv::QGIS_SERVER_FONTS_DIRECTORY).toString();
 }
 
-bool QgsServerSettings::useSbCache() const
+bool QgsServerSettings::sbUseCache() const
 {
 	return value(QgsServerSettingsEnv::QGIS_SERVER_USE_SB_CACHE).toBool();
 }

@@ -76,7 +76,7 @@ namespace QgsSb
 	  serverInfoElem.appendChild(localeElem);
 
 	  QDomElement translationElem = doc.createElement(QStringLiteral("Translation"));
-	  QDomText translationText = doc.createTextNode(QgsApplication::sbTranslation());
+	  QDomText translationText = doc.createTextNode(QgsApplication::instance()->translation());
 	  translationElem.appendChild(translationText);
 	  serverInfoElem.appendChild(translationElem);
 

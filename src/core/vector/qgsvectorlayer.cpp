@@ -3147,9 +3147,9 @@ bool QgsVectorLayer::writeSld( QDomNode &node, QDomDocument &doc, QString &error
   return true;
 }
 
-bool QgsVectorLayer::writeSldLabeling(QDomNode &node, const QgsStringMap &props) const
+bool QgsVectorLayer::writeSldLabeling(QDomNode &node, const QVariantMap &props) const
 {
-  QgsStringMap localProps = QgsStringMap(props);
+  QVariantMap localProps = QVariantMap(props);
   if (hasScaleBasedVisibility())
   {
     QgsSymbolLayerUtils::mergeScaleDependencies(maximumScale(), minimumScale(), localProps);

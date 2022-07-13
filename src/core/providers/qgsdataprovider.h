@@ -96,6 +96,14 @@ class CORE_EXPORT QgsDataProvider : public QObject
       CustomData   = 3000          //!< Custom properties for 3rd party providers or very provider-specific properties which are not expected to be of interest for other providers can be added starting from this value up.
     };
 
+    struct sbRasterBandStatistics
+    {
+      double min;
+      double max;
+      double mean;
+      double stdDev;
+    };
+
 
     /**
      * Setting options for creating vector data providers.
@@ -112,6 +120,7 @@ class CORE_EXPORT QgsDataProvider : public QObject
        */
       QgsCoordinateTransformContext transformContext;
 
+      QList<sbRasterBandStatistics> sbRasterBandStatistics;
     };
 
     /**

@@ -31,12 +31,6 @@ void QgsFeatureFilter::filterFeatures(const QgsVectorLayer *layer, QgsFeatureReq
 		filterFeatures.sbSetQuerySubstitutions(mSbQuerySubstitutions[layer->id()]);
 }
 
-QStringList QgsFeatureFilter::layerAttributes(const QgsVectorLayer *, const QStringList &attributes) const
-{
-	// Do nothing
-	return attributes;
-}
-
 QStringList QgsFeatureFilter::layerAttributes( const QgsVectorLayer *, const QStringList &attributes ) const
 {
   // Do nothing
