@@ -24,6 +24,7 @@
 #include "qgsrubberband.h"
 #include "qgsproject.h"
 #include "qgsrectangle.h"
+#include <qjsonarray.h>
 #include <qnetworkreply.h>
 
 #define GOOGLE_ADDRESS_SEARCH_URL "https://maps.google.com/maps/api/geocode/json?sensor=false&address=";
@@ -49,10 +50,15 @@ sbAddressServicesGui::sbAddressServicesGui(QgisInterface *pQgisIface, QWidget *p
 
 	connect(QgsProject::instance(), &QgsProject::cleared, this, &sbAddressServicesGui::onClearedProject);
 
+  QSettings s;
+
 	// search
+  mCheckRestrictSearchBounds->setCheckState((Qt::CheckState)s.value("sbAddressServices/SearchRestrictToViewBounds", (int)Qt::CheckState::Checked).toInt());
+
 	connect(mLeSearch, &QLineEdit::returnPressed, this, &sbAddressServicesGui::onSearchTextReturnPressed);
 	connect(mTbtnSearch, &QToolButton::pressed, this, &sbAddressServicesGui::onSearchBtnPressed);
-	
+  connect(mCheckRestrictSearchBounds, &QCheckBox::stateChanged, this, &sbAddressServicesGui::onSearchCheckBoxStateChanged);
+
 	
 	// info
 	connect(mpQgisIface->mapCanvas(), &QgsMapCanvas::mapToolSet, this, &sbAddressServicesGui::onMapToolSet);
@@ -70,12 +76,15 @@ sbAddressServicesGui::sbAddressServicesGui(QgisInterface *pQgisIface, QWidget *p
 	
 
 	// settings
-	QSettings s;
 	mLeGoogleKey->setText(s.value(QStringLiteral("sbAddressServices/GoogleApiKey"), "").toString());
-	mLeNominatimService->setText(s.value(QStringLiteral("sbAddressServices/OsmNominatimService"), "https://tileserver.gis24.eu/nominatim").toString());
-	
+  mLeGoogleQueryOptions->setText(s.value(QStringLiteral("sbAddressServices/GoogleQueryOptions"), "").toString());
+  mLeNominatimService->setText(s.value(QStringLiteral("sbAddressServices/OsmNominatimService"), "https://tileserver.gis24.eu/nominatim").toString());
+  mLeNominatimQueryOptions->setText(s.value(QStringLiteral("sbAddressServices/OsmNominatimQueryOptions"), "").toString());
+
 	connect(mLeGoogleKey, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
+  connect(mLeGoogleQueryOptions, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
 	connect(mLeNominatimService, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
+  connect(mLeNominatimQueryOptions, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
 
 	
 	// general
@@ -146,7 +155,16 @@ void sbAddressServicesGui::onSettingsTextChanged(const QString &text)
 	QSettings s;
 
 	s.setValue("sbAddressServices/GoogleApiKey", QVariant(mLeGoogleKey->text()));
+  s.setValue("sbAddressServices/GoogleQueryOptions", QVariant(mLblGoogleQueryOptions->text()));
 	s.setValue("sbAddressServices/OsmNominatimService", QVariant(mLeNominatimService->text()));
+  s.setValue("sbAddressServices/OsmNominatimQueryOptions", QVariant(mLeNominatimQueryOptions->text()));
+}
+
+void sbAddressServicesGui::onSearchCheckBoxStateChanged(int state)
+{
+  QSettings s;
+
+  s.setValue("sbAddressServices/SearchRestrictToViewBounds", QVariant((int)mCheckRestrictSearchBounds->checkState()));
 }
 
 void sbAddressServicesGui::onClearResultsBtnPressed()
@@ -184,7 +202,7 @@ void sbAddressServicesGui::onResultsComboIndexChanged(int index)
 		else
 			mPteResult->setPlainText(addr.getName());
 
-		QgsRectangle rcBoundsTransformed = mTransform.transformBoundingBox(addr.getBounds(), QgsCoordinateTransform::ReverseTransform);
+		QgsRectangle rcBoundsTransformed = mTransform.transformBoundingBox(addr.getBounds(), Qgis::TransformDirection::Reverse);
 		
 		mpRubberBand->reset(QgsWkbTypes::PolygonGeometry);
 		mpRubberBand->addGeometry(QgsGeometry::fromRect(rcBoundsTransformed), mTransform.sourceCrs());
@@ -210,7 +228,7 @@ void sbAddressServicesGui::onNavigateToResultBtnPressed()
 		else
 			mPteResult->setPlainText(addr.getName());
 
-		QgsRectangle rcBoundsTransformed = mTransform.transformBoundingBox(addr.getBounds(), QgsCoordinateTransform::ReverseTransform);
+		QgsRectangle rcBoundsTransformed = mTransform.transformBoundingBox(addr.getBounds(), Qgis::TransformDirection::Reverse);
 
 		mpQgisIface->mapCanvas()->setExtent(rcBoundsTransformed);
 		mpQgisIface->mapCanvas()->refresh();
@@ -264,6 +282,23 @@ void sbAddressServicesGui::doGoogleSearch(const QString& strText)
 	strUrl += "&language=" + QLocale().name();
 	strUrl += "&key=" + mLeGoogleKey->text();
 
+  if (mCheckRestrictSearchBounds->checkState() == Qt::CheckState::Checked)
+  {
+    QgsRectangle rcMapExtent = mpQgisIface->mapCanvas()->extent();
+    QgsRectangle rcMapExtentTransformed = mTransform.transformBoundingBox(rcMapExtent, Qgis::TransformDirection::Forward);
+
+    strUrl += "bounds=" + QString::number(rcMapExtentTransformed.xMinimum()) + "," + QString::number(rcMapExtentTransformed.yMinimum()) + "|" + QString::number(rcMapExtentTransformed.xMaximum()) + "," + QString::number(rcMapExtentTransformed.yMaximum());
+  }
+
+  QString strQueryOptions = mLeGoogleQueryOptions->text();
+  if (!strQueryOptions.isEmpty() && !strQueryOptions.isNull())
+  {
+    if (!strQueryOptions.startsWith("&"))
+      strUrl += "&";
+
+    strUrl += strQueryOptions;
+  }
+
 	QNetworkRequest rq;
 	rq.setUrl(QUrl(strUrl));
 
@@ -289,7 +324,25 @@ void sbAddressServicesGui::doOsmSearch(const QString& strText)
 	strUrl += "search?q=" + QUrl::toPercentEncoding(strText);
 	strUrl += "&accept-language=" + currentLocale + ",en";
 	strUrl += "&format=json&polygon=0&addressdetails=0";
-	
+
+  if (mCheckRestrictSearchBounds->checkState() == Qt::CheckState::Checked)
+  {
+    QgsRectangle rcMapExtent = mpQgisIface->mapCanvas()->extent();
+    QgsRectangle rcMapExtentTransformed = mTransform.transformBoundingBox(rcMapExtent, Qgis::TransformDirection::Forward);
+
+    strUrl += "viewbox=" + QString::number(rcMapExtentTransformed.xMinimum()) + "," + QString::number(rcMapExtentTransformed.yMinimum()) + "," + QString::number(rcMapExtentTransformed.xMaximum()) + "," + QString::number(rcMapExtentTransformed.yMaximum());
+    strUrl += "&bounded=1";
+  }
+
+  QString strQueryOptions = mLeNominatimQueryOptions->text();
+  if (!strQueryOptions.isEmpty() && !strQueryOptions.isNull())
+  {
+    if (!strQueryOptions.startsWith("&"))
+      strUrl += "&";
+
+    strUrl += strQueryOptions;
+  }
+
 	QNetworkRequest rq;
 	rq.setUrl(QUrl(strUrl));
 	

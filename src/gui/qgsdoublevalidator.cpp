@@ -81,16 +81,6 @@ void QgsDoubleValidator::setMaxDecimals( int maxDecimals )
   setRegularExpression( reg );
 }
 
-QgsDoubleValidator::QgsDoubleValidator( int decimal, QObject *parent )
-  : QRegularExpressionValidator( parent )
-  , mMinimum( std::numeric_limits<qreal>::lowest() )
-  , mMaximum( std::numeric_limits<qreal>::max() )
-{
-  // The regular expression accept double with point as decimal point but also the locale decimal point
-  QRegularExpression reg( PERMISSIVE_DOUBLE.arg( locale().decimalPoint() ).arg( QString::number( decimal ) ) );
-  setRegularExpression( reg );
-}
-
 QValidator::State QgsDoubleValidator::validate( QString &input, int & ) const
 {
   if ( input.isEmpty() )

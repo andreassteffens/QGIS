@@ -38,6 +38,7 @@ class sbAddressServicesGui : public QWidget, private Ui::sbAddressServicesGuiBas
 	  
 		void onSearchTextReturnPressed();
 		void onSearchBtnPressed();
+    void onSearchCheckBoxStateChanged(int state);
 		void onActivateInfoBtnToggled(bool checked);
 		void onFunnyPlacesComboIndexChanged(int index);
 		void onResultsComboIndexChanged(int index);

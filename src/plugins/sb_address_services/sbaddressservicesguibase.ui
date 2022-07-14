@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>487</width>
-    <height>219</height>
+    <width>864</width>
+    <height>534</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -40,7 +40,7 @@
      <property name="minimumSize">
       <size>
        <width>0</width>
-       <height>90</height>
+       <height>140</height>
       </size>
      </property>
      <property name="currentIndex">
@@ -84,6 +84,13 @@
           </size>
          </property>
         </spacer>
+       </item>
+       <item row="1" column="1">
+        <widget class="QCheckBox" name="mCheckRestrictSearchBounds">
+         <property name="text">
+          <string>Restrict to current view bounds</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -904,25 +911,109 @@
        <string>Settings</string>
       </attribute>
       <layout class="QFormLayout" name="formLayout">
-       <item row="0" column="0">
-        <widget class="QLabel" name="mLblGoogleKey">
-         <property name="text">
-          <string>Google API Key</string>
+       <item row="0" column="0" colspan="2">
+        <widget class="QScrollArea" name="scrollArea">
+         <property name="horizontalScrollBarPolicy">
+          <enum>Qt::ScrollBarAlwaysOff</enum>
          </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QLineEdit" name="mLeGoogleKey"/>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="mLblNominatimAddress">
-         <property name="text">
-          <string>OSM Nominatim Service</string>
+         <property name="widgetResizable">
+          <bool>true</bool>
          </property>
+         <widget class="QWidget" name="scrollAreaWidgetContents">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>-69</y>
+            <width>803</width>
+            <height>194</height>
+           </rect>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_2">
+           <item>
+            <widget class="QGroupBox" name="groupBox">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>85</height>
+              </size>
+             </property>
+             <property name="baseSize">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="title">
+              <string>Google</string>
+             </property>
+             <layout class="QFormLayout" name="formLayout_2">
+              <item row="1" column="0">
+               <widget class="QLabel" name="mLblGoogleKey">
+                <property name="text">
+                 <string>API Key</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QLineEdit" name="mLeGoogleKey"/>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="mLblGoogleQueryOptions">
+                <property name="text">
+                 <string>Query Options</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QLineEdit" name="mLeGoogleQueryOptions"/>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="groupBox_2">
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>85</height>
+              </size>
+             </property>
+             <property name="title">
+              <string>OpenStreetMap</string>
+             </property>
+             <layout class="QFormLayout" name="formLayout_4">
+              <item row="0" column="0">
+               <widget class="QLabel" name="mLblNominatimAddress">
+                <property name="text">
+                 <string>Nominatim URL</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="mLblNominatimQueryOptions">
+                <property name="text">
+                 <string>Query Options</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QLineEdit" name="mLeNominatimService"/>
+              </item>
+              <item row="1" column="1">
+               <widget class="QLineEdit" name="mLeNominatimQueryOptions"/>
+              </item>
+             </layout>
+            </widget>
+           </item>
+          </layout>
+         </widget>
         </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QLineEdit" name="mLeNominatimService"/>
        </item>
       </layout>
      </widget>

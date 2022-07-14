@@ -3308,10 +3308,10 @@
                          </sizepolicy>
                         </property>
                         <property name="toolTip">
-                         <string>Test the configuration</string>
+                         <string>Test the configuration for Atapa Atlas</string>
                         </property>
                         <property name="text">
-                         <string>[Atapa] Launch</string>
+                         <string>[Atapa] Atlas test</string>
                         </property>
                        </widget>
                       </item>
@@ -3327,7 +3327,7 @@
                          <string>Optimize configuration for Atapa Atlas</string>
                         </property>
                         <property name="text">
-                         <string>[Atapa] WebGIS optimizations</string>
+                         <string>[Atapa] Atlas optimizations</string>
                         </property>
                        </widget>
                       </item>

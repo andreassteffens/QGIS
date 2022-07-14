@@ -24,6 +24,7 @@
 #include "qgsrubberband.h"
 #include "qgsproject.h"
 #include "qgsrectangle.h"
+#include <qjsonarray.h>
 #include <qnetworkreply.h>
 
 #define GOOGLE_ELEVATION_INFO_URL "https://maps.googleapis.com/maps/api/elevation/json?&locations=";
@@ -264,7 +265,7 @@ bool sbElevationServicesGui::processGoogleInfoReply(const QString& strReply)
 
 				mPteResult->appendHtml(tr("Elevation") + ": " + QString::number(dElevation) + "m<br>" + tr("Resolution") + ": " + QString::number(dResolution) + "m<br>");
 
-				QgsPointXY ptLocationTransformed = mTransform.transform(ptLocation, QgsCoordinateTransform::ReverseTransform);
+				QgsPointXY ptLocationTransformed = mTransform.transform(ptLocation, Qgis::TransformDirection::Reverse);
 				mpRubberBand->addGeometry(QgsGeometry::fromPointXY(ptLocationTransformed), mTransform.sourceCrs());
 
 				bRes = true;
