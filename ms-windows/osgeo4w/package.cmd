@@ -132,6 +132,7 @@ cmake -G "%CMAKEGEN%" -A %CMAKEARCH% ^
 	-D WITH_QSPATIALITE=TRUE ^
 	-D WITH_SERVER=TRUE ^
 	-D WITH_HANA=TRUE ^
+	-D WITH_PDAL=TRUE ^
 	-D WITH_SERVER_PLUGINS=TRUE ^
 	-D SERVER_SKIP_ECW=FALSE ^
 	-D WITH_GRASS=TRUE ^
@@ -459,7 +460,7 @@ for %%g IN (%GRASS_VERSIONS%) do (
 )
 
 %TAR% -C %OSGEO4W_ROOT% -cjf %ARCH%/release/qgis/%PACKAGENAME%-oracle-provider/%PACKAGENAME%-oracle-provider-%VERSION%-%PACKAGE%.tar.bz2 ^
-	"apps/%PACKAGENAME%/plugins/oracleprovider.dll" ^
+	"apps/%PACKAGENAME%/plugins/provider_oracle.dll" ^
 	"apps/%PACKAGENAME%/qtplugins/sqldrivers/qsqlocispatial.dll"
 if errorlevel 1 (echo tar oracle-provider failed & goto error)
 
