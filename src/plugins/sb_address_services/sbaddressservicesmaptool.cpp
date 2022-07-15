@@ -28,29 +28,29 @@
 
 sbAddressServicesMapTool::sbAddressServicesMapTool( QgsMapCanvas *thepCanvas ) : QgsMapTool( thepCanvas )
 {
-	mpMapCanvas = thepCanvas;
+  mpMapCanvas = thepCanvas;
 
-	setCursor( QgsApplication::getThemeCursor( QgsApplication::Cursor::CrossHair ) );
+  setCursor( QgsApplication::getThemeCursor( QgsApplication::Cursor::CrossHair ) );
 }
 
 void sbAddressServicesMapTool::canvasMoveEvent( QgsMapMouseEvent *thepEvent )
 {
-	Q_UNUSED(thepEvent);
+  Q_UNUSED(thepEvent);
 }
 
 void sbAddressServicesMapTool::canvasPressEvent( QgsMapMouseEvent *thepEvent )
 {
-	Q_UNUSED( thepEvent );
+  Q_UNUSED( thepEvent );
 }
 
 void sbAddressServicesMapTool::canvasReleaseEvent( QgsMapMouseEvent *thepEvent )
 {
-	QgsPointXY myOriginalPoint = mCanvas->getCoordinateTransform()->toMapCoordinates( thepEvent->x(), thepEvent->y() );
+  QgsPointXY myOriginalPoint = mCanvas->getCoordinateTransform()->toMapCoordinates( thepEvent->x(), thepEvent->y() );
   
-	emit mouseClicked( myOriginalPoint );
+  emit mouseClicked( myOriginalPoint );
 }
 
 void sbAddressServicesMapTool::deactivate()
 {
-	QgsMapTool::deactivate();
+  QgsMapTool::deactivate();
 }

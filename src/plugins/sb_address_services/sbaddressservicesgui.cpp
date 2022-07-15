@@ -323,9 +323,9 @@ void sbAddressServicesGui::doOsmSearch(const QString& strText)
     return;
 
   QString strLocale = QLocale().name();
-  if(strLocale.contains("-"))
+  if(strLocale.contains("_"))
   {
-    QStringList listParts = strLocale.split("-");
+    QStringList listParts = strLocale.split("_");
     strLocale = listParts[0];
   }
 
@@ -413,9 +413,9 @@ void sbAddressServicesGui::doOsmInfo(const QgsPointXY& point)
     return;
 
   QString strLocale = QLocale().name();
-  if (strLocale.contains("-"))
+  if (strLocale.contains("_"))
   {
-    QStringList listParts = strLocale.split("-");
+    QStringList listParts = strLocale.split("_");
     strLocale = listParts[0];
   }
 

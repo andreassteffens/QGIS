@@ -31,26 +31,26 @@ class sbAddressServicesMapTool : public QgsMapTool
 {
     Q_OBJECT
 
-	public:
-		explicit sbAddressServicesMapTool( QgsMapCanvas *thepCanvas );
+  public:
+    explicit sbAddressServicesMapTool( QgsMapCanvas *thepCanvas );
 
-		//! Overridden mouse move event
-		void canvasMoveEvent( QgsMapMouseEvent *e ) override;
+    //! Overridden mouse move event
+    void canvasMoveEvent( QgsMapMouseEvent *e ) override;
 
-		//! Overridden mouse press event
-		void canvasPressEvent( QgsMapMouseEvent *e ) override;
+    //! Overridden mouse press event
+    void canvasPressEvent( QgsMapMouseEvent *e ) override;
 
-		//! Overridden mouse release event
-		void canvasReleaseEvent( QgsMapMouseEvent *e ) override;
+    //! Overridden mouse release event
+    void canvasReleaseEvent( QgsMapMouseEvent *e ) override;
 
-		//! called when map tool is being deactivated
-		void deactivate() override;
+    //! called when map tool is being deactivated
+    void deactivate() override;
 
-	signals:
-		void mouseClicked( const QgsPointXY & );
+  signals:
+    void mouseClicked( const QgsPointXY & );
 
-	private:
-		QPointer<QgsMapCanvas> mpMapCanvas;
+  private:
+    QPointer<QgsMapCanvas> mpMapCanvas;
 };
 
 #endif

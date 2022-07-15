@@ -3,7 +3,7 @@
 # Files
 
 SET (sbaddressservices_SRCS
-     sbaddressservices.cpp
+     sbaddressservicesplugin.cpp
      sbaddressservicesgui.cpp
      sbaddressservicesmaptool.cpp
 )
@@ -13,12 +13,12 @@ SET (sbaddressservices_UIS
 )
 
 SET (sbaddressservices_MOC_HDRS
-     sbaddressservices.h
+     sbaddressservicesplugin.h
      sbaddressservicesgui.h
      sbaddressservicesmaptool.h
 )
 
-SET (sbaddressservices_RCCS  sbaddressservices.qrc)
+SET (sbaddressservices_RCCS  sbaddressservicesplugin.qrc)
 
 ########################################################
 # Build
@@ -29,7 +29,7 @@ QT5_WRAP_CPP (sbaddressservices_MOC_SRCS  ${sbaddressservices_MOC_HDRS})
 
 QT5_ADD_RESOURCES(sbaddressservices_RCC_SRCS ${sbaddressservices_RCCS})
 
-ADD_LIBRARY (sbaddressservicesplugin MODULE ${sbaddressservices_SRCS} ${sbaddressservices_MOC_SRCS} ${sbaddressservices_RCC_SRCS} ${sbaddressservices_UIS_H})
+ADD_LIBRARY (plugin_sbaddressservices MODULE ${sbaddressservices_SRCS} ${sbaddressservices_MOC_SRCS} ${sbaddressservices_RCC_SRCS} ${sbaddressservices_UIS_H})
 
 INCLUDE_DIRECTORIES(
   ${CMAKE_SOURCE_DIR}/src/core
@@ -51,7 +51,7 @@ INCLUDE_DIRECTORIES(
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-TARGET_LINK_LIBRARIES(sbaddressservicesplugin
+TARGET_LINK_LIBRARIES(plugin_sbaddressservices
   qgis_core
   qgis_gui
 )
@@ -60,7 +60,7 @@ TARGET_LINK_LIBRARIES(sbaddressservicesplugin
 ########################################################
 # Install
 
-INSTALL(TARGETS sbaddressservicesplugin
+INSTALL(TARGETS plugin_sbaddressservices
   RUNTIME DESTINATION ${QGIS_PLUGIN_DIR}
   LIBRARY DESTINATION ${QGIS_PLUGIN_DIR})
 

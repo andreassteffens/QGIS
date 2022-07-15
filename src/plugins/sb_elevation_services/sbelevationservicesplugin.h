@@ -1,5 +1,5 @@
 /***************************************************************************
-    sbaddressservices.h
+    sbelevationservicesplugin.h
     -------------------
     begin                : December 2018
     copyright            : (C) 2018 by Andreas Steffens
@@ -31,16 +31,17 @@
  *   DON'T: separate variable names using underscores: my_variable_name (NO!)
  *
  * **************************************************************************/
-#ifndef SBADDRESSSERVICES_H
-#define SBADDRESSSERVICES_H
+#ifndef SBELEVATIONSERVICESPLUGIN_H
+#define SBELEVATIONSERVICESPLUGIN_H
 
 //QT includes
 #include <QObject>
 #include <QPointer>
+#include <QApplication>
 
 //QGIS includes
 #include "../qgisplugin.h"
-#include "sbaddressservicesmaptool.h"
+#include "sbelevationservicesmaptool.h"
 #include "qgscoordinatereferencesystem.h"
 #include "qgscoordinatetransform.h"
 
@@ -62,35 +63,42 @@ class QgsPointXY;
 * \brief [name] plugin for QGIS
 * [description]
 */
-class sbAddressServices: public QObject, public QgisPlugin
+class sbElevationServicesPlugin: public QObject, public QgisPlugin
 {
-	Q_OBJECT
+  Q_OBJECT
   
-	public:
-		explicit sbAddressServices( QgisInterface *interface );
+  public:
+    explicit sbElevationServicesPlugin( QgisInterface *interface );
 
-	public slots:
-		//! init the gui
-		void initGui() override;
-		
-		//! unload the plugin
-		void unload() override;
-		
-		//! Show/hide the dockwidget
-		void showOrHide();
-		
-		//! show the help document
-		void help();
+  public slots:
+    //! init the gui
+    void initGui() override;
     
-	private:
-		//! Container for the coordinate info
-		QPointer<QgsDockWidget> mpDockWidget;
+    //! unload the plugin
+    void unload() override;
+    
+    //! Show/hide the dockwidget
+    void showOrHide();
+    
+    //! show the help document
+    void help();
+    
+  private:
+    //! Container for the coordinate info
+    QPointer<QgsDockWidget> mpDockWidget;
 
-		//! Pointer to the QGIS interface object
-		QgisInterface*			mpQgisIface = nullptr;
+    //! Pointer to the QGIS interface object
+    QgisInterface* mpQgisIface = nullptr;
     
-		//!pointer to the qaction for this plugin
-		QPointer<QAction>		mpQActionPointer = nullptr;
+    //!pointer to the qaction for this plugin
+    QPointer<QAction> mpQActionPointer = nullptr;
 };
 
-#endif //SBADDRESSSERVICES_H
+static const QString sName = QApplication::translate( "sbElevationServicesPlugin", "[a]tapa Elevation Services" );
+static const QString sDescription = QApplication::translate( "sbElevationServicesPlugin", "Wrapper for Google Maps Elevation API allowing to query elevation info at arbitrary coordinates" );
+static const QString sCategory = QApplication::translate( "sbElevationServicesPlugin", "Vector" );
+static const QString sPluginVersion = QApplication::translate( "sbElevationServicesPlugin", "Version 1.0" );
+static const QString sPluginIcon = QStringLiteral( ":/sbelevationservices/icons/sb_elevation_services.png" );
+static const QgisPlugin::PluginType sPluginType = QgisPlugin::UI;
+
+#endif //SBELEVATIONSERVICESPLUGIN_H

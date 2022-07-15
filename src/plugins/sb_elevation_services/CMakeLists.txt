@@ -3,7 +3,7 @@
 # Files
 
 SET (sbelevationservices_SRCS
-     sbelevationservices.cpp
+     sbelevationservicesplugin.cpp
      sbelevationservicesgui.cpp
      sbelevationservicesmaptool.cpp
 )
@@ -13,12 +13,12 @@ SET (sbelevationservices_UIS
 )
 
 SET (sbelevationservices_MOC_HDRS
-     sbelevationservices.h
+     sbelevationservicesplugin.h
      sbelevationservicesgui.h
      sbelevationservicesmaptool.h
 )
 
-SET (sbelevationservices_RCCS  sbelevationservices.qrc)
+SET (sbelevationservices_RCCS  sbelevationservicesplugin.qrc)
 
 ########################################################
 # Build
@@ -29,7 +29,7 @@ QT5_WRAP_CPP (sbelevationservices_MOC_SRCS  ${sbelevationservices_MOC_HDRS})
 
 QT5_ADD_RESOURCES(sbelevationservices_RCC_SRCS ${sbelevationservices_RCCS})
 
-ADD_LIBRARY (sbelevationservicesplugin MODULE ${sbelevationservices_SRCS} ${sbelevationservices_MOC_SRCS} ${sbelevationservices_RCC_SRCS} ${sbelevationservices_UIS_H})
+ADD_LIBRARY (plugin_sbelevationservices MODULE ${sbelevationservices_SRCS} ${sbelevationservices_MOC_SRCS} ${sbelevationservices_RCC_SRCS} ${sbelevationservices_UIS_H})
 
 INCLUDE_DIRECTORIES(
   ${CMAKE_SOURCE_DIR}/src/core
@@ -51,7 +51,7 @@ INCLUDE_DIRECTORIES(
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-TARGET_LINK_LIBRARIES(sbelevationservicesplugin
+TARGET_LINK_LIBRARIES(plugin_sbelevationservices
   qgis_core
   qgis_gui
 )
@@ -60,7 +60,7 @@ TARGET_LINK_LIBRARIES(sbelevationservicesplugin
 ########################################################
 # Install
 
-INSTALL(TARGETS sbelevationservicesplugin
+INSTALL(TARGETS plugin_sbelevationservices
   RUNTIME DESTINATION ${QGIS_PLUGIN_DIR}
   LIBRARY DESTINATION ${QGIS_PLUGIN_DIR})
 

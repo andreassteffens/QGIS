@@ -28,29 +28,29 @@
 
 sbElevationServicesMapTool::sbElevationServicesMapTool( QgsMapCanvas *thepCanvas ) : QgsMapTool( thepCanvas )
 {
-	mpMapCanvas = thepCanvas;
+  mpMapCanvas = thepCanvas;
 
-	setCursor( QgsApplication::getThemeCursor( QgsApplication::Cursor::CrossHair ) );
+  setCursor( QgsApplication::getThemeCursor( QgsApplication::Cursor::CrossHair ) );
 }
 
 void sbElevationServicesMapTool::canvasMoveEvent( QgsMapMouseEvent *thepEvent )
 {
-	Q_UNUSED(thepEvent);
+  Q_UNUSED(thepEvent);
 }
 
 void sbElevationServicesMapTool::canvasPressEvent( QgsMapMouseEvent *thepEvent )
 {
-	Q_UNUSED( thepEvent );
+  Q_UNUSED( thepEvent );
 }
 
 void sbElevationServicesMapTool::canvasReleaseEvent( QgsMapMouseEvent *thepEvent )
 {
-	QgsPointXY myOriginalPoint = mCanvas->getCoordinateTransform()->toMapCoordinates( thepEvent->x(), thepEvent->y() );
+  QgsPointXY myOriginalPoint = mCanvas->getCoordinateTransform()->toMapCoordinates( thepEvent->x(), thepEvent->y() );
   
-	emit mouseClicked( myOriginalPoint );
+  emit mouseClicked( myOriginalPoint );
 }
 
 void sbElevationServicesMapTool::deactivate()
 {
-	QgsMapTool::deactivate();
+  QgsMapTool::deactivate();
 }

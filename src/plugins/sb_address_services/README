@@ -1,5 +1,5 @@
-sb) Address Services Plugin for QGIS
+[a]tapa Address Services Plugin for QGIS
 
-       Andreas Steffens (GDS Geo Daten Service GmbH) 2019
+       Andreas Steffens (Atapa GmbH) 2022
 
 A simple plugin that allows to search for and navigate to addresses.

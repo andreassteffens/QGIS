@@ -28,7 +28,7 @@
 #include "qgsprojectionselectiondialog.h"
 #include "qgsdockwidget.h"
 
-#include "sbelevationservices.h"
+#include "sbelevationservicesplugin.h"
 #include "sbelevationservicesgui.h"
 
 //
@@ -46,88 +46,81 @@
 #include <QLabel>
 #include <QMenu>
 
-static const QString sName = QObject::tr( "[a]tapa Elevation Services" );
-static const QString sDescription = QObject::tr( "Wrapper for Google Maps Elevation API allowing to query elevation info at arbitrary coordinates" );
-static const QString sCategory = QObject::tr( "Vector" );
-static const QString sPluginVersion = QObject::tr( "Version 1.0" );
-static const QString sPluginIcon = QStringLiteral( ":/sbelevationservices/icons/sb_elevation_services.png" );
-static const QgisPlugin::PluginType sPluginType = QgisPlugin::UI;
-
 //////////////////////////////////////////////////////////////////////
 //
 // THE FOLLOWING METHODS ARE MANDATORY FOR ALL PLUGINS
 //
 //////////////////////////////////////////////////////////////////////
 
-sbElevationServices::sbElevationServices( QgisInterface *qgisInterface )
-	: QgisPlugin( sName, sDescription, sCategory, sPluginVersion, sPluginType )
-	, mpQgisIface( qgisInterface )
+sbElevationServicesPlugin::sbElevationServicesPlugin( QgisInterface *qgisInterface )
+  : QgisPlugin( sName, sDescription, sCategory, sPluginVersion, sPluginType )
+  , mpQgisIface( qgisInterface )
 {
-	// nothing to be done here for now
+  // nothing to be done here for now
 }
 
 /*
  * Initialize the GUI interface for the plugin - this is only called once when the plugin is
  * added to the plugin registry in the QGIS application.
  */
-void sbElevationServices::initGui()
+void sbElevationServicesPlugin::initGui()
 {
-	//create the dock widget
-	mpDockWidget = new QgsDockWidget( tr(qPrintable(sName)), mpQgisIface->mainWindow() );
-	mpDockWidget->setObjectName( QStringLiteral( "sbElevationServices" ) );
-	mpDockWidget->setAllowedAreas( Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea );
-	mpQgisIface->addDockWidget( Qt::LeftDockWidgetArea, mpDockWidget );
+  //create the dock widget
+  mpDockWidget = new QgsDockWidget( tr(qPrintable(sName)), mpQgisIface->mainWindow() );
+  mpDockWidget->setObjectName( QStringLiteral( "sbElevationServices" ) );
+  mpDockWidget->setAllowedAreas( Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea );
+  mpQgisIface->addDockWidget( Qt::LeftDockWidgetArea, mpDockWidget );
 
-	// Create the action for tool
-	mpQActionPointer = new QAction( QIcon(), tr(qPrintable(sName)), this );
-	mpQActionPointer->setObjectName( QStringLiteral( "mpQActionPointer" ) );
-	mpQActionPointer->setIcon(QIcon(":/sbelevationservices/icons/sb_elevation_services.png"));
-	mpQActionPointer->setCheckable( true );
-	mpQActionPointer->setChecked( mpDockWidget->isVisible() );
-	mpQActionPointer->setWhatsThis( tr(qPrintable(sDescription)) );
-	
-	connect( mpQActionPointer, &QAction::triggered, this, &sbElevationServices::showOrHide );
-	mpQgisIface->addPluginToVectorMenu( QString(), mpQActionPointer );
-	mpQgisIface->addVectorToolBarIcon( mpQActionPointer );
-
-	sbElevationServicesGui *pGui = new sbElevationServicesGui(mpQgisIface);
-	mpDockWidget->setWidget(pGui);
+  // Create the action for tool
+  mpQActionPointer = new QAction( QIcon(), tr(qPrintable(sName)), this );
+  mpQActionPointer->setObjectName( QStringLiteral( "mpQActionPointer" ) );
+  mpQActionPointer->setIcon(QIcon(":/sbelevationservices/icons/sb_elevation_services.png"));
+  mpQActionPointer->setCheckable( true );
+  mpQActionPointer->setChecked( mpDockWidget->isVisible() );
+  mpQActionPointer->setWhatsThis( tr(qPrintable(sDescription)) );
   
-	connect( mpDockWidget.data(), SIGNAL(visibilityChanged), mpQActionPointer, SLOT(setChecked) );
-	connect(mpDockWidget.data(), &QDockWidget::visibilityChanged, mpQActionPointer, &QAction::setChecked);
+  connect( mpQActionPointer, &QAction::triggered, this, &sbElevationServicesPlugin::showOrHide );
+  mpQgisIface->addPluginToVectorMenu( QString(), mpQActionPointer );
+  mpQgisIface->addVectorToolBarIcon( mpQActionPointer );
+
+  sbElevationServicesGui *pGui = new sbElevationServicesGui(mpQgisIface);
+  mpDockWidget->setWidget(pGui);
+  
+  connect( mpDockWidget.data(), SIGNAL(visibilityChanged), mpQActionPointer, SLOT(setChecked) );
+  connect(mpDockWidget.data(), &QDockWidget::visibilityChanged, mpQActionPointer, &QAction::setChecked);
 }
 
 //method defined in interface
-void sbElevationServices::help()
+void sbElevationServicesPlugin::help()
 {
-	// implement me!
+  // implement me!
 }
 
-void sbElevationServices::showOrHide()
+void sbElevationServicesPlugin::showOrHide()
 {
-	if ( mpQActionPointer->isChecked() )
-		mpDockWidget->show();
-	else
-		mpDockWidget->hide();
+  if ( mpQActionPointer->isChecked() )
+    mpDockWidget->show();
+  else
+    mpDockWidget->hide();
 }
 
 // Unload the plugin by cleaning up the GUI
-void sbElevationServices::unload()
+void sbElevationServicesPlugin::unload()
 {
-	// remove the GUI
-	if (mpQgisIface)
-	{
-		mpQgisIface->vectorMenu()->removeAction(mpQActionPointer);
-		mpQgisIface->removeVectorToolBarIcon(mpQActionPointer);
+  // remove the GUI
+  if (mpQgisIface)
+  {
+    mpQgisIface->vectorMenu()->removeAction(mpQActionPointer);
+    mpQgisIface->removeVectorToolBarIcon(mpQActionPointer);
 
-		mpQgisIface = nullptr;
-	}
-	
-	if (mpDockWidget)
-		delete mpDockWidget;
+    mpQgisIface = nullptr;
+  }
   
-	if(mpQActionPointer)
-		delete mpQActionPointer;
+  if (mpDockWidget)
+    delete mpDockWidget;
+  
+  if(mpQActionPointer)
+    delete mpQActionPointer;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -148,47 +141,47 @@ void sbElevationServices::unload()
 // Class factory to return a new instance of the plugin class
 QGISEXTERN QgisPlugin *classFactory( QgisInterface *qgisInterfacePointer )
 {
-	return new sbElevationServices( qgisInterfacePointer );
+  return new sbElevationServicesPlugin( qgisInterfacePointer );
 }
 
 // Return the name of the plugin - note that we do not user class members as
 // the class may not yet be insantiated when this method is called.
-QGISEXTERN QString name()
+QGISEXTERN const QString *name()
 {
-	return sName;
+  return &sName;
 }
 
 // Return the description
-QGISEXTERN QString description()
+QGISEXTERN const QString *description()
 {
-	return sDescription;
+  return &sDescription;
 }
 
 // Return the category
-QGISEXTERN QString category()
+QGISEXTERN const QString *category()
 {
-	return sCategory;
+  return &sCategory;
 }
 
 // Return the type (either UI or MapLayer plugin)
 QGISEXTERN int type()
 {
-	return sPluginType;
+  return sPluginType;
 }
 
 // Return the version number for the plugin
-QGISEXTERN QString version()
+QGISEXTERN const QString *version()
 {
-	return sPluginVersion;
+  return &sPluginVersion;
 }
 
-QGISEXTERN QString icon()
+QGISEXTERN const QString *icon()
 {
-	return sPluginIcon;
+  return &sPluginIcon;
 }
 
 // Delete ourself
 QGISEXTERN void unload( QgisPlugin *pluginPointer )
 {
-	delete pluginPointer;
+  delete pluginPointer;
 }
