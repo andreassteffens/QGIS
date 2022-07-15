@@ -159,11 +159,11 @@ QVariant QgsLayerCapabilitiesModel::headerData( int section, Qt::Orientation ori
         case PrivateColumn:
           return tr( "Private" );
         case sbNavigableColumn:
-          return tr("[Atapa] Navigable");
+          return tr("[a]tapa Navigable");
         case sbSelectableColumn:
-          return tr("[Atapa] Selectable");
+          return tr("[a]tapa Selectable");
         case sbSnappableColumn:
-          return tr("[Atapa] Snappable");
+          return tr("[a]tapa Snappable");
         default:
           return QVariant();
       }
@@ -185,11 +185,11 @@ QVariant QgsLayerCapabilitiesModel::headerData( int section, Qt::Orientation ori
         case PrivateColumn:
           return tr( "Layers which are not shown in the legend." );
         case sbNavigableColumn:
-          return tr("Layers whose features can be navigated to using the Google Maps Tool integrated into the Atapa Atlas.");
+          return tr("Layers whose features can be navigated to using the Google Maps Tool integrated into the [a]tapa Atlas.");
         case sbSelectableColumn:
-          return tr("Layers whose features can be selected using the Object Selection Tool integrated into the Atapa Atlas.");
+          return tr("Layers whose features can be selected using the Object Selection Tool integrated into the [a]tapa Atlas.");
         case sbSnappableColumn:
-          return tr("Layers whose features can be snapped to using the Snapping Tool integrated into the Atapa Atlas.");
+          return tr("Layers whose features can be snapped to using the Snapping Tool integrated into the [a]tapa Atlas.");
         default:
           return QVariant();
       }

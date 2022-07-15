@@ -251,7 +251,7 @@ void QgsConfigCache::logOldProjectVersionWarning(const QString &warning)
 
 void QgsConfigCache::logProjectCleared()
 {
-  QgsMessageLog::logMessage(QStringLiteral("[Atapa] Project has been cleared!"), QStringLiteral("Server"), Qgis::Critical);
+  QgsMessageLog::logMessage(QStringLiteral("([a]tapa) Project has been cleared!"), QStringLiteral("Server"), Qgis::Critical);
 }
 
 void QgsConfigCache::logLoadingLayerMessage(const QString &t1, const QList<QgsReadWriteContext::ReadWriteMessage> &listMessages)

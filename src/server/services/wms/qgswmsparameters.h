@@ -539,8 +539,8 @@ namespace QgsWms
       QStringList sbRules() const;
 
       /**
-       * Returns the the API key authorizing access to specialized Atapa functions found in RULES parameter.
-       * \returns Atapa API key
+       * Returns the the API key authorizing access to specialized [a]tapa functions found in RULES parameter.
+       * \returns [a]tapa API key
       */
       QString sbKey() const;
 

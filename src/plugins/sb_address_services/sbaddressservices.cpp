@@ -46,7 +46,7 @@
 #include <QLabel>
 #include <QMenu>
 
-static const QString sName = QObject::tr( "Atapa Address Services" );
+static const QString sName = QObject::tr( "[a]tapa Address Services" );
 static const QString sDescription = QObject::tr( "Forward and reverse address search based on Google and OSM services" );
 static const QString sCategory = QObject::tr( "Vector" );
 static const QString sPluginVersion = QObject::tr( "Version 1.0" );

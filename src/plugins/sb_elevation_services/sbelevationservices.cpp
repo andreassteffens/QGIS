@@ -46,7 +46,7 @@
 #include <QLabel>
 #include <QMenu>
 
-static const QString sName = QObject::tr( "Atapa Elevation Services" );
+static const QString sName = QObject::tr( "[a]tapa Elevation Services" );
 static const QString sDescription = QObject::tr( "Wrapper for Google Maps Elevation API allowing to query elevation info at arbitrary coordinates" );
 static const QString sCategory = QObject::tr( "Vector" );
 static const QString sPluginVersion = QObject::tr( "Version 1.0" );

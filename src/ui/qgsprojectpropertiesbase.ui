@@ -965,7 +965,7 @@
                 <item>
                  <widget class="QToolButton" name="pbnSbOsmScales">
                   <property name="toolTip">
-                   <string>[Atapa] Generate OSM scales</string>
+                   <string>([a]tapa) Generate OSM scales</string>
                   </property>
                   <property name="text">
                    <string>…</string>
@@ -979,7 +979,7 @@
                 <item>
                  <widget class="QToolButton" name="pbnSbAutoScales">
                   <property name="toolTip">
-                   <string>[Atapa] Generate scales starting at current scale</string>
+                   <string>([a]tapa) Generate scales starting at current scale</string>
                   </property>
                   <property name="text">
                    <string>…</string>
@@ -3308,10 +3308,10 @@
                          </sizepolicy>
                         </property>
                         <property name="toolTip">
-                         <string>Test the configuration for Atapa Atlas</string>
+                         <string>Test the configuration for [a]tapa Atlas</string>
                         </property>
                         <property name="text">
-                         <string>[Atapa] Atlas test</string>
+                         <string>([a]tapa) Atlas test</string>
                         </property>
                        </widget>
                       </item>
@@ -3324,10 +3324,10 @@
                          </sizepolicy>
                         </property>
                         <property name="toolTip">
-                         <string>Optimize configuration for Atapa Atlas</string>
+                         <string>Optimize configuration for [a]tapa Atlas</string>
                         </property>
                         <property name="text">
-                         <string>[Atapa] Atlas optimizations</string>
+                         <string>([a]tapa) Atlas optimizations</string>
                         </property>
                        </widget>
                       </item>
