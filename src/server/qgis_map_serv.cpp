@@ -109,10 +109,6 @@ int main( int argc, char *argv[] )
   _set_se_translator(SETranslator);
 #endif
   
-  Debug(QStringLiteral("argc: %1\n").arg(argc));
-  for (int i = 0; i < argc; i++)
-    Debug(QStringLiteral("argv[%1]: %2\n").arg(QString::number(i)).arg(argv[i]));
-  
   // since version 3.0 QgsServer now needs a qApp so initialize QgsApplication
   const QgsApplication app( argc, argv, withDisplay, QString(), QStringLiteral( "server" ) );
   
@@ -125,7 +121,7 @@ int main( int argc, char *argv[] )
     if (argc == 2)
       strTenant = argv[1];
 
-    QgsServer server;
+    QgsServer server(strTenant);
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
     server.initPython();
@@ -137,7 +133,6 @@ int main( int argc, char *argv[] )
     QFontDatabase fontDB;
 
     int iRet = server.sbPreloadProjects();
-    Debug(QStringLiteral("Result: %1\n").arg(iRet));
 #endif
 
     // Starts FCGI loop

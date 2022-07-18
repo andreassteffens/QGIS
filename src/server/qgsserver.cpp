@@ -284,6 +284,7 @@ QString QgsServer::sbGetDecryptedProjectPath(QString strPath)
   if (!bClearName)
   {
     strDecryptedPath = sCrypto.sbDecryptFromBase64String(strPath);
+
     if (!QFileInfo(strDecryptedPath).exists())
       strDecryptedPath = strPath;
   }
@@ -689,6 +690,8 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
             // load the project if needed and not empty
             // Note that  QgsConfigCache::project( ... ) call QgsProject::setInstance(...)
             project = QgsConfigCache::instance()->project( configFilePath, sServerInterface->serverSettings() );
+            if ( !project )
+              QgsMessageLog::logMessage(QStringLiteral("Decrypted path 4: '%1'").arg(configFilePath), QStringLiteral("Server"), Qgis::Critical);
           }
         }
 
@@ -819,7 +822,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
 
   if ( logLevel == Qgis::MessageLevel::Info )
   {
-    QgsMessageLog::logMessage( QStringLiteral("Request finished in %").arg(QString::number( QgsApplication::profiler()->profileTime( QStringLiteral( "handleRequest" ), QStringLiteral( "server" ) ) * 1000.0 ) + " ms"), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
+    QgsMessageLog::logMessage( QStringLiteral("Request finished in %1").arg(QString::number( QgsApplication::profiler()->profileTime( QStringLiteral( "handleRequest" ), QStringLiteral( "server" ) ) * 1000.0 ) + " ms"), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
     if ( sSettings->logProfile() )
     {
       std::function <void( const QModelIndex &, int )> profileFormatter;
