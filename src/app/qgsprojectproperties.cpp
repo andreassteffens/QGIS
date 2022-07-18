@@ -2207,7 +2207,7 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
       QList<QgsLayerMetadata::Constraint> qlistConstraints = meta.constraints();
       for (int iMeta = 0; iMeta < qlistConstraints.length(); iMeta++)
       {
-        if (qlistConstraints[iMeta].type.compare("sb:Search", Qt::CaseInsensitive) == 0)
+        if (qlistConstraints[iMeta].type.compare("sb:SEARCH", Qt::CaseInsensitive) == 0)
         {
           bSearchable = true;
           break;
@@ -2562,7 +2562,7 @@ void QgsProjectProperties::sbCollectWfsToolLayerIds(QgsLayerTreeGroup *treeGroup
           QList<QgsLayerMetadata::Constraint> qlistConstraints = meta.constraints();
           for (int iMeta = 0; iMeta < qlistConstraints.length(); iMeta++)
           {
-            if (qlistConstraints[iMeta].type.compare("sb:Search", Qt::CaseInsensitive) == 0 && bSearchable)
+            if (qlistConstraints[iMeta].type.compare("sb:SEARCH", Qt::CaseInsensitive) == 0 && bSearchable)
             {
               bSearchable = true;
               break;

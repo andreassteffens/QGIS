@@ -125,12 +125,12 @@ QgsFeatureRequest &QgsFeatureRequest::operator=( const QgsFeatureRequest &rh )
   mTimeout = rh.mTimeout;
   mRequestMayBeNested = rh.mRequestMayBeNested;
   mFeedback = rh.mFeedback;
-  mSbRenderMinPixelSize = 0;
-  mSbRenderMinPixelSizeMaxScale = 0;
-  mSbScaleFactor = 0;
-  mSbMapUnitsPerPixel = 0;
-  mSbCurrentScale = 0;
-  mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
+  mSbRenderMinPixelSize = rh.mSbRenderMinPixelSize;
+  mSbRenderMinPixelSizeMaxScale = rh.mSbRenderMinPixelSizeMaxScale;
+  mSbScaleFactor = rh.mSbScaleFactor;
+  mSbMapUnitsPerPixel = rh.mSbMapUnitsPerPixel;
+  mSbCurrentScale = rh.mSbCurrentScale;
+  mSbGeometryType = rh.mSbGeometryType;
   mSbQuerySubstitutions = rh.mSbQuerySubstitutions;
   return *this;
 }
