@@ -128,16 +128,26 @@ std::unique_ptr< QgsCircularString > QgsArcGisRestUtils::convertCircularString( 
   const QVariantList coordsList = curveData[QStringLiteral( "c" )].toList();
   if ( coordsList.isEmpty() )
     return nullptr;
+  const int coordsListSize = coordsList.size();
+
   QVector<QgsPoint> points;
+  points.reserve( coordsListSize + 1 );
   points.append( startPoint );
-  for ( const QVariant &coordData : coordsList )
+
+  for ( int i = 0; i < coordsListSize - 1; )
   {
-    std::unique_ptr< QgsPoint > point( convertPoint( coordData.toList(), pointType ) );
-    if ( !point )
-    {
+    // first point is end point, second is point on curve
+    // i.e. the opposite to what QGIS requires!
+    std::unique_ptr< QgsPoint > endPoint( convertPoint( coordsList.at( i ).toList(), pointType ) );
+    if ( !endPoint )
       return nullptr;
-    }
-    points.append( *point );
+    i++;
+    std::unique_ptr< QgsPoint > interiorPoint( convertPoint( coordsList.at( i ).toList(), pointType ) );
+    if ( !interiorPoint )
+      return nullptr;
+    i++;
+    points << *interiorPoint;
+    points << *endPoint;
   }
   std::unique_ptr< QgsCircularString > curve = std::make_unique< QgsCircularString> ();
   curve->setPoints( points );
@@ -187,6 +197,14 @@ std::unique_ptr< QgsCompoundCurve > QgsArcGisRestUtils::convertCompoundCurve( co
       lineString->addVertex( endPointCircularString );
     }
   }
+
+  if ( lineString && lineString->numPoints() == 1 && compoundCurve->nCurves() > 0 )
+  {
+    const QgsCurve *finalCurve = compoundCurve->curveAt( compoundCurve->nCurves() - 1 );
+    if ( finalCurve->endPoint() == lineString->startPoint() )
+      lineString.reset(); // redundant final curve containing a duplicate vertex
+  }
+
   if ( lineString )
     compoundCurve->addCurve( lineString.release() );
 
