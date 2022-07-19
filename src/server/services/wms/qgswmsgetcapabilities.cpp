@@ -1855,7 +1855,81 @@ namespace QgsWms
 
           if ( projectSettings )
           {
+            QDomElement layerTypeElem = doc.createElement(QStringLiteral("sbLayerType"));
+            QString qstrType;
+
+            switch (l->type())
+            {
+              case QgsMapLayerType::RasterLayer:
+                qstrType = "RasterLayer";
+                break;
+              case QgsMapLayerType::VectorLayer:
+                qstrType = "VectorLayer";
+                break;
+              case QgsMapLayerType::PluginLayer:
+                qstrType = "PluginLayer";
+                break;
+              case QgsMapLayerType::MeshLayer:
+                qstrType = "MeshLayer";
+                break;
+            }
+
+            QDomText layerTypeText = doc.createTextNode(qstrType);
+            layerTypeElem.appendChild(layerTypeText);
+            layerElem.appendChild(layerTypeElem);
+
             appendLayerProjectSettings( doc, layerElem, l );
+            QgsVectorLayer* vlayer = qobject_cast<QgsVectorLayer*>(l);
+            if (vlayer)
+            {
+              if (vlayer->isSpatial())
+              {
+                QgsLegendSymbolList listSymbols = vlayer->renderer()->legendSymbolItems();
+
+                if (listSymbols.count() > 0)
+                {
+                  QDomElement symbolsElem = doc.createElement(QStringLiteral("sbLegendSymbols"));
+
+                  for (int iSymbol = 0; iSymbol < listSymbols.count(); iSymbol++)
+                  {
+                    QgsLegendSymbolItem& legendItem = listSymbols[iSymbol];
+
+                    QDomElement symbolElem = doc.createElement(QStringLiteral("sbLegendSymbol"));
+                    symbolElem.setAttribute("name", legendItem.ruleKey());
+                    symbolElem.setAttribute("title", legendItem.label());
+                    symbolElem.setAttribute("checkable", vlayer->renderer()->legendSymbolItemsCheckable());
+                    symbolElem.setAttribute("checked", vlayer->renderer()->legendSymbolItemChecked(legendItem.ruleKey()));
+                    symbolElem.setAttribute("minScale", legendItem.scaleMinDenom());
+                    symbolElem.setAttribute("maxScale", legendItem.scaleMaxDenom());
+
+                    if (legendItem.symbol() != NULL)
+                    {
+                      switch (legendItem.symbol()->type())
+                      {
+                        case Qgis::SymbolType::Marker:
+                          symbolElem.setAttribute("type", "Marker");
+                          break;
+                        case Qgis::SymbolType::Line:
+                          symbolElem.setAttribute("type", "Line");
+                          break;
+                        case Qgis::SymbolType::Fill:
+                          symbolElem.setAttribute("type", "Fill");
+                          break;
+                        case Qgis::SymbolType::Hybrid:
+                          symbolElem.setAttribute("type", "Hybrid");
+                          break;
+                      }
+                    }
+                    else
+                      symbolElem.setAttribute("type", "Unknown");
+
+                    symbolsElem.appendChild(symbolElem);
+                  }
+
+                  layerElem.appendChild(symbolsElem);
+                }
+              }
+            }
           }
         }
 
@@ -1900,25 +1974,6 @@ namespace QgsWms
           getLayerLegendGraphicElem.setAttribute("height", "16");
 
           QString strSourceWmsLegendFormat;
-
-          QStringList getLayerLegendGraphicFormats;
-          if ( !customHrefString.isEmpty() )
-          {
-            getLayerLegendGraphicFormats << currentLayer->legendUrlFormat();
-          }
-          else
-          {
-            getLayerLegendGraphicFormats << QStringLiteral( "image/png" ); // << "jpeg" << "image/jpeg"
-          }
-
-          for ( int i = 0; i < getLayerLegendGraphicFormats.size(); ++i )
-          {
-            QDomElement getLayerLegendGraphicFormatElem = doc.createElement( QStringLiteral( "Format" ) );
-            QString getLayerLegendGraphicFormat = getLayerLegendGraphicFormats[i];
-            QDomText getLayerLegendGraphicFormatText = doc.createTextNode( getLayerLegendGraphicFormat );
-            getLayerLegendGraphicFormatElem.appendChild( getLayerLegendGraphicFormatText );
-            getLayerLegendGraphicElem.appendChild( getLayerLegendGraphicFormatElem );
-          }
 
           // no parameters on custom hrefUrl, because should link directly to graphic
           if ( customHrefString.isEmpty() )
