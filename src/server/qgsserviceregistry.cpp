@@ -104,13 +104,13 @@ QgsService *QgsServiceRegistry::getService( const QString &name, const QString &
     else
     {
       // Return the default version
-      QgsMessageLog::logMessage( QString( "Service %1 %2 not found, returning default" ).arg( name, version ), QStringLiteral("Server"), Qgis::MessageLevel::Warning );
+      QgsMessageLog::logMessage( QString( "Service %1 %2 not found, returning default" ).arg( name, version ), QStringLiteral("Server"), Qgis::MessageLevel::Info);
       service = mServices[v->second].get();
     }
   }
   else
   {
-    QgsMessageLog::logMessage( QString( "Service %1 is not registered" ).arg( name ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
+    QgsMessageLog::logMessage( QString( "Service %1 is not registered" ).arg( name ), QStringLiteral( "Server" ), Qgis::MessageLevel::Warning );
   }
   return service;
 }

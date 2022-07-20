@@ -219,14 +219,16 @@ void QgsRequestHandler::parseInput()
       }
 
       if (!bProcessAsQueryString)
+      {
         bProcessAsQueryString = !doc.setContent(inputString, true, &errorMsg, &line, &column);
+
+        // XXX Output error but continue processing request ?
+        QgsMessageLog::logMessage(QStringLiteral("Warning: error parsing post data as XML: at line %1, column %2: %3. Assuming urlencoded query string sent in the post body.")
+          .arg(line).arg(column).arg(errorMsg), QStringLiteral("Server"), Qgis::Warning);
+      }
 
       if (bProcessAsQueryString)
       {
-        // XXX Output error but continue processing request ?
-        QgsMessageLog::logMessage( QStringLiteral( "Warning: error parsing post data as XML: at line %1, column %2: %3. Assuming urlencoded query string sent in the post body." )
-                                   .arg( line ).arg( column ).arg( errorMsg ),  QStringLiteral("Server"), Qgis::Warning );
-
         // Process input string as a simple query text
         try
         {
