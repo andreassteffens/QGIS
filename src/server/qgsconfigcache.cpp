@@ -123,7 +123,7 @@ void QgsConfigCache::sbPurge()
 const QgsProject *QgsConfigCache::project( const QString &path, const QgsServerSettings *settings )
 {
   QString strLoadingPath = sbGetStandardizedPath(path);
-  QgsMessageLog::logMessage(QStringLiteral("Decrypted path 3: '%1'").arg(strLoadingPath), QStringLiteral("Server"), Qgis::Critical);
+  
   if ( !mProjectCache[ strLoadingPath ] )
   {
     // disable the project style database -- this incurs unwanted cost and is not required

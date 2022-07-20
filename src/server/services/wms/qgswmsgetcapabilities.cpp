@@ -67,12 +67,12 @@ namespace QgsWms
 
     void appendLayerBoundingBox( QDomDocument &doc, QDomElement &layerElem, const QgsRectangle &layerExtent,
                                  const QgsCoordinateReferenceSystem &layerCRS, const QString &crsText,
-                                 const QgsProject *project );
+                                 const QgsProject *project, bool projectSettings );
 
     void appendLayerBoundingBoxes( QDomDocument &doc, QDomElement &layerElem, const QgsRectangle &lExtent,
                                    const QgsCoordinateReferenceSystem &layerCRS, const QStringList &crsList,
                                    const QStringList &constrainedCrsList, const QgsProject *project,
-                                   const QgsMapLayer* l, const QgsRectangle &geoExtent = QgsRectangle() );
+                                   const QgsMapLayer* l, const QgsRectangle &geoExtent = QgsRectangle(), bool projectSettings = false);
 
     void appendCrsElementToLayer( QDomDocument &doc, QDomElement &layerElement, const QDomElement &precedingElement,
                                   const QString &crsText );
@@ -1087,7 +1087,7 @@ namespace QgsWms
     void appendLayerBoundingBoxes( QDomDocument& doc, QDomElement& layerElem, const QgsRectangle& lExtent,
       const QgsCoordinateReferenceSystem& layerCRS, const QStringList& crsList,
       const QStringList& constrainedCrsList, const QgsProject* project,
-      const QgsMapLayer* l, const QgsRectangle& lGeoExtent )
+      const QgsMapLayer* l, const QgsRectangle& lGeoExtent, bool projectSettings )
     {
       if (layerElem.isNull())
       {
@@ -1206,14 +1206,14 @@ namespace QgsWms
       {
         for (int i = constrainedCrsList.size() - 1; i >= 0; --i)
         {
-          appendLayerBoundingBox(doc, layerElem, layerExtent, layerCRS, constrainedCrsList.at(i), project);
+          appendLayerBoundingBox(doc, layerElem, layerExtent, layerCRS, constrainedCrsList.at(i), project, projectSettings);
         }
       }
       else //no crs constraint
       {
         for (const QString& crs : crsList)
         {
-          appendLayerBoundingBox(doc, layerElem, layerExtent, layerCRS, crs, project);
+          appendLayerBoundingBox(doc, layerElem, layerExtent, layerCRS, crs, project, projectSettings);
         }
       }
     }
@@ -1556,7 +1556,7 @@ namespace QgsWms
               wgs84Extent = l->wgs84Extent();
             }
 
-            appendLayerBoundingBoxes( doc, layerElem, extent, l->crs(), crsList, outputCrsList, project, l, wgs84Extent );
+            appendLayerBoundingBoxes( doc, layerElem, extent, l->crs(), crsList, outputCrsList, project, l, wgs84Extent, projectSettings );
           }
           
           // add details about supported styles of the layer
@@ -2191,7 +2191,7 @@ namespace QgsWms
 
     void appendLayerBoundingBox( QDomDocument &doc, QDomElement &layerElem, const QgsRectangle &layerExtent,
                                  const QgsCoordinateReferenceSystem &layerCRS, const QString &crsText,
-                                 const QgsProject *project )
+                                 const QgsProject *project, bool projectSettings )
     {
       if ( layerElem.isNull() )
       {
@@ -2234,6 +2234,8 @@ namespace QgsWms
         precision = 6;
       }
 
+      bool bInverted = false;
+
       //BoundingBox element
       QDomElement bBoxElement = doc.createElement( QStringLiteral( "BoundingBox" ) );
       if ( crs.isValid() )
@@ -2244,7 +2246,11 @@ namespace QgsWms
       if ( version != QLatin1String( "1.1.1" ) && crs.hasAxisInverted() )
       {
         crsExtent.invert();
+        bInverted = true;
       }
+
+      if(projectSettings && bInverted)
+        bBoxElement.setAttribute(QStringLiteral("sbInverted"), QStringLiteral("true"));
 
       bBoxElement.setAttribute( QStringLiteral( "minx" ), qgsDoubleToString( QgsServerProjectUtils::floorWithPrecision( crsExtent.xMinimum(), precision ), precision ) );
       bBoxElement.setAttribute( QStringLiteral( "miny" ), qgsDoubleToString( QgsServerProjectUtils::floorWithPrecision( crsExtent.yMinimum(), precision ), precision ) );
@@ -2442,7 +2448,7 @@ namespace QgsWms
           }
         }
       }
-      appendLayerBoundingBoxes( doc, groupElem, combinedBBox, groupCRS, qgis::setToList( combinedCRSSet ), outputCrsList, project, NULL );
+      appendLayerBoundingBoxes( doc, groupElem, combinedBBox, groupCRS, qgis::setToList( combinedCRSSet ), outputCrsList, project, NULL, QgsRectangle(), projectSettings );
     }
 
     void appendDrawingOrder( QDomDocument &doc, QDomElement &parentElem, QgsServerInterface *serverIface,

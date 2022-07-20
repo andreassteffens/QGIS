@@ -7,7 +7,6 @@ SET (sb_SRCS
   qgssbgetserverinfo.cpp
   qgssbconvertproject.cpp
   qgssbgetlayermetadata.cpp
-  qgssbgetlayersymbol.cpp
   qgssbgetencryptedpath.cpp
   qgssbpurgecache.cpp
   qgssbsetpreloadprojects.cpp
@@ -42,7 +41,6 @@ INCLUDE_DIRECTORIES(
   ${CMAKE_SOURCE_DIR}/src/core/layertree
   ${CMAKE_SOURCE_DIR}/src/core/layout
   ${CMAKE_SOURCE_DIR}/src/core/labeling
-  ${CMAKE_SOURCE_DIR}/src/core/symbology
   ${CMAKE_SOURCE_DIR}/src/gui
   ${CMAKE_SOURCE_DIR}/src/gui/editorwidgets
   ${CMAKE_SOURCE_DIR}/src/gui/editorwidgets/core

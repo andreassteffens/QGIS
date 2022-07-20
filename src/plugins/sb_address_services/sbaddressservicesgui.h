@@ -77,18 +77,18 @@ class sbAddressServicesGui : public QWidget, private Ui::sbAddressServicesGuiBas
     class AddressDetails
     {
       private:
-        QString      mstrName;
-        QString      mstrExtras;
-        QgsRectangle  mrcBounds;
+        QString mstrName;
+        QString mstrExtras;
+        QgsRectangle mrcBounds;
 
       public:
         AddressDetails(const QString &strName, const QgsRectangle &rcBounds, const QString &strExtras);
 
-        const QString&    getName();
-        const QString&    getExtras();
-        const QgsRectangle&  getBounds();
+        const QString& getName();
+        const QString& getExtras();
+        const QgsRectangle& getBounds();
 
-        const QString    toJson();
+        const QString toJson();
 
         static AddressDetails fromJson(const QString &strJson);
     };

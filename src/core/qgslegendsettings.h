@@ -234,11 +234,11 @@ class CORE_EXPORT QgsLegendSettings
      */
     void setSymbolSize( QSizeF s ) {mSymbolSize = s;}
 
-	bool sbScaleIndependentSymbol() const { return mSbScaleIndependentSymbol; }
-	void sbSetScaleIndependentSymbol(bool s) { mSbScaleIndependentSymbol = s; }
+    bool sbScaleIndependentSymbol() const { return mSbScaleIndependentSymbol; }
+    void sbSetScaleIndependentSymbol(bool s) { mSbScaleIndependentSymbol = s; }
 
-	bool sbNoWidthHeightOffset() const { return mSbNoWidthHeightOffset; }
-	void sbSetNoWidthHeightOffset(bool s) { mSbNoWidthHeightOffset = s; }
+    bool sbNoWidthHeightOffset() const { return mSbNoWidthHeightOffset; }
+    void sbSetNoWidthHeightOffset(bool s) { mSbNoWidthHeightOffset = s; }
 
     /**
      * Returns the maximum symbol size (in mm). 0.0 means there is no maximum set.
@@ -527,10 +527,10 @@ class CORE_EXPORT QgsLegendSettings
 //! Minimum marker symbol size (in mm)
     double mMinSymbolSize = 0.0;
 
-//! Width and height of WMS legendGraphic pixmap
-	bool mSbScaleIndependentSymbol = false;
+    //! Width and height of WMS legendGraphic pixmap
+    bool mSbScaleIndependentSymbol = false;
 
-	bool mSbNoWidthHeightOffset = false;
+    bool mSbNoWidthHeightOffset = false;
 
     //! Width and height of WMS legendGraphic pixmap
     QSizeF mWmsLegendSize;

@@ -21,6 +21,7 @@
 #include "qgswmsrendercontext.h"
 #include "qgswmsserviceexception.h"
 #include "qgsserverprojectutils.h"
+#include "qgsmessagelog.h"
 
 using namespace QgsWms;
 

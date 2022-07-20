@@ -58,7 +58,7 @@ sbUnloadProjectFileWatcher::~sbUnloadProjectFileWatcher()
 
 void sbUnloadProjectFileWatcher::run()
 {
-	QgsMessageLog::logMessage(QStringLiteral("[sb] Starting unload project file watcher with on file '%1' with timeout %2").arg(m_strUnloadFilename).arg(QString::number(m_iTimeout)), QStringLiteral("Server"), Qgis::Critical);
+	QgsMessageLog::logMessage(QStringLiteral("([a]tapa) Starting unload project file watcher with on file '%1' with timeout %2").arg(m_strUnloadFilename).arg(QString::number(m_iTimeout)), QStringLiteral("Server"), Qgis::Info);
 
 	if (m_iTimeout <= 0)
 		return;
@@ -96,7 +96,7 @@ void sbUnloadProjectFileWatcher::run()
 			clearUnloadProjects();
 	}
 
-	QgsMessageLog::logMessage(QStringLiteral("[sb] Terminating unload project file watcher with on file '%1'").arg(m_strUnloadFilename), QStringLiteral("Server"), Qgis::Critical);
+	QgsMessageLog::logMessage(QStringLiteral("([a]tapa) Terminating unload project file watcher with on file '%1'").arg(m_strUnloadFilename), QStringLiteral("Server"), Qgis::Critical);
 }
 
 bool sbUnloadProjectFileWatcher::isUnloaded(QString strProjectFilename)
@@ -131,7 +131,7 @@ void sbUnloadProjectFileWatcher::readUnloadProjects()
 		{
 			m_mapUnloadProjectFiles.clear();
 
-			QgsMessageLog::logMessage(QStringLiteral("[sb] Reading unload projects from path '%1'").arg(m_strUnloadFilename), QStringLiteral("Server"), Qgis::Critical);
+			QgsMessageLog::logMessage(QStringLiteral("([a]tapa) Reading unload projects from path '%1'").arg(m_strUnloadFilename), QStringLiteral("Server"), Qgis::Info);
 
 			QFile unloadFile(m_strUnloadFilename);
 
@@ -151,7 +151,7 @@ void sbUnloadProjectFileWatcher::readUnloadProjects()
 
 					bool bRes = QgsConfigCache::instance()->removeEntry(strLine);
 
-					QgsMessageLog::logMessage(QStringLiteral("[sb] Trying to unload project '%1' ... %2").arg(strLine).arg(bRes), QStringLiteral("Server"), Qgis::Critical);
+					QgsMessageLog::logMessage(QStringLiteral("([a]tapa) Trying to unload project '%1' ... %2").arg(strLine).arg(bRes), QStringLiteral("Server"), Qgis::Warning);
 				}
 
 				unloadFile.close();
@@ -168,7 +168,7 @@ void sbUnloadProjectFileWatcher::readUnloadProjects()
 					timestampFile.close();
 			}
 			else
-				QgsMessageLog::logMessage(QStringLiteral("[sb] Failed to open unload projects file '%1'").arg(m_strUnloadFilename), QStringLiteral("Server"), Qgis::Critical);
+				QgsMessageLog::logMessage(QStringLiteral("([a]tapa) Failed to open unload projects file '%1'").arg(m_strUnloadFilename), QStringLiteral("Server"), Qgis::Warning);
 		}
 		catch (...)
 		{

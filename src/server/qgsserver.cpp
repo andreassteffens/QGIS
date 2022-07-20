@@ -540,16 +540,16 @@ bool QgsServer::init(const QString& strTenant)
 
   QgsFontUtils::loadStandardTestFonts( QStringList() << QStringLiteral( "Roman" ) << QStringLiteral( "Bold" ) );
 
-  QgsMessageLog::logMessage("[sb] This service has been modified by the great and powerful Ender. Go ahead and enjoy!", QStringLiteral("Server"), Qgis::Info);
+  QgsMessageLog::logMessage("([a]tapa) This service has been modified by the great and powerful Ender. Go ahead and enjoy!", QStringLiteral("Server"), Qgis::Info);
 
   QString strFontPath = sSettings->fontsDirectory();
   if (!strFontPath.isEmpty())
   {
-    QgsMessageLog::logMessage("[sb] Font directory: " + strFontPath, QStringLiteral("Server"), Qgis::Info);
+    QgsMessageLog::logMessage("([a]tapa) Font directory: " + strFontPath, QStringLiteral("Server"), Qgis::Info);
 
     int iLoaded = QgsFontUtils::loadLocalResourceFonts(strFontPath);
 
-    QgsMessageLog::logMessage("[sb] Loaded additional fonts: " + QString::number(iLoaded), QStringLiteral("Server"), Qgis::Info);
+    QgsMessageLog::logMessage("([a]tapa) Loaded additional fonts: " + QString::number(iLoaded), QStringLiteral("Server"), Qgis::Info);
   }
 
   sServiceRegistry = new QgsServiceRegistry();
@@ -560,7 +560,7 @@ bool QgsServer::init(const QString& strTenant)
   if (!sSettings->cacheDirectory().isEmpty() && sSettings->sbUseCache())
   {
     QString strCacheDirectory = QDir(sSettings->cacheDirectory()).filePath("sb");
-    QgsMessageLog::logMessage(QStringLiteral("[sb] Initializing server cache in directory: %1").arg(strCacheDirectory), QStringLiteral("Server"), Qgis::Info);
+    QgsMessageLog::logMessage(QStringLiteral("([a]tapa) Initializing server cache in directory: %1").arg(strCacheDirectory), QStringLiteral("Server"), Qgis::Info);
 
     sSbServerCacheFilter = new sbServerCacheFilter(sServerInterface, strCacheDirectory);
     sServerInterface->registerServerCache(sSbServerCacheFilter, 1);
@@ -690,8 +690,6 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
             // load the project if needed and not empty
             // Note that  QgsConfigCache::project( ... ) call QgsProject::setInstance(...)
             project = QgsConfigCache::instance()->project( configFilePath, sServerInterface->serverSettings() );
-            if ( !project )
-              QgsMessageLog::logMessage(QStringLiteral("Decrypted path 4: '%1'").arg(configFilePath), QStringLiteral("Server"), Qgis::Critical);
           }
         }
 

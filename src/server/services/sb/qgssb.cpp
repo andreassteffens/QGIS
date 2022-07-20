@@ -24,7 +24,6 @@
 #include "qgssbconvertproject.h"
 #include "qgssbgetlayermetadata.h"
 #include "qgssbgetencryptedpath.h"
-#include "qgssbgetlayersymbol.h"
 #include "qgssbpurgecache.h"
 #include "qgssbsetunloadprojects.h"
 #include "qgssbsetpreloadprojects.h"
@@ -190,63 +189,6 @@ namespace QgsSb
 					catch (...)
 					{
 						QgsMessageLog::logMessage(QStringLiteral("GetLayerMetadata - Unknown exception: %1").arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
-					}
-				}
-				else if (QSTR_COMPARE(req, "GetLayerSymbol"))
-				{
-					if (!project)
-						throw QgsServerException(QStringLiteral("Project file error"));
-
-					QString layerName = params.value(QStringLiteral("LAYER"));
-					QString layerId = params.value(QStringLiteral("LAYERID"));
-					if (layerName.isEmpty() && layerId.isEmpty())
-						throw QgsServerException(QStringLiteral("Request is missing required parameter 'LAYER' OR 'LAYERID'"));
-					QString ruleName = params.value(QStringLiteral("RULE"));
-					if (ruleName.isEmpty())
-						throw QgsServerException(QStringLiteral("Request is missing required parameter 'RULE'"));
-					QString width = params.value(QStringLiteral("WIDTH"));
-					if (width.isEmpty())
-						throw QgsServerException(QStringLiteral("Request is missing required parameter 'WIDTH'"));
-					QString height = params.value(QStringLiteral("HEIGHT"));
-					if (height.isEmpty())
-						throw QgsServerException(QStringLiteral("Request is missing required parameter 'HEIGHT'"));
-
-					bool bValid = false;
-					int iWidth = width.toInt(&bValid);
-					if(!bValid || iWidth <= 0)
-						throw QgsServerException(QStringLiteral("Required parameter 'WIDTH' is invalid"));
-
-					int iHeight = height.toInt(&bValid);
-					if (!bValid || iHeight <= 0)
-						throw QgsServerException(QStringLiteral("Required parameter 'HEIGHT' is invalid"));
-
-					try
-					{
-						writeGetLayerSymbol(mServerIface, project, versionString, request, response, layerId, layerName, ruleName, iWidth, iHeight);
-					}
-					catch (QgsServerException &ex)
-					{
-						QgsMessageLog::logMessage(QStringLiteral("GetLayerSymbol - QgsServerException: %1").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
-						throw ex;
-					}
-					catch (QgsException &ex)
-					{
-						QgsMessageLog::logMessage(QStringLiteral("GetLayerSymbol - QgsException: %1").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
-						throw ex;
-					}
-					catch (std::runtime_error &ex)
-					{
-						QgsMessageLog::logMessage(QStringLiteral("GetLayerSymbol - RuntimeError: %1 | %2").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
-						throw ex;
-					}
-					catch (std::exception &ex)
-					{
-						QgsMessageLog::logMessage(QStringLiteral("GetLayerSymbol - Exception: %1 | %2").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
-						throw ex;
-					}
-					catch (...)
-					{
-						QgsMessageLog::logMessage(QStringLiteral("GetLayerSymbol - Unknown exception: %1").arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
 					}
 				}
 				else if (QSTR_COMPARE(req, "PurgeCache"))
