@@ -65,7 +65,11 @@
        </attribute>
        <layout class="QGridLayout" name="gridLayout">
         <item row="0" column="1">
-         <widget class="QLineEdit" name="mLeSearch"/>
+         <widget class="QLineEdit" name="mLeSearch">
+          <property name="placeholderText">
+           <string>Enter address or place here...</string>
+          </property>
+         </widget>
         </item>
         <item row="0" column="0">
          <widget class="QLabel" name="mLblSearch">
@@ -111,21 +115,8 @@
        <attribute name="title">
         <string>Address Info</string>
        </attribute>
-       <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,0">
-        <item row="1" column="1">
-         <spacer name="verticalSpacer_3">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>40</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item row="0" column="0" colspan="2">
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <item>
          <widget class="QPushButton" name="mPbtnActivateInfo">
           <property name="text">
            <string>Activate</string>
@@ -141,6 +132,68 @@
            <bool>false</bool>
           </property>
          </widget>
+        </item>
+        <item>
+         <widget class="QFrame" name="frame">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>40</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>40</height>
+           </size>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::NoFrame</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Raised</enum>
+          </property>
+          <property name="lineWidth">
+           <number>0</number>
+          </property>
+          <layout class="QFormLayout" name="formLayout_6">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item row="0" column="0">
+            <widget class="QLabel" name="mLblNominatimQueryLevel">
+             <property name="text">
+              <string>Query Level</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QComboBox" name="mComboNominatimQueryLevel"/>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer_3">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
         </item>
        </layout>
       </widget>
@@ -166,6 +219,9 @@
          <widget class="QComboBox" name="mComboFunnyPlaces">
           <property name="currentIndex">
            <number>-1</number>
+          </property>
+          <property name="placeholderText">
+           <string>Please choose...</string>
           </property>
           <item>
            <property name="text">
@@ -936,14 +992,14 @@
            <property name="geometry">
             <rect>
              <x>0</x>
-             <y>-26</y>
+             <y>-28</y>
              <width>547</width>
-             <height>250</height>
+             <height>266</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_2">
             <item>
-             <widget class="QGroupBox" name="groupBox">
+             <widget class="QGroupBox" name="mGrpGoogleSettings">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
                 <horstretch>0</horstretch>
@@ -990,7 +1046,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QGroupBox" name="groupBox_2">
+             <widget class="QGroupBox" name="mGrpNominatimSettings">
               <property name="minimumSize">
                <size>
                 <width>0</width>
@@ -1008,15 +1064,15 @@
                  </property>
                 </widget>
                </item>
+               <item row="0" column="1">
+                <widget class="QLineEdit" name="mLeNominatimService"/>
+               </item>
                <item row="1" column="0">
                 <widget class="QLabel" name="mLblNominatimQueryOptions">
                  <property name="text">
                   <string>Query Options</string>
                  </property>
                 </widget>
-               </item>
-               <item row="0" column="1">
-                <widget class="QLineEdit" name="mLeNominatimService"/>
                </item>
                <item row="1" column="1">
                 <widget class="QLineEdit" name="mLeNominatimQueryOptions"/>
@@ -1025,17 +1081,17 @@
              </widget>
             </item>
             <item>
-             <widget class="QGroupBox" name="groupBox_3">
+             <widget class="QGroupBox" name="mGrpGeneralSettings">
               <property name="minimumSize">
                <size>
                 <width>0</width>
-                <height>50</height>
+                <height>60</height>
                </size>
               </property>
               <property name="maximumSize">
                <size>
                 <width>16777215</width>
-                <height>50</height>
+                <height>60</height>
                </size>
               </property>
               <property name="title">
@@ -1058,6 +1114,19 @@
                </item>
               </layout>
              </widget>
+            </item>
+            <item>
+             <spacer name="verticalSpacer">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
             </item>
            </layout>
           </widget>

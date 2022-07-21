@@ -46,8 +46,8 @@ void sbAddressServicesMapTool::canvasPressEvent( QgsMapMouseEvent *thepEvent )
 void sbAddressServicesMapTool::canvasReleaseEvent( QgsMapMouseEvent *thepEvent )
 {
   QgsPointXY myOriginalPoint = mCanvas->getCoordinateTransform()->toMapCoordinates( thepEvent->x(), thepEvent->y() );
-  
-  emit mouseClicked( myOriginalPoint );
+
+  emit mouseClicked( myOriginalPoint, mCanvas->scale() );
 }
 
 void sbAddressServicesMapTool::deactivate()

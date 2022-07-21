@@ -39,12 +39,55 @@ enum sbAddressServiceRequestType
   ASRT_OSM_INFO = 3
 };
 
+static double OSM_ZOOM_SCALES[19] = {
+  500000000,
+  250000000,
+  150000000,
+   70000000,
+   35000000,
+   15000000,
+   10000000,
+    4000000,
+    2000000,
+    1000000,
+     500000,
+     250000,
+     150000,
+      70000,
+      35000,
+      15000,
+       8000,
+       4000,
+       2000
+};
 
 sbAddressServicesGui::sbAddressServicesGui(QgisInterface *pQgisIface, QWidget *parent, Qt::WindowFlags fl) : QWidget(parent, fl)
 {
   mpQgisIface = pQgisIface;
 
   setupUi(this);
+
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "dynamic"), QVariant((int)-1));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "0 - Continent/Sea"), QVariant((int)0));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "1"), QVariant((int)1));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "2"), QVariant((int)2));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "3 - County"), QVariant((int)3));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "4"), QVariant((int)4));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "5 - State"), QVariant((int)5));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "6 - Region"), QVariant((int)6));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "7"), QVariant((int)7));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "8 - County"), QVariant((int)8));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "9"), QVariant((int)9));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "10 - City"), QVariant((int)10));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "11"), QVariant((int)11));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "12 - Town/Village"), QVariant((int)12));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "14"), QVariant((int)13));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "14 - Suburb"), QVariant((int)14));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "15"), QVariant((int)15));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "16 - Street"), QVariant((int)16));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "17"), QVariant((int)17));
+  mComboNominatimQueryLevel->addItem(QApplication::translate("sbAddressServicesPlugin", "18 - Building"), QVariant((int)18));
+
   setEnabled(true);
 
   connect(QgsProject::instance(), &QgsProject::cleared, this, &sbAddressServicesGui::onClearedProject);
@@ -59,6 +102,8 @@ sbAddressServicesGui::sbAddressServicesGui(QgisInterface *pQgisIface, QWidget *p
   connect(mCheckRestrictSearchBounds, &QCheckBox::stateChanged, this, &sbAddressServicesGui::onSearchCheckBoxStateChanged);
 
   // info
+  mComboNominatimQueryLevel->setCurrentIndex(s.value("sbAddressServices/OsmNominatimQueryLevel", 0).toInt());
+
   connect(mpQgisIface->mapCanvas(), &QgsMapCanvas::mapToolSet, this, &sbAddressServicesGui::onMapToolSet);
   connect(mpQgisIface->mapCanvas(), &QgsMapCanvas::destinationCrsChanged, this, &sbAddressServicesGui::onDestinationCrsChanged);
   onDestinationCrsChanged();
@@ -67,7 +112,7 @@ sbAddressServicesGui::sbAddressServicesGui(QgisInterface *pQgisIface, QWidget *p
   connect(mpMapTool, &sbAddressServicesMapTool::mouseClicked, this, &sbAddressServicesGui::onMapToolMouseClicked);
 
   connect(mPbtnActivateInfo, &QPushButton::toggled, this, &sbAddressServicesGui::onActivateInfoBtnToggled);
-
+  connect(mComboNominatimQueryLevel, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &sbAddressServicesGui::onQueryLevelComboIndexChanged);
 
   // funny
   connect(mComboFunnyPlaces, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &sbAddressServicesGui::onFunnyPlacesComboIndexChanged);
@@ -79,11 +124,12 @@ sbAddressServicesGui::sbAddressServicesGui(QgisInterface *pQgisIface, QWidget *p
   mLeNominatimService->setText(s.value(QStringLiteral("sbAddressServices/OsmNominatimService"), "https://tileserver.gis24.eu/nominatim").toString());
   mLeNominatimQueryOptions->setText(s.value(QStringLiteral("sbAddressServices/OsmNominatimQueryOptions"), "").toString());
   mCheckDebugMode->setCheckState((Qt::CheckState)s.value("sbAddressServices/DebugMode", (int)Qt::CheckState::Checked).toInt());
-
+  
   connect(mLeGoogleKey, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
   connect(mLeGoogleQueryOptions, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
   connect(mLeNominatimService, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
   connect(mLeNominatimQueryOptions, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
+  connect(mCheckDebugMode, &QCheckBox::stateChanged, this, &sbAddressServicesGui::onSearchCheckBoxStateChanged);
 
 
   // general
@@ -122,7 +168,7 @@ void sbAddressServicesGui::onMapToolSet(QgsMapTool* newTool, QgsMapTool* oldTool
     mPbtnActivateInfo->setChecked(false);
 }
 
-void sbAddressServicesGui::onMapToolMouseClicked(const QgsPointXY &point)
+void sbAddressServicesGui::onMapToolMouseClicked(const QgsPointXY &point, double dScale)
 {
   QgsPointXY ptTransformed = mTransform.transform(point);
 
@@ -132,7 +178,7 @@ void sbAddressServicesGui::onMapToolMouseClicked(const QgsPointXY &point)
     mpNetworkReply.clear();
   }
 
-  doInfo(ptTransformed);
+  doInfo(ptTransformed, dScale);
 }
 
 void sbAddressServicesGui::onFunnyPlacesComboIndexChanged(int index)
@@ -147,6 +193,13 @@ void sbAddressServicesGui::onDestinationCrsChanged()
   
   QgsCoordinateReferenceSystem crsWgs84 = QgsCoordinateReferenceSystem::fromOgcWmsCrs(geoEpsgCrsAuthId());
   mTransform.setDestinationCrs(crsWgs84);
+}
+
+void sbAddressServicesGui::onQueryLevelComboIndexChanged(int index)
+{
+  QSettings s;
+
+  s.setValue("sbAddressServices/OsmNominatimQueryLevel", QVariant(mComboNominatimQueryLevel->currentIndex()));
 }
 
 void sbAddressServicesGui::onSettingsTextChanged(const QString &text)
@@ -301,7 +354,7 @@ void sbAddressServicesGui::doGoogleSearch(const QString& strText)
 
   if (mCheckDebugMode->checkState() == Qt::CheckState::Checked)
   {
-    QgsMessageLog::logMessage( QStringLiteral( "Google Address Search URL: %1" ).arg( strUrl ), QObject::tr( "[a]tapa Address Services" ), Qgis::MessageLevel::Info );
+    QgsMessageLog::logMessage( QStringLiteral( "Google Address Search URL: %1" ).arg( strUrl ), QApplication::translate( "sbAddressServicesPlugin", "[a]tapa Address Services" ), Qgis::MessageLevel::Info );
   }
 
   QNetworkRequest rq;
@@ -355,7 +408,7 @@ void sbAddressServicesGui::doOsmSearch(const QString& strText)
 
   if (mCheckDebugMode->checkState() == Qt::CheckState::Checked)
   {
-    QgsMessageLog::logMessage( QStringLiteral( "OpenStreetMap Nominatim Search URL: %1" ).arg( strUrl ), QObject::tr( "[a]tapa Address Services" ), Qgis::MessageLevel::Info );
+    QgsMessageLog::logMessage( QStringLiteral( "OpenStreetMap Nominatim Search URL: %1" ).arg( strUrl ), QApplication::translate( "sbAddressServicesPlugin", "[a]tapa Address Services" ), Qgis::MessageLevel::Info );
   }
 
   QNetworkRequest rq;
@@ -370,17 +423,17 @@ void sbAddressServicesGui::doOsmSearch(const QString& strText)
   mPteResult->setPlainText(tr("Searching..."));
 }
 
-void sbAddressServicesGui::doInfo(const QgsPointXY& point)
+void sbAddressServicesGui::doInfo(const QgsPointXY& point, double dScale)
 {
   onClearResultsBtnPressed();
 
   if (mLeGoogleKey->text().isEmpty() || mLeGoogleKey->text().isNull())
-    doOsmInfo(point);
+    doOsmInfo(point, dScale);
   else
-    doGoogleInfo(point);
+    doGoogleInfo(point, dScale);
 }
 
-void sbAddressServicesGui::doGoogleInfo(const QgsPointXY& point)
+void sbAddressServicesGui::doGoogleInfo(const QgsPointXY& point, double dScale)
 {
   QString currentLocale = QLocale().name();
 
@@ -394,23 +447,39 @@ void sbAddressServicesGui::doGoogleInfo(const QgsPointXY& point)
 
   if (mCheckDebugMode->checkState() == Qt::CheckState::Checked)
   {
-    QgsMessageLog::logMessage( QStringLiteral( "Google Address Search URL: %1" ).arg( strUrl ), QObject::tr( "[a]tapa Address Services" ), Qgis::MessageLevel::Info );
+    QgsMessageLog::logMessage( QStringLiteral( "Google Address Search URL: %1" ).arg( strUrl ), QApplication::translate( "sbAddressServicesPlugin", "[a]tapa Address Services" ), Qgis::MessageLevel::Info );
   }
 
   mpNetworkReply = mNetworkManager.get(rq);
   mpNetworkReply->setProperty("REQUEST_TYPE", ASRT_GOOGLE_INFO);
   mpNetworkReply->setProperty("QUERY", point.asWkt());
+  mpNetworkReply->setProperty("SCALE", dScale);
 
   connect(mpNetworkReply, &QNetworkReply::finished, this, &sbAddressServicesGui::onNetworkReplyFinished);
 
   mPteResult->setPlainText(tr("Searching..."));
 }
 
-void sbAddressServicesGui::doOsmInfo(const QgsPointXY& point)
+void sbAddressServicesGui::doOsmInfo(const QgsPointXY& point, double dScale)
 {
   QString strUrl = mLeNominatimService->text();
   if (strUrl.isEmpty() || strUrl.isNull())
     return;
+
+  QVariant varZoomLevel = mComboNominatimQueryLevel->itemData(mComboNominatimQueryLevel->currentIndex());
+  int iZoomLevel = varZoomLevel.toInt();
+  if (iZoomLevel == -1)
+  {
+    for (int iLevel = 0; iLevel < 19; iLevel++)
+    {
+      double dZoomScale = OSM_ZOOM_SCALES[iLevel];
+
+      iZoomLevel = iLevel;
+
+      if (dScale >= dZoomScale)
+        break;
+    }
+  }
 
   QString strLocale = QLocale().name();
   if (strLocale.contains("_"))
@@ -423,7 +492,7 @@ void sbAddressServicesGui::doOsmInfo(const QgsPointXY& point)
     strUrl += "/";
   strUrl += "reverse?q=";
   strUrl += "&accept-language=" + strLocale + ",en";
-  strUrl += "&format=json&zoom=18&addressdetails=0&extratags=1";
+  strUrl += "&format=json&zoom=" + QString::number(iZoomLevel) + "&addressdetails=0&extratags=1";
   strUrl += "&lat=" + QString::number(point.y()) + "&lon=" + QString::number(point.x());
 
   QNetworkRequest rq;
@@ -431,7 +500,7 @@ void sbAddressServicesGui::doOsmInfo(const QgsPointXY& point)
 
   if (mCheckDebugMode->checkState() == Qt::CheckState::Checked)
   {
-    QgsMessageLog::logMessage( QStringLiteral( "OpenStreetMap Nominatim Info URL: %1" ).arg( strUrl ), QObject::tr( "[a]tapa Address Services" ), Qgis::MessageLevel::Info );
+    QgsMessageLog::logMessage( QStringLiteral( "OpenStreetMap Nominatim Info URL: %1" ).arg( strUrl ), QApplication::translate( "sbAddressServicesPlugin", "[a]tapa Address Services" ), Qgis::MessageLevel::Info );
   }
 
   mpNetworkReply = mNetworkManager.get(rq);
@@ -450,6 +519,7 @@ void sbAddressServicesGui::onNetworkReplyFinished()
     return;
 
   QString strQuery;
+  double dScale = 0;
   sbAddressServiceRequestType enType = ASRT_INVALID;
 
   try
@@ -481,6 +551,9 @@ void sbAddressServicesGui::onNetworkReplyFinished()
               {
                 bRes = processGoogleInfoReply(strReply);
                 strQuery = varQuery.toString();
+
+                QVariant varScale = reply->property("SCALE");
+                dScale = varScale.toDouble();
               }
               break;
             case sbAddressServiceRequestType::ASRT_OSM_INFO:
@@ -527,7 +600,7 @@ void sbAddressServicesGui::onNetworkReplyFinished()
           if (pt.fromWkt(strQuery))
           {
             QgsPointXY ptXy(pt.x(), pt.y());
-            doOsmInfo(ptXy);
+            doOsmInfo(ptXy, dScale);
           }
         }
         break;

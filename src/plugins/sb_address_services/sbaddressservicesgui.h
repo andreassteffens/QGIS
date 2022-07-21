@@ -31,7 +31,7 @@ class sbAddressServicesGui : public QWidget, private Ui::sbAddressServicesGuiBas
   public slots:
     void onDestinationCrsChanged();
 
-    void onMapToolMouseClicked(const QgsPointXY &point);
+    void onMapToolMouseClicked(const QgsPointXY &point, double dScale);
 
     void onSettingsTextChanged(const QString &text);
     void onClearResultsBtnPressed();
@@ -39,6 +39,7 @@ class sbAddressServicesGui : public QWidget, private Ui::sbAddressServicesGuiBas
     void onSearchTextReturnPressed();
     void onSearchBtnPressed();
     void onSearchCheckBoxStateChanged(int state);
+    void onQueryLevelComboIndexChanged(int index);
     void onActivateInfoBtnToggled(bool checked);
     void onFunnyPlacesComboIndexChanged(int index);
     void onResultsComboIndexChanged(int index);
@@ -51,14 +52,14 @@ class sbAddressServicesGui : public QWidget, private Ui::sbAddressServicesGuiBas
     void onClearedProject();
     
   private:
-    QgisInterface*            mpQgisIface      = nullptr;
+    QgisInterface* mpQgisIface = nullptr;
     
-    QNetworkAccessManager        mNetworkManager;
-    QPointer<QNetworkReply>        mpNetworkReply;
+    QNetworkAccessManager mNetworkManager;
+    QPointer<QNetworkReply> mpNetworkReply;
 
-    QPointer<QgsRubberBand>        mpRubberBand    = nullptr;
-    QPointer<sbAddressServicesMapTool>  mpMapTool      = nullptr;
-    QgsCoordinateTransform        mTransform;
+    QPointer<QgsRubberBand> mpRubberBand = nullptr;
+    QPointer<sbAddressServicesMapTool> mpMapTool = nullptr;
+    QgsCoordinateTransform mTransform;
 
     void doFunnySearch();
     void doSearch(const QString& strText);
@@ -67,9 +68,9 @@ class sbAddressServicesGui : public QWidget, private Ui::sbAddressServicesGuiBas
     bool processGoogleSearchReply(const QString& strReply);
     bool processOsmSearchReply(const QString& strReply);
 
-    void doInfo(const QgsPointXY& point);
-    void doGoogleInfo(const QgsPointXY& point);
-    void doOsmInfo(const QgsPointXY& point);
+    void doInfo(const QgsPointXY& point, double dScale);
+    void doGoogleInfo(const QgsPointXY& point, double dScale);
+    void doOsmInfo(const QgsPointXY& point, double dScale);
     bool processGoogleInfoReply(const QString& strReply);
     bool processOsmInfoReply(const QString& strReply);
 

@@ -47,7 +47,7 @@ class sbAddressServicesMapTool : public QgsMapTool
     void deactivate() override;
 
   signals:
-    void mouseClicked( const QgsPointXY & );
+    void mouseClicked( const QgsPointXY &, double );
 
   private:
     QPointer<QgsMapCanvas> mpMapCanvas;
