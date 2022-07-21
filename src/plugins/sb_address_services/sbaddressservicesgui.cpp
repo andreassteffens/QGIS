@@ -240,6 +240,9 @@ void sbAddressServicesGui::onSearchBtnPressed()
 
 void sbAddressServicesGui::onResultsComboIndexChanged(int index)
 {
+  mPbtnNavigateToResult->setEnabled(index >= 0);
+  mPbtnClearResults->setEnabled(index >= 0);
+
   if (index < 0)
   {
     onClearResultsBtnPressed();
