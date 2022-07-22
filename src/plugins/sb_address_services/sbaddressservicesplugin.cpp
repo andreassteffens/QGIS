@@ -83,10 +83,10 @@ void sbAddressServicesPlugin::initGui()
   mpQgisIface->addPluginToVectorMenu( QString(), mpQActionPointer );
   mpQgisIface->addVectorToolBarIcon( mpQActionPointer );
 
-  sbAddressServicesGui *pGui = new sbAddressServicesGui(mpQgisIface);
+  sbAddressServicesGui *pGui = new sbAddressServicesGui(mpQgisIface, sName);
   mpDockWidget->setWidget(pGui);
   
-  connect( mpDockWidget.data(), SIGNAL(visibilityChanged), mpQActionPointer, SLOT(setChecked) );
+  connect(mpDockWidget.data(), SIGNAL(visibilityChanged), mpQActionPointer, SLOT(setChecked));
   connect(mpDockWidget.data(), &QDockWidget::visibilityChanged, mpQActionPointer, &QAction::setChecked);
 }
 

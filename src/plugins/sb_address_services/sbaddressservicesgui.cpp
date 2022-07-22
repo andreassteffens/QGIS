@@ -61,7 +61,9 @@ static double OSM_ZOOM_SCALES[19] = {
        2000
 };
 
-sbAddressServicesGui::sbAddressServicesGui(QgisInterface *pQgisIface, QWidget *parent, Qt::WindowFlags fl) : QWidget(parent, fl)
+sbAddressServicesGui::sbAddressServicesGui(QgisInterface *pQgisIface, const QString& strPluginName, QWidget *parent, Qt::WindowFlags fl)
+  : QWidget(parent, fl)
+  , mstrPluginName(strPluginName)
 {
   mpQgisIface = pQgisIface;
 
@@ -133,9 +135,12 @@ sbAddressServicesGui::sbAddressServicesGui(QgisInterface *pQgisIface, QWidget *p
 
 
   // general
+  mTabsServices->setCurrentIndex(s.value("sbAddressServices/CurrentTabIndex", 0).toInt());
+
   connect(mPbtnClearResults, &QPushButton::pressed, this, &sbAddressServicesGui::onClearResultsBtnPressed);
   connect(mComboResults, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &sbAddressServicesGui::onResultsComboIndexChanged);
   connect(mPbtnNavigateToResult, &QPushButton::pressed, this, &sbAddressServicesGui::onNavigateToResultBtnPressed);
+  connect(mTabsServices, &QTabWidget::currentChanged, this, &sbAddressServicesGui::onCurrentTabChanged);
 
   mpRubberBand = new QgsRubberBand(mpQgisIface->mapCanvas(), QgsWkbTypes::PolygonGeometry);
   mpRubberBand->setColor(Qt::blue);
@@ -193,6 +198,13 @@ void sbAddressServicesGui::onDestinationCrsChanged()
   
   QgsCoordinateReferenceSystem crsWgs84 = QgsCoordinateReferenceSystem::fromOgcWmsCrs(geoEpsgCrsAuthId());
   mTransform.setDestinationCrs(crsWgs84);
+}
+
+void sbAddressServicesGui::onCurrentTabChanged(int index)
+{
+  QSettings s;
+
+  s.setValue("sbAddressServices/CurrentTabIndex", QVariant(index));
 }
 
 void sbAddressServicesGui::onQueryLevelComboIndexChanged(int index)
@@ -362,6 +374,7 @@ void sbAddressServicesGui::doGoogleSearch(const QString& strText)
 
   QNetworkRequest rq;
   rq.setUrl(QUrl(strUrl));
+  rq.setHeader(QNetworkRequest::KnownHeaders::UserAgentHeader, mstrPluginName);
 
   mpNetworkReply = mNetworkManager.get(rq);
   mpNetworkReply->setProperty("REQUEST_TYPE", ASRT_GOOGLE_SEARCH);
@@ -416,7 +429,8 @@ void sbAddressServicesGui::doOsmSearch(const QString& strText)
 
   QNetworkRequest rq;
   rq.setUrl(QUrl(strUrl));
-  
+  rq.setHeader(QNetworkRequest::KnownHeaders::UserAgentHeader, mstrPluginName);
+
   mpNetworkReply = mNetworkManager.get(rq);
   mpNetworkReply->setProperty("REQUEST_TYPE", ASRT_OSM_SEARCH);
   mpNetworkReply->setProperty("QUERY", strText);
@@ -447,6 +461,7 @@ void sbAddressServicesGui::doGoogleInfo(const QgsPointXY& point, double dScale)
 
   QNetworkRequest rq;
   rq.setUrl(QUrl(strUrl));
+  rq.setHeader(QNetworkRequest::KnownHeaders::UserAgentHeader, mstrPluginName);
 
   if (mCheckDebugMode->checkState() == Qt::CheckState::Checked)
   {
@@ -500,6 +515,7 @@ void sbAddressServicesGui::doOsmInfo(const QgsPointXY& point, double dScale)
 
   QNetworkRequest rq;
   rq.setUrl(QUrl(strUrl));
+  rq.setHeader(QNetworkRequest::KnownHeaders::UserAgentHeader, mstrPluginName);
 
   if (mCheckDebugMode->checkState() == Qt::CheckState::Checked)
   {

@@ -25,13 +25,15 @@ class sbAddressServicesGui : public QWidget, private Ui::sbAddressServicesGuiBas
     Q_OBJECT
 
   public:
-    sbAddressServicesGui(QgisInterface *pQgisIface, QWidget *parent = nullptr, Qt::WindowFlags fl = nullptr);
+    sbAddressServicesGui(QgisInterface *pQgisIface, const QString& strPluginName, QWidget *parent = nullptr, Qt::WindowFlags fl = nullptr);
     ~sbAddressServicesGui();
 
   public slots:
     void onDestinationCrsChanged();
 
     void onMapToolMouseClicked(const QgsPointXY &point, double dScale);
+
+    void onCurrentTabChanged(int index);
 
     void onSettingsTextChanged(const QString &text);
     void onClearResultsBtnPressed();
@@ -53,6 +55,7 @@ class sbAddressServicesGui : public QWidget, private Ui::sbAddressServicesGuiBas
     
   private:
     QgisInterface* mpQgisIface = nullptr;
+    const QString& mstrPluginName;
     
     QNetworkAccessManager mNetworkManager;
     QPointer<QNetworkReply> mpNetworkReply;
