@@ -180,6 +180,21 @@ QGISEXTERN const QString *icon()
   return &sPluginIcon;
 }
 
+QGISEXTERN const QString *experimental()
+{
+  return &sExperimental;
+}
+
+QGISEXTERN const QString *create_date()
+{
+  return &sCreateDate;
+}
+
+QGISEXTERN const QString *update_date()
+{
+  return &sUpdateDate;
+}
+
 // Delete ourself
 QGISEXTERN void unload( QgisPlugin *pluginPointer )
 {

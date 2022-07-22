@@ -207,7 +207,7 @@ void sbAddressServicesGui::onSettingsTextChanged(const QString &text)
   QSettings s;
 
   s.setValue("sbAddressServices/GoogleApiKey", QVariant(mLeGoogleKey->text()));
-  s.setValue("sbAddressServices/GoogleQueryOptions", QVariant(mLblGoogleQueryOptions->text()));
+  s.setValue("sbAddressServices/GoogleQueryOptions", QVariant(mLeGoogleQueryOptions->text()));
   s.setValue("sbAddressServices/OsmNominatimService", QVariant(mLeNominatimService->text()));
   s.setValue("sbAddressServices/OsmNominatimQueryOptions", QVariant(mLeNominatimQueryOptions->text()));
 }
