@@ -6,11 +6,17 @@ SET (sbaddressservices_SRCS
      sbaddressservicesplugin.cpp
      sbaddressservicesgui.cpp
      sbaddressservicesmaptool.cpp
+     ${CMAKE_SOURCE_DIR}/external/SimpleCrypt/SimpleCrypt.cpp
 )
 
 SET (sbaddressservices_UIS
      sbaddressservicesguibase.ui
 )
+
+SET (sbaddressservices_HDRS
+     ${CMAKE_SOURCE_DIR}/external/SimpleCrypt/SimpleCrypt.h
+)
+
 
 SET (sbaddressservices_MOC_HDRS
      sbaddressservicesplugin.h
@@ -29,7 +35,7 @@ QT5_WRAP_CPP (sbaddressservices_MOC_SRCS  ${sbaddressservices_MOC_HDRS})
 
 QT5_ADD_RESOURCES(sbaddressservices_RCC_SRCS ${sbaddressservices_RCCS})
 
-ADD_LIBRARY (plugin_sbaddressservices MODULE ${sbaddressservices_SRCS} ${sbaddressservices_MOC_SRCS} ${sbaddressservices_RCC_SRCS} ${sbaddressservices_UIS_H})
+ADD_LIBRARY (plugin_sbaddressservices MODULE ${sbaddressservices_SRCS} ${sbaddressservices_HDRS} ${sbaddressservices_MOC_SRCS} ${sbaddressservices_RCC_SRCS} ${sbaddressservices_UIS_H})
 
 INCLUDE_DIRECTORIES(
   ${CMAKE_SOURCE_DIR}/src/core
@@ -49,6 +55,7 @@ INCLUDE_DIRECTORIES(
   ${CMAKE_BINARY_DIR}/src/gui
   ${CMAKE_BINARY_DIR}/src/ui
   ${CMAKE_CURRENT_BINARY_DIR}
+  ${CMAKE_SOURCE_DIR}/external/SimpleCrypt
 )
 
 TARGET_LINK_LIBRARIES(plugin_sbaddressservices

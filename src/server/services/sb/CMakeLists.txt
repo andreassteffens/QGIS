@@ -12,7 +12,7 @@ SET (sb_SRCS
   qgssbsetpreloadprojects.cpp
   qgssbsetunloadprojects.cpp
   qgssbgetserverprocessid.cpp
-  ../../SimpleCrypt.cpp
+  ${CMAKE_SOURCE_DIR}/external/SimpleCrypt/SimpleCrypt.cpp
 )
 
 ########################################################
@@ -55,6 +55,7 @@ INCLUDE_DIRECTORIES(
   ${CMAKE_BINARY_DIR}/src/analysis
   ${CMAKE_BINARY_DIR}/src/server
   ${CMAKE_CURRENT_BINARY_DIR}
+  ${CMAKE_SOURCE_DIR}/external/SimpleCrypt
 )
 
 TARGET_LINK_LIBRARIES(sb

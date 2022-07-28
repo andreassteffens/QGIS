@@ -18,6 +18,7 @@
 #include <QDockWidget>
 #include <qnetworkaccessmanager.h>
 #include <qnetworkreply.h>
+#include <SimpleCrypt.h>
 #include "sbaddressservicesplugin.h"
 
 class sbAddressServicesGui : public QWidget, private Ui::sbAddressServicesGuiBase
@@ -54,6 +55,8 @@ class sbAddressServicesGui : public QWidget, private Ui::sbAddressServicesGuiBas
     void onClearedProject();
     
   private:
+    static SimpleCrypt sCrypto;
+
     QgisInterface* mpQgisIface = nullptr;
     const QString& mstrPluginName;
     
@@ -68,7 +71,7 @@ class sbAddressServicesGui : public QWidget, private Ui::sbAddressServicesGuiBas
     void doSearch(const QString& strText);
     void doGoogleSearch(const QString& strText);
     void doOsmSearch(const QString& strText);
-    bool processGoogleSearchReply(const QString& strReply);
+    bool processGoogleSearchReply(const QString& strReply, const QString& strBounds);
     bool processOsmSearchReply(const QString& strReply);
 
     void doInfo(const QgsPointXY& point, double dScale);

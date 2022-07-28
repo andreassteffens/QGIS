@@ -24,6 +24,8 @@
 #include "qgsrubberband.h"
 #include "qgsproject.h"
 #include "qgsrectangle.h"
+#include "qgspasswordlineedit.h"
+#include <SimpleCrypt.h>
 #include <qjsonarray.h>
 #include <qnetworkreply.h>
 
@@ -61,11 +63,15 @@ static double OSM_ZOOM_SCALES[19] = {
        2000
 };
 
+SimpleCrypt sbAddressServicesGui::sCrypto;
+
 sbAddressServicesGui::sbAddressServicesGui(QgisInterface *pQgisIface, const QString& strPluginName, QWidget *parent, Qt::WindowFlags fl)
   : QWidget(parent, fl)
   , mstrPluginName(strPluginName)
 {
   mpQgisIface = pQgisIface;
+
+  sCrypto.setKey(Q_UINT64_C(0x0c2ad4a4acb9f023));
 
   setupUi(this);
 
@@ -121,13 +127,17 @@ sbAddressServicesGui::sbAddressServicesGui(QgisInterface *pQgisIface, const QStr
 
 
   // settings
-  mLeGoogleKey->setText(s.value(QStringLiteral("sbAddressServices/GoogleApiKey"), "").toString());
+  QString strKey = s.value(QStringLiteral("sbAddressServices/GoogleApiKey"), "").toString();
+  if (!strKey.isEmpty())
+    strKey = sCrypto.decryptToString(strKey);
+  mPleGoogleKey->setText(strKey);
+
   mLeGoogleQueryOptions->setText(s.value(QStringLiteral("sbAddressServices/GoogleQueryOptions"), "").toString());
   mLeNominatimService->setText(s.value(QStringLiteral("sbAddressServices/OsmNominatimService"), "https://tileserver.gis24.eu/nominatim").toString());
   mLeNominatimQueryOptions->setText(s.value(QStringLiteral("sbAddressServices/OsmNominatimQueryOptions"), "").toString());
   mCheckDebugMode->setCheckState((Qt::CheckState)s.value("sbAddressServices/DebugMode", (int)Qt::CheckState::Checked).toInt());
   
-  connect(mLeGoogleKey, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
+  connect(mPleGoogleKey, &QgsPasswordLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
   connect(mLeGoogleQueryOptions, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
   connect(mLeNominatimService, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
   connect(mLeNominatimQueryOptions, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
@@ -218,7 +228,11 @@ void sbAddressServicesGui::onSettingsTextChanged(const QString &text)
 {
   QSettings s;
 
-  s.setValue("sbAddressServices/GoogleApiKey", QVariant(mLeGoogleKey->text()));
+  QString strKey = mPleGoogleKey->text();
+  if (!strKey.isEmpty())
+    strKey = sCrypto.encryptToString(strKey);
+  s.setValue("sbAddressServices/GoogleApiKey", QVariant(strKey));
+
   s.setValue("sbAddressServices/GoogleQueryOptions", QVariant(mLeGoogleQueryOptions->text()));
   s.setValue("sbAddressServices/OsmNominatimService", QVariant(mLeNominatimService->text()));
   s.setValue("sbAddressServices/OsmNominatimQueryOptions", QVariant(mLeNominatimQueryOptions->text()));
@@ -327,7 +341,7 @@ void sbAddressServicesGui::doSearch(const QString& strText)
     mpNetworkReply.clear();
   }
 
-  if (mLeGoogleKey->text().isEmpty() || mLeGoogleKey->text().isNull())
+  if (mPleGoogleKey->text().isEmpty() || mPleGoogleKey->text().isNull())
     doOsmSearch(strText);
   else
     doGoogleSearch(strText);
@@ -348,12 +362,14 @@ void sbAddressServicesGui::doGoogleSearch(const QString& strText)
   QString strUrl = GOOGLE_ADDRESS_SEARCH_URL;
   strUrl += QUrl::toPercentEncoding(strText);
   strUrl += "&language=" + QLocale().name();
-  strUrl += "&key=" + mLeGoogleKey->text();
+  strUrl += "&key=" + mPleGoogleKey->text();
 
+  QString strWktBounds;
   if (mCheckRestrictSearchBounds->checkState() == Qt::CheckState::Checked)
   {
     QgsRectangle rcMapExtent = mpQgisIface->mapCanvas()->extent();
     QgsRectangle rcMapExtentTransformed = mTransform.transformBoundingBox(rcMapExtent, Qgis::TransformDirection::Forward);
+    strWktBounds = rcMapExtentTransformed.asWktPolygon();
 
     strUrl += "&bounds=" + QString::number(rcMapExtentTransformed.xMinimum()) + "," + QString::number(rcMapExtentTransformed.yMinimum()) + "|" + QString::number(rcMapExtentTransformed.xMaximum()) + "," + QString::number(rcMapExtentTransformed.yMaximum());
   }
@@ -379,6 +395,8 @@ void sbAddressServicesGui::doGoogleSearch(const QString& strText)
   mpNetworkReply = mNetworkManager.get(rq);
   mpNetworkReply->setProperty("REQUEST_TYPE", ASRT_GOOGLE_SEARCH);
   mpNetworkReply->setProperty("QUERY", strText);
+  if( !strWktBounds.isEmpty() )
+    mpNetworkReply->setProperty("BOUNDS", strWktBounds);
 
   connect(mpNetworkReply, &QNetworkReply::finished, this, &sbAddressServicesGui::onNetworkReplyFinished);
 
@@ -404,10 +422,12 @@ void sbAddressServicesGui::doOsmSearch(const QString& strText)
   strUrl += "&accept-language=" + strLocale + ",en";
   strUrl += "&format=json&polygon=0&addressdetails=0&extratags=1";
 
+  QString strWktBounds;
   if (mCheckRestrictSearchBounds->checkState() == Qt::CheckState::Checked)
   {
     QgsRectangle rcMapExtent = mpQgisIface->mapCanvas()->extent();
     QgsRectangle rcMapExtentTransformed = mTransform.transformBoundingBox(rcMapExtent, Qgis::TransformDirection::Forward);
+    strWktBounds = rcMapExtentTransformed.asWktPolygon();
 
     strUrl += "&viewbox=" + QString::number(rcMapExtentTransformed.xMinimum()) + "," + QString::number(rcMapExtentTransformed.yMinimum()) + "," + QString::number(rcMapExtentTransformed.xMaximum()) + "," + QString::number(rcMapExtentTransformed.yMaximum());
     strUrl += "&bounded=1";
@@ -434,6 +454,8 @@ void sbAddressServicesGui::doOsmSearch(const QString& strText)
   mpNetworkReply = mNetworkManager.get(rq);
   mpNetworkReply->setProperty("REQUEST_TYPE", ASRT_OSM_SEARCH);
   mpNetworkReply->setProperty("QUERY", strText);
+  if (!strWktBounds.isEmpty())
+    mpNetworkReply->setProperty("BOUNDS", strWktBounds);
 
   connect(mpNetworkReply, &QNetworkReply::finished, this, &sbAddressServicesGui::onNetworkReplyFinished);
 
@@ -444,7 +466,7 @@ void sbAddressServicesGui::doInfo(const QgsPointXY& point, double dScale)
 {
   onClearResultsBtnPressed();
 
-  if (mLeGoogleKey->text().isEmpty() || mLeGoogleKey->text().isNull())
+  if (mPleGoogleKey->text().isEmpty() || mPleGoogleKey->text().isNull())
     doOsmInfo(point, dScale);
   else
     doGoogleInfo(point, dScale);
@@ -457,7 +479,7 @@ void sbAddressServicesGui::doGoogleInfo(const QgsPointXY& point, double dScale)
   QString strUrl = GOOGLE_ADDRESS_INFO_URL;
   strUrl += QString::number(point.y()) + "," + QString::number(point.x());
   strUrl += "&language=" + currentLocale;
-  strUrl += "&key=" + mLeGoogleKey->text();
+  strUrl += "&key=" + mPleGoogleKey->text();
 
   QNetworkRequest rq;
   rq.setUrl(QUrl(strUrl));
@@ -559,7 +581,12 @@ void sbAddressServicesGui::onNetworkReplyFinished()
           {
             case sbAddressServiceRequestType::ASRT_GOOGLE_SEARCH:
               {
-                bRes = processGoogleSearchReply(strReply);
+                QString strBounds;
+                QVariant varBounds = reply->property("BOUNDS");
+                if (!varBounds.isNull())
+                  strBounds = varBounds.toString();
+
+                bRes = processGoogleSearchReply(strReply, strBounds);
                 strQuery = varQuery.toString();
               }
               break;
@@ -729,7 +756,7 @@ bool sbAddressServicesGui::processOsmInfoReply(const QString& strReply)
   return false;
 }
 
-bool sbAddressServicesGui::processGoogleSearchReply(const QString& strReply)
+bool sbAddressServicesGui::processGoogleSearchReply(const QString& strReply, const QString& strBounds)
 {
   bool bRes = false;
 
@@ -743,12 +770,13 @@ bool sbAddressServicesGui::processGoogleSearchReply(const QString& strReply)
       QJsonArray jsonResults = jsonObject["results"].toArray();
       for (int i = 0; i < jsonResults.count(); i++)
       {
-        QJsonObject jsonResult = jsonResults[i].toObject();
-
         QString strDisplayName;
         QString strExtras;
         QgsRectangle rcBounds;
-        
+        bool bValid = true;
+
+        QJsonObject jsonResult = jsonResults[i].toObject();
+
         if (!jsonResult["formatted_address"].isNull())
           strDisplayName = jsonResult["formatted_address"].toString();
 
@@ -762,10 +790,16 @@ bool sbAddressServicesGui::processGoogleSearchReply(const QString& strReply)
             double dLon = jsonLocation["lng"].toDouble();
 
             rcBounds.set(dLon - 0.00025, dLat - 0.00015, dLon + 0.00025, dLat + 0.00015);
+
+            if (!strBounds.isEmpty())
+            {
+              QgsRectangle rcQueryBounds = QgsRectangle::fromWkt(strBounds);
+              bValid = rcBounds.intersects(rcQueryBounds);
+            }
           }
         }
 
-        if (!strDisplayName.isEmpty())
+        if (!strDisplayName.isEmpty() && bValid)
         {
           sbAddressServicesGui::AddressDetails addr(strDisplayName, rcBounds, strExtras);
           mComboResults->addItem("[Google] " + strDisplayName, QVariant(addr.toJson()));
@@ -793,6 +827,7 @@ bool sbAddressServicesGui::processOsmSearchReply(const QString& strReply)
       QString strDisplayName;
       QString strExtras;
       QgsRectangle rcBounds;
+
       QJsonObject jsonObject = jsonArray[i].toObject();
       
       if (!jsonObject["display_name"].isNull())
@@ -804,7 +839,9 @@ bool sbAddressServicesGui::processOsmSearchReply(const QString& strReply)
         {
           QJsonArray jsonBounds = jsonObject["boundingbox"].toArray();
           if (jsonBounds.count() == 4)
+          {
             rcBounds.set(jsonBounds[3].toString().toDouble(), jsonBounds[1].toString().toDouble(), jsonBounds[2].toString().toDouble(), jsonBounds[0].toString().toDouble());
+          }
         }
       }
 

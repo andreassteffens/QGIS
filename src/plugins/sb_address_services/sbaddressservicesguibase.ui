@@ -57,7 +57,7 @@
        </size>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mTabSearch">
        <attribute name="title">
@@ -1029,9 +1029,6 @@
                  </property>
                 </widget>
                </item>
-               <item row="1" column="1">
-                <widget class="QLineEdit" name="mLeGoogleKey"/>
-               </item>
                <item row="2" column="0">
                 <widget class="QLabel" name="mLblGoogleQueryOptions">
                  <property name="text">
@@ -1041,6 +1038,9 @@
                </item>
                <item row="2" column="1">
                 <widget class="QLineEdit" name="mLeGoogleQueryOptions"/>
+               </item>
+               <item row="1" column="1">
+                <widget class="QgsPasswordLineEdit" name="mPleGoogleKey"/>
                </item>
               </layout>
              </widget>
@@ -1233,6 +1233,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QgsPasswordLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>qgspasswordlineedit.h</header>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>mLeSearch</tabstop>
   <tabstop>mTbtnSearch</tabstop>
