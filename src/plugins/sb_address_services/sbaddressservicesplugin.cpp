@@ -27,6 +27,7 @@
 #include "qgscoordinatetransform.h"
 #include "qgsprojectionselectiondialog.h"
 #include "qgsdockwidget.h"
+#include "qgsmessagelog.h"
 
 #include "sbaddressservicesplugin.h"
 #include "sbaddressservicesgui.h"
@@ -65,6 +66,11 @@ sbAddressServicesPlugin::sbAddressServicesPlugin( QgisInterface *qgisInterface )
  */
 void sbAddressServicesPlugin::initGui()
 {
+  QSettings s;
+  Qt::CheckState stateDebug = (Qt::CheckState)s.value("sbAddressServices/DebugMode", (int)Qt::CheckState::Checked).toInt();
+  if(stateDebug == Qt::Checked)
+    QgsMessageLog::logMessage(QStringLiteral("Plugin's initGui method has been called!"), QApplication::translate("sbAddressServicesPlugin", "[a]tapa Address Services"), Qgis::MessageLevel::Info);
+
   //create the dock widget
   mpDockWidget = new QgsDockWidget( tr(qPrintable(sName)), mpQgisIface->mainWindow() );
   mpDockWidget->setObjectName( QStringLiteral( "sbAddressServices" ) );
