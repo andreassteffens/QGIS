@@ -531,10 +531,11 @@ namespace QgsWms
     const QgsWmsParameters::Format format = mWmsParameters.format();
     const QString extension = QgsWmsParameters::formatAsString( format ).toLower();
 
-    QTemporaryFile tempOutputFile( QDir::tempPath() +  '/' + QStringLiteral( "XXXXXX.%1" ).arg( extension ) );
+    QString outputFilename = QDir::tempPath() + '/' + QStringLiteral("XXXXXX.%1").arg(extension);
+    QTemporaryFile tempOutputFile( outputFilename );
     if ( !tempOutputFile.open() )
     {
-      throw QgsException( QStringLiteral( "Could not open temporary file for the GetPrint request." ) );
+      throw QgsException( QStringLiteral( "Could not open temporary file '%1' for the GetPrint request." ).arg( outputFilename ) );
 
     }
 

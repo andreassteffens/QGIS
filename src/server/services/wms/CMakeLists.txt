@@ -49,6 +49,7 @@ foreach(_library_type MODULE STATIC)
     ${POSTGRES_INCLUDE_DIR}
     ${QCA_INCLUDE_DIR}
     ${QTKEYCHAIN_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/external/SimpleCrypt
   )
 
   target_include_directories(${_library_name} PUBLIC
