@@ -68,9 +68,9 @@ class sbAddressServicesGui : public QWidget, private Ui::sbAddressServicesGuiBas
     QgsCoordinateTransform mTransform;
 
     void doFunnySearch();
-    void doSearch(const QString& strText);
-    void doGoogleSearch(const QString& strText);
-    void doOsmSearch(const QString& strText);
+    void doSearch(const QString& strText, bool bBypassRegionRestriction);
+    void doGoogleSearch(const QString& strText, bool bBypassRegionRestriction);
+    void doOsmSearch(const QString& strText, bool bBypassRegionRestriction);
     bool processGoogleSearchReply(const QString& strReply, const QString& strBounds);
     bool processOsmSearchReply(const QString& strReply);
 

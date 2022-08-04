@@ -342,14 +342,19 @@ namespace QgsWms
     return tree.release();
   }
 
-  QgsLayerTreeModelLegendNode *legendNode( const QString &rule,  QgsLayerTreeModel &model )
+  QgsLayerTreeModelLegendNode *legendNode( const QString &rule, QgsLayerTreeModel &model )
   {
     for ( QgsLayerTreeLayer *layer : model.rootGroup()->findLayers() )
     {
       int iIndex = 0;
       for ( QgsLayerTreeModelLegendNode *node : model.layerLegendNodes( layer ) )
       {
-        if ( node->data( Qt::DisplayRole ).toString().compare( rule ) == 0 )
+        QString strCmp = node->data(Qt::DisplayRole).toString();
+        if ( strCmp.compare( rule ) == 0 )
+          return node;
+
+        strCmp = node->data(QgsLayerTreeModelLegendNode::LegendNodeRoles::RuleKeyRole).toString();
+        if ( strCmp.compare(rule) == 0 )
           return node;
 
         bool bOk = false;
@@ -363,6 +368,7 @@ namespace QgsWms
         iIndex++;
       }
     }
+
     return nullptr;
   }
 } // namespace QgsWms

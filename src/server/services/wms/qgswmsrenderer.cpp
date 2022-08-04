@@ -104,21 +104,6 @@
 
 namespace QgsWms
 {
-  QgsLayerTreeModelLegendNode *_findLegendNodeForRule(QgsLayerTreeModel *legendModel, const QString &rule)
-  {
-    for (QgsLayerTreeLayer *nodeLayer : legendModel->rootGroup()->findLayers())
-    {
-      for (QgsLayerTreeModelLegendNode *legendNode : legendModel->layerLegendNodes(nodeLayer))
-      {
-        if (legendNode->data(Qt::DisplayRole).toString() == rule || legendNode->data(Qt::UserRole).toString() == rule)
-        {
-          return legendNode;
-        }
-      }
-    }
-    return nullptr;
-  }
-
   QgsRenderer::QgsRenderer( QgsWmsRenderContext &context )
     : mContext( context )
   {
@@ -211,6 +196,7 @@ namespace QgsWms
 
     // rendering
     QgsLegendSettings settings = legendSettings();
+    settings.setSymbolAlignment(Qt::AlignCenter);
     QgsLayerTreeModelLegendNode::ItemContext ctx;
     ctx.painter = painter.get();
     nodeModel.drawSymbol( settings, &ctx, size.height() / dpmm );

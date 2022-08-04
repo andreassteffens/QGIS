@@ -244,27 +244,27 @@ namespace QgsSb
 					}
 					catch (QgsServerException &ex)
 					{
-						QgsMessageLog::logMessage(QStringLiteral("GetLayerSymbol - QgsServerException: %1").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
+						QgsMessageLog::logMessage(QStringLiteral("GetEncryptedPath - QgsServerException: %1").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
 						throw ex;
 					}
 					catch (QgsException &ex)
 					{
-						QgsMessageLog::logMessage(QStringLiteral("GetLayerSymbol - QgsException: %1").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
+						QgsMessageLog::logMessage(QStringLiteral("GetEncryptedPath - QgsException: %1").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
 						throw ex;
 					}
 					catch (std::runtime_error &ex)
 					{
-						QgsMessageLog::logMessage(QStringLiteral("GetLayerSymbol - RuntimeError: %1 | %2").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
+						QgsMessageLog::logMessage(QStringLiteral("GetEncryptedPath - RuntimeError: %1 | %2").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
 						throw ex;
 					}
 					catch (std::exception &ex)
 					{
-						QgsMessageLog::logMessage(QStringLiteral("GetLayerSymbol - Exception: %1 | %2").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
+						QgsMessageLog::logMessage(QStringLiteral("GetEncryptedPath - Exception: %1 | %2").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
 						throw ex;
 					}
 					catch (...)
 					{
-						QgsMessageLog::logMessage(QStringLiteral("GetLayerSymbol - Unknown exception: %1").arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
+						QgsMessageLog::logMessage(QStringLiteral("GetEncryptedPath - Unknown exception: %1").arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
 					}
 				}
 				else if (QSTR_COMPARE(req, "SetUnloadProjects"))

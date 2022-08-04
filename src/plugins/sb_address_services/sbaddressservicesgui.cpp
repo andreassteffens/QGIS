@@ -256,12 +256,12 @@ void sbAddressServicesGui::onClearResultsBtnPressed()
 
 void sbAddressServicesGui::onSearchTextReturnPressed()
 {
-  doSearch(mLeSearch->text());
+  doSearch(mLeSearch->text(), false);
 }
 
 void sbAddressServicesGui::onSearchBtnPressed()
 {
-  doSearch(mLeSearch->text());
+  doSearch(mLeSearch->text(), false);
 }
 
 void sbAddressServicesGui::onResultsComboIndexChanged(int index)
@@ -328,7 +328,7 @@ void sbAddressServicesGui::onActivateInfoBtnToggled(bool checked)
     mpQgisIface->mapCanvas()->setMapTool(mpMapTool);
 }
 
-void sbAddressServicesGui::doSearch(const QString& strText)
+void sbAddressServicesGui::doSearch(const QString& strText, bool bBypassRegionRestriction)
 {
   if (strText.isEmpty() || strText.isNull())
     return;
@@ -342,9 +342,9 @@ void sbAddressServicesGui::doSearch(const QString& strText)
   }
 
   if (mPleGoogleKey->text().isEmpty() || mPleGoogleKey->text().isNull())
-    doOsmSearch(strText);
+    doOsmSearch(strText, bBypassRegionRestriction);
   else
-    doGoogleSearch(strText);
+    doGoogleSearch(strText, bBypassRegionRestriction);
 }
 
 void sbAddressServicesGui::doFunnySearch()
@@ -352,10 +352,10 @@ void sbAddressServicesGui::doFunnySearch()
   if (mComboFunnyPlaces->currentIndex() < 0)
     return;
 
-  doSearch(mComboFunnyPlaces->currentText());
+  doSearch(mComboFunnyPlaces->currentText(), true);
 }
 
-void sbAddressServicesGui::doGoogleSearch(const QString& strText)
+void sbAddressServicesGui::doGoogleSearch(const QString& strText, bool bBypassRegionRestriction)
 {
   QString currentLocale = QLocale().name();
 
@@ -365,15 +365,18 @@ void sbAddressServicesGui::doGoogleSearch(const QString& strText)
   strUrl += "&key=" + mPleGoogleKey->text();
 
   QString strWktBounds;
-  if (mCheckRestrictSearchBounds->checkState() == Qt::CheckState::Checked)
+  if (!bBypassRegionRestriction)
   {
-    QgsRectangle rcMapExtent = mpQgisIface->mapCanvas()->extent();
-    QgsRectangle rcMapExtentTransformed = mTransform.transformBoundingBox(rcMapExtent, Qgis::TransformDirection::Forward);
-    strWktBounds = rcMapExtentTransformed.asWktPolygon();
+    if (mCheckRestrictSearchBounds->checkState() == Qt::CheckState::Checked)
+    {
+      QgsRectangle rcMapExtent = mpQgisIface->mapCanvas()->extent();
+      QgsRectangle rcMapExtentTransformed = mTransform.transformBoundingBox(rcMapExtent, Qgis::TransformDirection::Forward);
+      strWktBounds = rcMapExtentTransformed.asWktPolygon();
 
-    strUrl += "&bounds=" + QString::number(rcMapExtentTransformed.xMinimum()) + "," + QString::number(rcMapExtentTransformed.yMinimum()) + "|" + QString::number(rcMapExtentTransformed.xMaximum()) + "," + QString::number(rcMapExtentTransformed.yMaximum());
+      strUrl += "&bounds=" + QString::number(rcMapExtentTransformed.xMinimum()) + "," + QString::number(rcMapExtentTransformed.yMinimum()) + "|" + QString::number(rcMapExtentTransformed.xMaximum()) + "," + QString::number(rcMapExtentTransformed.yMaximum());
+    }
   }
-
+  
   QString strQueryOptions = mLeGoogleQueryOptions->text();
   if (!strQueryOptions.isEmpty() && !strQueryOptions.isNull())
   {
@@ -403,7 +406,7 @@ void sbAddressServicesGui::doGoogleSearch(const QString& strText)
   mPteResult->setPlainText(tr("Searching..."));
 }
 
-void sbAddressServicesGui::doOsmSearch(const QString& strText)
+void sbAddressServicesGui::doOsmSearch(const QString& strText, bool bBypassRegionRestriction)
 {
   QString strUrl = mLeNominatimService->text();
   if (strUrl.isEmpty() || strUrl.isNull())
@@ -423,16 +426,19 @@ void sbAddressServicesGui::doOsmSearch(const QString& strText)
   strUrl += "&format=json&polygon=0&addressdetails=0&extratags=1";
 
   QString strWktBounds;
-  if (mCheckRestrictSearchBounds->checkState() == Qt::CheckState::Checked)
+  if (!bBypassRegionRestriction)
   {
-    QgsRectangle rcMapExtent = mpQgisIface->mapCanvas()->extent();
-    QgsRectangle rcMapExtentTransformed = mTransform.transformBoundingBox(rcMapExtent, Qgis::TransformDirection::Forward);
-    strWktBounds = rcMapExtentTransformed.asWktPolygon();
+    if (mCheckRestrictSearchBounds->checkState() == Qt::CheckState::Checked)
+    {
+      QgsRectangle rcMapExtent = mpQgisIface->mapCanvas()->extent();
+      QgsRectangle rcMapExtentTransformed = mTransform.transformBoundingBox(rcMapExtent, Qgis::TransformDirection::Forward);
+      strWktBounds = rcMapExtentTransformed.asWktPolygon();
 
-    strUrl += "&viewbox=" + QString::number(rcMapExtentTransformed.xMinimum()) + "," + QString::number(rcMapExtentTransformed.yMinimum()) + "," + QString::number(rcMapExtentTransformed.xMaximum()) + "," + QString::number(rcMapExtentTransformed.yMaximum());
-    strUrl += "&bounded=1";
+      strUrl += "&viewbox=" + QString::number(rcMapExtentTransformed.xMinimum()) + "," + QString::number(rcMapExtentTransformed.yMinimum()) + "," + QString::number(rcMapExtentTransformed.xMaximum()) + "," + QString::number(rcMapExtentTransformed.yMaximum());
+      strUrl += "&bounded=1";
+    }
   }
-
+  
   QString strQueryOptions = mLeNominatimQueryOptions->text();
   if (!strQueryOptions.isEmpty() && !strQueryOptions.isNull())
   {
@@ -608,9 +614,16 @@ void sbAddressServicesGui::onNetworkReplyFinished()
           }
         }
       }
-
+      
       if (!bRes && mComboResults->count() == 0)
-        mPteResult->setPlainText(tr("No results!"));
+      {
+        QString strText = QApplication::translate("sbAddressServicesPlugin", "No results!");
+        if (mCheckRestrictSearchBounds->isChecked())
+          strText += "\n\n" + QApplication::translate("sbAddressServicesPlugin", "Try to get more results through disabling the region restriction!");
+
+        mPteResult->setPlainText(strText);
+      }
+        
       else
         onResultsComboIndexChanged(mComboResults->currentIndex());
     }
@@ -638,7 +651,7 @@ void sbAddressServicesGui::onNetworkReplyFinished()
     switch (enType)
     {
       case sbAddressServiceRequestType::ASRT_GOOGLE_SEARCH:
-        doOsmSearch(strQuery);
+        doOsmSearch(strQuery, false);
         break;
       case sbAddressServiceRequestType::ASRT_GOOGLE_INFO:
         {

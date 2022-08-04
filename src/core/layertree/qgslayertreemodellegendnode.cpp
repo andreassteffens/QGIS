@@ -39,6 +39,7 @@
 #include "qgssettings.h"
 #include "qgsfileutils.h"
 #include "qgsmarkersymbol.h"
+#include "qgsmessagelog.h"
 
 #include <QBuffer>
 
@@ -724,6 +725,11 @@ QSizeF QgsSymbolLegendNode::drawSymbol( const QgsLegendSettings &settings, ItemC
         break;
       case Qt::AlignRight:
         p->translate( ctx->columnRight - widthOffset - width, currentYCoord + heightOffset );
+        break;
+      case Qt::AlignCenter:
+        {
+          p->translate(ctx->columnLeft + ((desiredWidth - width) / 2.0), ctx->top + ((desiredHeight - height) / 2.0));
+        }
         break;
     }
 
