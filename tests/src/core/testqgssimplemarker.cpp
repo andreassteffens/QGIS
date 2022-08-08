@@ -57,12 +57,12 @@ static bool _verifyImage( const QString &testName, QString &report )
  * \ingroup UnitTests
  * This is a unit test for simple marker symbol types.
  */
-class TestQgsSimpleMarkerSymbol : public QObject
+class TestQgsSimpleMarkerSymbol : public QgsTest
 {
     Q_OBJECT
 
   public:
-    TestQgsSimpleMarkerSymbol() = default;
+    TestQgsSimpleMarkerSymbol() : QgsTest( QStringLiteral( "Simple Marker Tests" ) ) {}
 
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.
@@ -101,7 +101,6 @@ class TestQgsSimpleMarkerSymbol : public QObject
     QgsMarkerSymbol *mMarkerSymbol = nullptr;
     QgsSingleSymbolRenderer *mSymbolRenderer = nullptr;
     QString mTestDataDir;
-    QString mReport;
 };
 
 
@@ -141,20 +140,10 @@ void TestQgsSimpleMarkerSymbol::initTestCase()
   // and is more light weight
   //
   mMapSettings.setLayers( QList<QgsMapLayer *>() << mpPointsLayer );
-  mReport += QLatin1String( "<h1>Simple Marker Tests</h1>\n" );
 
 }
 void TestQgsSimpleMarkerSymbol::cleanupTestCase()
 {
-  const QString myReportFile = QDir::tempPath() + "/qgistest.html";
-  QFile myFile( myReportFile );
-  if ( myFile.open( QIODevice::WriteOnly | QIODevice::Append ) )
-  {
-    QTextStream myQTextStream( &myFile );
-    myQTextStream << mReport;
-    myFile.close();
-  }
-
   QgsApplication::exitQgis();
 }
 
@@ -215,8 +204,6 @@ void TestQgsSimpleMarkerSymbol::decodeShape()
 
 void TestQgsSimpleMarkerSymbol::simpleMarkerSymbol()
 {
-  mReport += QLatin1String( "<h2>Simple marker symbol layer test</h2>\n" );
-
   mSimpleMarkerLayer->setColor( Qt::blue );
   mSimpleMarkerLayer->setStrokeColor( Qt::black );
   mSimpleMarkerLayer->setShape( Qgis::MarkerShape::Circle );
@@ -227,8 +214,6 @@ void TestQgsSimpleMarkerSymbol::simpleMarkerSymbol()
 
 void TestQgsSimpleMarkerSymbol::simpleMarkerSymbolRotation()
 {
-  mReport += QLatin1String( "<h2>Simple marker symbol layer test</h2>\n" );
-
   mSimpleMarkerLayer->setColor( Qt::blue );
   mSimpleMarkerLayer->setStrokeColor( Qt::black );
   mSimpleMarkerLayer->setShape( Qgis::MarkerShape::Square );
@@ -272,8 +257,6 @@ void TestQgsSimpleMarkerSymbol::simpleMarkerSymbolPreviewRotation_data()
 
 void TestQgsSimpleMarkerSymbol::simpleMarkerSymbolBevelJoin()
 {
-  mReport += QLatin1String( "<h2>Simple marker symbol layer test</h2>\n" );
-
   mSimpleMarkerLayer->setColor( Qt::blue );
   mSimpleMarkerLayer->setStrokeColor( Qt::black );
   mSimpleMarkerLayer->setShape( Qgis::MarkerShape::Triangle );
@@ -286,8 +269,6 @@ void TestQgsSimpleMarkerSymbol::simpleMarkerSymbolBevelJoin()
 
 void TestQgsSimpleMarkerSymbol::simpleMarkerSymbolMiterJoin()
 {
-  mReport += QLatin1String( "<h2>Simple marker symbol layer test</h2>\n" );
-
   mSimpleMarkerLayer->setColor( Qt::blue );
   mSimpleMarkerLayer->setStrokeColor( Qt::black );
   mSimpleMarkerLayer->setShape( Qgis::MarkerShape::Triangle );
@@ -299,8 +280,6 @@ void TestQgsSimpleMarkerSymbol::simpleMarkerSymbolMiterJoin()
 
 void TestQgsSimpleMarkerSymbol::simpleMarkerSymbolRoundJoin()
 {
-  mReport += QLatin1String( "<h2>Simple marker symbol layer test</h2>\n" );
-
   mSimpleMarkerLayer->setColor( Qt::blue );
   mSimpleMarkerLayer->setStrokeColor( Qt::black );
   mSimpleMarkerLayer->setShape( Qgis::MarkerShape::Triangle );
@@ -312,8 +291,6 @@ void TestQgsSimpleMarkerSymbol::simpleMarkerSymbolRoundJoin()
 
 void TestQgsSimpleMarkerSymbol::simpleMarkerSymbolCapStyle()
 {
-  mReport += QLatin1String( "<h2>Cap style</h2>\n" );
-
   mSimpleMarkerLayer->setColor( Qt::blue );
   mSimpleMarkerLayer->setStrokeColor( Qt::black );
   mSimpleMarkerLayer->setShape( Qgis::MarkerShape::ArrowHead );
@@ -325,8 +302,6 @@ void TestQgsSimpleMarkerSymbol::simpleMarkerSymbolCapStyle()
 
 void TestQgsSimpleMarkerSymbol::simpleMarkerOctagon()
 {
-  mReport += QLatin1String( "<h2>Simple marker octagon</h2>\n" );
-
   mSimpleMarkerLayer->setColor( Qt::blue );
   mSimpleMarkerLayer->setStrokeColor( Qt::black );
   mSimpleMarkerLayer->setShape( Qgis::MarkerShape::Octagon );
@@ -338,8 +313,6 @@ void TestQgsSimpleMarkerSymbol::simpleMarkerOctagon()
 
 void TestQgsSimpleMarkerSymbol::simpleMarkerSquareWithCorners()
 {
-  mReport += QLatin1String( "<h2>Simple marker square with corners</h2>\n" );
-
   mSimpleMarkerLayer->setColor( Qt::blue );
   mSimpleMarkerLayer->setStrokeColor( Qt::black );
   mSimpleMarkerLayer->setShape( Qgis::MarkerShape::SquareWithCorners );
@@ -351,8 +324,6 @@ void TestQgsSimpleMarkerSymbol::simpleMarkerSquareWithCorners()
 
 void TestQgsSimpleMarkerSymbol::simpleMarkerAsterisk()
 {
-  mReport += QLatin1String( "<h2>Simple marker asterisk</h2>\n" );
-
   mSimpleMarkerLayer->setColor( Qt::blue );
   mSimpleMarkerLayer->setStrokeColor( Qt::black );
   mSimpleMarkerLayer->setShape( Qgis::MarkerShape::AsteriskFill );

@@ -47,9 +47,13 @@
 */
 
 
-class TestQgsVirtualRasterProvider : public QObject
+class TestQgsVirtualRasterProvider : public QgsTest
 {
     Q_OBJECT
+
+  public:
+
+    TestQgsVirtualRasterProvider() : QgsTest( QStringLiteral( "Virtual Raster Provider Tests" ) ) {}
 
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.
@@ -67,7 +71,6 @@ class TestQgsVirtualRasterProvider : public QObject
 
   private:
     QString mTestDataDir;
-    QString mReport;
     QgsRasterLayer *mDemRasterLayer = nullptr;
     QgsRasterLayer *mLandsatRasterLayer = nullptr;
 
@@ -81,7 +84,6 @@ void TestQgsVirtualRasterProvider::initTestCase()
   QgsApplication::initQgis();
 
   mTestDataDir = QStringLiteral( TEST_DATA_DIR ) + '/'; //defined in CmakeLists.txt
-  mReport = QStringLiteral( "<h1>Virtual Raster Provider Tests</h1>\n" );
 
   QString demFileName = mTestDataDir + "raster/dem.tif";
   QFileInfo demRasterFileInfo( demFileName );
@@ -112,14 +114,6 @@ void TestQgsVirtualRasterProvider::validLayer()
 void TestQgsVirtualRasterProvider::cleanupTestCase()
 {
   QgsApplication::exitQgis();
-  QString myReportFile = QDir::tempPath() + "/qgistest.html";
-  QFile myFile( myReportFile );
-  if ( myFile.open( QIODevice::WriteOnly | QIODevice::Append ) )
-  {
-    QTextStream myQTextStream( &myFile );
-    myQTextStream << mReport;
-    myFile.close();
-  }
 }
 
 void TestQgsVirtualRasterProvider::testUriProviderDecoding()

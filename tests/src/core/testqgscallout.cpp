@@ -24,17 +24,13 @@
 #include "qgscallout.h"
 #include "qgscalloutsregistry.h"
 #include "qgsmaprenderersequentialjob.h"
-#include "qgssymbollayerutils.h"
 #include "qgsmapsettings.h"
 #include "qgsvectorlayer.h"
 #include "qgsapplication.h"
 #include "qgsproject.h"
 #include "qgssymbol.h"
 #include "qgssinglesymbolrenderer.h"
-#include "qgsfillsymbollayer.h"
-#include "qgslinesymbollayer.h"
 #include "qgsmarkersymbollayer.h"
-#include "qgslayout.h"
 #include "qgslayoutitempage.h"
 #include "qgslayoutitemmap.h"
 #include "qgslayoutpagecollection.h"
@@ -108,12 +104,12 @@ class TestSimpleCalloutUnder : public QgsSimpleLineCallout
 };
 
 
-class TestQgsCallout: public QObject
+class TestQgsCallout: public QgsTest
 {
     Q_OBJECT
 
   public:
-    TestQgsCallout();
+    TestQgsCallout() : QgsTest( QStringLiteral( "Callout Tests" ) ) {}
 
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.
@@ -184,21 +180,15 @@ class TestQgsCallout: public QObject
   private:
     bool imageCheck( const QString &testName, QImage &image, unsigned int mismatchCount = 0 );
 
-    QString mReport;
     QString mTestDataDir;
     QgsVectorLayer *vl = nullptr;
 
 };
 
-
-TestQgsCallout::TestQgsCallout() = default;
-
 void TestQgsCallout::initTestCase()
 {
   QgsApplication::init();
   QgsApplication::initQgis();
-
-  mReport += QLatin1String( "<h1>Callout Tests</h1>\n" );
 
   QgsCalloutRegistry *registry = QgsApplication::calloutRegistry();
   registry->addCalloutType( new QgsCalloutMetadata( QStringLiteral( "Dummy" ), QStringLiteral( "Dummy callout" ), QIcon(), DummyCallout::create ) );
@@ -209,14 +199,6 @@ void TestQgsCallout::initTestCase()
 
 void TestQgsCallout::cleanupTestCase()
 {
-  const QString myReportFile = QDir::tempPath() + "/qgistest.html";
-  QFile myFile( myReportFile );
-  if ( myFile.open( QIODevice::WriteOnly | QIODevice::Append ) )
-  {
-    QTextStream myQTextStream( &myFile );
-    myQTextStream << mReport;
-    myFile.close();
-  }
   QgsApplication::exitQgis();
 }
 
@@ -4196,7 +4178,6 @@ bool TestQgsCallout::imageCheck( const QString &testName, QImage &image, unsigne
   painter.drawImage( 0, 0, image );
   painter.end();
 
-  mReport += "<h2>" + testName + "</h2>\n";
   const QString tempDir = QDir::tempPath() + '/';
   const QString fileName = tempDir + testName + ".png";
   imageWithBackground.save( fileName, "PNG" );

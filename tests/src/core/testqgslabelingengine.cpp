@@ -38,11 +38,11 @@
 #include "qgsmarkersymbollayer.h"
 #include "qgsfillsymbol.h"
 
-class TestQgsLabelingEngine : public QObject
+class TestQgsLabelingEngine : public QgsTest
 {
     Q_OBJECT
   public:
-    TestQgsLabelingEngine() = default;
+    TestQgsLabelingEngine() : QgsTest( QStringLiteral( "Labeling Engine Tests" ) ) {}
 
   private slots:
     void initTestCase();
@@ -119,8 +119,6 @@ class TestQgsLabelingEngine : public QObject
   private:
     QgsVectorLayer *vl = nullptr;
 
-    QString mReport;
-
     void setDefaultLabelParams( QgsPalLayerSettings &settings );
     QgsLabelingEngineSettings createLabelEngineSettings();
     bool imageCheck( const QString &testName, QImage &image, int mismatchCount );
@@ -129,8 +127,6 @@ class TestQgsLabelingEngine : public QObject
 
 void TestQgsLabelingEngine::initTestCase()
 {
-  mReport += QLatin1String( "<h1>Labeling Engine Tests</h1>\n" );
-
   QgsApplication::init();
   QgsApplication::initQgis();
   QgsApplication::showSettings();
@@ -140,14 +136,6 @@ void TestQgsLabelingEngine::initTestCase()
 void TestQgsLabelingEngine::cleanupTestCase()
 {
   QgsApplication::exitQgis();
-  const QString myReportFile = QDir::tempPath() + "/qgistest.html";
-  QFile myFile( myReportFile );
-  if ( myFile.open( QIODevice::WriteOnly | QIODevice::Append ) )
-  {
-    QTextStream myQTextStream( &myFile );
-    myQTextStream << mReport;
-    myFile.close();
-  }
 }
 
 void TestQgsLabelingEngine::init()
@@ -887,7 +875,6 @@ bool TestQgsLabelingEngine::imageCheck( const QString &testName, QImage &image, 
   painter.drawImage( 0, 0, image );
   painter.end();
 
-  mReport += "<h2>" + testName + "</h2>\n";
   const QString tempDir = QDir::tempPath() + '/';
   const QString fileName = tempDir + testName + ".png";
   imageWithBackground.save( fileName, "PNG" );

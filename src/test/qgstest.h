@@ -17,6 +17,11 @@
 #define QGSTEST_H
 
 #include <QtTest/QTest>
+#include <QDir>
+#include <QFile>
+#include <QTextStream>
+#include <QDesktopServices>
+
 #include "qgsapplication.h"
 
 #include "qgsabstractgeometry.h"
@@ -37,7 +42,10 @@
 #include "qgstriangle.h"
 #include "qgsrectangle.h"
 #include "qgsregularpolygon.h"
-
+#include "qgsrange.h"
+#include "qgsinterval.h"
+#include "qgsrenderchecker.h"
+#include "qgis_test.h"
 
 #define QGSTEST_MAIN(TestObject) \
   QT_BEGIN_NAMESPACE \
@@ -90,23 +98,68 @@
   }(void)(0)
 
 /**
- * QGIS unit test utilities.
- * \since QGIS 3.0
+ * Base class for tests.
+ *
+ * \since QGIS 3.28
  */
-namespace QgsTest
+class TEST_EXPORT QgsTest : public QObject
 {
+    Q_OBJECT
 
-  //! Returns TRUE if test is running on a CI infrastructure
-  bool isCIRun()
-  {
-    return qgetenv( "QGIS_CONTINUOUS_INTEGRATION_RUN" ) == QStringLiteral( "true" );
-  }
+  public:
 
-  bool runFlakyTests()
-  {
-    return qgetenv( "RUN_FLAKY_TESTS" ) == QStringLiteral( "true" );
-  }
-}
+    //! Returns TRUE if test is running on a CI infrastructure
+    static bool isCIRun()
+    {
+      return qgetenv( "QGIS_CONTINUOUS_INTEGRATION_RUN" ) == QStringLiteral( "true" );
+    }
+
+    static bool runFlakyTests()
+    {
+      return qgetenv( "RUN_FLAKY_TESTS" ) == QStringLiteral( "true" );
+    }
+
+    QgsTest( const QString &name )
+      : mName( name )
+    {}
+
+    ~QgsTest() override
+    {
+      if ( !mReport.isEmpty() )
+        writeLocalHtmlReport( mReport );
+    }
+
+  private:
+
+    /**
+     * Writes out a HTML report to a temporary file for visual comparison
+     * of test results on a local build.
+     */
+    void writeLocalHtmlReport( const QString &report )
+    {
+      const QDir reportDir = QgsRenderChecker::testReportDir();
+      if ( !reportDir.exists() )
+        QDir().mkpath( reportDir.path() );
+
+      const QString reportFile = reportDir.filePath( "index.html" );
+      QFile file( reportFile );
+      if ( file.open( QIODevice::WriteOnly | QIODevice::Append ) )
+      {
+        QTextStream stream( &file );
+        stream << QStringLiteral( "<h1>%1</h1>\n" ).arg( mName );
+        stream << report;
+        file.close();
+
+        if ( !isCIRun() )
+          QDesktopServices::openUrl( QStringLiteral( "file:///%1" ).arg( reportFile ) );
+      }
+    }
+
+  protected:
+
+    QString mName;
+    QString mReport;
+};
 
 /**
  * For QCOMPARE pretty printing
@@ -215,5 +268,20 @@ char *toString( const QgsCircle &geom )
 {
   return QTest::toString( geom.toString() );
 }
+
+char *toString( const QgsDateTimeRange &range )
+{
+  return QTest::toString( QStringLiteral( "<QgsDateTimeRange: %1%2, %3%4>" ).arg(
+                            range.includeBeginning() ? QStringLiteral( "[" ) : QStringLiteral( "(" ),
+                            range.begin().toString( Qt::ISODateWithMs ),
+                            range.end().toString( Qt::ISODateWithMs ),
+                            range.includeEnd() ? QStringLiteral( "]" ) : QStringLiteral( ")" ) ) );
+}
+
+char *toString( const QgsInterval &interval )
+{
+  return QTest::toString( QStringLiteral( "<QgsInterval: %1 %2>" ).arg( interval.originalDuration() ).arg( QgsUnitTypes::toString( interval.originalUnit() ) ) );
+}
+
 
 #endif // QGSTEST_H

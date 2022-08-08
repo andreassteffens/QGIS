@@ -32,13 +32,14 @@
  * \ingroup UnitTests
  * This is a unit test for QgsSvgCache.
  */
-class TestQgsSvgCache : public QObject
+class TestQgsSvgCache : public QgsTest
 {
     Q_OBJECT
 
-  private:
+  public:
+    TestQgsSvgCache() : QgsTest( QStringLiteral( "QgsSvgCache Tests" ) ) {}
 
-    QString mReport;
+  private:
 
     bool imageCheck( const QString &testName, QImage &image, int mismatchCount );
 
@@ -64,22 +65,11 @@ void TestQgsSvgCache::initTestCase()
 {
   QgsApplication::init();
   QgsApplication::initQgis();
-  mReport += "<h1>QgsSvgCache Tests</h1>\n";
 }
 
 void TestQgsSvgCache::cleanupTestCase()
 {
   QgsApplication::exitQgis();
-
-  const QString myReportFile = QDir::tempPath() + "/qgistest.html";
-  QFile myFile( myReportFile );
-  if ( myFile.open( QIODevice::WriteOnly | QIODevice::Append ) )
-  {
-    QTextStream myQTextStream( &myFile );
-    myQTextStream << mReport;
-    myFile.close();
-    //QDesktopServices::openUrl( "file:///" + myReportFile );
-  }
 }
 
 void TestQgsSvgCache::fillCache()
@@ -383,7 +373,6 @@ bool TestQgsSvgCache::imageCheck( const QString &testName, QImage &image, int mi
   painter.drawImage( 0, 0, image );
   painter.end();
 
-  mReport += "<h2>" + testName + "</h2>\n";
   const QString tempDir = QDir::tempPath() + '/';
   const QString fileName = tempDir + testName + ".png";
   imageWithBackground.save( fileName, "PNG" );

@@ -25,28 +25,27 @@
 #include <QtConcurrent>
 #include <QElapsedTimer>
 #include "qgsimagecache.h"
-#include "qgsmultirenderchecker.h"
 #include "qgsapplication.h"
+#include "qgsrenderchecker.h"
 
 /**
  * \ingroup UnitTests
  * This is a unit test for QgsImageCache.
  */
-class TestQgsImageCache : public QObject
+class TestQgsImageCache : public QgsTest
 {
     Q_OBJECT
 
-  private:
+  public:
+    TestQgsImageCache() : QgsTest( QStringLiteral( "QgsImageCache Tests" ) ) {}
 
-    QString mReport;
+  private:
 
     bool imageCheck( const QString &testName, QImage &image, int mismatchCount );
 
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.
     void cleanupTestCase();// will be called after the last testfunction was executed.
-    void init() {} // will be called before each testfunction is executed.
-    void cleanup() {} // will be called after every testfunction.
     void fillCache();
     void threadSafeImage();
     void broken();
@@ -68,22 +67,11 @@ void TestQgsImageCache::initTestCase()
 {
   QgsApplication::init();
   QgsApplication::initQgis();
-  mReport += "<h1>QgsImageCache Tests</h1>\n";
 }
 
 void TestQgsImageCache::cleanupTestCase()
 {
   QgsApplication::exitQgis();
-
-  const QString myReportFile = QDir::tempPath() + "/qgistest.html";
-  QFile myFile( myReportFile );
-  if ( myFile.open( QIODevice::WriteOnly | QIODevice::Append ) )
-  {
-    QTextStream myQTextStream( &myFile );
-    myQTextStream << mReport;
-    myFile.close();
-    //QDesktopServices::openUrl( "file:///" + myReportFile );
-  }
 }
 
 void TestQgsImageCache::fillCache()
@@ -475,7 +463,6 @@ bool TestQgsImageCache::imageCheck( const QString &testName, QImage &image, int 
   painter.drawImage( 0, 0, image );
   painter.end();
 
-  mReport += "<h2>" + testName + "</h2>\n";
   const QString tempDir = QDir::tempPath() + '/';
   const QString fileName = tempDir + testName + ".png";
   imageWithBackground.save( fileName, "PNG" );
