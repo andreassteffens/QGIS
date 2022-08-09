@@ -142,6 +142,8 @@ class SERVER_EXPORT QgsServiceRegistry
      */
     void cleanUp();
 
+    QStringList sbGetRegisteredServices() const SIP_SKIP;
+
   private:
 
     // XXX consider using QMap because of the few numbers of
@@ -156,8 +158,6 @@ class SERVER_EXPORT QgsServiceRegistry
     VersionTable mServiceVersions;
     ApiTable mApis;
     VersionTable mApiVersions;
-
 };
 
 #endif
-

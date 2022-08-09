@@ -763,8 +763,9 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
           }
           else
           {
+            QStringList listServices = sServiceRegistry->sbGetRegisteredServices();
             throw QgsOgcServiceException( QStringLiteral( "Service configuration error" ),
-                                          QStringLiteral( "Service unknown or unsupported. Current supported services (case-sensitive): WMS WFS WCS WMTS SampleService, or use a WFS3 (OGC API Features) endpoint" ) );
+                                          QStringLiteral( "Service unknown or unsupported. Current supported services: %1, or use a WFS3 (OGC API Features) endpoint" ).arg(listServices.join(',')));
           }
         }
       }

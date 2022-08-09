@@ -28,7 +28,6 @@
 
 namespace
 {
-
 // Build a key entry from name and version
   QString makeServiceKey( const QString &name, const QString &version )
   {
@@ -77,8 +76,6 @@ namespace
   }
 
 // Check that two versions are c
-
-
 } // namespace
 
 QgsServiceRegistry::~QgsServiceRegistry()
@@ -156,12 +153,10 @@ void QgsServiceRegistry::registerService( QgsService *service )
     // Insert the service as the default one
     mVersions.insert( name, VersionTable::mapped_type( version, key ) );
   }*/
-
 }
 
 int QgsServiceRegistry::unregisterApi( const QString &name, const QString &version )
 {
-
   // Check that we have an API of that name
   int removed = 0;
   const VersionTable::const_iterator v = mApiVersions.constFind( name );
@@ -348,7 +343,6 @@ void QgsServiceRegistry::cleanUp()
 
 bool QgsServiceRegistry::registerApi( QgsServerApi *api )
 {
-
   const QString name = api->name();
   const QString version = api->version();
 
@@ -375,4 +369,12 @@ bool QgsServiceRegistry::registerApi( QgsServerApi *api )
     mApiVersions.insert( name, VersionTable::mapped_type( version, key ) );
   }
   return true;
+}
+
+QStringList QgsServiceRegistry::sbGetRegisteredServices() const
+{
+  QList<QString> listKeys = mServices.keys();
+  QStringList listServices = listKeys;
+
+  return listServices;
 }
