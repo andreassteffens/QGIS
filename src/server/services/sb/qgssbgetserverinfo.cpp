@@ -48,7 +48,7 @@ namespace QgsSb
 	  doc.appendChild(xmlDeclaration);
 
 	  QDomElement serverInfoElem = doc.createElement(QStringLiteral("sbServerInfo"));
-	  serverInfoElem.setAttribute(QStringLiteral("xmlns"), QStringLiteral("http://www.sb-partner-geo-it.de/sbServerInfo"));
+	  serverInfoElem.setAttribute(QStringLiteral("xmlns"), QStringLiteral("http://www.atapa.de/sbServerInfo"));
 	  serverInfoElem.setAttribute(QStringLiteral("version"), QStringLiteral("1.0.0"));
 	  doc.appendChild(serverInfoElem);
 
@@ -136,7 +136,7 @@ namespace QgsSb
 
 	  QDomElement svgPathElem = doc.createElement(QStringLiteral("ConfigParam"));
 	  svgPathElem.setAttribute("name", "SVG-Path");
-	  QDomText svgPathText = doc.createTextNode(QgsApplication::svgPaths().join(QDir::separator()));
+	  QDomText svgPathText = doc.createTextNode(QgsApplication::svgPaths().join(','));
 	  svgPathElem.appendChild(svgPathText);
 	  serverConfigurationElem.appendChild(svgPathElem);
 

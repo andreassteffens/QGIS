@@ -41,7 +41,7 @@ namespace QgsSb
 			QgsServerInterface *mServerIface = nullptr;
 
 		public:
-			QString name()    const override { return "sb"; }
+			QString name()    const override { return "SB"; }
 			QString version() const override { return mVersion; }
 
 			sbService(const QString &version, QgsServerInterface *serverIface)
