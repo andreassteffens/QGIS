@@ -135,7 +135,7 @@ namespace QgsWmts
     if (!strCacheMaxAge.isEmpty())
       response.setHeader( QStringLiteral( "Cache-Control" ), QStringLiteral( "public, max-age=%1" ).arg( strCacheMaxAge ) );
 
-    response.setHeader( QStringLiteral(" X-QGIS-FROM-CACHE" ), QStringLiteral( "false" ) );
+    response.setHeader( QStringLiteral( "X-QGIS-FROM-CACHE" ), QStringLiteral( "false" ) );
   }
 
 } // namespace QgsWmts
