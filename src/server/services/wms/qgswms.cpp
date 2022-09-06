@@ -34,6 +34,7 @@
 #include "qgswmsgetlegendgraphics.h"
 #include "qgswmsparameters.h"
 #include "qgswmsrequest.h"
+#include "qgswmsutils.h"
 
 #include "libProfiler.h"
 
@@ -462,7 +463,8 @@ class QgsWmsModule: public QgsServiceModule
     void registerSelf( QgsServiceRegistry &registry, QgsServerInterface *serverIface ) override
     {
       QgsDebugMsg( QStringLiteral( "WMSModule::registerSelf called" ) );
-      registry.registerService( new  QgsWms::Service( "1.3.0", serverIface ) );
+      registry.registerService( new  QgsWms::Service( QgsWms::implementationVersion(), serverIface ) ); // 1.3.0 default version
+      registry.registerService( new  QgsWms::Service( QStringLiteral( "1.1.1" ), serverIface ) ); // second supported version
     }
 };
 
