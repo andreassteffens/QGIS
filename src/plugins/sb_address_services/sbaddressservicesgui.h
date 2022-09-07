@@ -67,18 +67,30 @@ class sbAddressServicesGui : public QWidget, private Ui::sbAddressServicesGuiBas
     QPointer<sbAddressServicesMapTool> mpMapTool = nullptr;
     QgsCoordinateTransform mTransform;
 
+    void setGuiState(bool bEnabled);
+
     void doFunnySearch();
     void doSearch(const QString& strText, bool bBypassRegionRestriction);
-    void doGoogleSearch(const QString& strText, bool bBypassRegionRestriction);
-    void doOsmSearch(const QString& strText, bool bBypassRegionRestriction);
+    void doGoogleSearch(const QString& strText, bool bBypassRegionRestriction, QVariantList& vlSearches);
+    void doOsmSearch(const QString& strText, bool bBypassRegionRestriction, QVariantList& vlSearches);
+    void doPhotonSearch(const QString& strText, bool bBypassRegionRestriction, QVariantList& vlSearches);
+    void doPeliasSearch(const QString& strText, bool bBypassRegionRestriction, QVariantList& vlSearches);
     bool processGoogleSearchReply(const QString& strReply, const QString& strBounds);
     bool processOsmSearchReply(const QString& strReply);
+    bool processPhotonSearchReply(const QString& strReply);
+    bool processPeliasSearchReply(const QString& strReply);
+    void nextSearch(const QString& strText, bool bBypassRegionRestriction, QVariantList& vlSearches);
 
     void doInfo(const QgsPointXY& point, double dScale);
-    void doGoogleInfo(const QgsPointXY& point, double dScale);
-    void doOsmInfo(const QgsPointXY& point, double dScale);
+    void doGoogleInfo(const QgsPointXY& point, double dScale, QVariantList& vlInfos);
+    void doOsmInfo(const QgsPointXY& point, double dScale, QVariantList& vlInfos);
+    void doPhotonInfo(const QgsPointXY& point, double dScale, QVariantList& vlInfos);
+    void doPeliasInfo(const QgsPointXY& point, double dScale, QVariantList& vlInfos);
     bool processGoogleInfoReply(const QString& strReply);
     bool processOsmInfoReply(const QString& strReply);
+    bool processPhotonInfoReply(const QString& strReply);
+    bool processPeliasInfoReply(const QString& strReply);
+    void nextInfo(const QgsPointXY& point, double dScale, QVariantList& vlInfos);
 
   public:
     class AddressDetails

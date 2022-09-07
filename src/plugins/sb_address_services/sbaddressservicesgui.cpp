@@ -32,13 +32,23 @@
 #define GOOGLE_ADDRESS_SEARCH_URL "https://maps.google.com/maps/api/geocode/json?sensor=false&address=";
 #define GOOGLE_ADDRESS_INFO_URL "https://maps.googleapis.com/maps/api/geocode/json?sensor=false&latlng=";
 
+#ifndef SAFE_DELETE
+#define SAFE_DELETE(p) { if(p) { delete (p); (p)=NULL; } }
+#endif
+
 enum sbAddressServiceRequestType
 {
   ASRT_INVALID = -1,
+
   ASRT_GOOGLE_SEARCH = 0,
   ASRT_OSM_SEARCH = 1,
-  ASRT_GOOGLE_INFO = 2,
-  ASRT_OSM_INFO = 3
+  ASRT_PHOTON_SEARCH = 2,
+  ASRT_PELIAS_SEARCH = 3,
+
+  ASRT_GOOGLE_INFO = 4,
+  ASRT_OSM_INFO = 5,
+  ASRT_PHOTON_INFO = 6,
+  ASRT_PELIAS_INFO = 7
 };
 
 static double OSM_ZOOM_SCALES[19] = {
@@ -135,12 +145,20 @@ sbAddressServicesGui::sbAddressServicesGui(QgisInterface *pQgisIface, const QStr
   mLeGoogleQueryOptions->setText(s.value(QStringLiteral("sbAddressServices/GoogleQueryOptions"), "").toString());
   mLeNominatimService->setText(s.value(QStringLiteral("sbAddressServices/OsmNominatimService"), "https://tileserver.gis24.eu/nominatim").toString());
   mLeNominatimQueryOptions->setText(s.value(QStringLiteral("sbAddressServices/OsmNominatimQueryOptions"), "").toString());
+  mLePhotonService->setText(s.value(QStringLiteral("sbAddressServices/PhotonService"), "").toString());
+  mLePhotonQueryOptions->setText(s.value(QStringLiteral("sbAddressServices/PhotonQueryOptions"), "").toString());
+  mLePeliasService->setText(s.value(QStringLiteral("sbAddressServices/PeliasService"), "").toString());
+  mLePeliasQueryOptions->setText(s.value(QStringLiteral("sbAddressServices/PeliasQueryOptions"), "").toString());
   mCheckDebugMode->setCheckState((Qt::CheckState)s.value("sbAddressServices/DebugMode", (int)Qt::CheckState::Checked).toInt());
   
   connect(mPleGoogleKey, &QgsPasswordLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
   connect(mLeGoogleQueryOptions, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
   connect(mLeNominatimService, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
   connect(mLeNominatimQueryOptions, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
+  connect(mLePhotonService, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
+  connect(mLePhotonQueryOptions, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
+  connect(mLePeliasService, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
+  connect(mLePeliasQueryOptions, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
   connect(mCheckDebugMode, &QCheckBox::stateChanged, this, &sbAddressServicesGui::onSearchCheckBoxStateChanged);
 
 
@@ -236,6 +254,10 @@ void sbAddressServicesGui::onSettingsTextChanged(const QString &text)
   s.setValue("sbAddressServices/GoogleQueryOptions", QVariant(mLeGoogleQueryOptions->text()));
   s.setValue("sbAddressServices/OsmNominatimService", QVariant(mLeNominatimService->text()));
   s.setValue("sbAddressServices/OsmNominatimQueryOptions", QVariant(mLeNominatimQueryOptions->text()));
+  s.setValue("sbAddressServices/PhotonService", QVariant(mLePhotonService->text()));
+  s.setValue("sbAddressServices/PhotonQueryOptions", QVariant(mLePhotonQueryOptions->text()));
+  s.setValue("sbAddressServices/PeliasService", QVariant(mLePeliasService->text()));
+  s.setValue("sbAddressServices/PeliasQueryOptions", QVariant(mLePeliasQueryOptions->text()));
 }
 
 void sbAddressServicesGui::onSearchCheckBoxStateChanged(int state)
@@ -328,6 +350,15 @@ void sbAddressServicesGui::onActivateInfoBtnToggled(bool checked)
     mpQgisIface->mapCanvas()->setMapTool(mpMapTool);
 }
 
+void sbAddressServicesGui::setGuiState(bool bEnabled)
+{
+  mTabsServices->setEnabled(bEnabled);
+  mComboResults->setEnabled(bEnabled);
+
+  //mPbtnNavigateToResult->setEnabled(bEnabled);
+  //mPbtnClearResults->setEnabled(bEnabled);
+}
+
 void sbAddressServicesGui::doSearch(const QString& strText, bool bBypassRegionRestriction)
 {
   if (strText.isEmpty() || strText.isNull())
@@ -341,10 +372,60 @@ void sbAddressServicesGui::doSearch(const QString& strText, bool bBypassRegionRe
     mpNetworkReply.clear();
   }
 
-  if (mPleGoogleKey->text().isEmpty() || mPleGoogleKey->text().isNull())
-    doOsmSearch(strText, bBypassRegionRestriction);
+  QVariantList vlSearches;
+
+  if (!mPleGoogleKey->text().isEmpty())
+    vlSearches.append(QVariant(ASRT_GOOGLE_SEARCH));
+
+  if (!mLeNominatimService->text().isEmpty())
+    vlSearches.append(QVariant(ASRT_OSM_SEARCH));
+
+  if (!mLePhotonService->text().isEmpty())
+    vlSearches.append(QVariant(ASRT_PHOTON_SEARCH));
+
+  if (!mLePeliasService->text().isEmpty())
+    vlSearches.append(QVariant(ASRT_PELIAS_SEARCH));
+
+  nextSearch(strText, bBypassRegionRestriction, vlSearches);
+}
+
+void sbAddressServicesGui::nextSearch(const QString& strText, bool bBypassRegionRestriction, QVariantList& vlSearches)
+{
+  if (vlSearches.count() == 0)
+  {
+    if (mComboResults->count() == 0)
+    {
+      QString strText = QApplication::translate("sbAddressServicesPlugin", "No results!");
+      if (mCheckRestrictSearchBounds->isChecked())
+        strText += "\n\n" + QApplication::translate("sbAddressServicesPlugin", "Try to get more results through disabling the region restriction!");
+
+      mPteResult->setPlainText(strText);
+    }
+    else
+      onResultsComboIndexChanged(mComboResults->currentIndex());
+  }
   else
-    doGoogleSearch(strText, bBypassRegionRestriction);
+  {
+    QVariant varSearchId = vlSearches.front();
+    vlSearches.pop_front();
+
+    sbAddressServiceRequestType enType = (sbAddressServiceRequestType)varSearchId.toInt();
+    switch (enType)
+    {
+      case ASRT_GOOGLE_SEARCH:
+        doGoogleSearch(strText, bBypassRegionRestriction, vlSearches);
+        break;
+      case ASRT_OSM_SEARCH:
+        doOsmSearch(strText, bBypassRegionRestriction, vlSearches);
+        break;
+      case ASRT_PHOTON_SEARCH:
+        doPhotonSearch(strText, bBypassRegionRestriction, vlSearches);
+        break;
+      case ASRT_PELIAS_SEARCH:
+        doPeliasSearch(strText, bBypassRegionRestriction, vlSearches);
+        break;
+    }
+  }
 }
 
 void sbAddressServicesGui::doFunnySearch()
@@ -355,7 +436,7 @@ void sbAddressServicesGui::doFunnySearch()
   doSearch(mComboFunnyPlaces->currentText(), true);
 }
 
-void sbAddressServicesGui::doGoogleSearch(const QString& strText, bool bBypassRegionRestriction)
+void sbAddressServicesGui::doGoogleSearch(const QString& strText, bool bBypassRegionRestriction, QVariantList& vlSearches)
 {
   QString currentLocale = QLocale().name();
 
@@ -395,18 +476,21 @@ void sbAddressServicesGui::doGoogleSearch(const QString& strText, bool bBypassRe
   rq.setUrl(QUrl(strUrl));
   rq.setHeader(QNetworkRequest::KnownHeaders::UserAgentHeader, mstrPluginName);
 
+  SAFE_DELETE(mpNetworkReply);
+
   mpNetworkReply = mNetworkManager.get(rq);
   mpNetworkReply->setProperty("REQUEST_TYPE", ASRT_GOOGLE_SEARCH);
   mpNetworkReply->setProperty("QUERY", strText);
+  mpNetworkReply->setProperty("SEARCHES", vlSearches);
   if( !strWktBounds.isEmpty() )
     mpNetworkReply->setProperty("BOUNDS", strWktBounds);
 
   connect(mpNetworkReply, &QNetworkReply::finished, this, &sbAddressServicesGui::onNetworkReplyFinished);
-
-  mPteResult->setPlainText(tr("Searching..."));
+  
+  mPteResult->setPlainText(QApplication::translate("sbAddressServicesPlugin", "Searching..."));
 }
 
-void sbAddressServicesGui::doOsmSearch(const QString& strText, bool bBypassRegionRestriction)
+void sbAddressServicesGui::doOsmSearch(const QString& strText, bool bBypassRegionRestriction, QVariantList& vlSearches)
 {
   QString strUrl = mLeNominatimService->text();
   if (strUrl.isEmpty() || strUrl.isNull())
@@ -457,28 +541,199 @@ void sbAddressServicesGui::doOsmSearch(const QString& strText, bool bBypassRegio
   rq.setUrl(QUrl(strUrl));
   rq.setHeader(QNetworkRequest::KnownHeaders::UserAgentHeader, mstrPluginName);
 
+  SAFE_DELETE(mpNetworkReply);
+
   mpNetworkReply = mNetworkManager.get(rq);
   mpNetworkReply->setProperty("REQUEST_TYPE", ASRT_OSM_SEARCH);
   mpNetworkReply->setProperty("QUERY", strText);
+  mpNetworkReply->setProperty("SEARCHES", vlSearches);
   if (!strWktBounds.isEmpty())
     mpNetworkReply->setProperty("BOUNDS", strWktBounds);
 
   connect(mpNetworkReply, &QNetworkReply::finished, this, &sbAddressServicesGui::onNetworkReplyFinished);
 
-  mPteResult->setPlainText(tr("Searching..."));
+  mPteResult->setPlainText(QApplication::translate("sbAddressServicesPlugin", "Searching..."));
+}
+
+void sbAddressServicesGui::doPhotonSearch(const QString& strText, bool bBypassRegionRestriction, QVariantList& vlSearches)
+{
+  QString strUrl = mLePhotonService->text();
+  if (strUrl.isEmpty() || strUrl.isNull())
+    return;
+
+  QString strLocale = QLocale().name();
+  if (strLocale.contains("_"))
+  {
+    QStringList listParts = strLocale.split("_");
+    strLocale = listParts[0];
+  }
+
+  if (!strUrl.endsWith('/'))
+    strUrl += "/";
+  strUrl += "api?q=" + QUrl::toPercentEncoding(strText);
+  strUrl += "&lang=" + strLocale;
+
+  QString strWktBounds;
+  if (!bBypassRegionRestriction)
+  {
+    if (mCheckRestrictSearchBounds->checkState() == Qt::CheckState::Checked)
+    {
+      QgsRectangle rcMapExtent = mpQgisIface->mapCanvas()->extent();
+      QgsRectangle rcMapExtentTransformed = mTransform.transformBoundingBox(rcMapExtent, Qgis::TransformDirection::Forward);
+      strWktBounds = rcMapExtentTransformed.asWktPolygon();
+
+      strUrl += "&bbox=" + QString::number(rcMapExtentTransformed.xMinimum()) + "," + QString::number(rcMapExtentTransformed.yMinimum()) + "," + QString::number(rcMapExtentTransformed.xMaximum()) + "," + QString::number(rcMapExtentTransformed.yMaximum());
+    }
+  }
+
+  QString strQueryOptions = mLePhotonQueryOptions->text();
+  if (!strQueryOptions.isEmpty() && !strQueryOptions.isNull())
+  {
+    if (!strQueryOptions.startsWith("&"))
+      strUrl += "&";
+
+    strUrl += strQueryOptions;
+  }
+
+  if (mCheckDebugMode->checkState() == Qt::CheckState::Checked)
+  {
+    QgsMessageLog::logMessage(QStringLiteral("Photon Search URL: %1").arg(strUrl), QApplication::translate("sbAddressServicesPlugin", "[a]tapa Address Services"), Qgis::MessageLevel::Info);
+  }
+
+  QNetworkRequest rq;
+  rq.setUrl(QUrl(strUrl));
+  rq.setHeader(QNetworkRequest::KnownHeaders::UserAgentHeader, mstrPluginName);
+
+  SAFE_DELETE(mpNetworkReply);
+
+  mpNetworkReply = mNetworkManager.get(rq);
+  mpNetworkReply->setProperty("REQUEST_TYPE", ASRT_PHOTON_SEARCH);
+  mpNetworkReply->setProperty("QUERY", strText);
+  mpNetworkReply->setProperty("SEARCHES", vlSearches);
+  if (!strWktBounds.isEmpty())
+    mpNetworkReply->setProperty("BOUNDS", strWktBounds);
+
+  connect(mpNetworkReply, &QNetworkReply::finished, this, &sbAddressServicesGui::onNetworkReplyFinished);
+
+  mPteResult->setPlainText(QApplication::translate("sbAddressServicesPlugin", "Searching..."));
+}
+
+void sbAddressServicesGui::doPeliasSearch(const QString& strText, bool bBypassRegionRestriction, QVariantList& vlSearches)
+{
+  QString strUrl = mLePeliasService->text();
+  if (strUrl.isEmpty() || strUrl.isNull())
+    return;
+
+  QString strLocale = QLocale().name();
+  if (strLocale.contains("_"))
+  {
+    QStringList listParts = strLocale.split("_");
+    strLocale = listParts[0];
+  }
+
+  if (!strUrl.endsWith('/'))
+    strUrl += "/";
+  strUrl += "v1/search?text=" + QUrl::toPercentEncoding(strText);
+  strUrl += "&lang=" + strLocale;
+
+  QString strWktBounds;
+  if (!bBypassRegionRestriction)
+  {
+    if (mCheckRestrictSearchBounds->checkState() == Qt::CheckState::Checked)
+    {
+      QgsRectangle rcMapExtent = mpQgisIface->mapCanvas()->extent();
+      QgsRectangle rcMapExtentTransformed = mTransform.transformBoundingBox(rcMapExtent, Qgis::TransformDirection::Forward);
+      strWktBounds = rcMapExtentTransformed.asWktPolygon();
+
+      strUrl += "&boundary.rect.min_lon=" + QString::number(rcMapExtentTransformed.xMinimum()) + "&boundary.rect.min_lat=" + QString::number(rcMapExtentTransformed.yMinimum()) + "&boundary.rect.max_lon=" + QString::number(rcMapExtentTransformed.xMaximum()) + "&boundary.rect.max_lat=" + QString::number(rcMapExtentTransformed.yMaximum());
+    }
+  }
+
+  QString strQueryOptions = mLePeliasQueryOptions->text();
+  if (!strQueryOptions.isEmpty() && !strQueryOptions.isNull())
+  {
+    if (!strQueryOptions.startsWith("&"))
+      strUrl += "&";
+
+    strUrl += strQueryOptions;
+  }
+
+  if (mCheckDebugMode->checkState() == Qt::CheckState::Checked)
+  {
+    QgsMessageLog::logMessage(QStringLiteral("Pelias Search URL: %1").arg(strUrl), QApplication::translate("sbAddressServicesPlugin", "[a]tapa Address Services"), Qgis::MessageLevel::Info);
+  }
+
+  QNetworkRequest rq;
+  rq.setUrl(QUrl(strUrl));
+  rq.setHeader(QNetworkRequest::KnownHeaders::UserAgentHeader, mstrPluginName);
+
+  SAFE_DELETE(mpNetworkReply);
+
+  mpNetworkReply = mNetworkManager.get(rq);
+  mpNetworkReply->setProperty("REQUEST_TYPE", ASRT_PELIAS_SEARCH);
+  mpNetworkReply->setProperty("QUERY", strText);
+  mpNetworkReply->setProperty("SEARCHES", vlSearches);
+  if (!strWktBounds.isEmpty())
+    mpNetworkReply->setProperty("BOUNDS", strWktBounds);
+
+  connect(mpNetworkReply, &QNetworkReply::finished, this, &sbAddressServicesGui::onNetworkReplyFinished);
+
+  mPteResult->setPlainText(QApplication::translate("sbAddressServicesPlugin", "Searching..."));
 }
 
 void sbAddressServicesGui::doInfo(const QgsPointXY& point, double dScale)
 {
   onClearResultsBtnPressed();
 
-  if (mPleGoogleKey->text().isEmpty() || mPleGoogleKey->text().isNull())
-    doOsmInfo(point, dScale);
-  else
-    doGoogleInfo(point, dScale);
+  QVariantList vlInfos;
+
+  if (!mPleGoogleKey->text().isEmpty())
+    vlInfos.append(QVariant(ASRT_GOOGLE_INFO));
+
+  if (!mLeNominatimService->text().isEmpty())
+    vlInfos.append(QVariant(ASRT_OSM_INFO));
+
+  if (!mLePhotonService->text().isEmpty())
+    vlInfos.append(QVariant(ASRT_PHOTON_INFO));
+
+  if (!mLePeliasService->text().isEmpty())
+    vlInfos.append(QVariant(ASRT_PELIAS_INFO));
+
+  nextInfo(point, dScale, vlInfos);
 }
 
-void sbAddressServicesGui::doGoogleInfo(const QgsPointXY& point, double dScale)
+void sbAddressServicesGui::nextInfo(const QgsPointXY& point, double dScale, QVariantList& vlInfos)
+{
+  if (vlInfos.count() == 0)
+  {
+    if (mComboResults->count() > 0)
+      onResultsComboIndexChanged(mComboResults->currentIndex());
+  }
+  else
+  {
+    QVariant varSearchId = vlInfos.front();
+    vlInfos.pop_front();
+
+    sbAddressServiceRequestType enType = (sbAddressServiceRequestType)varSearchId.toInt();
+    switch (enType)
+    {
+      case ASRT_GOOGLE_INFO:
+        doGoogleInfo(point, dScale, vlInfos);
+        break;
+      case ASRT_OSM_INFO:
+        doOsmInfo(point, dScale, vlInfos);
+        break;
+      case ASRT_PHOTON_INFO:
+        doPhotonInfo(point, dScale, vlInfos);
+        break;
+      case ASRT_PELIAS_INFO:
+        doPeliasInfo(point, dScale, vlInfos);
+        break;
+    }
+  }
+}
+
+void sbAddressServicesGui::doGoogleInfo(const QgsPointXY& point, double dScale, QVariantList& vlInfos)
 {
   QString currentLocale = QLocale().name();
 
@@ -496,17 +751,20 @@ void sbAddressServicesGui::doGoogleInfo(const QgsPointXY& point, double dScale)
     QgsMessageLog::logMessage( QStringLiteral( "Google Address Search URL: %1" ).arg( strUrl ), QApplication::translate( "sbAddressServicesPlugin", "[a]tapa Address Services" ), Qgis::MessageLevel::Info );
   }
 
+  SAFE_DELETE(mpNetworkReply);
+
   mpNetworkReply = mNetworkManager.get(rq);
   mpNetworkReply->setProperty("REQUEST_TYPE", ASRT_GOOGLE_INFO);
   mpNetworkReply->setProperty("QUERY", point.asWkt());
   mpNetworkReply->setProperty("SCALE", dScale);
+  mpNetworkReply->setProperty("INFOS", vlInfos);
 
   connect(mpNetworkReply, &QNetworkReply::finished, this, &sbAddressServicesGui::onNetworkReplyFinished);
 
-  mPteResult->setPlainText(tr("Searching..."));
+  mPteResult->setPlainText(QApplication::translate("sbAddressServicesPlugin", "Searching..."));
 }
 
-void sbAddressServicesGui::doOsmInfo(const QgsPointXY& point, double dScale)
+void sbAddressServicesGui::doOsmInfo(const QgsPointXY& point, double dScale, QVariantList& vlInfos)
 {
   QString strUrl = mLeNominatimService->text();
   if (strUrl.isEmpty() || strUrl.isNull())
@@ -550,13 +808,96 @@ void sbAddressServicesGui::doOsmInfo(const QgsPointXY& point, double dScale)
     QgsMessageLog::logMessage( QStringLiteral( "OpenStreetMap Nominatim Info URL: %1" ).arg( strUrl ), QApplication::translate( "sbAddressServicesPlugin", "[a]tapa Address Services" ), Qgis::MessageLevel::Info );
   }
 
+  SAFE_DELETE(mpNetworkReply);
+
   mpNetworkReply = mNetworkManager.get(rq);
   mpNetworkReply->setProperty("REQUEST_TYPE", ASRT_OSM_INFO);
   mpNetworkReply->setProperty("QUERY", point.asWkt());
+  mpNetworkReply->setProperty("INFOS", vlInfos);
 
   connect(mpNetworkReply, &QNetworkReply::finished, this, &sbAddressServicesGui::onNetworkReplyFinished);
 
-  mPteResult->setPlainText(tr("Searching..."));
+  mPteResult->setPlainText(QApplication::translate("sbAddressServicesPlugin", "Searching..."));
+}
+
+void sbAddressServicesGui::doPhotonInfo(const QgsPointXY& point, double dScale, QVariantList& vlInfos)
+{
+  QString strUrl = mLePhotonService->text();
+  if (strUrl.isEmpty() || strUrl.isNull())
+    return;
+
+  QString strLocale = QLocale().name();
+  if (strLocale.contains("_"))
+  {
+    QStringList listParts = strLocale.split("_");
+    strLocale = listParts[0];
+  }
+
+  if (!strUrl.endsWith('/'))
+    strUrl += "/";
+  strUrl += "reverse";
+  strUrl += "?lang=" + strLocale;
+  strUrl += "&lat=" + QString::number(point.y()) + "&lon=" + QString::number(point.x());
+
+  QNetworkRequest rq;
+  rq.setUrl(QUrl(strUrl));
+  rq.setHeader(QNetworkRequest::KnownHeaders::UserAgentHeader, mstrPluginName);
+
+  if (mCheckDebugMode->checkState() == Qt::CheckState::Checked)
+  {
+    QgsMessageLog::logMessage(QStringLiteral("Photon Info URL: %1").arg(strUrl), QApplication::translate("sbAddressServicesPlugin", "[a]tapa Address Services"), Qgis::MessageLevel::Info);
+  }
+
+  SAFE_DELETE(mpNetworkReply);
+
+  mpNetworkReply = mNetworkManager.get(rq);
+  mpNetworkReply->setProperty("REQUEST_TYPE", ASRT_PHOTON_INFO);
+  mpNetworkReply->setProperty("QUERY", point.asWkt());
+  mpNetworkReply->setProperty("INFOS", vlInfos);
+
+  connect(mpNetworkReply, &QNetworkReply::finished, this, &sbAddressServicesGui::onNetworkReplyFinished);
+
+  mPteResult->setPlainText(QApplication::translate("sbAddressServicesPlugin", "Searching..."));
+}
+
+void sbAddressServicesGui::doPeliasInfo(const QgsPointXY& point, double dScale, QVariantList& vlInfos)
+{
+  QString strUrl = mLePeliasService->text();
+  if (strUrl.isEmpty() || strUrl.isNull())
+    return;
+
+  QString strLocale = QLocale().name();
+  if (strLocale.contains("_"))
+  {
+    QStringList listParts = strLocale.split("_");
+    strLocale = listParts[0];
+  }
+
+  if (!strUrl.endsWith('/'))
+    strUrl += "/";
+  strUrl += "v1/reverse";
+  strUrl += "?lang=" + strLocale;
+  strUrl += "&point.lat=" + QString::number(point.y()) + "&point.lon=" + QString::number(point.x());
+
+  QNetworkRequest rq;
+  rq.setUrl(QUrl(strUrl));
+  rq.setHeader(QNetworkRequest::KnownHeaders::UserAgentHeader, mstrPluginName);
+
+  if (mCheckDebugMode->checkState() == Qt::CheckState::Checked)
+  {
+    QgsMessageLog::logMessage(QStringLiteral("Pelias Info URL: %1").arg(strUrl), QApplication::translate("sbAddressServicesPlugin", "[a]tapa Address Services"), Qgis::MessageLevel::Info);
+  }
+
+  SAFE_DELETE(mpNetworkReply);
+
+  mpNetworkReply = mNetworkManager.get(rq);
+  mpNetworkReply->setProperty("REQUEST_TYPE", ASRT_PELIAS_INFO);
+  mpNetworkReply->setProperty("QUERY", point.asWkt());
+  mpNetworkReply->setProperty("INFOS", vlInfos);
+
+  connect(mpNetworkReply, &QNetworkReply::finished, this, &sbAddressServicesGui::onNetworkReplyFinished);
+
+  mPteResult->setPlainText(QApplication::translate("sbAddressServicesPlugin", "Searching..."));
 }
 
 void sbAddressServicesGui::onNetworkReplyFinished()
@@ -565,8 +906,6 @@ void sbAddressServicesGui::onNetworkReplyFinished()
   if (!reply)
     return;
 
-  QString strQuery;
-  double dScale = 0;
   sbAddressServiceRequestType enType = ASRT_INVALID;
 
   try
@@ -578,7 +917,6 @@ void sbAddressServicesGui::onNetworkReplyFinished()
       QString strReply = (QString)reply->readAll();
       if(!strReply.isNull() && !strReply.isEmpty())
       {
-        QVariant varQuery = reply->property("QUERY");
         QVariant varType = reply->property("REQUEST_TYPE");
         if (!varType.isNull())
         {
@@ -586,46 +924,84 @@ void sbAddressServicesGui::onNetworkReplyFinished()
           switch (enType)
           {
             case sbAddressServiceRequestType::ASRT_GOOGLE_SEARCH:
+            case sbAddressServiceRequestType::ASRT_OSM_SEARCH:
+            case sbAddressServiceRequestType::ASRT_PHOTON_SEARCH:
+            case sbAddressServiceRequestType::ASRT_PELIAS_SEARCH:
               {
                 QString strBounds;
                 QVariant varBounds = reply->property("BOUNDS");
                 if (!varBounds.isNull())
                   strBounds = varBounds.toString();
 
-                bRes = processGoogleSearchReply(strReply, strBounds);
-                strQuery = varQuery.toString();
+                QVariant varQuery = reply->property("QUERY");
+                QString strQuery = varQuery.toString();
+
+                QVariantList vlSearches = reply->property("SEARCHES").toList();
+
+                switch (enType)
+                {
+                  case sbAddressServiceRequestType::ASRT_GOOGLE_SEARCH:
+                    bRes = processGoogleSearchReply(strReply, strBounds);
+                    break;
+                  case sbAddressServiceRequestType::ASRT_OSM_SEARCH:
+                    bRes = processOsmSearchReply(strReply);
+                    break;
+                  case sbAddressServiceRequestType::ASRT_PHOTON_SEARCH:
+                    bRes = processPhotonSearchReply(strReply);
+                    break;
+                  case sbAddressServiceRequestType::ASRT_PELIAS_SEARCH:
+                    bRes = processPeliasSearchReply(strReply);
+                    break;
+                }
+
+                SAFE_DELETE(reply);
+                SAFE_DELETE(mpNetworkReply);
+
+                nextSearch(varQuery.toString(), strBounds.isEmpty(), vlSearches);
               }
-              break;
-            case sbAddressServiceRequestType::ASRT_OSM_SEARCH:
-              bRes = processOsmSearchReply(strReply);
               break;
             case sbAddressServiceRequestType::ASRT_GOOGLE_INFO:
+            case sbAddressServiceRequestType::ASRT_OSM_INFO:
+            case sbAddressServiceRequestType::ASRT_PELIAS_INFO:
+            case sbAddressServiceRequestType::ASRT_PHOTON_INFO:
               {
-                bRes = processGoogleInfoReply(strReply);
-                strQuery = varQuery.toString();
+                QVariant varQuery = reply->property("QUERY");
+                QString strQuery = varQuery.toString();
 
                 QVariant varScale = reply->property("SCALE");
-                dScale = varScale.toDouble();
+                double dScale = varScale.toDouble();
+
+                QVariantList vlInfos = reply->property("INFOS").toList();
+
+                switch (enType)
+                {
+                  case sbAddressServiceRequestType::ASRT_GOOGLE_INFO:
+                    bRes = processGoogleInfoReply(strReply);
+                    break;
+                  case sbAddressServiceRequestType::ASRT_OSM_INFO:
+                    bRes = processOsmInfoReply(strReply);
+                    break;
+                  case sbAddressServiceRequestType::ASRT_PELIAS_INFO:
+                    bRes = processPeliasInfoReply(strReply);
+                    break;
+                  case sbAddressServiceRequestType::ASRT_PHOTON_INFO:
+                    bRes = processPhotonInfoReply(strReply);
+                    break;
+                }
+
+                SAFE_DELETE(reply);
+                SAFE_DELETE(mpNetworkReply);
+
+                QgsPoint pt;
+                if (!pt.fromWkt(strQuery))
+                  vlInfos.clear();
+                  
+                nextInfo(QgsPointXY(pt.x(), pt.y()), dScale, vlInfos);
               }
-              break;
-            case sbAddressServiceRequestType::ASRT_OSM_INFO:
-              bRes = processOsmInfoReply(strReply);
               break;
           }
         }
       }
-      
-      if (!bRes && mComboResults->count() == 0)
-      {
-        QString strText = QApplication::translate("sbAddressServicesPlugin", "No results!");
-        if (mCheckRestrictSearchBounds->isChecked())
-          strText += "\n\n" + QApplication::translate("sbAddressServicesPlugin", "Try to get more results through disabling the region restriction!");
-
-        mPteResult->setPlainText(strText);
-      }
-        
-      else
-        onResultsComboIndexChanged(mComboResults->currentIndex());
     }
     else
       mPteResult->setPlainText(reply->errorString());
@@ -643,28 +1019,7 @@ void sbAddressServicesGui::onNetworkReplyFinished()
     mPteResult->setPlainText("Unknown exception in sbaddressservicesgui.cpp:onNetworkRequestFinished");
   }
 
-  delete reply;
-  delete mpNetworkReply;
-
-  if (!strQuery.isNull() && !strQuery.isEmpty())
-  {
-    switch (enType)
-    {
-      case sbAddressServiceRequestType::ASRT_GOOGLE_SEARCH:
-        doOsmSearch(strQuery, false);
-        break;
-      case sbAddressServiceRequestType::ASRT_GOOGLE_INFO:
-        {
-          QgsPoint pt;
-          if (pt.fromWkt(strQuery))
-          {
-            QgsPointXY ptXy(pt.x(), pt.y());
-            doOsmInfo(ptXy, dScale);
-          }
-        }
-        break;
-    }
-  }
+  SAFE_DELETE(reply);
 }
 
 bool sbAddressServicesGui::processGoogleInfoReply(const QString& strReply)
@@ -767,6 +1122,188 @@ bool sbAddressServicesGui::processOsmInfoReply(const QString& strReply)
   }
 
   return false;
+}
+
+bool sbAddressServicesGui::processPhotonInfoReply(const QString& strReply)
+{
+  bool bRes = false;
+
+  const QStringList listNameAttributeOrder = { "housenumber", "street", "locality", "district", "postcode", "city", "county", "state", "country" };
+
+  QJsonDocument jsonResponse = QJsonDocument::fromJson(strReply.toUtf8());
+  if (jsonResponse.isObject())
+  {
+    QJsonObject jsonCollection = jsonResponse.object();
+    if (!jsonCollection["features"].isNull())
+    {
+      QJsonArray jsonArray = jsonCollection["features"].toArray();
+
+      if (jsonArray.count() > 0)
+      {
+        for (int i = 0; i < jsonArray.count(); i++)
+        {
+          QString strDisplayName;
+          QString strExtras;
+          QgsRectangle rcBounds;
+
+          QJsonObject jsonObject = jsonArray[i].toObject();
+          if (!jsonObject["geometry"].isNull())
+          {
+            if (jsonObject["geometry"].toObject()["type"].toString().compare("Point", Qt::CaseInsensitive) == 0)
+            {
+              double dX = jsonObject["geometry"].toObject()["coordinates"].toArray()[0].toDouble();
+              double dY = jsonObject["geometry"].toObject()["coordinates"].toArray()[1].toDouble();
+
+              rcBounds.set(dX - 0.0001, dY - 0.00005, dX + 0.0001, dY + 0.00005);
+            }
+          }
+
+          if (!jsonObject["properties"].isNull())
+          {
+            QJsonObject jsonProperties = jsonObject["properties"].toObject();
+
+            if (!jsonProperties["name"].isNull())
+              strDisplayName = jsonProperties["name"].toString();
+
+            if (strDisplayName.isEmpty())
+            {
+              QStringList listNameParts;
+
+              foreach(const QString & strKey, listNameAttributeOrder)
+              {
+                if (!jsonProperties[strKey].isNull())
+                {
+                  QString strValue = jsonProperties[strKey].toString();
+                  if (!strValue.isEmpty())
+                    listNameParts.append(strValue);
+                }
+              }
+
+              strDisplayName = listNameParts.join(", ");
+            }
+
+            QStringList listPropertyNames = jsonProperties.keys();
+            foreach(const QString & strKey, listPropertyNames)
+            {
+              if (listNameAttributeOrder.contains(strKey, Qt::CaseInsensitive))
+                continue;
+
+              QString strValue;
+              if (jsonProperties[strKey].isString())
+                strValue = jsonProperties[strKey].toString();
+              else if (jsonProperties[strKey].isDouble())
+                strValue = QString::number(jsonProperties[strKey].toDouble());
+
+              if (!strValue.isEmpty())
+                strExtras += "[" + strKey + "] " + strValue + "\n";
+            }
+          }
+
+          if (!strDisplayName.isEmpty() && !rcBounds.isEmpty())
+          {
+            sbAddressServicesGui::AddressDetails addr(strDisplayName, rcBounds, strExtras);
+            mComboResults->addItem("[Photon] " + strDisplayName, QVariant(addr.toJson()));
+
+            bRes = true;
+          }
+        }
+      }
+    }
+  }
+
+  return bRes;
+}
+
+bool sbAddressServicesGui::processPeliasInfoReply(const QString& strReply)
+{
+  bool bRes = false;
+
+  const QStringList listNameAttributeOrder = { "housenumber", "street", "locality", "district", "postalccode", "city", "county", "macrocounty", "country" };
+
+  QJsonDocument jsonResponse = QJsonDocument::fromJson(strReply.toUtf8());
+  if (jsonResponse.isObject())
+  {
+    QJsonObject jsonCollection = jsonResponse.object();
+    if (!jsonCollection["features"].isNull())
+    {
+      QJsonArray jsonArray = jsonCollection["features"].toArray();
+
+      if (jsonArray.count() > 0)
+      {
+        for (int i = 0; i < jsonArray.count(); i++)
+        {
+          QString strDisplayName;
+          QString strExtras;
+          QgsRectangle rcBounds;
+
+          QJsonObject jsonObject = jsonArray[i].toObject();
+          if (!jsonObject["geometry"].isNull())
+          {
+            if (jsonObject["geometry"].toObject()["type"].toString().compare("Point", Qt::CaseInsensitive) == 0)
+            {
+              double dX = jsonObject["geometry"].toObject()["coordinates"].toArray()[0].toDouble();
+              double dY = jsonObject["geometry"].toObject()["coordinates"].toArray()[1].toDouble();
+
+              rcBounds.set(dX - 0.0001, dY - 0.00005, dX + 0.0001, dY + 0.00005);
+            }
+          }
+
+          if (!jsonObject["properties"].isNull())
+          {
+            QJsonObject jsonProperties = jsonObject["properties"].toObject();
+
+            if (!jsonProperties["label"].isNull())
+              strDisplayName = jsonProperties["label"].toString();
+            else if (!jsonProperties["name"].isNull())
+              strDisplayName = jsonProperties["name"].toString();
+
+            if (strDisplayName.isEmpty())
+            {
+              QStringList listNameParts;
+
+              foreach(const QString & strKey, listNameAttributeOrder)
+              {
+                if (!jsonProperties[strKey].isNull())
+                {
+                  QString strValue = jsonProperties[strKey].toString();
+                  if (!strValue.isEmpty())
+                    listNameParts.append(strValue);
+                }
+              }
+
+              strDisplayName = listNameParts.join(", ");
+            }
+
+            QStringList listPropertyNames = jsonProperties.keys();
+            foreach(const QString & strKey, listPropertyNames)
+            {
+              if (listNameAttributeOrder.contains(strKey, Qt::CaseInsensitive))
+                continue;
+
+              QString strValue;
+              if (jsonProperties[strKey].isString())
+                strValue = jsonProperties[strKey].toString();
+              else if (jsonProperties[strKey].isDouble())
+                strValue = QString::number(jsonProperties[strKey].toDouble());
+
+              if (!strValue.isEmpty())
+                strExtras += "[" + strKey + "] " + strValue + "\n";
+            }
+          }
+
+          if (!strDisplayName.isEmpty() && !rcBounds.isEmpty())
+          {
+            sbAddressServicesGui::AddressDetails addr(strDisplayName, rcBounds, strExtras);
+            mComboResults->addItem("[Pelias] " + strDisplayName, QVariant(addr.toJson()));
+
+            bRes = true;
+          }
+        }
+      }
+    }
+  }
+
+  return bRes;
 }
 
 bool sbAddressServicesGui::processGoogleSearchReply(const QString& strReply, const QString& strBounds)
@@ -882,6 +1419,188 @@ bool sbAddressServicesGui::processOsmSearchReply(const QString& strReply)
         mComboResults->addItem("[OSM] " + strDisplayName, QVariant(addr.toJson()));
 
         bRes = true;
+      }
+    }
+  }
+
+  return bRes;
+}
+
+bool sbAddressServicesGui::processPhotonSearchReply(const QString& strReply)
+{
+  bool bRes = false;
+
+  const QStringList listNameAttributeOrder = { "housenumber", "street", "locality", "district", "postcode", "city", "county", "state", "country" };
+
+  QJsonDocument jsonResponse = QJsonDocument::fromJson(strReply.toUtf8());
+  if (jsonResponse.isObject())
+  {
+    QJsonObject jsonCollection = jsonResponse.object();
+    if (!jsonCollection["features"].isNull())
+    {
+      QJsonArray jsonArray = jsonCollection["features"].toArray();
+
+      if (jsonArray.count() > 0)
+      {
+        for (int i = 0; i < jsonArray.count(); i++)
+        {
+          QString strDisplayName;
+          QString strExtras;
+          QgsRectangle rcBounds;
+
+          QJsonObject jsonObject = jsonArray[i].toObject();
+          if (!jsonObject["geometry"].isNull())
+          {
+            if (jsonObject["geometry"].toObject()["type"].toString().compare("Point", Qt::CaseInsensitive) == 0)
+            {
+              double dX = jsonObject["geometry"].toObject()["coordinates"].toArray()[0].toDouble();
+              double dY = jsonObject["geometry"].toObject()["coordinates"].toArray()[1].toDouble();
+
+              rcBounds.set(dX - 0.0001, dY - 0.00005, dX + 0.0001, dY + 0.00005);
+            }
+          }
+
+          if (!jsonObject["properties"].isNull())
+          {
+            QJsonObject jsonProperties = jsonObject["properties"].toObject();
+
+            if (!jsonProperties["name"].isNull())
+              strDisplayName = jsonProperties["name"].toString();
+
+            if (strDisplayName.isEmpty())
+            {
+              QStringList listNameParts;
+
+              foreach(const QString &strKey, listNameAttributeOrder)
+              {
+                if (!jsonProperties[strKey].isNull())
+                {
+                  QString strValue = jsonProperties[strKey].toString();
+                  if (!strValue.isEmpty())
+                    listNameParts.append(strValue);
+                }
+              }
+
+              strDisplayName = listNameParts.join(", ");
+            }
+
+            QStringList listPropertyNames = jsonProperties.keys();
+            foreach(const QString &strKey, listPropertyNames)
+            {
+              if (listNameAttributeOrder.contains(strKey, Qt::CaseInsensitive))
+                continue;
+
+              QString strValue;
+              if (jsonProperties[strKey].isString())
+                strValue = jsonProperties[strKey].toString();
+              else if (jsonProperties[strKey].isDouble())
+                strValue = QString::number(jsonProperties[strKey].toDouble());
+
+              if (!strValue.isEmpty())
+                strExtras += "[" + strKey + "] " + strValue + "\n";
+            }
+          }
+
+          if (!strDisplayName.isEmpty() && !rcBounds.isEmpty())
+          {
+            sbAddressServicesGui::AddressDetails addr(strDisplayName, rcBounds, strExtras);
+            mComboResults->addItem("[Photon] " + strDisplayName, QVariant(addr.toJson()));
+
+            bRes = true;
+          }
+        }
+      }
+    }
+  }
+
+  return bRes;
+}
+
+bool sbAddressServicesGui::processPeliasSearchReply(const QString& strReply)
+{
+  bool bRes = false;
+
+  const QStringList listNameAttributeOrder = { "housenumber", "street", "locality", "district", "postalccode", "city", "county", "macrocounty", "country" };
+
+  QJsonDocument jsonResponse = QJsonDocument::fromJson(strReply.toUtf8());
+  if (jsonResponse.isObject())
+  {
+    QJsonObject jsonCollection = jsonResponse.object();
+    if (!jsonCollection["features"].isNull())
+    {
+      QJsonArray jsonArray = jsonCollection["features"].toArray();
+
+      if (jsonArray.count() > 0)
+      {
+        for (int i = 0; i < jsonArray.count(); i++)
+        {
+          QString strDisplayName;
+          QString strExtras;
+          QgsRectangle rcBounds;
+
+          QJsonObject jsonObject = jsonArray[i].toObject();
+          if (!jsonObject["geometry"].isNull())
+          {
+            if (jsonObject["geometry"].toObject()["type"].toString().compare("Point", Qt::CaseInsensitive) == 0)
+            {
+              double dX = jsonObject["geometry"].toObject()["coordinates"].toArray()[0].toDouble();
+              double dY = jsonObject["geometry"].toObject()["coordinates"].toArray()[1].toDouble();
+
+              rcBounds.set(dX - 0.0001, dY - 0.00005, dX + 0.0001, dY + 0.00005);
+            }
+          }
+
+          if (!jsonObject["properties"].isNull())
+          {
+            QJsonObject jsonProperties = jsonObject["properties"].toObject();
+
+            if (!jsonProperties["label"].isNull())
+              strDisplayName = jsonProperties["label"].toString();
+            else if (!jsonProperties["name"].isNull())
+              strDisplayName = jsonProperties["name"].toString();
+
+            if (strDisplayName.isEmpty())
+            {
+              QStringList listNameParts;
+
+              foreach(const QString & strKey, listNameAttributeOrder)
+              {
+                if (!jsonProperties[strKey].isNull())
+                {
+                  QString strValue = jsonProperties[strKey].toString();
+                  if (!strValue.isEmpty())
+                    listNameParts.append(strValue);
+                }
+              }
+
+              strDisplayName = listNameParts.join(", ");
+            }
+
+            QStringList listPropertyNames = jsonProperties.keys();
+            foreach(const QString & strKey, listPropertyNames)
+            {
+              if (listNameAttributeOrder.contains(strKey, Qt::CaseInsensitive))
+                continue;
+
+              QString strValue;
+              if (jsonProperties[strKey].isString())
+                strValue = jsonProperties[strKey].toString();
+              else if (jsonProperties[strKey].isDouble())
+                strValue = QString::number(jsonProperties[strKey].toDouble());
+
+              if (!strValue.isEmpty())
+                strExtras += "[" + strKey + "] " + strValue + "\n";
+            }
+          }
+
+          if (!strDisplayName.isEmpty() && !rcBounds.isEmpty())
+          {
+            sbAddressServicesGui::AddressDetails addr(strDisplayName, rcBounds, strExtras);
+            mComboResults->addItem("[Pelias] " + strDisplayName, QVariant(addr.toJson()));
+
+            bRes = true;
+          }
+        }
       }
     }
   }

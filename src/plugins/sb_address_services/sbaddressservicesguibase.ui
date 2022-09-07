@@ -992,9 +992,9 @@
            <property name="geometry">
             <rect>
              <x>0</x>
-             <y>0</y>
+             <y>-142</y>
              <width>547</width>
-             <height>266</height>
+             <height>448</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -1076,6 +1076,76 @@
                </item>
                <item row="1" column="1">
                 <widget class="QLineEdit" name="mLeNominatimQueryOptions"/>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="mGrpPhotonSettings">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>85</height>
+               </size>
+              </property>
+              <property name="title">
+               <string>Photon</string>
+              </property>
+              <layout class="QFormLayout" name="formLayout_7">
+               <item row="0" column="0">
+                <widget class="QLabel" name="mLblPhotonAddress">
+                 <property name="text">
+                  <string>Service URL</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QLineEdit" name="mLePhotonService"/>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="mLblPhotonQueryOptions">
+                 <property name="text">
+                  <string>Query Options</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QLineEdit" name="mLePhotonQueryOptions"/>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="mGrpPeliasSettings">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>85</height>
+               </size>
+              </property>
+              <property name="title">
+               <string>Pelias</string>
+              </property>
+              <layout class="QFormLayout" name="formLayout_8">
+               <item row="0" column="0">
+                <widget class="QLabel" name="mLblPeliasAddress">
+                 <property name="text">
+                  <string>Service URL</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QLineEdit" name="mLePeliasService"/>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="mLblPeliasQueryOptions">
+                 <property name="text">
+                  <string>Query Options</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QLineEdit" name="mLePeliasQueryOptions"/>
                </item>
               </layout>
              </widget>

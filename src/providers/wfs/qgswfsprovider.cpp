@@ -1588,8 +1588,6 @@ bool QgsWFSProvider::readAttributesFromSchema( QDomDocument &schemaDoc,
     const QRegularExpression gmlPT( QStringLiteral( "gml:(.*)PropertyType" ) );
     const QRegularExpression gmlRefProperty( QStringLiteral( "gml:(.*)Property" ) );
 
-
-    // gmgml: is Geomedia Web Server
     if ( ! foundGeometryAttribute && ( type.indexOf(QRegularExpression( "(.*):CompositePolygonGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0
                                     || type.indexOf(QRegularExpression( "(.*):BoundaryGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0
                                     || type.indexOf(QRegularExpression( "(.*):RasterGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0
@@ -1618,6 +1616,7 @@ bool QgsWFSProvider::readAttributesFromSchema( QDomDocument &schemaDoc,
       geometryAttribute = name;
       geomType = QgsWkbTypes::MultiLineString;
     }
+    // gmgml: is Geomedia Web Server
     else if ( ! foundGeometryAttribute && type == QLatin1String( "gmgml:Polygon_Surface_MultiSurface_CompositeSurfacePropertyType" ) )
     {
       foundGeometryAttribute = true;
