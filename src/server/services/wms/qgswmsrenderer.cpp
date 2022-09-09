@@ -2055,8 +2055,6 @@ namespace QgsWms
       return false;
     }
 
-    QgsMessageLog::logMessage( QStringLiteral( "infoPoint: %1 %2" ).arg( infoPoint->x() ).arg( infoPoint->y() ) );
-
     if ( !( layer->dataProvider()->capabilities() & QgsRasterDataProvider::IdentifyValue ) &&
          !( layer->dataProvider()->capabilities() & QgsRasterDataProvider::IdentifyFeature ) )
     {
@@ -2192,7 +2190,7 @@ namespace QgsWms
             double dValue = it.value().toDouble();
             dValue = dValue * dSbBandValueFactor;
 
-            QString strValue = QString::number(dValue);
+            strValue = QString::number(dValue);
             if (!strSbFormatString.isNull() && !strSbFormatString.isEmpty())
               strValue = strSbFormatString.arg(strValue);
           }
