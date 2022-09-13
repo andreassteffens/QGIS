@@ -992,9 +992,9 @@
            <property name="geometry">
             <rect>
              <x>0</x>
-             <y>-265</y>
+             <y>-209</y>
              <width>547</width>
-             <height>508</height>
+             <height>548</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -1009,7 +1009,7 @@
               <property name="minimumSize">
                <size>
                 <width>0</width>
-                <height>100</height>
+                <height>110</height>
                </size>
               </property>
               <property name="baseSize">
@@ -1064,7 +1064,7 @@
               <property name="minimumSize">
                <size>
                 <width>0</width>
-                <height>100</height>
+                <height>110</height>
                </size>
               </property>
               <property name="title">
@@ -1113,7 +1113,7 @@
               <property name="minimumSize">
                <size>
                 <width>0</width>
-                <height>100</height>
+                <height>110</height>
                </size>
               </property>
               <property name="title">
@@ -1162,7 +1162,7 @@
               <property name="minimumSize">
                <size>
                 <width>0</width>
-                <height>100</height>
+                <height>110</height>
                </size>
               </property>
               <property name="title">
