@@ -137,26 +137,37 @@ sbAddressServicesGui::sbAddressServicesGui(QgisInterface *pQgisIface, const QStr
 
 
   // settings
+  mCheckGoogleActive->setCheckState((Qt::CheckState)s.value("sbAddressServices/GoogleActive", (int)Qt::CheckState::Unchecked).toInt());
   QString strKey = s.value(QStringLiteral("sbAddressServices/GoogleApiKey"), "").toString();
   if (!strKey.isEmpty())
     strKey = sCrypto.decryptToString(strKey);
   mPleGoogleKey->setText(strKey);
 
   mLeGoogleQueryOptions->setText(s.value(QStringLiteral("sbAddressServices/GoogleQueryOptions"), "").toString());
+
+  mCheckNominatimActive->setCheckState((Qt::CheckState)s.value("sbAddressServices/NominatimActive", (int)Qt::CheckState::Unchecked).toInt());
   mLeNominatimService->setText(s.value(QStringLiteral("sbAddressServices/OsmNominatimService"), "https://tileserver.gis24.eu/nominatim").toString());
   mLeNominatimQueryOptions->setText(s.value(QStringLiteral("sbAddressServices/OsmNominatimQueryOptions"), "").toString());
+
+  mCheckPhotonActive->setCheckState((Qt::CheckState)s.value("sbAddressServices/PhotonActive", (int)Qt::CheckState::Unchecked).toInt());
   mLePhotonService->setText(s.value(QStringLiteral("sbAddressServices/PhotonService"), "").toString());
   mLePhotonQueryOptions->setText(s.value(QStringLiteral("sbAddressServices/PhotonQueryOptions"), "").toString());
+
+  mCheckPeliasActive->setCheckState((Qt::CheckState)s.value("sbAddressServices/PeliasActive", (int)Qt::CheckState::Unchecked).toInt());
   mLePeliasService->setText(s.value(QStringLiteral("sbAddressServices/PeliasService"), "").toString());
   mLePeliasQueryOptions->setText(s.value(QStringLiteral("sbAddressServices/PeliasQueryOptions"), "").toString());
   mCheckDebugMode->setCheckState((Qt::CheckState)s.value("sbAddressServices/DebugMode", (int)Qt::CheckState::Checked).toInt());
-  
+
+  connect(mCheckGoogleActive, &QCheckBox::stateChanged, this, &sbAddressServicesGui::onSearchCheckBoxStateChanged);
   connect(mPleGoogleKey, &QgsPasswordLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
   connect(mLeGoogleQueryOptions, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
+  connect(mCheckNominatimActive, &QCheckBox::stateChanged, this, &sbAddressServicesGui::onSearchCheckBoxStateChanged);
   connect(mLeNominatimService, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
   connect(mLeNominatimQueryOptions, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
+  connect(mCheckPhotonActive, &QCheckBox::stateChanged, this, &sbAddressServicesGui::onSearchCheckBoxStateChanged);
   connect(mLePhotonService, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
   connect(mLePhotonQueryOptions, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
+  connect(mCheckPeliasActive, &QCheckBox::stateChanged, this, &sbAddressServicesGui::onSearchCheckBoxStateChanged);
   connect(mLePeliasService, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
   connect(mLePeliasQueryOptions, &QLineEdit::textChanged, this, &sbAddressServicesGui::onSettingsTextChanged);
   connect(mCheckDebugMode, &QCheckBox::stateChanged, this, &sbAddressServicesGui::onSearchCheckBoxStateChanged);
@@ -264,6 +275,10 @@ void sbAddressServicesGui::onSearchCheckBoxStateChanged(int state)
 {
   QSettings s;
 
+  s.setValue("sbAddressServices/GoogleActive", QVariant((int)mCheckGoogleActive->checkState()));
+  s.setValue("sbAddressServices/NominatimActive", QVariant((int)mCheckNominatimActive->checkState()));
+  s.setValue("sbAddressServices/PhotonActive", QVariant((int)mCheckPhotonActive->checkState()));
+  s.setValue("sbAddressServices/PeliasActive", QVariant((int)mCheckPeliasActive->checkState()));
   s.setValue("sbAddressServices/SearchRestrictToViewBounds", QVariant((int)mCheckRestrictSearchBounds->checkState()));
   s.setValue("sbAddressServices/DebugMode", QVariant((int)mCheckDebugMode->checkState()));
 }
@@ -374,17 +389,23 @@ void sbAddressServicesGui::doSearch(const QString& strText, bool bBypassRegionRe
 
   QVariantList vlSearches;
 
-  if (!mPleGoogleKey->text().isEmpty())
+  if (mCheckGoogleActive->checkState() == Qt::CheckState::Checked && !mPleGoogleKey->text().isEmpty())
     vlSearches.append(QVariant(ASRT_GOOGLE_SEARCH));
 
-  if (!mLeNominatimService->text().isEmpty())
+  if (mCheckNominatimActive->checkState() == Qt::CheckState::Checked && !mLeNominatimService->text().isEmpty())
     vlSearches.append(QVariant(ASRT_OSM_SEARCH));
 
-  if (!mLePhotonService->text().isEmpty())
+  if (mCheckPhotonActive->checkState() == Qt::CheckState::Checked && !mLePhotonService->text().isEmpty())
     vlSearches.append(QVariant(ASRT_PHOTON_SEARCH));
 
-  if (!mLePeliasService->text().isEmpty())
+  if (mCheckPeliasActive->checkState() == Qt::CheckState::Checked && !mLePeliasService->text().isEmpty())
     vlSearches.append(QVariant(ASRT_PELIAS_SEARCH));
+
+  if (vlSearches.isEmpty())
+  {
+    mPteResult->setPlainText(QApplication::translate("sbAddressServicesPlugin", "No active/configured search provider(s)!"));
+    return;
+  }
 
   nextSearch(strText, bBypassRegionRestriction, vlSearches);
 }
@@ -687,17 +708,23 @@ void sbAddressServicesGui::doInfo(const QgsPointXY& point, double dScale)
 
   QVariantList vlInfos;
 
-  if (!mPleGoogleKey->text().isEmpty())
+  if (mCheckGoogleActive->checkState() == Qt::CheckState::Checked && !mPleGoogleKey->text().isEmpty())
     vlInfos.append(QVariant(ASRT_GOOGLE_INFO));
 
-  if (!mLeNominatimService->text().isEmpty())
+  if (mCheckNominatimActive->checkState() == Qt::CheckState::Checked && !mLeNominatimService->text().isEmpty())
     vlInfos.append(QVariant(ASRT_OSM_INFO));
 
-  if (!mLePhotonService->text().isEmpty())
+  if (mCheckPhotonActive->checkState() == Qt::CheckState::Checked && !mLePhotonService->text().isEmpty())
     vlInfos.append(QVariant(ASRT_PHOTON_INFO));
 
-  if (!mLePeliasService->text().isEmpty())
+  if (mCheckPeliasActive->checkState() == Qt::CheckState::Checked && !mLePeliasService->text().isEmpty())
     vlInfos.append(QVariant(ASRT_PELIAS_INFO));
+
+  if(vlInfos.isEmpty())
+  {
+    mPteResult->setPlainText(QApplication::translate("sbAddressServicesPlugin", "No active/configured search provider(s)!"));
+    return;
+  }
 
   nextInfo(point, dScale, vlInfos);
 }
@@ -906,7 +933,34 @@ void sbAddressServicesGui::onNetworkReplyFinished()
   if (!reply)
     return;
 
-  sbAddressServiceRequestType enType = ASRT_INVALID;
+  QVariant varType = reply->property("REQUEST_TYPE");
+  if (varType.isNull())
+    return;
+
+  sbAddressServiceRequestType enType = (sbAddressServiceRequestType)varType.toInt();;
+
+  QString strType = "";
+  switch (enType)
+  {
+    case ASRT_GOOGLE_SEARCH:
+    case ASRT_GOOGLE_INFO:
+      strType = "Google";
+      break;
+    case ASRT_OSM_SEARCH:
+    case ASRT_OSM_INFO:
+      strType = "OSM";
+      break;
+    case ASRT_PHOTON_SEARCH:
+    case ASRT_PHOTON_INFO:
+      strType = "Photon";
+      break;
+    case ASRT_PELIAS_SEARCH:
+    case ASRT_PELIAS_INFO:
+      strType = "Pelias";
+      break;
+  }
+
+  QString strError = "";
 
   try
   {
@@ -917,108 +971,109 @@ void sbAddressServicesGui::onNetworkReplyFinished()
       QString strReply = (QString)reply->readAll();
       if(!strReply.isNull() && !strReply.isEmpty())
       {
-        QVariant varType = reply->property("REQUEST_TYPE");
-        if (!varType.isNull())
+        switch (enType)
         {
-          enType = (sbAddressServiceRequestType)varType.toInt();
-          switch (enType)
-          {
-            case sbAddressServiceRequestType::ASRT_GOOGLE_SEARCH:
-            case sbAddressServiceRequestType::ASRT_OSM_SEARCH:
-            case sbAddressServiceRequestType::ASRT_PHOTON_SEARCH:
-            case sbAddressServiceRequestType::ASRT_PELIAS_SEARCH:
+          case sbAddressServiceRequestType::ASRT_GOOGLE_SEARCH:
+          case sbAddressServiceRequestType::ASRT_OSM_SEARCH:
+          case sbAddressServiceRequestType::ASRT_PHOTON_SEARCH:
+          case sbAddressServiceRequestType::ASRT_PELIAS_SEARCH:
+            {
+              QString strBounds;
+              QVariant varBounds = reply->property("BOUNDS");
+              if (!varBounds.isNull())
+                strBounds = varBounds.toString();
+
+              QVariant varQuery = reply->property("QUERY");
+              QString strQuery = varQuery.toString();
+
+              QVariantList vlSearches = reply->property("SEARCHES").toList();
+
+              switch (enType)
               {
-                QString strBounds;
-                QVariant varBounds = reply->property("BOUNDS");
-                if (!varBounds.isNull())
-                  strBounds = varBounds.toString();
-
-                QVariant varQuery = reply->property("QUERY");
-                QString strQuery = varQuery.toString();
-
-                QVariantList vlSearches = reply->property("SEARCHES").toList();
-
-                switch (enType)
-                {
-                  case sbAddressServiceRequestType::ASRT_GOOGLE_SEARCH:
-                    bRes = processGoogleSearchReply(strReply, strBounds);
-                    break;
-                  case sbAddressServiceRequestType::ASRT_OSM_SEARCH:
-                    bRes = processOsmSearchReply(strReply);
-                    break;
-                  case sbAddressServiceRequestType::ASRT_PHOTON_SEARCH:
-                    bRes = processPhotonSearchReply(strReply);
-                    break;
-                  case sbAddressServiceRequestType::ASRT_PELIAS_SEARCH:
-                    bRes = processPeliasSearchReply(strReply);
-                    break;
-                }
-
-                SAFE_DELETE(reply);
-                SAFE_DELETE(mpNetworkReply);
-
-                nextSearch(varQuery.toString(), strBounds.isEmpty(), vlSearches);
+                case sbAddressServiceRequestType::ASRT_GOOGLE_SEARCH:
+                  bRes = processGoogleSearchReply(strReply, strBounds);
+                  break;
+                case sbAddressServiceRequestType::ASRT_OSM_SEARCH:
+                  bRes = processOsmSearchReply(strReply);
+                  break;
+                case sbAddressServiceRequestType::ASRT_PHOTON_SEARCH:
+                  bRes = processPhotonSearchReply(strReply);
+                  break;
+                case sbAddressServiceRequestType::ASRT_PELIAS_SEARCH:
+                  bRes = processPeliasSearchReply(strReply);
+                  break;
               }
-              break;
-            case sbAddressServiceRequestType::ASRT_GOOGLE_INFO:
-            case sbAddressServiceRequestType::ASRT_OSM_INFO:
-            case sbAddressServiceRequestType::ASRT_PELIAS_INFO:
-            case sbAddressServiceRequestType::ASRT_PHOTON_INFO:
+
+              SAFE_DELETE(reply);
+              SAFE_DELETE(mpNetworkReply);
+
+              nextSearch(varQuery.toString(), strBounds.isEmpty(), vlSearches);
+            }
+            break;
+          case sbAddressServiceRequestType::ASRT_GOOGLE_INFO:
+          case sbAddressServiceRequestType::ASRT_OSM_INFO:
+          case sbAddressServiceRequestType::ASRT_PELIAS_INFO:
+          case sbAddressServiceRequestType::ASRT_PHOTON_INFO:
+            {
+              QVariant varQuery = reply->property("QUERY");
+              QString strQuery = varQuery.toString();
+
+              QVariant varScale = reply->property("SCALE");
+              double dScale = varScale.toDouble();
+
+              QVariantList vlInfos = reply->property("INFOS").toList();
+
+              switch (enType)
               {
-                QVariant varQuery = reply->property("QUERY");
-                QString strQuery = varQuery.toString();
+                case sbAddressServiceRequestType::ASRT_GOOGLE_INFO:
+                  bRes = processGoogleInfoReply(strReply);
+                  break;
+                case sbAddressServiceRequestType::ASRT_OSM_INFO:
+                  bRes = processOsmInfoReply(strReply);
+                  break;
+                case sbAddressServiceRequestType::ASRT_PELIAS_INFO:
+                  bRes = processPeliasInfoReply(strReply);
+                  break;
+                case sbAddressServiceRequestType::ASRT_PHOTON_INFO:
+                  bRes = processPhotonInfoReply(strReply);
+                  break;
+              }
 
-                QVariant varScale = reply->property("SCALE");
-                double dScale = varScale.toDouble();
+              SAFE_DELETE(reply);
+              SAFE_DELETE(mpNetworkReply);
 
-                QVariantList vlInfos = reply->property("INFOS").toList();
-
-                switch (enType)
-                {
-                  case sbAddressServiceRequestType::ASRT_GOOGLE_INFO:
-                    bRes = processGoogleInfoReply(strReply);
-                    break;
-                  case sbAddressServiceRequestType::ASRT_OSM_INFO:
-                    bRes = processOsmInfoReply(strReply);
-                    break;
-                  case sbAddressServiceRequestType::ASRT_PELIAS_INFO:
-                    bRes = processPeliasInfoReply(strReply);
-                    break;
-                  case sbAddressServiceRequestType::ASRT_PHOTON_INFO:
-                    bRes = processPhotonInfoReply(strReply);
-                    break;
-                }
-
-                SAFE_DELETE(reply);
-                SAFE_DELETE(mpNetworkReply);
-
-                QgsPoint pt;
-                if (!pt.fromWkt(strQuery))
-                  vlInfos.clear();
+              QgsPoint pt;
+              if (!pt.fromWkt(strQuery))
+                vlInfos.clear();
                   
-                nextInfo(QgsPointXY(pt.x(), pt.y()), dScale, vlInfos);
-              }
-              break;
-          }
+              nextInfo(QgsPointXY(pt.x(), pt.y()), dScale, vlInfos);
+            }
+            break;
         }
       }
     }
     else
-      mPteResult->setPlainText(reply->errorString());
+      strError = reply->errorString();
   }
   catch (const std::runtime_error& re)
   {
-    mPteResult->setPlainText(re.what());
+    strError = re.what();
   }
   catch (const std::exception& e)
   {
-    mPteResult->setPlainText(e.what());
+    strError = e.what();
   }
   catch (...)
   {
-    mPteResult->setPlainText("Unknown exception in sbaddressservicesgui.cpp:onNetworkRequestFinished");
+    strError = "Unknown exception in sbaddressservicesgui.cpp:onNetworkRequestFinished";
   }
 
+  if(!strError.isEmpty())
+  {
+    sbAddressServicesGui::AddressDetails addr(reply->errorString(), QgsRectangle(), QString());
+    mComboResults->addItem("[" + strType + "] " + reply->errorString(), QVariant(addr.toJson()));
+  }
+  
   SAFE_DELETE(reply);
 }
 
