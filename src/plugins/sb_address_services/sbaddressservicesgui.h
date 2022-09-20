@@ -50,6 +50,7 @@ class sbAddressServicesGui : public QWidget, private Ui::sbAddressServicesGuiBas
 
     void onMapToolSet(QgsMapTool* newTool, QgsMapTool* oldTool);
 
+    void onSslErrors(QNetworkReply* reply, const QList<QSslError>& errors);
     void onNetworkReplyFinished();
 
     void onClearedProject();

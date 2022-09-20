@@ -185,6 +185,10 @@ sbAddressServicesGui::sbAddressServicesGui(QgisInterface *pQgisIface, const QStr
   mpRubberBand->setColor(Qt::blue);
   mpRubberBand->setWidth(2);
   mpRubberBand->setFillColor(QColor::fromRgba(qRgba(255, 0, 0, 128)));
+
+
+  // network manager
+  connect(&mNetworkManager, &QNetworkAccessManager::sslErrors, this, &sbAddressServicesGui::onSslErrors);
 }
 
 sbAddressServicesGui::~sbAddressServicesGui()
@@ -321,11 +325,15 @@ void sbAddressServicesGui::onResultsComboIndexChanged(int index)
     else
       mPteResult->setPlainText(addr.getName());
 
-    QgsRectangle rcBoundsTransformed = mTransform.transformBoundingBox(addr.getBounds(), Qgis::TransformDirection::Reverse);
-    
-    mpRubberBand->reset(QgsWkbTypes::PolygonGeometry);
-    mpRubberBand->addGeometry(QgsGeometry::fromRect(rcBoundsTransformed), mTransform.sourceCrs());
-    mpRubberBand->show();
+    const QgsRectangle rcBounds = addr.getBounds();
+    if (!rcBounds.isEmpty())
+    {
+      QgsRectangle rcBoundsTransformed = mTransform.transformBoundingBox(rcBounds, Qgis::TransformDirection::Reverse);
+
+      mpRubberBand->reset(QgsWkbTypes::PolygonGeometry);
+      mpRubberBand->addGeometry(QgsGeometry::fromRect(rcBoundsTransformed), mTransform.sourceCrs());
+      mpRubberBand->show();
+    }
   }
 }
 
@@ -347,10 +355,14 @@ void sbAddressServicesGui::onNavigateToResultBtnPressed()
     else
       mPteResult->setPlainText(addr.getName());
 
-    QgsRectangle rcBoundsTransformed = mTransform.transformBoundingBox(addr.getBounds(), Qgis::TransformDirection::Reverse);
+    const QgsRectangle rcBounds = addr.getBounds();
+    if (!rcBounds.isEmpty())
+    {
+      QgsRectangle rcBoundsTransformed = mTransform.transformBoundingBox(rcBounds, Qgis::TransformDirection::Reverse);
 
-    mpQgisIface->mapCanvas()->setExtent(rcBoundsTransformed);
-    mpQgisIface->mapCanvas()->refresh();
+      mpQgisIface->mapCanvas()->setExtent(rcBoundsTransformed);
+      mpQgisIface->mapCanvas()->refresh();
+    }
   }
 }
 
@@ -496,7 +508,7 @@ void sbAddressServicesGui::doGoogleSearch(const QString& strText, bool bBypassRe
   QNetworkRequest rq;
   rq.setUrl(QUrl(strUrl));
   rq.setHeader(QNetworkRequest::KnownHeaders::UserAgentHeader, mstrPluginName);
-
+  
   SAFE_DELETE(mpNetworkReply);
 
   mpNetworkReply = mNetworkManager.get(rq);
@@ -506,6 +518,7 @@ void sbAddressServicesGui::doGoogleSearch(const QString& strText, bool bBypassRe
   if( !strWktBounds.isEmpty() )
     mpNetworkReply->setProperty("BOUNDS", strWktBounds);
 
+  
   connect(mpNetworkReply, &QNetworkReply::finished, this, &sbAddressServicesGui::onNetworkReplyFinished);
   
   mPteResult->setPlainText(QApplication::translate("sbAddressServicesPlugin", "Searching..."));
@@ -925,6 +938,19 @@ void sbAddressServicesGui::doPeliasInfo(const QgsPointXY& point, double dScale, 
   connect(mpNetworkReply, &QNetworkReply::finished, this, &sbAddressServicesGui::onNetworkReplyFinished);
 
   mPteResult->setPlainText(QApplication::translate("sbAddressServicesPlugin", "Searching..."));
+}
+
+void sbAddressServicesGui::onSslErrors(QNetworkReply* reply, const QList<QSslError>& errors)
+{
+  reply->ignoreSslErrors(errors);
+
+  if (mCheckDebugMode->checkState() == Qt::CheckState::Checked)
+  {
+    foreach(const QSslError &error, errors)
+    {
+      QgsMessageLog::logMessage(QStringLiteral("SSL error for request '%1': %2").arg(reply->request().url().toString()).arg(error.errorString()), QApplication::translate("sbAddressServicesPlugin", "[a]tapa Address Services"), Qgis::MessageLevel::Warning);
+    }
+  }
 }
 
 void sbAddressServicesGui::onNetworkReplyFinished()
