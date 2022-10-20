@@ -836,8 +836,10 @@ class CORE_EXPORT QgsFeatureRequest
      */
     std::function< void( const QgsFeature & ) > transformErrorCallback() const { return mTransformErrorCallback; } SIP_SKIP
 
-    void sbSetRenderMinPixelSizeFilter(double dRenderMinPixelSize, int iRenderMinPixelSizeMaxScale, double dScaleFactor, double dMapUnitsPerPixel, double dCurrentScale, QgsWkbTypes::GeometryType mSbGeometryType);
-    bool sbTestRenderMinPixelSizeFilter(const QgsFeature& f);
+    void sbSetRenderMinPixelSizeFilter(double dRenderMinPixelSize, int iRenderMinPixelSizeMaxScale, double dScaleFactor, double dMapUnitsPerPixel, double dCurrentScale, QgsWkbTypes::GeometryType geometryType, bool bRenderMinPixelSizeSourceFiltering) SIP_SKIP;
+    bool sbHasRenderMinPixelSizeFilter() const SIP_SKIP;
+    void sbGetRenderMinPixelSizeFilterValue(double* pdRenderMinPixelSize, int* piRenderMinPixelSizeMaxScale, double* pdScaleFactor, double* pdMapUnitsPerPixel, double* pdCurrentScale, QgsWkbTypes::GeometryType* pgeometryType) const SIP_SKIP;
+    bool sbTestRenderMinPixelSizeFilter(const QgsFeature& f) const SIP_SKIP;
 
     /**
      * Check if a feature is accepted by this requests filter
@@ -1005,6 +1007,7 @@ class CORE_EXPORT QgsFeatureRequest
     double mSbMapUnitsPerPixel;
     double mSbCurrentScale;
     QgsWkbTypes::GeometryType mSbGeometryType;
+    bool mSbRenderMinPixelSizeSourceFiltering;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS( QgsFeatureRequest::Flags )

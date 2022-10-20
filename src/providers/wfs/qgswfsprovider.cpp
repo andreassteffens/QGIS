@@ -1689,6 +1689,19 @@ bool QgsWFSProvider::readAttributesFromSchema( QDomDocument &schemaDoc,
   }
   if ( !foundGeometryAttribute )
   {
+    if (!mShared->mURI.sbFallbackGeometryName().isEmpty() && !mShared->mURI.sbFallbackGeometryType().isEmpty())
+    {
+      QgsWkbTypes::Type fallbackType = QgsWkbTypes::parseType(mShared->mURI.sbFallbackGeometryType());
+      if (fallbackType != QgsWkbTypes::Type::Unknown)
+      {
+        geometryAttribute = mShared->mURI.sbFallbackGeometryName();
+        geomType = fallbackType;
+        foundGeometryAttribute = true;
+      }
+    }
+    
+    //geometryAttribute = name;
+    //geomType = QgsWkbTypes::MultiLineString;
     geomType = QgsWkbTypes::NoGeometry;
   }
 

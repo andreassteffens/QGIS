@@ -137,6 +137,12 @@ class QgsWFSDataSourceURI
     //! Return set of unknown parameter keys in the URI.
     QSet<QString> unknownParamKeys() const;
 
+    void sbSetFallbackGeometryType(const QString& type); 
+    QString sbFallbackGeometryType() const;
+
+    void sbSetFallbackGeometryName(const QString& name);
+    QString sbFallbackGeometryName() const;
+
   private:
     QgsDataSourceUri    mURI;
     QgsAuthorizationSettings mAuth;

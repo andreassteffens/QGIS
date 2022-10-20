@@ -32,6 +32,7 @@ QgsFeatureRequest::QgsFeatureRequest()
   mSbMapUnitsPerPixel = 0;
   mSbCurrentScale = 0;
   mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
+  mSbRenderMinPixelSizeSourceFiltering = false;
 }
 
 QgsFeatureRequest::~QgsFeatureRequest() = default;
@@ -40,12 +41,13 @@ QgsFeatureRequest::QgsFeatureRequest( QgsFeatureId fid )
   : mFilter( FilterFid )
   , mFilterFid( fid )
 {
-mSbRenderMinPixelSize = 0;
+  mSbRenderMinPixelSize = 0;
   mSbRenderMinPixelSizeMaxScale = 0;
   mSbScaleFactor = 0;
   mSbMapUnitsPerPixel = 0;
   mSbCurrentScale = 0;
   mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
+  mSbRenderMinPixelSizeSourceFiltering = false;
 }
 
 QgsFeatureRequest::QgsFeatureRequest( const QgsFeatureIds &fids )
@@ -58,6 +60,7 @@ QgsFeatureRequest::QgsFeatureRequest( const QgsFeatureIds &fids )
   mSbMapUnitsPerPixel = 0;
   mSbCurrentScale = 0;
   mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
+  mSbRenderMinPixelSizeSourceFiltering = false;
 }
 
 QgsFeatureRequest::QgsFeatureRequest( const QgsRectangle &rect )
@@ -70,6 +73,7 @@ QgsFeatureRequest::QgsFeatureRequest( const QgsRectangle &rect )
   mSbMapUnitsPerPixel = 0;
   mSbCurrentScale = 0;
   mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
+  mSbRenderMinPixelSizeSourceFiltering = false;
 }
 
 QgsFeatureRequest::QgsFeatureRequest( const QgsExpression &expr, const QgsExpressionContext &context )
@@ -83,6 +87,7 @@ QgsFeatureRequest::QgsFeatureRequest( const QgsExpression &expr, const QgsExpres
   mSbMapUnitsPerPixel = 0;
   mSbCurrentScale = 0;
   mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
+  mSbRenderMinPixelSizeSourceFiltering = false;
 }
 
 QgsFeatureRequest::QgsFeatureRequest( const QgsFeatureRequest &rh )
@@ -131,6 +136,7 @@ QgsFeatureRequest &QgsFeatureRequest::operator=( const QgsFeatureRequest &rh )
   mSbMapUnitsPerPixel = rh.mSbMapUnitsPerPixel;
   mSbCurrentScale = rh.mSbCurrentScale;
   mSbGeometryType = rh.mSbGeometryType;
+  mSbRenderMinPixelSizeSourceFiltering = rh.mSbRenderMinPixelSizeSourceFiltering;
   mSbQuerySubstitutions = rh.mSbQuerySubstitutions;
   return *this;
 }
@@ -353,7 +359,7 @@ QgsFeatureRequest &QgsFeatureRequest::setTransformErrorCallback( const std::func
   return *this;
 }
 
-void QgsFeatureRequest::sbSetRenderMinPixelSizeFilter(double dRenderMinPixelSize, int iRenderMinPixelSizeMaxScale, double dScaleFactor, double dMapUnitsPerPixel, double dCurrentScale, QgsWkbTypes::GeometryType geometryType)
+void QgsFeatureRequest::sbSetRenderMinPixelSizeFilter(double dRenderMinPixelSize, int iRenderMinPixelSizeMaxScale, double dScaleFactor, double dMapUnitsPerPixel, double dCurrentScale, QgsWkbTypes::GeometryType geometryType, bool bRenderMinPixelSizeSourceFiltering)
 {
   mSbRenderMinPixelSize = dRenderMinPixelSize;
   mSbRenderMinPixelSizeMaxScale = iRenderMinPixelSizeMaxScale;
@@ -361,11 +367,27 @@ void QgsFeatureRequest::sbSetRenderMinPixelSizeFilter(double dRenderMinPixelSize
   mSbMapUnitsPerPixel = dMapUnitsPerPixel;
   mSbCurrentScale = dCurrentScale;
   mSbGeometryType = geometryType;
+  mSbRenderMinPixelSizeSourceFiltering = bRenderMinPixelSizeSourceFiltering;
 }
 
-bool QgsFeatureRequest::sbTestRenderMinPixelSizeFilter(const QgsFeature& f)
+void QgsFeatureRequest::sbGetRenderMinPixelSizeFilterValue(double* pdRenderMinPixelSize, int* piRenderMinPixelSizeMaxScale, double* pdScaleFactor, double* pdMapUnitsPerPixel, double* pdCurrentScale, QgsWkbTypes::GeometryType* pgeometryType) const
 {
-  if (mSbRenderMinPixelSize > 0 && mSbRenderMinPixelSizeMaxScale > 0)
+  *pdRenderMinPixelSize = mSbRenderMinPixelSize;
+  *piRenderMinPixelSizeMaxScale = mSbRenderMinPixelSizeMaxScale;
+  *pdScaleFactor = mSbScaleFactor;
+  *pdMapUnitsPerPixel = mSbMapUnitsPerPixel;
+  *pdCurrentScale = mSbCurrentScale;
+  *pgeometryType = mSbGeometryType;
+}
+
+bool QgsFeatureRequest::sbHasRenderMinPixelSizeFilter() const
+{
+  return (mSbRenderMinPixelSize > 0 && mSbRenderMinPixelSizeMaxScale > 0); 
+}
+
+bool QgsFeatureRequest::sbTestRenderMinPixelSizeFilter(const QgsFeature& f) const
+{
+  if (mSbRenderMinPixelSize > 0 && mSbRenderMinPixelSizeMaxScale > 0 && !mSbRenderMinPixelSizeSourceFiltering)
   {
     if (mSbGeometryType == QgsWkbTypes::GeometryType::LineGeometry || mSbGeometryType == QgsWkbTypes::GeometryType::PolygonGeometry)
     {

@@ -171,7 +171,9 @@ QSet<QString> QgsWFSDataSourceURI::unknownParamKeys() const
     QgsWFSConstants::URI_PARAM_HIDEDOWNLOADPROGRESSDIALOG,
     QgsWFSConstants::URI_PARAM_PAGING_ENABLED,
     QgsWFSConstants::URI_PARAM_PAGE_SIZE,
-    QgsWFSConstants::URI_PARAM_WFST_1_1_PREFER_COORDINATES
+    QgsWFSConstants::URI_PARAM_WFST_1_1_PREFER_COORDINATES,
+    QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE,
+    QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_NAME
   };
 
   QSet<QString> l_unknownParamKeys;
@@ -319,6 +321,28 @@ void QgsWFSDataSourceURI::setTypeName( const QString &typeName )
 QString QgsWFSDataSourceURI::typeName() const
 {
   return mURI.param( QgsWFSConstants::URI_PARAM_TYPENAME );
+}
+
+void QgsWFSDataSourceURI::sbSetFallbackGeometryType(const QString& type)
+{
+  mURI.removeParam(QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE);
+  mURI.setParam(QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE, type);
+}
+
+QString QgsWFSDataSourceURI::sbFallbackGeometryType() const
+{
+  return mURI.param(QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE);
+}
+
+void QgsWFSDataSourceURI::sbSetFallbackGeometryName(const QString& name)
+{
+  mURI.removeParam(QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_NAME);
+  mURI.setParam(QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_NAME, name);
+}
+
+QString QgsWFSDataSourceURI::sbFallbackGeometryName() const
+{
+  return mURI.param(QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_NAME);
 }
 
 void QgsWFSDataSourceURI::setSRSName( const QString &crsString )

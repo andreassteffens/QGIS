@@ -95,7 +95,8 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
   mSbRenderMinPixelSize = -1;
   mSbRenderMinPixelSizeMaxScale = -1;
   mSbRenderMinPixelSizeDebug = false;
-  
+  mSbRenderMinPixelSizeSourceFiltering = layer->providerType().compare("ogr", Qt::CaseInsensitive) == 0;
+
   if(QgsProject::instance()->metadata().keywords().contains("sb:RENDER_MIN_PIXEL_SIZE"))
   {
     QString strValue = QgsProject::instance()->metadata().keywords("sb:RENDER_MIN_PIXEL_SIZE")[0];
@@ -362,8 +363,8 @@ bool QgsVectorLayerRenderer::renderInternal( QgsFeatureRenderer *renderer )
                                      .setSubsetOfAttributes( mAttrNames, mFields )
                                      .setExpressionContext( context.expressionContext() );
 
-  featureRequest.sbSetRenderMinPixelSizeFilter(mSbRenderMinPixelSize, mSbRenderMinPixelSizeMaxScale, mSbScaleFactor, mSbMapUnitsPerPixel, renderContext()->rendererScale(), mGeometryType);
-  
+  featureRequest.sbSetRenderMinPixelSizeFilter(mSbRenderMinPixelSize, mSbRenderMinPixelSizeMaxScale, mSbScaleFactor, mSbMapUnitsPerPixel, renderContext()->rendererScale(), mGeometryType, mSbRenderMinPixelSizeSourceFiltering);
+
   if ( renderer->orderByEnabled() )
   {
     featureRequest.setOrderBy( renderer->orderBy() );
