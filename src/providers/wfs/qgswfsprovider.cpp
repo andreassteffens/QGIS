@@ -1689,6 +1689,8 @@ bool QgsWFSProvider::readAttributesFromSchema( QDomDocument &schemaDoc,
   }
   if ( !foundGeometryAttribute )
   {
+    geomType = QgsWkbTypes::NoGeometry;
+
     if (!mShared->mURI.sbFallbackGeometryName().isEmpty() && !mShared->mURI.sbFallbackGeometryType().isEmpty())
     {
       QgsWkbTypes::Type fallbackType = QgsWkbTypes::parseType(mShared->mURI.sbFallbackGeometryType());
@@ -1699,10 +1701,6 @@ bool QgsWFSProvider::readAttributesFromSchema( QDomDocument &schemaDoc,
         foundGeometryAttribute = true;
       }
     }
-    
-    //geometryAttribute = name;
-    //geomType = QgsWkbTypes::MultiLineString;
-    geomType = QgsWkbTypes::NoGeometry;
   }
 
   return true;
