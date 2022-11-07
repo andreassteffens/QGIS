@@ -872,6 +872,13 @@ Using this shared model instead of creating a new :py:class:`QgsStyleModel` impr
 .. versionadded:: 3.10
 %End
 
+    static QgsFontManager *fontManager() /KeepReference/;
+%Docstring
+Returns the application font manager, which manages available fonts and font installation for the QGIS instance.
+
+.. versionadded:: 3.28
+%End
+
     static QgsMessageLog *messageLog();
 %Docstring
 Returns the application's message log.
@@ -967,6 +974,13 @@ Gets the registry of available scalebar renderers.
 Returns registry of available project storage implementations.
 
 .. versionadded:: 3.2
+%End
+
+    static QgsLayerMetadataProviderRegistry *layerMetadataProviderRegistry() /KeepReference/;
+%Docstring
+Returns registry of available layer metadata provider implementations.
+
+.. versionadded:: 3.28
 %End
 
     static QgsExternalStorageRegistry *externalStorageRegistry() /KeepReference/;

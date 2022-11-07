@@ -25,19 +25,16 @@
 #include "qgslogger.h"
 #include "qgsrendercontext.h"
 #include "qgsmaplayer.h"
-#include "qgsproject.h"
 #include "qgsmaplayerrenderer.h"
-#include "qgsmaplayerstylemanager.h"
 #include "qgsmaprenderercache.h"
+#include "qgsrasterlayer.h"
 #include "qgsmessagelog.h"
 #include "qgspallabeling.h"
 #include "qgsexception.h"
 #include "qgslabelingengine.h"
 #include "qgsmaplayerlistutils_p.h"
 #include "qgsvectorlayerlabeling.h"
-#include "qgssettings.h"
 #include "qgsexpressioncontextutils.h"
-#include "qgssymbol.h"
 #include "qgsrenderer.h"
 #include "qgssymbollayer.h"
 #include "qgsvectorlayerutils.h"
@@ -47,6 +44,7 @@
 #include "qgsvectorlayerrenderer.h"
 #include "qgsrendereditemresults.h"
 #include "qgsmaskpaintdevice.h"
+#include "qgsrasterrenderer.h"
 
 ///@cond PRIVATE
 
@@ -257,7 +255,8 @@ bool QgsMapRendererJob::prepareLabelCache() const
     // we may need to clear label cache and re-register labeled features - check for that here
 
     // can we reuse the cached label solution?
-    bool canUseCache = canCache && qgis::listToSet( mCache->dependentLayers( LABEL_CACHE_ID ) ) == labeledLayers;
+    const QList< QgsMapLayer * > labelDependentLayers = mCache->dependentLayers( LABEL_CACHE_ID );
+    bool canUseCache = canCache && QSet< QgsMapLayer * >( labelDependentLayers.begin(), labelDependentLayers.end() ) == labeledLayers;
     if ( !canUseCache )
     {
       // no - participating layers have changed
@@ -529,9 +528,23 @@ std::vector<LayerRenderJob> QgsMapRendererJob::prepareJobs( QPainter *painter, Q
 
     job.blendMode = ml->blendMode();
 
-    // raster layer opacity is handled directly within the raster layer renderer, so don't
-    // apply default opacity handling here!
-    job.opacity = ml->type() != QgsMapLayerType::RasterLayer ? ml->opacity() : 1.0;
+    if ( ml->type() == QgsMapLayerType::RasterLayer )
+    {
+      // raster layers are abnormal wrt opacity handling -- opacity is sometimes handled directly within the raster layer renderer
+      QgsRasterLayer *rl = qobject_cast< QgsRasterLayer * >( ml );
+      if ( rl->renderer()->flags() & Qgis::RasterRendererFlag::InternalLayerOpacityHandling )
+      {
+        job.opacity = 1.0;
+      }
+      else
+      {
+        job.opacity = ml->opacity();
+      }
+    }
+    else
+    {
+      job.opacity = ml->opacity();
+    }
 
     // if we can use the cache, let's do it and avoid rendering!
     if ( !mSettings.testFlag( Qgis::MapSettingsFlag::ForceVectorOutput )

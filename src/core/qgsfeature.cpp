@@ -183,6 +183,9 @@ void QgsFeature::setGeometry( std::unique_ptr<QgsAbstractGeometry> geometry )
 
 void QgsFeature::clearGeometry()
 {
+  if ( d->geometry.isNull() && d->valid )
+    return;
+
   setGeometry( QgsGeometry() );
 }
 
@@ -308,6 +311,14 @@ QVariant QgsFeature::attribute( int fieldIdx ) const
     return QVariant();
 
   return d->attributes.at( fieldIdx );
+}
+
+bool QgsFeature::isUnsetValue( int fieldIdx ) const
+{
+  if ( fieldIdx < 0 || fieldIdx >= d->attributes.count() )
+    return false;
+
+  return d->attributes.at( fieldIdx ).userType() == QMetaType::type( "QgsUnsetAttributeValue" );
 }
 
 const QgsSymbol *QgsFeature::embeddedSymbol() const

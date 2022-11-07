@@ -124,6 +124,11 @@ QgsServerSettings *QgsServerInterfaceImpl::serverSettings()
   return mServerSettings;
 }
 
+void QgsServerInterfaceImpl::reloadSettings()
+{
+  mServerSettings->load();
+}
+
 QStringList QgsServerInterfaceImpl::sbLoadedProjects()
 {
 	return QgsConfigCache::instance()->sbLoadedProjects();

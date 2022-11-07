@@ -37,10 +37,8 @@
 #include "qgsgeometry.h"
 #include "qgsvectorfilewriter.h"
 #include "qgsexpressioncontext.h"
-#include "qgsxmlutils.h"
 #include "qgsreferencedgeometry.h"
 #include "qgssettings.h"
-#include "qgsmessagelog.h"
 #include "qgsvectorlayer.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgsprintlayout.h"
@@ -639,6 +637,7 @@ class DummyParameterType : public QgsProcessingParameterType
 
 class DummyPluginLayer: public QgsPluginLayer
 {
+    Q_OBJECT
   public:
 
     DummyPluginLayer( const QString &layerType, const QString &layerName ): QgsPluginLayer( layerType, layerName )
@@ -4231,6 +4230,12 @@ void TestQgsProcessing::parameterFile()
   QCOMPARE( def->valueAsJsonObject( "uri='complex' username=\"complex\"", context ), QVariant( QStringLiteral( "uri='complex' username=\"complex\"" ) ) );
   QCOMPARE( def->valueAsJsonObject( QStringLiteral( "c:\\test\\new data\\test.dat" ), context ), QVariant( QStringLiteral( "c:\\test\\new data\\test.dat" ) ) );
 
+  const QString testDataDir = QStringLiteral( TEST_DATA_DIR ) + '/'; //defined in CmakeLists.txt
+  // ensure valueAsJsonObject doesn't try to load a file path as a layer
+  QCOMPARE( context.temporaryLayerStore()->count(), 0 );
+  QCOMPARE( def->valueAsJsonObject( QVariant( testDataDir + QStringLiteral( "tenbytenraster.asc" ) ), context ), QVariant( testDataDir + QStringLiteral( "tenbytenraster.asc" ) ) );
+  QCOMPARE( context.temporaryLayerStore()->count(), 0 );
+
   bool ok = false;
   QCOMPARE( def->valueAsString( QVariant(), context, ok ), QString() );
   QVERIFY( ok );
@@ -4240,6 +4245,11 @@ void TestQgsProcessing::parameterFile()
   QVERIFY( ok );
   QCOMPARE( def->valueAsString( QStringLiteral( "c:\\test\\new data\\test.dat" ), context, ok ), QStringLiteral( "c:\\test\\new data\\test.dat" ) );
   QVERIFY( ok );
+  // ensure valueAsString doesn't try to load a file path as a layer
+  QCOMPARE( context.temporaryLayerStore()->count(), 0 );
+  QCOMPARE( def->valueAsString( QVariant( testDataDir + QStringLiteral( "tenbytenraster.asc" ) ), context, ok ), testDataDir + QStringLiteral( "tenbytenraster.asc" ) );
+  QVERIFY( ok );
+  QCOMPARE( context.temporaryLayerStore()->count(), 0 );
 
   QString pythonCode = def->asPythonString();
   QCOMPARE( pythonCode, QStringLiteral( "QgsProcessingParameterFile('non_optional', '', behavior=QgsProcessingParameterFile.File, extension='.bmp', defaultValue='abc.bmp')" ) );
@@ -9708,8 +9718,8 @@ void TestQgsProcessing::parameterMeshDatasetGroups()
   QgsProject project;
   context.setProject( &project );
 
-  QCOMPARE( QgsProcessingParameterMeshDatasetGroups::valueAsDatasetGroup( QVariant() ), QList<int>( {0} ) );
-  QCOMPARE( QgsProcessingParameterMeshDatasetGroups::valueAsDatasetGroup( QVariantList() ), QList<int>( {0} ) );
+  QCOMPARE( QgsProcessingParameterMeshDatasetGroups::valueAsDatasetGroup( QVariant() ), QList<int>() );
+  QCOMPARE( QgsProcessingParameterMeshDatasetGroups::valueAsDatasetGroup( QVariantList() ), QList<int>() );
   QCOMPARE( QgsProcessingParameterMeshDatasetGroups::valueAsDatasetGroup( 3 ), QList<int>( {3} ) );
   QCOMPARE( QgsProcessingParameterMeshDatasetGroups::valueAsDatasetGroup( QVariant( "3" ) ), QList<int>( {3} ) );
   QCOMPARE( QgsProcessingParameterMeshDatasetGroups::valueAsDatasetGroup( QVariantList( { "3", "4", "5"} ) ), QList<int>( {3, 4, 5 } ) );
@@ -10946,14 +10956,14 @@ void TestQgsProcessing::generateIteratingDestination()
   def.sink = QgsProperty::fromValue( "ape.shp" );
   def.destinationProject = &p;
   QVariant res = QgsProcessingUtils::generateIteratingDestination( def, 2, context );
-  QVERIFY( res.canConvert<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( res.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QgsProcessingOutputLayerDefinition fromVar = qvariant_cast<QgsProcessingOutputLayerDefinition>( res );
   QCOMPARE( fromVar.sink.staticValue().toString(), QStringLiteral( "ape_2.shp" ) );
   QCOMPARE( fromVar.destinationProject, &p );
 
   def.sink = QgsProperty::fromExpression( "'ape' || '.shp'" );
   res = QgsProcessingUtils::generateIteratingDestination( def, 2, context );
-  QVERIFY( res.canConvert<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( res.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   fromVar = qvariant_cast<QgsProcessingOutputLayerDefinition>( res );
   QCOMPARE( fromVar.sink.staticValue().toString(), QStringLiteral( "ape_2.shp" ) );
   QCOMPARE( fromVar.destinationProject, &p );
@@ -10962,7 +10972,7 @@ void TestQgsProcessing::generateIteratingDestination()
   def2.sink = QgsProperty::fromValue( QgsProcessing::TEMPORARY_OUTPUT );
   def2.destinationProject = &p;
   res = QgsProcessingUtils::generateIteratingDestination( def2, 2, context );
-  QVERIFY( res.canConvert<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( res.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   fromVar = qvariant_cast<QgsProcessingOutputLayerDefinition>( res );
   QCOMPARE( fromVar.sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QCOMPARE( fromVar.destinationProject, &p );

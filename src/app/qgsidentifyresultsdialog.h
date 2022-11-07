@@ -27,6 +27,7 @@
 #include "qgswebview.h"
 #include "qgsexpressioncontext.h"
 #include "qgsmaptoolselectionhandler.h"
+#include "qgssettingsentryimpl.h"
 
 #include <QWidget>
 #include <QList>
@@ -132,6 +133,8 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
     QgsIdentifyResultsDialog( QgsMapCanvas *canvas, QWidget *parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags() );
 
     ~QgsIdentifyResultsDialog() override;
+
+    static const inline QgsSettingsEntryBool settingHideNullValues = QgsSettingsEntryBool( QStringLiteral( "hideNullValues" ), QgsSettings::Prefix::MAP, false, QStringLiteral( "Whether to hide attributes with NULL values in the identify feature result" ) );
 
     //! Adds feature from vector layer
     void addFeature( QgsVectorLayer *layer,
@@ -267,6 +270,8 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
 
     void mActionHideDerivedAttributes_toggled( bool checked );
 
+    void mActionHideNullValues_toggled( bool checked );
+
     void mExpandAction_triggered( bool checked ) { Q_UNUSED( checked ) expandAll(); }
     void mCollapseAction_triggered( bool checked ) { Q_UNUSED( checked ) collapseAll(); }
 
@@ -319,7 +324,7 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
 
     void highlightFeature( QTreeWidgetItem *item );
 
-    void doAction( QTreeWidgetItem *item, const QString &action );
+    void doAction( QTreeWidgetItem *item, const QUuid &action );
 
     void doMapLayerAction( QTreeWidgetItem *item, QgsMapLayerAction *action );
 

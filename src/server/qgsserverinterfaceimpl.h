@@ -91,6 +91,8 @@ class SERVER_EXPORT QgsServerInterfaceImpl : public QgsServerInterface
 
     QgsServerSettings *serverSettings() override;
 
+    void reloadSettings() override;
+
     QStringList sbLoadedProjects() override;
 
 	  const QString& sbTenant() override;

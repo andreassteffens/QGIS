@@ -759,7 +759,6 @@ void QgsSpatiaLiteProvider::loadFieldsAbstractInterface( gaiaVectorLayerPtr lyr 
   int ret = sqlite3_get_table( mSqliteHandle, sql.toUtf8().constData(), &results, &rows, &columns, &errMsg );
   if ( ret == SQLITE_OK )
   {
-    int realFieldIndex = 0;
     for ( int i = 1; i <= rows; i++ )
     {
       QString name = QString::fromUtf8( results[( i * columns ) + 1] );
@@ -767,7 +766,12 @@ void QgsSpatiaLiteProvider::loadFieldsAbstractInterface( gaiaVectorLayerPtr lyr 
       if ( name.compare( mGeometryColumn, Qt::CaseInsensitive ) == 0 )
         continue;
 
-      insertDefaultValue( realFieldIndex, QString::fromUtf8( results[( i * columns ) + 4] ) );
+      const QString defaultValue = QString::fromUtf8( results[( i * columns ) + 4] );
+      const int realFieldIndex = mAttributeFields.lookupField( name );
+      if ( realFieldIndex >= 0 )
+      {
+        insertDefaultValue( realFieldIndex, defaultValue );
+      }
 
       QString pk = results[( i * columns ) + 5];
       QString type = results[( i * columns ) + 2];
@@ -798,7 +802,6 @@ void QgsSpatiaLiteProvider::loadFieldsAbstractInterface( gaiaVectorLayerPtr lyr 
       else
         mPrimaryKey.clear();
       mPrimaryKeyAttrs << i - 1;
-      realFieldIndex += 1;
     }
   }
 
@@ -941,7 +944,7 @@ void QgsSpatiaLiteProvider::fetchConstraints()
 
     QString sqlDef = QString::fromUtf8( results[ 1 ] );
     // extract definition
-    QRegularExpression re( QStringLiteral( R"raw(\((.+)\))raw" ) );
+    QRegularExpression re( QStringLiteral( R"raw(\((.+)\))raw" ), QRegularExpression::PatternOption::DotMatchesEverythingOption );
     QRegularExpressionMatch match = re.match( sqlDef );
     if ( match.hasMatch() )
     {
@@ -4264,7 +4267,7 @@ bool QgsSpatiaLiteProvider::addFeatures( QgsFeatureList &flist, Flags flags )
             // use auto-generated value if user hasn't specified a unique value
             ++ia;
           }
-          else if ( v.isNull() )
+          else if ( QgsVariantUtils::isNull( v ) )
           {
             // binding a NULL value
             sqlite3_bind_null( stmt, ++ia );
@@ -4325,6 +4328,10 @@ bool QgsSpatiaLiteProvider::addFeatures( QgsFeatureList &flist, Flags flags )
         // performing actual row insert
         ret = sqlite3_step( stmt );
 
+        char *expandedSql = sqlite3_expanded_sql( stmt );
+        QgsDatabaseQueryLogWrapper logWrapper( QString( expandedSql ), uri( ).uri( false ), QStringLiteral( "spatialite" ), QStringLiteral( "QgsSpatiaLiteProvider" ), QStringLiteral( "addFeatures" ) );
+        sqlite3_free( expandedSql );
+
         sqlite3_finalize( stmt );
 
         if ( ret == SQLITE_DONE || ret == SQLITE_ROW )
@@ -4342,6 +4349,7 @@ bool QgsSpatiaLiteProvider::addFeatures( QgsFeatureList &flist, Flags flags )
           const char *err = sqlite3_errmsg( sqliteHandle( ) );
           errMsg = ( char * ) sqlite3_malloc( ( int ) strlen( err ) + 1 );
           strcpy( errMsg, err );
+          logWrapper.setError( errMsg );
           break;
         }
       }
@@ -4352,7 +4360,7 @@ bool QgsSpatiaLiteProvider::addFeatures( QgsFeatureList &flist, Flags flags )
       ret = exec_sql( sqliteHandle(), QStringLiteral( "RELEASE SAVEPOINT \"%1\"" ).arg( savepointId ), uri().uri(), errMsg, QGS_QUERY_LOG_ORIGIN );
     }
 
-  } // BEGIN statement
+  } // SAVEPOINT statement
 
   if ( ret != SQLITE_OK )
   {
@@ -4366,6 +4374,8 @@ bool QgsSpatiaLiteProvider::addFeatures( QgsFeatureList &flist, Flags flags )
     {
       // ROLLBACK after some previous error
       ( void )exec_sql( sqliteHandle(), QStringLiteral( "ROLLBACK TRANSACTION TO SAVEPOINT \"%1\"" ).arg( savepointId ), uri().uri(), nullptr, QGS_QUERY_LOG_ORIGIN );
+      // Also release the savepoint or it will remain on the stack.
+      ( void ) exec_sql( sqliteHandle(), QStringLiteral( "RELEASE SAVEPOINT \"%1\"" ).arg( savepointId ), uri().uri(), errMsg, QGS_QUERY_LOG_ORIGIN );
     }
   }
   else
@@ -4656,7 +4666,7 @@ bool QgsSpatiaLiteProvider::changeAttributeValues( const QgsChangedAttributesMap
 
         QVariant::Type type = fld.type();
 
-        if ( val.isNull() || !val.isValid() )
+        if ( QgsVariantUtils::isNull( val ) )
         {
           // binding a NULL value
           sql += QStringLiteral( "%1=NULL" ).arg( QgsSqliteUtils::quotedIdentifier( fld.name() ) );

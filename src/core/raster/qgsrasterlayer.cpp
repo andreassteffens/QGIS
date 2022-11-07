@@ -2114,6 +2114,10 @@ bool QgsRasterLayer::readXml( const QDomNode &layer_node, QgsReadWriteContext &c
     {
       flags |= QgsDataProvider::FlagTrustDataSource;
     }
+    if ( mReadFlags & QgsMapLayer::FlagForceReadOnly )
+    {
+      flags |= QgsDataProvider::ForceReadOnly;
+    }
     // read extent
     if ( mReadFlags & QgsMapLayer::FlagReadExtentFromXml )
     {

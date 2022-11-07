@@ -434,7 +434,7 @@ bool QgsVectorLayerFeatureIterator::fetchFeature( QgsFeature &f )
 
   if ( guard.hasStackOverflow() )
   {
-    QgsMessageLog::logMessage( QObject::tr( "Stack overflow, too many nested feature iterators.\nIterated layers:\n%3\n..." ).arg( mSource->id(), guard.topFrames() ), QObject::tr( "General" ), Qgis::MessageLevel::Critical );
+    QgsMessageLog::logMessage( QObject::tr( "Stack overflow, too many nested feature iterators.\nIterated layers:\n%1\n..." ).arg( guard.topFrames() ), QObject::tr( "General" ), Qgis::MessageLevel::Critical );
     return false;
   }
 
@@ -1126,7 +1126,7 @@ void QgsVectorLayerFeatureIterator::FetchJoinInfo::addJoinedAttributesDirect( Qg
 
   subsetString.append( QStringLiteral( "\"%1\"" ).arg( joinFieldName ) );
 
-  if ( joinValue.isNull() )
+  if ( QgsVariantUtils::isNull( joinValue ) )
   {
     subsetString += QLatin1String( " IS NULL" );
   }

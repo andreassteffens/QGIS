@@ -447,6 +447,7 @@ class QgsOracleProviderMetadata final: public QgsProviderMetadata
     bool saveStyle( const QString &uri, const QString &qmlStyle, const QString &sldStyle, const QString &styleName,
                     const QString &styleDescription, const QString &uiFileContent, bool useAsDefault, QString &errCause ) override;
     void cleanupProvider() override;
+    void initProvider() override;
     Qgis::VectorExportResult createEmptyLayer( const QString &uri,
         const QgsFields &fields, QgsWkbTypes::Type wkbType,
         const QgsCoordinateReferenceSystem &srs, bool overwrite,
@@ -466,6 +467,12 @@ class QgsOracleProviderMetadata final: public QgsProviderMetadata
     QVariantMap decodeUri( const QString &uri ) const override;
     QString encodeUri( const QVariantMap &parts ) const override;
     QList< QgsMapLayerType > supportedLayerTypes() const override;
+
+  private:
+
+    // helper method to check if LAYER_STYLES table exists
+    bool layerStylesTableExists( QgsOracleConn *conn, const QgsDataSourceUri &dsUri, QString &errCause );
+
 };
 
 #ifdef HAVE_GUI
@@ -474,6 +481,7 @@ class QgsOracleProviderGuiMetadata final: public QgsProviderGuiMetadata
   public:
     QgsOracleProviderGuiMetadata();
     QList<QgsSourceSelectProvider *> sourceSelectProviders() override;
+    QList<QgsProjectStorageGuiProvider *> projectStorageGuiProviders() override;
     void registerGui( QMainWindow *mainWindow ) override;
 };
 #endif

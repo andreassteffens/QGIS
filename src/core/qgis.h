@@ -727,6 +727,26 @@ class CORE_EXPORT Qgis
     Q_ENUM( RasterResamplingStage )
 
     /**
+     * Flags which control behavior of raster renderers.
+     *
+     * \since QGIS 3.28
+     */
+    enum class RasterRendererFlag : int
+    {
+      InternalLayerOpacityHandling = 1 << 0, //!< The renderer internally handles the raster layer's opacity, so the default layer level opacity handling should not be applied.
+    };
+
+    /**
+     * Flags which control behavior of raster renderers.
+     *
+     * \since QGIS 3.28
+     */
+    Q_DECLARE_FLAGS( RasterRendererFlags, RasterRendererFlag )
+
+    Q_ENUM( RasterRendererFlag )
+    Q_FLAG( RasterRendererFlags )
+
+    /**
      * Type of error that can occur during mesh frame editing.
      *
      * \since QGIS 3.22
@@ -782,6 +802,39 @@ class CORE_EXPORT Qgis
       RemoveFromSelection, //!< Remove from current selection
     };
     Q_ENUM( SelectBehavior )
+
+    /**
+     * Geometry relationship test to apply for selecting features.
+     *
+     * \since QGIS 3.28
+     */
+    enum class SelectGeometryRelationship : int
+    {
+      Intersect, //!< Select where features intersect the reference geometry
+      Within, //!< Select where features are within the reference geometry
+    };
+    Q_ENUM( SelectGeometryRelationship )
+
+    /**
+     * Flags which control feature selection behavior.
+     *
+     * \since QGIS 3.28
+     */
+    enum class SelectionFlag : int
+    {
+      SingleFeatureSelection = 1 << 0, //!< Select only a single feature, picking the "best" match for the selection geometry
+      ToggleSelection = 1 << 1, //!< Enables a "toggle" selection mode, where previously selected matching features will be deselected and previously deselected features will be selected. This flag works only when the SingleFeatureSelection flag is also set.
+    };
+
+    /**
+     * Flags which control feature selection behavior.
+     *
+     * \since QGIS 3.28
+     */
+    Q_DECLARE_FLAGS( SelectionFlags, SelectionFlag )
+
+    Q_ENUM( SelectionFlag )
+    Q_FLAG( SelectionFlags )
 
     /**
      * Specifies the result of a vector layer edit operation
@@ -983,6 +1036,18 @@ class CORE_EXPORT Qgis
       Bevel SIP_MONKEYPATCH_COMPAT_NAME( JoinStyleBevel ), //!< Use beveled joins
     };
     Q_ENUM( JoinStyle )
+
+    /**
+     * Algorithms to use when repairing invalid geometries.
+     *
+     * \since QGIS 3.28
+     */
+    enum class MakeValidMethod : int
+    {
+      Linework = 0, //!< Combines all rings into a set of noded lines and then extracts valid polygons from that linework.
+      Structure = 1, //!< Structured method, first makes all rings valid and then merges shells and subtracts holes from shells to generate valid result. Assumes that holes and shells are correctly categorized. Requires GEOS 3.10+.
+    };
+    Q_ENUM( MakeValidMethod )
 
     /**
      * Feature request spatial filter types.
@@ -1228,6 +1293,25 @@ class CORE_EXPORT Qgis
     Q_ENUM( TemporalIntervalMatchMethod )
 
     /**
+     * Flags for raster layer temporal capabilities.
+     *
+     * \since QGIS 3.28
+     */
+    enum class RasterTemporalCapabilityFlag : int
+    {
+      RequestedTimesMustExactlyMatchAllAvailableTemporalRanges = 1 << 0, //!< If present, indicates that the provider must only request temporal values which are exact matches for the values present in QgsRasterDataProviderTemporalCapabilities::allAvailableTemporalRanges().
+    };
+    Q_ENUM( RasterTemporalCapabilityFlag )
+
+    /**
+     * Flags for raster layer temporal capabilities.
+     *
+     * \since QGIS 3.28
+     */
+    Q_DECLARE_FLAGS( RasterTemporalCapabilityFlags, RasterTemporalCapabilityFlag )
+    Q_ENUM( RasterTemporalCapabilityFlags )
+
+    /**
      * Indicates the direction (forward or inverse) of a transform.
      *
      * \since QGIS 3.22
@@ -1336,6 +1420,83 @@ class CORE_EXPORT Qgis
     Q_ENUM( TextRenderFormat )
 
     /**
+     * Text orientations.
+     *
+     * \note Prior to QGIS 3.28 this was available as QgsTextFormat::TextOrientation
+     *
+     * \since QGIS 3.28
+     */
+    enum class TextOrientation SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsTextFormat, TextOrientation ) : int
+      {
+      Horizontal SIP_MONKEYPATCH_COMPAT_NAME( HorizontalOrientation ), //!< Horizontally oriented text
+      Vertical SIP_MONKEYPATCH_COMPAT_NAME( VerticalOrientation ), //!< Vertically oriented text
+      RotationBased SIP_MONKEYPATCH_COMPAT_NAME( RotationBasedOrientation ), //!< Horizontally or vertically oriented text based on rotation (only available for map labeling)
+    };
+    Q_ENUM( TextOrientation )
+
+    /**
+     * Text layout modes.
+     *
+     * \note Prior to QGIS 3.28 this was available as QgsTextRenderer::DrawMode
+     *
+     * \since QGIS 3.28
+     */
+    enum class TextLayoutMode SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsTextRenderer, DrawMode ) : int
+      {
+      Rectangle SIP_MONKEYPATCH_COMPAT_NAME( Rect ), //!< Text within rectangle layout mode
+      Point, //!< Text at point of origin layout mode
+      Labeling SIP_MONKEYPATCH_COMPAT_NAME( Label ), //!< Labeling-specific layout mode
+    };
+    Q_ENUM( TextLayoutMode )
+
+    /**
+     * Text components.
+     *
+     * \note Prior to QGIS 3.28 this was available as QgsTextRenderer::TextPart
+     *
+     * \since QGIS 3.28
+     */
+    enum class TextComponent SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsTextRenderer, TextPart ) : int
+      {
+      Text, //!< Text component
+      Buffer, //!< Buffer component
+      Background, //!< Background shape
+      Shadow, //!< Drop shadow
+    };
+    Q_ENUM( TextComponent )
+
+    /**
+     * Text horizontal alignment.
+     *
+     * \note Prior to QGIS 3.28 this was available as QgsTextRenderer::HAlignment
+     *
+     * \since QGIS 3.28
+     */
+    enum class TextHorizontalAlignment SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsTextRenderer, HAlignment ) : int
+      {
+      Left SIP_MONKEYPATCH_COMPAT_NAME( AlignLeft ), //!< Left align
+      Center SIP_MONKEYPATCH_COMPAT_NAME( AlignCenter ), //!< Center align
+      Right SIP_MONKEYPATCH_COMPAT_NAME( AlignRight ), //!< Right align
+      Justify SIP_MONKEYPATCH_COMPAT_NAME( AlignJustify ), //!< Justify align
+    };
+    Q_ENUM( TextHorizontalAlignment )
+
+    /**
+     * Text vertical alignment.
+     *
+     * \note Prior to QGIS 3.28 this was available as QgsTextRenderer::VAlignment
+     *
+     * \since QGIS 3.28
+     */
+    enum class TextVerticalAlignment SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsTextRenderer, VAlignment ) : int
+      {
+      Top SIP_MONKEYPATCH_COMPAT_NAME( AlignTop ), //!< Align to top
+      VerticalCenter SIP_MONKEYPATCH_COMPAT_NAME( AlignVCenter ), //!< Center align
+      Bottom SIP_MONKEYPATCH_COMPAT_NAME( AlignBottom ), //!< Align to bottom
+    };
+    Q_ENUM( TextVerticalAlignment )
+
+    /**
      * Rendering subcomponent properties.
      *
      * \since QGIS 3.22
@@ -1398,6 +1559,14 @@ class CORE_EXPORT Qgis
       HalfArc, //!< A line-only half arc (since QGIS 3.20)
       ThirdArc, //!< A line-only one third arc (since QGIS 3.20)
       QuarterArc, //!< A line-only one quarter arc (since QGIS 3.20)
+      ParallelogramRight, //!< Parallelogram that slants right (since QGIS 3.28)
+      ParallelogramLeft, //!< Parallelogram that slants left (since QGIS 3.28)
+      Trapezoid, //!< Trapezoid (since QGIS 3.28)
+      Shield, //!< A shape consisting of a triangle attached to a rectangle (since QGIS 3.28)
+      DiamondStar, //!< A 4-sided star (since QGIS 3.28)
+      Heart, //!< Heart (since QGIS 3.28)
+      Decagon, //!< Decagon (since QGIS 3.28)
+      RoundedSquare, //!< A square with rounded corners (since QGIS 3.28)
     };
     Q_ENUM( MarkerShape )
 
@@ -1949,6 +2118,7 @@ class CORE_EXPORT Qgis
       DontStoreOriginalStyles SIP_MONKEYPATCH_COMPAT_NAME( FlagDontStoreOriginalStyles ) = 1 << 3, //!< Skip the initial XML style storage for layers. Useful for minimising project load times in non-interactive contexts.
       DontLoad3DViews SIP_MONKEYPATCH_COMPAT_NAME( FlagDontLoad3DViews ) = 1 << 4, //!< Skip loading 3D views (since QGIS 3.26)
       DontLoadProjectStyles = 1 << 5, //!< Skip loading project style databases (deprecated -- use ProjectCapability::ProjectStyles flag instead)
+      ForceReadOnlyLayers = 1 << 6, //!< Open layers in a read-only mode. (since QGIS 3.28)
     };
     Q_ENUM( ProjectReadFlag )
 
@@ -1983,6 +2153,97 @@ class CORE_EXPORT Qgis
      */
     Q_DECLARE_FLAGS( ProjectCapabilities, ProjectCapability )
     Q_FLAG( ProjectCapabilities )
+
+    /**
+     * Available MapBox GL style source types.
+     *
+     * \since QGIS 3.28
+     */
+    enum class MapBoxGlStyleSourceType : int
+    {
+      Vector, //!< Vector source
+      Raster, //!< Raster source
+      RasterDem, //!< Raster DEM source
+      GeoJson, //!< GeoJSON source
+      Image, //!< Image source
+      Video, //!< Video source
+      Unknown, //!< Other/unknown source type
+    };
+    Q_ENUM( MapBoxGlStyleSourceType )
+
+    /**
+     * Available ArcGIS REST service types.
+     *
+     * \note Prior to QGIS 3.26 this was available as QgsArcGisPortalUtils::ItemType.
+     *
+     * \since QGIS 3.28
+     */
+    enum class ArcGisRestServiceType SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsArcGisPortalUtils, ItemType ) : int
+      {
+      FeatureServer SIP_MONKEYPATCH_COMPAT_NAME( FeatureService ), //!< FeatureServer
+      MapServer SIP_MONKEYPATCH_COMPAT_NAME( MapService ), //!< MapServer
+      ImageServer SIP_MONKEYPATCH_COMPAT_NAME( ImageService ), //!< ImageServer
+      GlobeServer, //!< GlobeServer
+      GPServer, //!< GPServer
+      GeocodeServer, //!< GeocodeServer
+      Unknown, //!< Other unknown/unsupported type
+    };
+    Q_ENUM( ArcGisRestServiceType )
+
+    /**
+     * Relationship types.
+     *
+     * \note Prior to QGIS 3.28 this was available as QgsRelation::RelationType.
+     *
+     * \since QGIS 3.28
+     */
+    enum class RelationshipType SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsRelation, RelationType ) : int
+      {
+      Normal, //!< A normal relation
+      Generated, //!< A generated relation is a child of a polymorphic relation
+    };
+    Q_ENUM( RelationshipType )
+
+    /**
+     * Relationship strength.
+     *
+     * \note Prior to QGIS 3.28 this was available as QgsRelation::RelationStrength.
+     *
+     * \since QGIS 3.28
+     */
+    enum class RelationshipStrength SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsRelation, RelationStrength ) : int
+      {
+      Association, //!< Loose relation, related elements are not part of the parent and a parent copy will not copy any children.
+      Composition, //!< Fix relation, related elements are part of the parent and a parent copy will copy any children or delete of parent will delete children
+    };
+    Q_ENUM( RelationshipStrength )
+
+    /**
+     * Relationship cardinality.
+     *
+     * \since QGIS 3.28
+     */
+    enum class RelationshipCardinality : int
+    {
+      OneToOne, //!< One to one relationship
+      OneToMany, //!< One to many relationship
+      ManyToOne, //!< Many to one relationship
+      ManyToMany, //!< Many to many relationship
+    };
+    Q_ENUM( RelationshipCardinality )
+
+    /**
+     * Formats for displaying coordinates
+     *
+     * \since QGIS 3.28
+     */
+    enum class CoordinateDisplayType : int
+    {
+      MapCrs, //!< Map CRS
+      MapGeographic, //!< Map Geographic CRS equivalent (stays unchanged if the map CRS is geographic)
+      CustomCrs, //!< Custom CRS
+    };
+    Q_ENUM( CoordinateDisplayType )
 
     /**
      * Identify search radius in mm
@@ -2127,8 +2388,9 @@ Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::ProfileGeneratorFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::ProjectReadFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::ProjectCapabilities )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::CoordinateTransformationFlags )
-
-
+Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::RasterTemporalCapabilityFlags )
+Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::SelectionFlags )
+Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::RasterRendererFlags )
 
 // hack to workaround warnings when casting void pointers
 // retrieved from QLibrary::resolve to function pointers.
@@ -2365,36 +2627,15 @@ namespace qgis
   template<class T>
   QSet<T> listToSet( const QList<T> &list )
   {
-#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
-    return list.toSet();
-#else
     return QSet<T>( list.begin(), list.end() );
-#endif
   }
 
   template<class T>
   QList<T> setToList( const QSet<T> &set )
   {
-#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
-    return set.toList();
-#else
     return QList<T>( set.begin(), set.end() );
-#endif
   }
 }
-
-#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
-namespace std
-{
-  template<> struct hash<QString>
-  {
-    std::size_t operator()( const QString &s ) const noexcept
-    {
-      return ( size_t ) qHash( s );
-    }
-  };
-}
-#endif
 
 ///@endcond
 #endif

@@ -1742,7 +1742,7 @@ void QgsWcsDownloadHandler::cacheReplyFinished()
   if ( mCacheReply->error() == QNetworkReply::NoError )
   {
     const QVariant redirect = mCacheReply->attribute( QNetworkRequest::RedirectionTargetAttribute );
-    if ( !redirect.isNull() )
+    if ( !QgsVariantUtils::isNull( redirect ) )
     {
       mCacheReply->deleteLater();
 
@@ -1773,7 +1773,7 @@ void QgsWcsDownloadHandler::cacheReplyFinished()
 
     const QVariant status = mCacheReply->attribute( QNetworkRequest::HttpStatusCodeAttribute );
     QgsDebugMsg( QStringLiteral( "status = %1" ).arg( status.toInt() ) );
-    if ( !status.isNull() && status.toInt() >= 400 )
+    if ( !QgsVariantUtils::isNull( status ) && status.toInt() >= 400 )
     {
       const QVariant phrase = mCacheReply->attribute( QNetworkRequest::HttpReasonPhraseAttribute );
 

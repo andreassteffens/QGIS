@@ -35,9 +35,9 @@
 #include "qgspanelwidget.h"
 #include "qgsprocessingmultipleselectiondialog.h"
 #include "qgsprocessinghelpeditorwidget.h"
+#include "qgsscreenhelper.h"
 
 #include <QShortcut>
-#include <QDesktopWidget>
 #include <QKeySequence>
 #include <QFileDialog>
 #include <QPrinter>
@@ -83,6 +83,8 @@ QgsModelDesignerDialog::QgsModelDesignerDialog( QWidget *parent, Qt::WindowFlags
   , mToolsActionGroup( new QActionGroup( this ) )
 {
   setupUi( this );
+
+  mScreenHelper = new QgsScreenHelper( this );
 
   setAttribute( Qt::WA_DeleteOnClose );
   setDockOptions( dockOptions() | QMainWindow::GroupedDragging );
@@ -628,7 +630,7 @@ void QgsModelDesignerDialog::zoomActual()
 {
   QPointF point = mView->mapToScene( QPoint( mView->viewport()->width() / 2.0, mView->viewport()->height() / 2 ) );
   mView->resetTransform();
-  mView->scale( QgsApplication::desktop()->logicalDpiX() / 96, QgsApplication::desktop()->logicalDpiX() / 96 );
+  mView->scale( mScreenHelper->screenDpi() / 96, mScreenHelper->screenDpi() / 96 );
   mView->centerOn( point );
 }
 
@@ -711,7 +713,15 @@ void QgsModelDesignerDialog::exportToPdf()
   QPrinter printer;
   printer.setOutputFormat( QPrinter::PdfFormat );
   printer.setOutputFileName( filename );
-  printer.setPaperSize( QSizeF( printerRect.width(), printerRect.height() ), QPrinter::DevicePixel );
+
+  const double scaleFactor = 96 / 25.4; // based on 96 dpi sizes
+
+  QPageLayout pageLayout( QPageSize( totalRect.size() / scaleFactor, QPageSize::Millimeter ),
+                          QPageLayout::Portrait,
+                          QMarginsF( 0, 0, 0, 0 ) );
+  pageLayout.setMode( QPageLayout::FullPageMode );
+  printer.setPageLayout( pageLayout );
+
   printer.setFullPage( true );
 
   QPainter painter( &printer );

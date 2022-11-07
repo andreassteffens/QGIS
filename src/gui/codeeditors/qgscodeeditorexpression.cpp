@@ -27,7 +27,6 @@ QgsCodeEditorExpression::QgsCodeEditorExpression( QWidget *parent )
   {
     setTitle( tr( "Expression Editor" ) );
   }
-  setFoldingVisible( false );
   setAutoCompletionCaseSensitivity( false );
   QgsCodeEditorExpression::initializeLexer(); // avoid cppcheck warning by explicitly specifying namespace
 }
@@ -41,6 +40,12 @@ void QgsCodeEditorExpression::setExpressionContext( const QgsExpressionContext &
   {
     mVariables << '@' + var;
   }
+
+  // always show feature variables in autocomplete -- they may not be available in the context
+  // at time of showing an expression builder, but they'll generally be available at evaluation time.
+  mVariables << QStringLiteral( "@feature" );
+  mVariables << QStringLiteral( "@id" );
+  mVariables << QStringLiteral( "@geometry" );
 
   mContextFunctions = context.functionNames();
 

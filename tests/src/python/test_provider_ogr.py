@@ -48,7 +48,13 @@ from qgis.core import (
     QgsMapLayerType,
     QgsProviderSublayerDetails,
     Qgis,
-    QgsDirectoryItem
+    QgsDirectoryItem,
+    QgsAbstractDatabaseProviderConnection,
+    QgsProviderConnectionException,
+    QgsProviderMetadata,
+    QgsRelation,
+    QgsUnsetAttributeValue,
+    QgsFieldConstraints
 )
 
 from qgis.gui import (
@@ -181,7 +187,7 @@ class PyQgsOGRProvider(unittest.TestCase):
         vl = QgsVectorLayer('{}|layername=routes'.format(datasource), 'test', 'ogr')
         self.assertTrue(vl.isValid())
         f = next(vl.getFeatures())
-        self.assertEqual(f.geometry().wkbType(), QgsWkbTypes.LineString25D)
+        self.assertEqual(f.geometry().wkbType(), QgsWkbTypes.LineStringZ)
         self.assertEqual(f.geometry().constGet().pointN(0).z(), 1)
         self.assertEqual(f.geometry().constGet().pointN(1).z(), 2)
         self.assertEqual(f.geometry().constGet().pointN(2).z(), 3)
@@ -456,6 +462,58 @@ class PyQgsOGRProvider(unittest.TestCase):
         # Completely reload file
         vl = QgsVectorLayer(datasource, 'test', 'ogr')
         self.assertEqual(len(vl.fields()), 2)
+
+    def testAddFeatureWithUnsetValue(self):
+        """
+        Test adding features with unset values
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tmpfile = os.path.join(temp_dir, 'test_unset_value.gpkg')
+
+            ds = ogr.GetDriverByName('GPKG').CreateDataSource(tmpfile)
+            ds.ExecuteSQL(
+                "CREATE TABLE test(fid INTEGER PRIMARY KEY, name TEXT DEFAULT 'default_value', auto_number INTEGER DEFAULT 55)")
+
+            ds = None
+
+            layer = QgsVectorLayer(tmpfile, 'test')
+            self.assertTrue(layer.isValid())
+
+            self.assertFalse(
+                layer.dataProvider().skipConstraintCheck(0, QgsFieldConstraints.ConstraintUnique, 5))
+            self.assertTrue(layer.dataProvider().skipConstraintCheck(0, QgsFieldConstraints.ConstraintUnique, 'Autogenerate'))
+            self.assertTrue(
+                layer.dataProvider().skipConstraintCheck(0, QgsFieldConstraints.ConstraintUnique, QgsUnsetAttributeValue()))
+            self.assertTrue(
+                layer.dataProvider().skipConstraintCheck(0, QgsFieldConstraints.ConstraintUnique, QgsUnsetAttributeValue('Autogenerate')))
+            self.assertFalse(layer.dataProvider().skipConstraintCheck(1, QgsFieldConstraints.ConstraintUnique, 'my name'))
+            self.assertFalse(
+                layer.dataProvider().skipConstraintCheck(1, QgsFieldConstraints.ConstraintUnique, NULL))
+            self.assertTrue(
+                layer.dataProvider().skipConstraintCheck(1, QgsFieldConstraints.ConstraintUnique, QgsUnsetAttributeValue()))
+            self.assertFalse(
+                layer.dataProvider().skipConstraintCheck(2, QgsFieldConstraints.ConstraintUnique, 11))
+            self.assertTrue(
+                layer.dataProvider().skipConstraintCheck(2, QgsFieldConstraints.ConstraintUnique, QgsUnsetAttributeValue()))
+
+            feature = QgsFeature(layer.fields())
+            feature.setAttributes([1, 'test1', 11])
+            self.assertTrue(layer.dataProvider().addFeature(feature))
+            f1 = feature.id()
+
+            feature.setAttributes([QgsUnsetAttributeValue('Autonumber'), 'test2', 22])
+            self.assertTrue(layer.dataProvider().addFeature(feature))
+            f2 = feature.id()
+
+            del layer
+            layer = QgsVectorLayer(tmpfile, 'test')
+
+            # read back in features and test
+            f1_read = layer.getFeature(f1)
+            self.assertEqual(f1_read.attributes(), [1, 'test1', 11])
+
+            f2_read = layer.getFeature(f2)
+            self.assertEqual(f2_read.attributes(), [f2, 'test2', 22])
 
     def testDataItems(self):
         dataitem = QgsDirectoryItem(None, 'name', unitTestDataPath())
@@ -1742,7 +1800,7 @@ class PyQgsOGRProvider(unittest.TestCase):
         self.assertEqual(res[0].layerNumber(), 0)
         self.assertEqual(res[0].name(), "multipatch")
         self.assertEqual(res[0].description(), '')
-        self.assertEqual(res[0].uri(), TEST_DATA_DIR + "/multipatch.shp|geometrytype=Polygon25D")
+        self.assertEqual(res[0].uri(), TEST_DATA_DIR + "/multipatch.shp|geometrytype=Polygon25D|uniqueGeometryType=yes")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].wkbType(), QgsWkbTypes.PolygonZ)
@@ -1965,7 +2023,7 @@ class PyQgsOGRProvider(unittest.TestCase):
         self.assertEqual(res[0].layerNumber(), 0)
         self.assertEqual(res[0].name(), "fill_styles")
         self.assertEqual(res[0].description(), "")
-        self.assertEqual(res[0].uri(), "{}/mapinfo/fill_styles.TAB|geometrytype=Polygon".format(TEST_DATA_DIR))
+        self.assertEqual(res[0].uri(), "{}/mapinfo/fill_styles.TAB|geometrytype=Polygon|uniqueGeometryType=yes".format(TEST_DATA_DIR))
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].featureCount(), 49)
@@ -2509,7 +2567,7 @@ class PyQgsOGRProvider(unittest.TestCase):
         self.assertEqual(point_layer.featureCount(), 11)
         feature = next(point_layer.getFeatures())
         self.assertTrue(feature.isValid())
-        self.assertEqual(feature.geometry().wkbType(), QgsWkbTypes.Point25D)
+        self.assertEqual(feature.geometry().wkbType(), QgsWkbTypes.PointZ)
         self.assertEqual(feature.geometry().asWkt(),
                          'PointZ (635660.10747100005391985 1768912.79759799991734326 3.36980799999999991)')
 
@@ -2517,9 +2575,341 @@ class PyQgsOGRProvider(unittest.TestCase):
         self.assertEqual(polyline_layer.featureCount(), 2)
         feature = next(polyline_layer.getFeatures())
         self.assertTrue(feature.isValid())
-        self.assertEqual(feature.geometry().wkbType(), QgsWkbTypes.LineString25D)
+        self.assertEqual(feature.geometry().wkbType(), QgsWkbTypes.LineStringZ)
         self.assertEqual(feature.geometry().vertexAt(1).asWkt(),
                          'PointZ (635660.11699699994642287 1768910.93880999996326864 3.33884099999999995)')
+
+    def test_provider_connection_shp(self):
+        """
+        Test creating connections for OGR provider
+        """
+        layer = QgsVectorLayer(TEST_DATA_DIR + '/' + 'lines.shp', 'lines')
+
+        metadata = QgsProviderRegistry.instance().providerMetadata('ogr')
+        # start with a connection which only supports one layer
+        conn = metadata.createConnection(TEST_DATA_DIR + '/' + 'lines.shp', {})
+        self.assertTrue(conn)
+
+        self.assertEqual(conn.tableUri('unused', 'unused'), TEST_DATA_DIR + '/' + 'lines.shp')
+
+        table = conn.table('unused', 'unused')
+        # not set for single layer formats
+        self.assertFalse(table.tableName())
+        self.assertFalse(table.primaryKeyColumns())
+        self.assertEqual(table.geometryColumnCount(), 1)
+        self.assertEqual(len(table.geometryColumnTypes()), 1)
+        self.assertEqual(table.geometryColumnTypes()[0].crs, layer.crs())
+        self.assertEqual(table.geometryColumnTypes()[0].wkbType, QgsWkbTypes.LineString)
+        self.assertEqual(table.flags(), QgsAbstractDatabaseProviderConnection.TableFlag.Vector)
+
+        tables = conn.tables('unused')
+        self.assertEqual(len(tables), 1)
+        table = tables[0]
+        self.assertFalse(table.tableName())
+        self.assertFalse(table.primaryKeyColumns())
+        self.assertEqual(table.geometryColumnCount(), 1)
+        self.assertEqual(len(table.geometryColumnTypes()), 1)
+        self.assertEqual(table.geometryColumnTypes()[0].crs, layer.crs())
+        self.assertEqual(table.geometryColumnTypes()[0].wkbType, QgsWkbTypes.LineString)
+        self.assertEqual(table.flags(), QgsAbstractDatabaseProviderConnection.TableFlag.Vector)
+
+    def test_provider_connection_gdb(self):
+        """
+        Test creating connections for OGR provider
+        """
+        metadata = QgsProviderRegistry.instance().providerMetadata('ogr')
+        # start with a connection which only supports one layer
+        conn = metadata.createConnection(TEST_DATA_DIR + '/' + 'field_alias.gdb', {})
+        self.assertTrue(conn)
+
+        self.assertEqual(conn.tableUri('unused', 'aliases'), TEST_DATA_DIR + '/' + 'field_alias.gdb|layername=aliases')
+
+        with self.assertRaises(QgsProviderConnectionException):
+            conn.table('unused', 'notpresent')
+
+        table = conn.table('unused', 'aliases')
+        self.assertEqual(table.tableName(), 'aliases')
+        self.assertEqual(table.primaryKeyColumns(), ['OBJECTID'])
+        self.assertEqual(table.geometryColumnCount(), 1)
+        self.assertEqual(len(table.geometryColumnTypes()), 1)
+        self.assertEqual(table.geometryColumnTypes()[0].wkbType, QgsWkbTypes.MultiPolygon)
+        self.assertEqual(table.flags(), QgsAbstractDatabaseProviderConnection.TableFlag.Vector)
+
+        # aspatial table
+        table = conn.table('unused', 'fras_aux_aliases')
+        self.assertEqual(table.tableName(), 'fras_aux_aliases')
+        self.assertEqual(table.primaryKeyColumns(), ['OBJECTID'])
+        self.assertEqual(table.geometryColumnCount(), 0)
+        self.assertFalse(table.geometryColumnTypes())
+        self.assertEqual(table.flags(), QgsAbstractDatabaseProviderConnection.TableFlag.Aspatial)
+
+        # test tables
+        conn = metadata.createConnection(TEST_DATA_DIR + '/' + 'featuredataset.gdb', {})
+        tables = conn.tables('unused')
+        self.assertGreaterEqual(len(tables), 4)
+        table = [t for t in tables if t.tableName() == 'fd1_lyr1'][0]
+        self.assertEqual(table.tableName(), 'fd1_lyr1')
+        self.assertEqual(table.primaryKeyColumns(), ['OBJECTID'])
+        self.assertEqual(table.geometryColumnCount(), 1)
+        self.assertEqual(len(table.geometryColumnTypes()), 1)
+        self.assertEqual(table.geometryColumnTypes()[0].wkbType, QgsWkbTypes.Point)
+        self.assertEqual(table.flags(), QgsAbstractDatabaseProviderConnection.TableFlag.Vector)
+
+    def testCreateEmptyDatabase(self):
+        """ Test creating an empty database via the provider metadata """
+        metadata = QgsProviderRegistry.instance().providerMetadata('ogr')
+        self.assertTrue(metadata.capabilities() & QgsProviderMetadata.ProviderMetadataCapability.CreateDatabase)
+
+        # empty path should error out
+        ok, err = metadata.createDatabase('')
+        self.assertFalse(ok)
+        self.assertTrue(err)
+
+        # invalid driver should error out
+        ok, err = metadata.createDatabase('aaa.xyz')
+        self.assertFalse(ok)
+        self.assertTrue(err)
+
+        # non-database driver should error out
+        ok, err = metadata.createDatabase('aaa.tif')
+        self.assertFalse(ok)
+        self.assertTrue(err)
+
+    @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 6, 0), "GDAL 3.6 required")
+    def testDiscoverRelationships(self):
+        table1 = QgsVectorLayer(TEST_DATA_DIR + '/' + 'relationships.gdb|layerName=table1')
+        self.assertTrue(table1.isValid())
+        table2 = QgsVectorLayer(TEST_DATA_DIR + '/' + 'relationships.gdb|layerName=table2')
+        self.assertTrue(table2.isValid())
+        table3 = QgsVectorLayer(TEST_DATA_DIR + '/' + 'relationships.gdb|layerName=table3')
+        self.assertTrue(table3.isValid())
+        table4 = QgsVectorLayer(TEST_DATA_DIR + '/' + 'relationships.gdb|layerName=table4')
+        self.assertTrue(table4.isValid())
+        table6 = QgsVectorLayer(TEST_DATA_DIR + '/' + 'relationships.gdb|layerName=table6')
+        self.assertTrue(table6.isValid())
+        table7 = QgsVectorLayer(TEST_DATA_DIR + '/' + 'relationships.gdb|layerName=table7')
+        self.assertTrue(table7.isValid())
+        table8 = QgsVectorLayer(TEST_DATA_DIR + '/' + 'relationships.gdb|layerName=table8')
+        self.assertTrue(table8.isValid())
+        table9 = QgsVectorLayer(TEST_DATA_DIR + '/' + 'relationships.gdb|layerName=table9')
+        self.assertTrue(table9.isValid())
+        composite_many_to_many = QgsVectorLayer(TEST_DATA_DIR + '/' + 'relationships.gdb|layerName=composite_many_to_many')
+        self.assertTrue(composite_many_to_many.isValid())
+        points = QgsVectorLayer(TEST_DATA_DIR + '/' + 'relationships.gdb|layerName=points')
+        self.assertTrue(points.isValid())
+        points__ATTACH = QgsVectorLayer(TEST_DATA_DIR + '/' + 'relationships.gdb|layerName=points__ATTACH')
+        self.assertTrue(points__ATTACH.isValid())
+        simple_attributed = QgsVectorLayer(TEST_DATA_DIR + '/' + 'relationships.gdb|layerName=simple_attributed')
+        self.assertTrue(simple_attributed.isValid())
+        simple_many_to_many = QgsVectorLayer(TEST_DATA_DIR + '/' + 'relationships.gdb|layerName=simple_many_to_many')
+        self.assertTrue(simple_many_to_many.isValid())
+        all_tables = [table1, table2, table3, table4, table6, table7, table8, table9, composite_many_to_many, points, points__ATTACH, simple_attributed, simple_many_to_many]
+        for table in all_tables:
+            QgsProject.instance().addMapLayer(table)
+
+        relations = table1.dataProvider().discoverRelations(table1, [])
+        # should be no valid relations
+        self.assertFalse(relations)
+
+        relations = table1.dataProvider().discoverRelations(table1, all_tables)
+        self.assertCountEqual([r.id() for r in relations], ['composite_one_to_one', 'simple_many_to_many_forward', 'simple_many_to_many_backward', 'simple_one_to_many', 'simple_relationship_one_to_one'])
+        rel = [r for r in relations if r.name() == 'simple_relationship_one_to_one'][0]
+        self.assertEqual(rel.id(), 'simple_relationship_one_to_one')
+        self.assertEqual(rel.referencedLayer(), table1)
+        self.assertEqual(rel.referencingLayer(), table2)
+        self.assertEqual(rel.strength(), QgsRelation.Association)
+        self.assertEqual(rel.fieldPairs(), {'parent_pk': 'pk'})
+
+        rel = [r for r in relations if r.name() == 'simple_one_to_many'][0]
+        self.assertEqual(rel.id(), 'simple_one_to_many')
+        self.assertEqual(rel.referencedLayer(), table1)
+        self.assertEqual(rel.referencingLayer(), table2)
+        self.assertEqual(rel.strength(), QgsRelation.Association)
+        self.assertEqual(rel.fieldPairs(), {'parent_pk': 'pk'})
+
+        rel = [r for r in relations if r.name() == 'composite_one_to_one'][0]
+        self.assertEqual(rel.id(), 'composite_one_to_one')
+        self.assertEqual(rel.referencedLayer(), table1)
+        self.assertEqual(rel.referencingLayer(), table3)
+        self.assertEqual(rel.strength(), QgsRelation.Composition)
+        self.assertEqual(rel.fieldPairs(), {'parent_pk': 'pk'})
+
+        rel = [r for r in relations if r.id() == 'simple_many_to_many_forward'][0]
+        self.assertEqual(rel.name(), 'simple_many_to_many')
+        self.assertEqual(rel.id(), 'simple_many_to_many_forward')
+        self.assertEqual(rel.referencedLayer(), table1)
+        self.assertEqual(rel.referencingLayer(), simple_many_to_many)
+        self.assertEqual(rel.strength(), QgsRelation.Association)
+        self.assertEqual(rel.fieldPairs(), {'origin_foreign_key': 'pk'})
+
+        rel = [r for r in relations if r.id() == 'simple_many_to_many_backward'][0]
+        self.assertEqual(rel.name(), 'simple_many_to_many')
+        self.assertEqual(rel.id(), 'simple_many_to_many_backward')
+        self.assertEqual(rel.referencedLayer(), table2)
+        self.assertEqual(rel.referencingLayer(), simple_many_to_many)
+        self.assertEqual(rel.strength(), QgsRelation.Association)
+        self.assertEqual(rel.fieldPairs(), {'destination_foreign_key': 'parent_pk'})
+
+        relations = table6.dataProvider().discoverRelations(table6, all_tables)
+        self.assertCountEqual([r.id() for r in relations],
+                              ['composite_many_to_many_forward', 'composite_many_to_many_backward'])
+        rel = [r for r in relations if r.id() == 'composite_many_to_many_forward'][0]
+        self.assertEqual(rel.id(), 'composite_many_to_many_forward')
+        self.assertEqual(rel.referencedLayer(), table6)
+        self.assertEqual(rel.referencingLayer(), composite_many_to_many)
+        self.assertEqual(rel.strength(), QgsRelation.Composition)
+        self.assertEqual(rel.fieldPairs(), {'origin_foreign_key': 'pk'})
+
+        rel = [r for r in relations if r.id() == 'composite_many_to_many_backward'][0]
+        self.assertEqual(rel.id(), 'composite_many_to_many_backward')
+        self.assertEqual(rel.referencedLayer(), table7)
+        self.assertEqual(rel.referencingLayer(), composite_many_to_many)
+        self.assertEqual(rel.strength(), QgsRelation.Composition)
+        self.assertEqual(rel.fieldPairs(), {'dest_foreign_key': 'parent_pk'})
+
+        relations = table8.dataProvider().discoverRelations(table8, all_tables)
+        self.assertCountEqual([r.id() for r in relations],
+                              ['simple_attributed', 'simple_backward_message_direction', 'simple_both_message_direction', 'simple_forward_message_direction'])
+        rel = [r for r in relations if r.id() == 'simple_attributed'][0]
+        self.assertEqual(rel.id(), 'simple_attributed')
+        self.assertEqual(rel.referencedLayer(), table8)
+        self.assertEqual(rel.referencingLayer(), table9)
+        self.assertEqual(rel.strength(), QgsRelation.Association)
+        self.assertEqual(rel.fieldPairs(), {'parent_pk': 'pk'})
+
+        relations = points.dataProvider().discoverRelations(points, all_tables)
+        self.assertCountEqual([r.id() for r in relations],
+                              ['points__ATTACHREL'])
+        rel = [r for r in relations if r.id() == 'points__ATTACHREL'][0]
+        self.assertEqual(rel.id(), 'points__ATTACHREL')
+        self.assertEqual(rel.referencedLayer(), points)
+        self.assertEqual(rel.referencingLayer(), points__ATTACH)
+        self.assertEqual(rel.strength(), QgsRelation.Composition)
+        self.assertEqual(rel.fieldPairs(), {'REL_OBJECTID': 'OBJECTID'})
+
+    @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 6, 0), "GDAL 3.6 required")
+    def test_provider_connection_relationships(self):
+        """
+        Test retrieving relationships via the connections API
+        """
+        metadata = QgsProviderRegistry.instance().providerMetadata('ogr')
+        # start with a connection which only supports one layer
+        conn = metadata.createConnection(TEST_DATA_DIR + '/' + 'relationships.gdb', {})
+        self.assertTrue(conn)
+
+        self.assertTrue(conn.capabilities() & QgsAbstractDatabaseProviderConnection.RetrieveRelationships)
+
+        relationships = conn.relationships()
+        self.assertCountEqual([r.id() for r in relationships],
+                              ['composite_many_to_many',
+                               'composite_one_to_many',
+                               'composite_one_to_one',
+                               'points__ATTACHREL',
+                               'simple_attributed',
+                               'simple_backward_message_direction',
+                               'simple_both_message_direction',
+                               'simple_forward_message_direction',
+                               'simple_many_to_many',
+                               'simple_one_to_many',
+                               'simple_relationship_one_to_one'])
+
+        rel = [r for r in relationships if r.name() == 'simple_relationship_one_to_one'][0]
+        self.assertEqual(rel.id(), 'simple_relationship_one_to_one')
+        self.assertEqual(rel.referencedLayerSource(), TEST_DATA_DIR + '/' + 'relationships.gdb|layername=table1')
+        self.assertEqual(rel.referencedLayerName(), 'table1')
+        self.assertEqual(rel.referencedLayerProvider(), 'ogr')
+        self.assertEqual(rel.referencingLayerSource(), TEST_DATA_DIR + '/' + 'relationships.gdb|layername=table2')
+        self.assertEqual(rel.referencingLayerProvider(), 'ogr')
+        self.assertEqual(rel.referencingLayerName(), 'table2')
+        self.assertEqual(rel.strength(), QgsRelation.Association)
+        self.assertEqual(rel.referencingLayerFields(), ['parent_pk'])
+        self.assertEqual(rel.referencedLayerFields(), ['pk'])
+        self.assertEqual(rel.cardinality(), Qgis.RelationshipCardinality.OneToOne)
+        self.assertEqual(rel.forwardPathLabel(), 'my forward path label')
+        self.assertEqual(rel.backwardPathLabel(), 'my backward path label')
+        self.assertEqual(rel.relatedTableType(), 'feature')
+
+        rel = [r for r in relationships if r.id() == 'composite_many_to_many'][0]
+        self.assertEqual(rel.id(), 'composite_many_to_many')
+        self.assertEqual(rel.name(), 'composite_many_to_many')
+        self.assertEqual(rel.referencedLayerSource(), TEST_DATA_DIR + '/' + 'relationships.gdb|layername=table6')
+        self.assertEqual(rel.referencedLayerProvider(), 'ogr')
+        self.assertEqual(rel.referencedLayerName(), 'table6')
+        self.assertEqual(rel.referencingLayerSource(), TEST_DATA_DIR + '/' + 'relationships.gdb|layername=table7')
+        self.assertEqual(rel.referencingLayerProvider(), 'ogr')
+        self.assertEqual(rel.referencingLayerName(), 'table7')
+        self.assertEqual(rel.mappingTableSource(), TEST_DATA_DIR + '/' + 'relationships.gdb|layername=composite_many_to_many')
+        self.assertEqual(rel.mappingTableProvider(), 'ogr')
+        self.assertEqual(rel.mappingTableName(), 'composite_many_to_many')
+        self.assertEqual(rel.strength(), QgsRelation.Composition)
+        self.assertEqual(rel.cardinality(), Qgis.RelationshipCardinality.ManyToMany)
+        self.assertEqual(rel.referencingLayerFields(), ['parent_pk'])
+        self.assertEqual(rel.mappingReferencingLayerFields(), ['dest_foreign_key'])
+        self.assertEqual(rel.referencedLayerFields(), ['pk'])
+        self.assertEqual(rel.mappingReferencedLayerFields(), ['origin_foreign_key'])
+
+        # with table filter
+        relationships = conn.relationships('', 'table5')
+        self.assertCountEqual([r.id() for r in relationships],
+                              ['composite_one_to_many'])
+
+        rel = [r for r in relationships if r.name() == 'composite_one_to_many'][0]
+        self.assertEqual(rel.id(), 'composite_one_to_many')
+        self.assertEqual(rel.referencedLayerSource(), TEST_DATA_DIR + '/' + 'relationships.gdb|layername=table5')
+        self.assertEqual(rel.referencedLayerProvider(), 'ogr')
+        self.assertEqual(rel.referencingLayerSource(), TEST_DATA_DIR + '/' + 'relationships.gdb|layername=table4')
+        self.assertEqual(rel.referencingLayerProvider(), 'ogr')
+        self.assertEqual(rel.strength(), QgsRelation.Composition)
+        self.assertEqual(rel.cardinality(), Qgis.RelationshipCardinality.OneToMany)
+        self.assertEqual(rel.referencingLayerFields(), ['parent_pk'])
+        self.assertEqual(rel.referencedLayerFields(), ['pk'])
+
+        relationships = conn.relationships('', 'table2')
+        self.assertFalse(relationships)
+
+    def testUniqueGeometryType(self):
+        """
+        Test accessing a layer of type wkbUnknown that contains a single geometry type but also null geometries
+        """
+
+        datasource = os.path.join(self.basetestpath, 'testUniqueGeometryType.csv')
+        with open(datasource, 'wt') as f:
+            f.write('id,WKT\n')
+            f.write('1,"POINT(1 2)"\n')
+            f.write('2,\n')
+
+        metadata = QgsProviderRegistry.instance().providerMetadata('ogr')
+        res = metadata.querySublayers(datasource, Qgis.SublayerQueryFlag.ResolveGeometryType)
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0].uri(), datasource + "|geometrytype=Point|uniqueGeometryType=yes")
+
+        vl = QgsVectorLayer(res[0].uri(), 'test', 'ogr')
+        self.assertTrue(vl.isValid())
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
+        self.assertEqual(vl.featureCount(), 2)
+        self.assertEqual(len([x for x in vl.getFeatures()]), 2)
+
+    def testUnknownButNoGeometry(self):
+        """
+        Test accessing a layer of type wkbUnknown that contains only null geometries
+        """
+
+        datasource = os.path.join(self.basetestpath, 'testUnknownButNoGeometry.csv')
+        with open(datasource, 'wt') as f:
+            f.write('id,WKT\n')
+            f.write('1,""\n')
+            f.write('2,\n')
+
+        metadata = QgsProviderRegistry.instance().providerMetadata('ogr')
+        res = metadata.querySublayers(datasource, Qgis.SublayerQueryFlag.ResolveGeometryType)
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0].uri(), datasource + "|geometrytype=None|uniqueGeometryType=yes")
+
+        vl = QgsVectorLayer(res[0].uri(), 'test', 'ogr')
+        self.assertTrue(vl.isValid())
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.NoGeometry)
+        self.assertEqual(vl.featureCount(), 2)
+        self.assertEqual(len([x for x in vl.getFeatures()]), 2)
 
 
 if __name__ == '__main__':

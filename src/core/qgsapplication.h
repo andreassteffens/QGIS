@@ -39,6 +39,7 @@ class QgsPaintEffectRegistry;
 class QgsProjectStorageRegistry;
 class QgsExternalStorageRegistry;
 class QgsLocalizedDataPathRegistry;
+class QgsLayerMetadataProviderRegistry;
 class QgsRendererRegistry;
 class QgsSvgCache;
 class QgsImageCache;
@@ -73,6 +74,7 @@ class QgsTileDownloadManager;
 class QgsCoordinateReferenceSystemRegistry;
 class QgsRecentStyleHandler;
 class QgsDatabaseQueryLog;
+class QgsFontManager;
 
 /**
  * \ingroup core
@@ -838,6 +840,13 @@ class CORE_EXPORT QgsApplication : public QApplication
     static QgsStyleModel *defaultStyleModel();
 
     /**
+     * Returns the application font manager, which manages available fonts and font installation for the QGIS instance.
+     *
+     * \since QGIS 3.28
+     */
+    static QgsFontManager *fontManager() SIP_KEEPREFERENCE;
+
+    /**
      * Returns the application's message log.
      * \since QGIS 3.0
      */
@@ -926,6 +935,12 @@ class CORE_EXPORT QgsApplication : public QApplication
      * \since QGIS 3.2
      */
     static QgsProjectStorageRegistry *projectStorageRegistry() SIP_KEEPREFERENCE;
+
+    /**
+     * Returns registry of available layer metadata provider implementations.
+     * \since QGIS 3.28
+     */
+    static QgsLayerMetadataProviderRegistry *layerMetadataProviderRegistry() SIP_KEEPREFERENCE;
 
     /**
      * Returns registry of available external storage implementations.
@@ -1125,7 +1140,8 @@ class CORE_EXPORT QgsApplication : public QApplication
       QgsClassificationMethodRegistry *mClassificationMethodRegistry = nullptr;
       QgsProcessingRegistry *mProcessingRegistry = nullptr;
       QgsConnectionRegistry *mConnectionRegistry = nullptr;
-      std::unique_ptr<QgsProjectStorageRegistry> mProjectStorageRegistry;
+      QgsProjectStorageRegistry *mProjectStorageRegistry = nullptr;
+      QgsLayerMetadataProviderRegistry *mLayerMetadataProviderRegistry = nullptr;
       QgsExternalStorageRegistry *mExternalStorageRegistry = nullptr;
       QgsPageSizeRegistry *mPageSizeRegistry = nullptr;
       QgsRasterRendererRegistry *mRasterRendererRegistry = nullptr;
@@ -1145,6 +1161,7 @@ class CORE_EXPORT QgsApplication : public QApplication
       QgsStyleModel *mStyleModel = nullptr;
       QgsRecentStyleHandler *mRecentStyleHandler = nullptr;
       QgsDatabaseQueryLog *mQueryLogger = nullptr;
+      QgsFontManager *mFontManager;
       QString mNullRepresentation;
       QStringList mSvgPathCache;
       bool mSvgPathCacheValid = false;

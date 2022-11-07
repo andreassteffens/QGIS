@@ -34,10 +34,14 @@ set(QGIS_3D_SRCS
   qgsskyboxsettings.cpp
   qgsshadowrenderingframegraph.cpp
   qgspostprocessingentity.cpp
+  qgsrenderpassquad.cpp
+  qgsambientocclusionrenderentity.cpp
+  qgsambientocclusionblurentity.cpp
   qgspreviewquad.cpp
   qgsshadowsettings.cpp
   qgscolorramptexture.cpp
   qgsrubberband3d.cpp
+  qgsambientocclusionsettings.cpp
 
   qgspointcloudlayer3drenderer.cpp
   qgspointcloudlayerchunkloader_p.cpp
@@ -130,6 +134,10 @@ set(QGIS_3D_HDRS
   qgspreviewquad.h
   qgsshadowsettings.h
   qgspointcloudlayer3drenderer.h
+  qgsrenderpassquad.h
+  qgsambientocclusionrenderentity.h
+  qgsambientocclusionblurentity.h
+  qgsambientocclusionsettings.h
 
   lights/qgsdirectionallightsettings.h
   lights/qgslightsource.h
@@ -203,7 +211,7 @@ add_library(qgis_3d SHARED ${QGIS_3D_SRCS} ${QGIS_3D_HDRS} ${QGIS_3D_RCCS} ${QGI
 # require c++17
 target_compile_features(qgis_3d PRIVATE cxx_std_17)
 
-if (WITH_QT6)
+if (BUILD_WITH_QT6)
   target_include_directories(qgis_3d SYSTEM PUBLIC
     ${QT6_3DEXTRA_INCLUDE_DIR}
   )
@@ -228,7 +236,7 @@ target_include_directories(qgis_3d PUBLIC
   ${CMAKE_SOURCE_DIR}/external/delaunator-cpp
 )
 
-if (WITH_QT6)
+if (BUILD_WITH_QT6)
   target_link_libraries(qgis_3d Qt6::3DCore Qt6::3DRender Qt6::3DInput Qt6::3DLogic Qt6::3DExtras)
 else()
   target_link_libraries(qgis_3d Qt5::3DCore Qt5::3DRender Qt5::3DInput Qt5::3DLogic Qt5::3DExtras)

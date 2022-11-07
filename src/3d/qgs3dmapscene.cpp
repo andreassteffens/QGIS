@@ -138,6 +138,7 @@ Qgs3DMapScene::Qgs3DMapScene( Qgs3DMapSettings &map, QgsAbstract3DEngine *engine
   connect( &map, &Qgs3DMapSettings::renderersChanged, this, &Qgs3DMapScene::onRenderersChanged );
   connect( &map, &Qgs3DMapSettings::skyboxSettingsChanged, this, &Qgs3DMapScene::onSkyboxSettingsChanged );
   connect( &map, &Qgs3DMapSettings::shadowSettingsChanged, this, &Qgs3DMapScene::onShadowSettingsChanged );
+  connect( &map, &Qgs3DMapSettings::ambientOcclusionSettingsChanged, this, &Qgs3DMapScene::onAmbientOcclusionSettingsChanged );
   connect( &map, &Qgs3DMapSettings::eyeDomeLightingEnabledChanged, this, &Qgs3DMapScene::onEyeDomeShadingSettingsChanged );
   connect( &map, &Qgs3DMapSettings::eyeDomeLightingStrengthChanged, this, &Qgs3DMapScene::onEyeDomeShadingSettingsChanged );
   connect( &map, &Qgs3DMapSettings::eyeDomeLightingDistanceChanged, this, &Qgs3DMapScene::onEyeDomeShadingSettingsChanged );
@@ -237,6 +238,8 @@ Qgs3DMapScene::Qgs3DMapScene( Qgs3DMapSettings &map, QgsAbstract3DEngine *engine
   // force initial update of debugging setting of preview quads
   onDebugShadowMapSettingsChanged();
   onDebugDepthMapSettingsChanged();
+  // force initial update of ambient occlusion settings
+  onAmbientOcclusionSettingsChanged();
 
   mCameraController->setCameraNavigationMode( mMap.cameraNavigationMode() );
   onCameraMovementSpeedChanged();
@@ -924,20 +927,43 @@ void Qgs3DMapScene::finalizeNewEntity( Qt3DCore::QEntity *newEntity )
     bm->setViewportSize( mCameraController->viewport().size() );
   }
 
-
   // Finalize adding the 3D transparent objects by adding the layer components to the entities
   QgsShadowRenderingFrameGraph *frameGraph = mEngine->frameGraph();
-  Qt3DRender::QLayer *layer = frameGraph->transparentObjectLayer();
-  for ( Qt3DExtras::QDiffuseSpecularMaterial *ph : newEntity->findChildren<Qt3DExtras::QDiffuseSpecularMaterial *>() )
+  Qt3DRender::QLayer *transparentLayer = frameGraph->transparentObjectLayer();
+  for ( Qt3DRender::QMaterial *material : newEntity->findChildren<Qt3DRender::QMaterial *>() )
   {
-    if ( ph->diffuse().value<QColor>().alphaF() == 1.0f )
-      continue;
-    Qt3DCore::QEntity *entity = qobject_cast<Qt3DCore::QEntity *>( ph->parent() );
-    if ( !entity )
-      continue;
-    if ( entity->components().contains( layer ) )
-      continue;
-    entity->addComponent( layer );
+    // This handles the phong material without data defined properties.
+    if ( Qt3DExtras::QDiffuseSpecularMaterial *ph = qobject_cast<Qt3DExtras::QDiffuseSpecularMaterial *>( material ) )
+    {
+      if ( ph->diffuse().value<QColor>().alphaF() != 1.0f )
+      {
+        Qt3DCore::QEntity *entity = qobject_cast<Qt3DCore::QEntity *>( ph->parent() );
+        if ( entity && !entity->components().contains( transparentLayer ) )
+        {
+          entity->addComponent( transparentLayer );
+        }
+      }
+    }
+    else
+    {
+      // This handles the phong material with data defined properties, the textured case and point (instanced) symbols.
+      Qt3DRender::QEffect *effect = material->effect();
+      if ( effect )
+      {
+        for ( const auto *parameter : effect->parameters() )
+        {
+          if ( parameter->name() == "opacity" && parameter->value() != 1.0f )
+          {
+            Qt3DCore::QEntity *entity = qobject_cast<Qt3DCore::QEntity *>( material->parent() );
+            if ( entity && !entity->components().contains( transparentLayer ) )
+            {
+              entity->addComponent( transparentLayer );
+            }
+            break;
+          }
+        }
+      }
+    }
   }
 }
 
@@ -1077,6 +1103,16 @@ void Qgs3DMapScene::onShadowSettingsChanged()
   }
   else
     shadowRenderingFrameGraph->setShadowRenderingEnabled( false );
+}
+
+void Qgs3DMapScene::onAmbientOcclusionSettingsChanged()
+{
+  QgsShadowRenderingFrameGraph *shadowRenderingFrameGraph = mEngine->frameGraph();
+  QgsAmbientOcclusionSettings ambientOcclusionSettings = mMap.ambientOcclusionSettings();
+  shadowRenderingFrameGraph->setAmbientOcclusionEnabled( ambientOcclusionSettings.isEnabled() );
+  shadowRenderingFrameGraph->setAmbientOcclusionRadius( ambientOcclusionSettings.radius() );
+  shadowRenderingFrameGraph->setAmbientOcclusionIntensity( ambientOcclusionSettings.intensity() );
+  shadowRenderingFrameGraph->setAmbientOcclusionThreshold( ambientOcclusionSettings.threshold() );
 }
 
 void Qgs3DMapScene::onDebugShadowMapSettingsChanged()
@@ -1240,7 +1276,11 @@ void Qgs3DMapScene::addCameraRotationCenterEntity( QgsCameraController *controll
 
 void Qgs3DMapScene::on3DAxisSettingsChanged()
 {
-  if ( !m3DAxis )
+  if ( m3DAxis )
+  {
+    m3DAxis->onAxisSettingsChanged();
+  }
+  else
   {
     if ( QgsWindow3DEngine *engine = dynamic_cast<QgsWindow3DEngine *>( mEngine ) )
     {
@@ -1252,4 +1292,3 @@ void Qgs3DMapScene::on3DAxisSettingsChanged()
     }
   }
 }
-

@@ -47,7 +47,6 @@ email                : sherman at mrcc.com
 #include "qgsmapcanvasannotationitem.h"
 #include "qgsapplication.h"
 #include "qgsexception.h"
-#include "qgsdatumtransformdialog.h"
 #include "qgsfeatureiterator.h"
 #include "qgslogger.h"
 #include "qgsmapcanvas.h"
@@ -56,9 +55,7 @@ email                : sherman at mrcc.com
 #include "qgsmaplayer.h"
 #include "qgsmapmouseevent.h"
 #include "qgsmaptoolpan.h"
-#include "qgsmaptoolzoom.h"
 #include "qgsmaptopixel.h"
-#include "qgsmapoverviewcanvas.h"
 #include "qgsmaprenderercache.h"
 #include "qgsmaprenderercustompainterjob.h"
 #include "qgsmaprendererjob.h"
@@ -66,8 +63,6 @@ email                : sherman at mrcc.com
 #include "qgsmaprenderersequentialjob.h"
 #include "qgsmapsettingsutils.h"
 #include "qgsmessagelog.h"
-#include "qgsmessageviewer.h"
-#include "qgspallabeling.h"
 #include "qgsproject.h"
 #include "qgsrubberband.h"
 #include "qgsvectorlayer.h"
@@ -82,8 +77,6 @@ email                : sherman at mrcc.com
 #include "qgsreferencedgeometry.h"
 #include "qgsprojectviewsettings.h"
 #include "qgsmaplayertemporalproperties.h"
-#include "qgsrasterlayertemporalproperties.h"
-#include "qgsvectorlayertemporalproperties.h"
 #include "qgstemporalcontroller.h"
 #include "qgsruntimeprofiler.h"
 #include "qgsprojectionselectiondialog.h"
@@ -96,6 +89,8 @@ email                : sherman at mrcc.com
 #include "qgsrendereditemresults.h"
 #include "qgstemporalnavigationobject.h"
 #include "qgssymbollayerutils.h"
+#include "qgsvectortilelayer.h"
+#include "qgsscreenhelper.h"
 
 /**
  * \ingroup gui
@@ -138,6 +133,9 @@ QgsMapCanvas::QgsMapCanvas( QWidget *parent )
   setVerticalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
   setMouseTracking( true );
   setFocusPolicy( Qt::StrongFocus );
+
+  mScreenHelper = new QgsScreenHelper( this );
+  connect( mScreenHelper, &QgsScreenHelper::screenDpiChanged, this, &QgsMapCanvas::updateDevicePixelFromScreen );
 
   mResizeTimer = new QTimer( this );
   mResizeTimer->setSingleShot( true );
@@ -255,8 +253,20 @@ QgsMapCanvas::~QgsMapCanvas()
   if ( mMapTool )
   {
     mMapTool->deactivate();
+    disconnect( mMapTool, &QObject::destroyed, this, &QgsMapCanvas::mapToolDestroyed );
     mMapTool = nullptr;
   }
+
+  // we also clear the canvas pointer for all child map tools. We're now in a partially destroyed state and it's
+  // no longer safe for map tools to try to cleanup things in the canvas during their destruction (such as removing
+  // associated canvas items)
+  // NOTE -- it may be better to just delete the map tool children here upfront?
+  const QList< QgsMapTool * > tools = findChildren< QgsMapTool *>();
+  for ( QgsMapTool *tool : tools )
+  {
+    tool->mCanvas = nullptr;
+  }
+
   mLastNonZoomMapTool = nullptr;
 
   cancelJobs();
@@ -403,10 +413,30 @@ void QgsMapCanvas::setLayersPrivate( const QList<QgsMapLayer *> &layers )
   {
     disconnect( layer, &QgsMapLayer::repaintRequested, this, &QgsMapCanvas::layerRepaintRequested );
     disconnect( layer, &QgsMapLayer::autoRefreshIntervalChanged, this, &QgsMapCanvas::updateAutoRefreshTimer );
-    if ( QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( layer ) )
+    switch ( layer->type() )
     {
-      disconnect( vlayer, &QgsVectorLayer::selectionChanged, this, &QgsMapCanvas::selectionChangedSlot );
-      disconnect( vlayer, &QgsVectorLayer::rendererChanged, this, &QgsMapCanvas::updateAutoRefreshTimer );
+      case QgsMapLayerType::VectorLayer:
+      {
+        QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( layer );
+        disconnect( vlayer, &QgsVectorLayer::selectionChanged, this, &QgsMapCanvas::selectionChangedSlot );
+        disconnect( vlayer, &QgsVectorLayer::rendererChanged, this, &QgsMapCanvas::updateAutoRefreshTimer );
+        break;
+      }
+
+      case QgsMapLayerType::VectorTileLayer:
+      {
+        QgsVectorTileLayer *vtlayer = qobject_cast<QgsVectorTileLayer *>( layer );
+        disconnect( vtlayer, &QgsVectorTileLayer::selectionChanged, this, &QgsMapCanvas::selectionChangedSlot );
+        break;
+      }
+
+      case QgsMapLayerType::RasterLayer:
+      case QgsMapLayerType::PluginLayer:
+      case QgsMapLayerType::MeshLayer:
+      case QgsMapLayerType::AnnotationLayer:
+      case QgsMapLayerType::PointCloudLayer:
+      case QgsMapLayerType::GroupLayer:
+        break;
     }
   }
 
@@ -419,10 +449,31 @@ void QgsMapCanvas::setLayersPrivate( const QList<QgsMapLayer *> &layers )
       continue;
     connect( layer, &QgsMapLayer::repaintRequested, this, &QgsMapCanvas::layerRepaintRequested );
     connect( layer, &QgsMapLayer::autoRefreshIntervalChanged, this, &QgsMapCanvas::updateAutoRefreshTimer );
-    if ( QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( layer ) )
+
+    switch ( layer->type() )
     {
-      connect( vlayer, &QgsVectorLayer::selectionChanged, this, &QgsMapCanvas::selectionChangedSlot );
-      connect( vlayer, &QgsVectorLayer::rendererChanged, this, &QgsMapCanvas::updateAutoRefreshTimer );
+      case QgsMapLayerType::VectorLayer:
+      {
+        QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( layer );
+        connect( vlayer, &QgsVectorLayer::selectionChanged, this, &QgsMapCanvas::selectionChangedSlot );
+        connect( vlayer, &QgsVectorLayer::rendererChanged, this, &QgsMapCanvas::updateAutoRefreshTimer );
+        break;
+      }
+
+      case QgsMapLayerType::VectorTileLayer:
+      {
+        QgsVectorTileLayer *vtlayer = qobject_cast<QgsVectorTileLayer *>( layer );
+        connect( vtlayer, &QgsVectorTileLayer::selectionChanged, this, &QgsMapCanvas::selectionChangedSlot );
+        break;
+      }
+
+      case QgsMapLayerType::RasterLayer:
+      case QgsMapLayerType::PluginLayer:
+      case QgsMapLayerType::MeshLayer:
+      case QgsMapLayerType::AnnotationLayer:
+      case QgsMapLayerType::PointCloudLayer:
+      case QgsMapLayerType::GroupLayer:
+        break;
     }
   }
 
@@ -1192,6 +1243,7 @@ void QgsMapCanvas::updateDevicePixelFromScreen()
     mSettings.setOutputDpi( window()->windowHandle()->screen()->logicalDotsPerInch() );
     mSettings.setDpiTarget( window()->windowHandle()->screen()->logicalDotsPerInch() );
   }
+  refresh();
 }
 
 void QgsMapCanvas::setTemporalRange( const QgsDateTimeRange &dateTimeRange )
@@ -1594,35 +1646,83 @@ QgsRectangle QgsMapCanvas::optimalExtentForPointLayer( QgsVectorLayer *layer, co
   return rect;
 }
 
-void QgsMapCanvas::zoomToSelected( QgsVectorLayer *layer )
+void QgsMapCanvas::zoomToSelected( QgsMapLayer *layer )
 {
   QgsTemporaryCursorOverride cursorOverride( Qt::WaitCursor );
 
   if ( !layer )
   {
     // use current layer by default
-    layer = qobject_cast<QgsVectorLayer *>( mCurrentLayer );
+    layer = mCurrentLayer;
   }
 
-  if ( !layer || !layer->isSpatial() || layer->selectedFeatureCount() == 0 )
+  if ( !layer || !layer->isSpatial() )
     return;
 
-  QgsRectangle rect = layer->boundingBoxOfSelected();
-  if ( rect.isNull() )
+  QgsRectangle rect;
+
+  switch ( layer->type() )
   {
-    cursorOverride.release();
-    emit messageEmitted( tr( "Cannot zoom to selected feature(s)" ), tr( "No extent could be determined." ), Qgis::MessageLevel::Warning );
-    return;
+    case QgsMapLayerType::VectorLayer:
+    {
+      QgsVectorLayer *vlayer = qobject_cast< QgsVectorLayer * >( layer );
+      if ( vlayer->selectedFeatureCount() == 0 )
+        return;
+
+      rect = vlayer->boundingBoxOfSelected();
+      if ( rect.isNull() )
+      {
+        cursorOverride.release();
+        emit messageEmitted( tr( "Cannot zoom to selected feature(s)" ), tr( "No extent could be determined." ), Qgis::MessageLevel::Warning );
+        return;
+      }
+
+      rect = mapSettings().layerExtentToOutputExtent( layer, rect );
+
+      // zoom in if point cannot be distinguished from others
+      // also check that rect is empty, as it might not in case of multi points
+      if ( vlayer->geometryType() == QgsWkbTypes::PointGeometry && rect.isEmpty() )
+      {
+        rect = optimalExtentForPointLayer( vlayer, rect.center() );
+      }
+      break;
+    }
+
+    case QgsMapLayerType::VectorTileLayer:
+    {
+      QgsVectorTileLayer *vtLayer = qobject_cast< QgsVectorTileLayer * >( layer );
+      if ( vtLayer->selectedFeatureCount() == 0 )
+        return;
+
+      const QList< QgsFeature > selectedFeatures = vtLayer->selectedFeatures();
+      for ( const QgsFeature &feature : selectedFeatures )
+      {
+        if ( !feature.hasGeometry() )
+          continue;
+
+        rect.combineExtentWith( feature.geometry().boundingBox() );
+      }
+
+      if ( rect.isNull() )
+      {
+        cursorOverride.release();
+        emit messageEmitted( tr( "Cannot zoom to selected feature(s)" ), tr( "No extent could be determined." ), Qgis::MessageLevel::Warning );
+        return;
+      }
+
+      rect = mapSettings().layerExtentToOutputExtent( layer, rect );
+      break;
+    }
+
+    case QgsMapLayerType::RasterLayer:
+    case QgsMapLayerType::PluginLayer:
+    case QgsMapLayerType::MeshLayer:
+    case QgsMapLayerType::AnnotationLayer:
+    case QgsMapLayerType::PointCloudLayer:
+    case QgsMapLayerType::GroupLayer:
+      return;   // not supported
   }
 
-  rect = mapSettings().layerExtentToOutputExtent( layer, rect );
-
-  // zoom in if point cannot be distinguished from others
-  // also check that rect is empty, as it might not in case of multi points
-  if ( layer->geometryType() == QgsWkbTypes::PointGeometry && rect.isEmpty() )
-  {
-    rect = optimalExtentForPointLayer( layer, rect.center() );
-  }
   zoomToFeatureExtent( rect );
 }
 
@@ -1635,22 +1735,61 @@ void QgsMapCanvas::zoomToSelected( const QList<QgsMapLayer *> &layers )
 
   for ( QgsMapLayer *mapLayer : layers )
   {
-    QgsVectorLayer *layer = qobject_cast<QgsVectorLayer *>( mapLayer );
-
-    if ( !layer || !layer->isSpatial() || layer->selectedFeatureCount() == 0 )
+    if ( !mapLayer || !mapLayer->isSpatial() )
       continue;
 
-    rect = layer->boundingBoxOfSelected();
+    switch ( mapLayer->type() )
+    {
+      case QgsMapLayerType::VectorLayer:
+      {
+        QgsVectorLayer *layer = qobject_cast<QgsVectorLayer *>( mapLayer );
 
-    if ( rect.isNull() )
-      continue;
+        if ( layer->selectedFeatureCount() == 0 )
+          continue;
 
-    rect = mapSettings().layerExtentToOutputExtent( layer, rect );
+        rect = layer->boundingBoxOfSelected();
 
-    if ( layer->geometryType() == QgsWkbTypes::PointGeometry && rect.isEmpty() )
-      rect = optimalExtentForPointLayer( layer, rect.center() );
+        if ( rect.isNull() )
+          continue;
 
-    selectionExtent.combineExtentWith( rect );
+        rect = mapSettings().layerExtentToOutputExtent( layer, rect );
+
+        if ( layer->geometryType() == QgsWkbTypes::PointGeometry && rect.isEmpty() )
+          rect = optimalExtentForPointLayer( layer, rect.center() );
+
+        selectionExtent.combineExtentWith( rect );
+        break;
+      }
+
+      case QgsMapLayerType::VectorTileLayer:
+      {
+        QgsVectorTileLayer *vtLayer = qobject_cast< QgsVectorTileLayer * >( mapLayer );
+        if ( vtLayer->selectedFeatureCount() == 0 )
+          continue;
+
+        const QList< QgsFeature > selectedFeatures = vtLayer->selectedFeatures();
+        QgsRectangle rect;
+        for ( const QgsFeature &feature : selectedFeatures )
+        {
+          if ( !feature.hasGeometry() )
+            continue;
+
+          rect.combineExtentWith( feature.geometry().boundingBox() );
+        }
+
+        rect = mapSettings().layerExtentToOutputExtent( vtLayer, rect );
+        selectionExtent.combineExtentWith( rect );
+        break;
+      }
+
+      case QgsMapLayerType::RasterLayer:
+      case QgsMapLayerType::PluginLayer:
+      case QgsMapLayerType::MeshLayer:
+      case QgsMapLayerType::AnnotationLayer:
+      case QgsMapLayerType::PointCloudLayer:
+      case QgsMapLayerType::GroupLayer:
+        break;
+    }
   }
 
   if ( selectionExtent.isNull() )
@@ -1790,18 +1929,54 @@ bool QgsMapCanvas::boundingBoxOfFeatureIds( const QgsFeatureIds &ids, QgsVectorL
   return true;
 }
 
-void QgsMapCanvas::panToSelected( QgsVectorLayer *layer )
+void QgsMapCanvas::panToSelected( QgsMapLayer *layer )
 {
   if ( !layer )
   {
     // use current layer by default
-    layer = qobject_cast<QgsVectorLayer *>( mCurrentLayer );
+    layer = mCurrentLayer;
   }
-
-  if ( !layer || !layer->isSpatial() || layer->selectedFeatureCount() == 0 )
+  if ( !layer || !layer->isSpatial() )
     return;
 
-  QgsRectangle rect = layer->boundingBoxOfSelected();
+  QgsRectangle rect;
+  switch ( layer->type() )
+  {
+    case QgsMapLayerType::VectorLayer:
+    {
+      QgsVectorLayer *vLayer = qobject_cast< QgsVectorLayer * >( layer );
+      if ( vLayer->selectedFeatureCount() == 0 )
+        return;
+
+      rect = vLayer->boundingBoxOfSelected();
+      break;
+    }
+    case QgsMapLayerType::VectorTileLayer:
+    {
+      QgsVectorTileLayer *vtLayer = qobject_cast< QgsVectorTileLayer * >( layer );
+      if ( vtLayer->selectedFeatureCount() == 0 )
+        return;
+
+      const QList< QgsFeature > selectedFeatures = vtLayer->selectedFeatures();
+      for ( const QgsFeature &feature : selectedFeatures )
+      {
+        if ( !feature.hasGeometry() )
+          continue;
+
+        rect.combineExtentWith( feature.geometry().boundingBox() );
+      }
+      break;
+    }
+
+    case QgsMapLayerType::RasterLayer:
+    case QgsMapLayerType::PluginLayer:
+    case QgsMapLayerType::MeshLayer:
+    case QgsMapLayerType::AnnotationLayer:
+    case QgsMapLayerType::PointCloudLayer:
+    case QgsMapLayerType::GroupLayer:
+      return;
+  }
+
   if ( rect.isNull() )
   {
     emit messageEmitted( tr( "Cannot pan to selected feature(s)" ), tr( "No extent could be determined." ), Qgis::MessageLevel::Warning );
@@ -1815,27 +1990,63 @@ void QgsMapCanvas::panToSelected( QgsVectorLayer *layer )
 
 void QgsMapCanvas::panToSelected( const QList<QgsMapLayer *> &layers )
 {
-  QgsRectangle rect;
-  rect.setMinimal();
   QgsRectangle selectionExtent;
   selectionExtent.setMinimal();
 
   for ( QgsMapLayer *mapLayer : layers )
   {
-    QgsVectorLayer *layer = qobject_cast<QgsVectorLayer *>( mapLayer );
-
-    if ( !layer || !layer->isSpatial() || layer->selectedFeatureCount() == 0 )
+    if ( !mapLayer || !mapLayer->isSpatial() )
       continue;
 
-    rect = layer->boundingBoxOfSelected();
+    QgsRectangle rect;
+    rect.setMinimal();
+    switch ( mapLayer->type() )
+    {
+      case QgsMapLayerType::VectorLayer:
+      {
+        QgsVectorLayer *layer = qobject_cast<QgsVectorLayer *>( mapLayer );
+        if ( layer->selectedFeatureCount() == 0 )
+          continue;
 
-    if ( rect.isNull() )
-      continue;
+        rect = layer->boundingBoxOfSelected();
 
-    rect = mapSettings().layerExtentToOutputExtent( layer, rect );
+        if ( rect.isNull() )
+          continue;
 
-    if ( layer->geometryType() == QgsWkbTypes::PointGeometry && rect.isEmpty() )
-      rect = optimalExtentForPointLayer( layer, rect.center() );
+        rect = mapSettings().layerExtentToOutputExtent( layer, rect );
+
+        if ( layer->geometryType() == QgsWkbTypes::PointGeometry && rect.isEmpty() )
+          rect = optimalExtentForPointLayer( layer, rect.center() );
+        break;
+      }
+
+      case QgsMapLayerType::VectorTileLayer:
+      {
+        QgsVectorTileLayer *vtLayer = qobject_cast< QgsVectorTileLayer * >( mapLayer );
+        if ( vtLayer->selectedFeatureCount() == 0 )
+          continue;
+
+        const QList< QgsFeature > selectedFeatures = vtLayer->selectedFeatures();
+        for ( const QgsFeature &feature : selectedFeatures )
+        {
+          if ( !feature.hasGeometry() )
+            continue;
+
+          rect.combineExtentWith( feature.geometry().boundingBox() );
+        }
+
+        rect = mapSettings().layerExtentToOutputExtent( vtLayer, rect );
+        break;
+      }
+
+      case QgsMapLayerType::RasterLayer:
+      case QgsMapLayerType::PluginLayer:
+      case QgsMapLayerType::MeshLayer:
+      case QgsMapLayerType::AnnotationLayer:
+      case QgsMapLayerType::PointCloudLayer:
+      case QgsMapLayerType::GroupLayer:
+        continue;
+    }
 
     selectionExtent.combineExtentWith( rect );
   }
@@ -2376,11 +2587,7 @@ void QgsMapCanvas::wheelEvent( QWheelEvent *e )
 
   // zoom map to mouse cursor by scaling
   QgsPointXY oldCenter = center();
-#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
-  QgsPointXY mousePos( getCoordinateTransform()->toMapCoordinates( e->pos().x(), e->pos().y() ) );
-#else
   QgsPointXY mousePos( getCoordinateTransform()->toMapCoordinates( e->position().x(), e->position().y() ) );
-#endif
   QgsPointXY newCenter( mousePos.x() + ( ( oldCenter.x() - mousePos.x() ) * signedWheelFactor ),
                         mousePos.y() + ( ( oldCenter.y() - mousePos.y() ) * signedWheelFactor ) );
 
@@ -2868,23 +3075,6 @@ void QgsMapCanvas::showEvent( QShowEvent *event )
 {
   Q_UNUSED( event )
   updateDevicePixelFromScreen();
-  // keep device pixel ratio up to date on screen or resolution change
-  QWindow *l_window = window()->windowHandle();
-  if ( l_window )
-  {
-    connect( l_window, &QWindow::screenChanged, this, [ = ]( QScreen * )
-    {
-      disconnect( mScreenDpiChangedConnection );
-      QWindow *windowInLambda = window()->windowHandle();
-      if ( windowInLambda )
-      {
-        mScreenDpiChangedConnection = connect( windowInLambda->screen(), &QScreen::physicalDotsPerInchChanged, this, &QgsMapCanvas::updateDevicePixelFromScreen );
-        updateDevicePixelFromScreen();
-      }
-    } );
-
-    mScreenDpiChangedConnection = connect( l_window->screen(), &QScreen::physicalDotsPerInchChanged, this, &QgsMapCanvas::updateDevicePixelFromScreen );
-  }
 }
 
 QPoint QgsMapCanvas::mouseLastXY()
@@ -3070,7 +3260,7 @@ void QgsMapCanvas::zoomByFactor( double scaleFactor, const QgsPointXY *center, b
 void QgsMapCanvas::selectionChangedSlot()
 {
   // Find out which layer it was that sent the signal.
-  QgsVectorLayer *layer = qobject_cast<QgsVectorLayer *>( sender() );
+  QgsMapLayer *layer = qobject_cast<QgsMapLayer *>( sender() );
   if ( layer )
   {
     emit selectionChanged( layer );
@@ -3133,23 +3323,20 @@ void QgsMapCanvas::mapToolDestroyed()
 
 bool QgsMapCanvas::event( QEvent *e )
 {
-  if ( !QTouchDevice::devices().empty() )
+  if ( e->type() == QEvent::Gesture )
   {
-    if ( e->type() == QEvent::Gesture )
+    if ( QTapAndHoldGesture *tapAndHoldGesture = qobject_cast< QTapAndHoldGesture * >( static_cast<QGestureEvent *>( e )->gesture( Qt::TapAndHoldGesture ) ) )
     {
-      if ( QTapAndHoldGesture *tapAndHoldGesture = qobject_cast< QTapAndHoldGesture * >( static_cast<QGestureEvent *>( e )->gesture( Qt::TapAndHoldGesture ) ) )
-      {
-        QPointF pos = tapAndHoldGesture->position();
-        pos = mapFromGlobal( QPoint( pos.x(), pos.y() ) );
-        QgsPointXY mapPoint = getCoordinateTransform()->toMapCoordinates( pos.x(), pos.y() );
-        emit tapAndHoldGestureOccurred( mapPoint, tapAndHoldGesture );
-      }
+      QPointF pos = tapAndHoldGesture->position();
+      pos = mapFromGlobal( QPoint( pos.x(), pos.y() ) );
+      QgsPointXY mapPoint = getCoordinateTransform()->toMapCoordinates( pos.x(), pos.y() );
+      emit tapAndHoldGestureOccurred( mapPoint, tapAndHoldGesture );
+    }
 
-      // call handler of current map tool
-      if ( mMapTool )
-      {
-        return mMapTool->gestureEvent( static_cast<QGestureEvent *>( e ) );
-      }
+    // call handler of current map tool
+    if ( mMapTool )
+    {
+      return mMapTool->gestureEvent( static_cast<QGestureEvent *>( e ) );
     }
   }
 

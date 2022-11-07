@@ -443,7 +443,7 @@ Depends:
  libqca-qt5-2-plugins,
  libqt5sql5-sqlite,
  qt5-image-formats-plugins,
-#bulleye sid jammy kinetic# qt5-image-formats-plugin-pdf,
+#bullseye sid jammy kinetic# qt5-image-formats-plugin-pdf,
  ${shlibs:Depends},
  ${misc:Depends}
 Breaks: qgis (<= 1.6)

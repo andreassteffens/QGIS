@@ -452,6 +452,15 @@ The development version
       Provider
     };
 
+    enum class RasterRendererFlag
+    {
+      InternalLayerOpacityHandling,
+    };
+
+    typedef QFlags<Qgis::RasterRendererFlag> RasterRendererFlags;
+
+
+
     enum class MeshEditingErrorType
     {
       NoError,
@@ -484,6 +493,22 @@ The development version
       IntersectSelection,
       RemoveFromSelection,
     };
+
+    enum class SelectGeometryRelationship
+    {
+      Intersect,
+      Within,
+    };
+
+    enum class SelectionFlag
+    {
+      SingleFeatureSelection,
+      ToggleSelection,
+    };
+
+    typedef QFlags<Qgis::SelectionFlag> SelectionFlags;
+
+
 
     enum class VectorEditResult
       {
@@ -599,6 +624,12 @@ The development version
       Round,
       Miter,
       Bevel,
+    };
+
+    enum class MakeValidMethod
+    {
+      Linework,
+      Structure,
     };
 
     enum class SpatialFilterType
@@ -747,6 +778,14 @@ The development version
       FindClosestMatchToEndOfRange
     };
 
+    enum class RasterTemporalCapabilityFlag
+    {
+      RequestedTimesMustExactlyMatchAllAvailableTemporalRanges,
+    };
+
+    typedef QFlags<Qgis::RasterTemporalCapabilityFlag> RasterTemporalCapabilityFlags;
+
+
     enum class TransformDirection
       {
       Forward,
@@ -817,6 +856,43 @@ The development version
       AlwaysText,
     };
 
+    enum class TextOrientation
+      {
+      Horizontal,
+      Vertical,
+      RotationBased,
+    };
+
+    enum class TextLayoutMode
+      {
+      Rectangle,
+      Point,
+      Labeling,
+    };
+
+    enum class TextComponent
+      {
+      Text,
+      Buffer,
+      Background,
+      Shadow,
+    };
+
+    enum class TextHorizontalAlignment
+      {
+      Left,
+      Center,
+      Right,
+      Justify,
+    };
+
+    enum class TextVerticalAlignment
+      {
+      Top,
+      VerticalCenter,
+      Bottom,
+    };
+
     enum class RenderSubcomponentProperty
     {
       Generic,
@@ -862,6 +938,14 @@ The development version
       HalfArc,
       ThirdArc,
       QuarterArc,
+      ParallelogramRight,
+      ParallelogramLeft,
+      Trapezoid,
+      Shield,
+      DiamondStar,
+      Heart,
+      Decagon,
+      RoundedSquare,
     };
 
     enum class MarkerLinePlacement
@@ -1151,6 +1235,7 @@ The development version
       DontStoreOriginalStyles,
       DontLoad3DViews,
       DontLoadProjectStyles,
+      ForceReadOnlyLayers,
     };
 
     typedef QFlags<Qgis::ProjectReadFlag> ProjectReadFlags;
@@ -1163,6 +1248,55 @@ The development version
 
     typedef QFlags<Qgis::ProjectCapability> ProjectCapabilities;
 
+
+    enum class MapBoxGlStyleSourceType
+    {
+      Vector,
+      Raster,
+      RasterDem,
+      GeoJson,
+      Image,
+      Video,
+      Unknown,
+    };
+
+    enum class ArcGisRestServiceType
+      {
+      FeatureServer,
+      MapServer,
+      ImageServer,
+      GlobeServer,
+      GPServer,
+      GeocodeServer,
+      Unknown,
+    };
+
+    enum class RelationshipType
+      {
+      Normal,
+      Generated,
+    };
+
+    enum class RelationshipStrength
+      {
+      Association,
+      Composition,
+    };
+
+    enum class RelationshipCardinality
+    {
+      OneToOne,
+      OneToMany,
+      ManyToOne,
+      ManyToMany,
+    };
+
+    enum class CoordinateDisplayType
+    {
+      MapCrs,
+      MapGeographic,
+      CustomCrs,
+    };
 
     static const double DEFAULT_SEARCH_RADIUS_MM;
 
@@ -1286,7 +1420,11 @@ QFlags<Qgis::ProjectCapability> operator|(Qgis::ProjectCapability f1, QFlags<Qgi
 
 QFlags<Qgis::CoordinateTransformationFlag> operator|(Qgis::CoordinateTransformationFlag f1, QFlags<Qgis::CoordinateTransformationFlag> f2);
 
+QFlags<Qgis::RasterTemporalCapabilityFlag> operator|(Qgis::RasterTemporalCapabilityFlag f1, QFlags<Qgis::RasterTemporalCapabilityFlag> f2);
 
+QFlags<Qgis::SelectionFlag> operator|(Qgis::SelectionFlag f1, QFlags<Qgis::SelectionFlag> f2);
+
+QFlags<Qgis::RasterRendererFlag> operator|(Qgis::RasterRendererFlag f1, QFlags<Qgis::RasterRendererFlag> f2);
 
 
 

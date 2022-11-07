@@ -110,6 +110,8 @@ set(QGIS_APP_SRCS
   annotations/qgsannotationitempropertieswidget.cpp
   annotations/qgsannotationlayerproperties.cpp
 
+  canvas/qgscanvasrefreshblocker.cpp
+
   decorations/qgsdecorationitem.cpp
   decorations/qgsdecorationtitle.cpp
   decorations/qgsdecorationtitledialog.cpp
@@ -131,8 +133,6 @@ set(QGIS_APP_SRCS
   pointcloud/qgspointcloudlayerstylewidget.cpp
 
   raster/qgsrasterelevationpropertieswidget.cpp
-
-  vectortile/qgsvectortilelayerproperties.cpp
 
   vertextool/qgslockedfeature.cpp
   vertextool/qgsvertexeditor.cpp
@@ -199,6 +199,8 @@ set(QGIS_APP_SRCS
   labeling/qgsmaptoolmovelabel.cpp
   labeling/qgsmaptoolrotatelabel.cpp
 
+  layers/qgsapplayerhandling.cpp
+
   layout/qgslayoutappmenuprovider.cpp
   layout/qgslayoutdesignerdialog.cpp
   layout/qgslayoutimagedrophandler.cpp
@@ -211,6 +213,7 @@ set(QGIS_APP_SRCS
 
   locator/qgsactionlocatorfilter.cpp
   locator/qgsactivelayerfeatureslocatorfilter.cpp
+  locator/qgslayermetadatalocatorfilter.cpp
   locator/qgsalllayersfeatureslocatorfilter.cpp
   locator/qgsbookmarklocatorfilter.cpp
   locator/qgsexpressioncalculatorlocatorfilter.cpp
@@ -251,9 +254,14 @@ set(QGIS_APP_SRCS
   options/qgsadvancedoptions.cpp
   options/qgscodeeditoroptions.cpp
   options/qgscustomprojectionoptions.cpp
+  options/qgsfontoptions.cpp
   options/qgsgpsdeviceoptions.cpp
+  options/qgsgpsoptions.cpp
   options/qgsoptions.cpp
   options/qgsoptionsutils.cpp
+  options/qgsrasterrenderingoptions.cpp
+  options/qgsrenderingoptions.cpp
+  options/qgsvectorrenderingoptions.cpp
 
   gps/qgsgpsbearingitem.cpp
   gps/qgsgpsinformationwidget.cpp
@@ -349,6 +357,7 @@ if (WITH_3D)
     layout/qgslayout3dmapwidget.cpp
     3d/qgsskyboxrenderingsettingswidget.cpp
     3d/qgsshadowrenderingsettingswidget.cpp
+    3d/qgsambientocclusionsettingswidget.cpp
     3d/qgspointcloud3dsymbolwidget.cpp
     3d/qgspointcloudlayer3drendererwidget.cpp
     3d/qgs3dmapcanvaswidget.cpp

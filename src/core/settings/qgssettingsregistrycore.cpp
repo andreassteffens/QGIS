@@ -27,6 +27,7 @@
 #include "qgsprocessing.h"
 #include "qgsvectorlayer.h"
 #include "qgsogrdbconnection.h"
+#include "qgsfontmanager.h"
 
 QgsSettingsRegistryCore::QgsSettingsRegistryCore()
   : QgsSettingsRegistry()
@@ -105,10 +106,14 @@ QgsSettingsRegistryCore::QgsSettingsRegistryCore()
   addSettingsEntry( &settingsDigitizingTracingMaxFeatureCount );
   addSettingsEntry( &settingsGpsBabelPath );
   addSettingsEntry( &settingsLayerTreeShowFeatureCountForNewLayers );
+  addSettingsEntry( &settingsEnableWMSTilePrefetching );
 
   addSettingsEntry( &QgsOwsConnection::settingsConnectionSelected );
   addSettingsEntryGroup( &QgsOwsConnection::settingsServiceConnectionDetailsGroup );
   addSettingsEntryGroup( &QgsOwsConnection::settingsServiceConnectionCredentialsGroup );
+
+  addSettingsEntry( &QgsFontManager::settingsFontFamilyReplacements );
+  addSettingsEntry( &QgsFontManager::settingsDownloadMissingFonts );
 }
 
 QgsSettingsRegistryCore::~QgsSettingsRegistryCore()

@@ -20,10 +20,17 @@
 #include "qgsapplication.h"
 
 #include "qgsmaptoolsdigitizingtechniquemanager.h"
+#include "qgsidentifyresultsdialog.h"
+
+#ifdef HAVE_GEOREFERENCER
 #include "georeferencer/qgsgeorefmainwindow.h"
 #include "georeferencer/qgstransformsettingsdialog.h"
+#endif
+
 #include "vertextool/qgsvertexeditor.h"
 #include "elevation/qgselevationprofilewidget.h"
+#include "qgsgpsinformationwidget.h"
+#include "qgsgpsmarker.h"
 
 QgsSettingsRegistryApp::QgsSettingsRegistryApp()
   : QgsSettingsRegistry()
@@ -32,6 +39,7 @@ QgsSettingsRegistryApp::QgsSettingsRegistryApp()
   addSettingsEntry( &QgsMapToolsDigitizingTechniqueManager::settingMapToolShapeDefaultForShape );
   addSettingsEntry( &QgsMapToolsDigitizingTechniqueManager::settingMapToolShapeCurrent );
 
+#ifdef HAVE_GEOREFERENCER
   addSettingsEntry( &QgsGeoreferencerMainWindow::settingResamplingMethod );
   addSettingsEntry( &QgsGeoreferencerMainWindow::settingCompressionMethod );
   addSettingsEntry( &QgsGeoreferencerMainWindow::settingUseZeroForTransparent );
@@ -43,11 +51,19 @@ QgsSettingsRegistryApp::QgsSettingsRegistryApp()
 
   addSettingsEntry( &QgsTransformSettingsDialog::settingLastDestinationFolder );
   addSettingsEntry( &QgsTransformSettingsDialog::settingLastPdfFolder );
+#endif
 
   addSettingsEntry( &QgsVertexEditor::settingAutoPopupVertexEditorDock );
 
   addSettingsEntry( &QgsElevationProfileWidget::settingTolerance );
   addSettingsEntry( &QgsElevationProfileWidget::settingShowLayerTree );
+
+  addSettingsEntry( &QgsIdentifyResultsDialog::settingHideNullValues );
+
+  addSettingsEntry( &QgsGpsInformationWidget::settingLastLogFolder );
+
+  addSettingsEntry( &QgsGpsMarker::settingLocationMarkerSymbol );
+  addSettingsEntry( &QgsGpsMarker::settingRotateLocationMarker );
 
   QgsApplication::settingsRegistryCore()->addSubRegistry( this );
 }

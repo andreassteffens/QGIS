@@ -100,6 +100,7 @@ QgsRelationEditorWidget::QgsRelationEditorWidget( const QVariantMap &config, QWi
   : QgsAbstractRelationEditorWidget( config, parent )
   , mButtonsVisibility( qgsFlagKeysToValue( config.value( QStringLiteral( "buttons" ) ).toString(), QgsRelationEditorWidget::Button::AllButtons ) )
   , mShowFirstFeature( config.value( QStringLiteral( "show_first_feature" ), true ).toBool() )
+  , mAllowAddChildFeatureWithNoGeometry( config.value( QStringLiteral( "allow_add_child_feature_with_no_geometry" ), false ).toBool() )
 {
   QVBoxLayout *rootLayout = new QVBoxLayout( this );
   rootLayout->setContentsMargins( 0, 9, 0, 0 );
@@ -225,7 +226,7 @@ QgsRelationEditorWidget::QgsRelationEditorWidget( const QVariantMap &config, QWi
 
   rootLayout->addWidget( mStackedWidget );
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
   connect( mViewModeButtonGroup, static_cast<void ( QButtonGroup::* )( int )>( &QButtonGroup::buttonClicked ),
            this, static_cast<void ( QgsRelationEditorWidget::* )( int )>( &QgsRelationEditorWidget::setViewMode ) );
 #else
@@ -377,7 +378,7 @@ void QgsRelationEditorWidget::updateButtons()
   mLinkFeatureButton->setVisible( mButtonsVisibility.testFlag( QgsRelationEditorWidget::Button::Link ) );
   mUnlinkFeatureButton->setVisible( mButtonsVisibility.testFlag( QgsRelationEditorWidget::Button::Unlink ) );
   mSaveEditsButton->setVisible( mButtonsVisibility.testFlag( QgsRelationEditorWidget::Button::SaveChildEdits ) && !mLayerInSameTransactionGroup );
-  mAddFeatureButton->setVisible( mButtonsVisibility.testFlag( QgsRelationEditorWidget::Button::AddChildFeature ) );
+  mAddFeatureButton->setVisible( mButtonsVisibility.testFlag( QgsRelationEditorWidget::Button::AddChildFeature ) && !( spatial && !mAllowAddChildFeatureWithNoGeometry ) );
   mAddFeatureGeometryButton->setVisible( mButtonsVisibility.testFlag( QgsRelationEditorWidget::Button::AddChildFeature ) && mEditorContext.mapCanvas() && mEditorContext.cadDockWidget() && spatial );
   mDuplicateFeatureButton->setVisible( mButtonsVisibility.testFlag( QgsRelationEditorWidget::Button::DuplicateChildFeature ) );
   mDeleteFeatureButton->setVisible( mButtonsVisibility.testFlag( QgsRelationEditorWidget::Button::DeleteChildFeature ) );
@@ -437,7 +438,8 @@ void QgsRelationEditorWidget::addFeatureGeometry()
   setMapTool( mMapToolDigitize );
 
   connect( mMapToolDigitize, &QgsMapToolDigitizeFeature::digitizingCompleted, this, &QgsRelationEditorWidget::onDigitizingCompleted );
-  connect( mEditorContext.mapCanvas(), &QgsMapCanvas::keyPressed, this, &QgsRelationEditorWidget::onKeyPressed );
+
+  connect( mMapToolDigitize, &QgsMapToolDigitizeFeature::digitizingCanceled, this, &QgsRelationEditorWidget::onDigitizingCanceled );
 
   if ( auto *lMainMessageBar = mEditorContext.mainMessageBar() )
   {
@@ -454,8 +456,7 @@ void QgsRelationEditorWidget::addFeatureGeometry()
 void QgsRelationEditorWidget::onDigitizingCompleted( const QgsFeature &feature )
 {
   QgsAbstractRelationEditorWidget::addFeature( feature.geometry() );
-
-  unsetMapTool();
+  digitizingFinished();
 }
 
 void QgsRelationEditorWidget::multiEditItemSelectionChanged()
@@ -564,11 +565,17 @@ void QgsRelationEditorWidget::showContextMenu( QgsActionMenu *menu, const QgsFea
   {
     QAction *qAction = nullptr;
 
-    qAction = menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionDeleteSelected.svg" ) ),  tr( "Delete Feature" ) );
-    connect( qAction, &QAction::triggered, this, [this, fid]() { deleteFeature( fid ); } );
+    if ( mButtonsVisibility.testFlag( QgsRelationEditorWidget::Button::DeleteChildFeature ) )
+    {
+      qAction = menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionDeleteSelected.svg" ) ),  tr( "Delete Feature" ) );
+      connect( qAction, &QAction::triggered, this, [this, fid]() { deleteFeature( fid ); } );
+    }
 
-    qAction = menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionUnlink.svg" ) ),  tr( "Unlink Feature" ) );
-    connect( qAction, &QAction::triggered, this, [this, fid]() { unlinkFeature( fid ); } );
+    if ( mButtonsVisibility.testFlag( QgsRelationEditorWidget::Button::Unlink ) )
+    {
+      qAction = menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionUnlink.svg" ) ),  tr( "Unlink Feature" ) );
+      connect( qAction, &QAction::triggered, this, [this, fid]() { unlinkFeature( fid ); } );
+    }
   }
 }
 
@@ -590,7 +597,6 @@ void QgsRelationEditorWidget::unsetMapTool()
   // this will call mapToolDeactivated
   mapCanvas->unsetMapTool( mMapToolDigitize );
 
-  disconnect( mapCanvas, &QgsMapCanvas::keyPressed, this, &QgsRelationEditorWidget::onKeyPressed );
   disconnect( mMapToolDigitize, &QgsMapToolDigitizeFeature::digitizingCompleted, this, &QgsRelationEditorWidget::onDigitizingCompleted );
 }
 
@@ -779,15 +785,17 @@ QTreeWidgetItem *QgsRelationEditorWidget::createMultiEditTreeWidgetItem( const Q
   return treeWidgetItem;
 }
 
-void QgsRelationEditorWidget::onKeyPressed( QKeyEvent *e )
+void QgsRelationEditorWidget::onDigitizingCanceled( )
 {
-  if ( e->key() == Qt::Key_Escape )
-  {
-    window()->setVisible( true );
-    window()->raise();
-    window()->activateWindow();
-    unsetMapTool();
-  }
+  digitizingFinished();
+}
+
+void QgsRelationEditorWidget::digitizingFinished( )
+{
+  window()->setVisible( true );
+  window()->raise();
+  window()->activateWindow();
+  unsetMapTool();
 }
 
 void QgsRelationEditorWidget::mapToolDeactivated()
@@ -802,13 +810,15 @@ void QgsRelationEditorWidget::mapToolDeactivated()
 QVariantMap QgsRelationEditorWidget::config() const
 {
   return QVariantMap( {{"buttons", qgsFlagValueToKeys( visibleButtons() )},
-    {"show_first_feature", mShowFirstFeature}} );
+    {"show_first_feature", mShowFirstFeature},
+    {"allow_add_child_feature_with_no_geometry", mAllowAddChildFeatureWithNoGeometry }} );
 }
 
 void QgsRelationEditorWidget::setConfig( const QVariantMap &config )
 {
   mButtonsVisibility = qgsFlagKeysToValue( config.value( QStringLiteral( "buttons" ) ).toString(), QgsRelationEditorWidget::Button::AllButtons );
   mShowFirstFeature = config.value( QStringLiteral( "show_first_feature" ), true ).toBool();
+  mAllowAddChildFeatureWithNoGeometry = config.value( QStringLiteral( "allow_add_child_feature_with_no_geometry" ), false ).toBool();
   updateButtons();
 }
 
@@ -939,7 +949,8 @@ QVariantMap QgsRelationEditorConfigWidget::config()
   return QVariantMap(
   {
     {"buttons", qgsFlagValueToKeys( buttons )},
-    {"show_first_feature", mShowFirstFeature->isChecked()}
+    {"show_first_feature", mShowFirstFeature->isChecked()},
+    {"allow_add_child_feature_with_no_geometry", mAllowAddChildFeatureWithNoGeometry->isChecked()}
   } );
 }
 
@@ -955,6 +966,7 @@ void QgsRelationEditorConfigWidget::setConfig( const QVariantMap &config )
   mRelationDeleteChildFeatureCheckBox->setChecked( buttons.testFlag( QgsRelationEditorWidget::Button::DeleteChildFeature ) );
   mRelationShowSaveChildEditsCheckBox->setChecked( buttons.testFlag( QgsRelationEditorWidget::Button::SaveChildEdits ) );
   mShowFirstFeature->setChecked( config.value( QStringLiteral( "show_first_feature" ), true ).toBool() );
+  mAllowAddChildFeatureWithNoGeometry->setChecked( config.value( QStringLiteral( "allow_add_child_feature_with_no_geometry" ), false ).toBool() );
 }
 
 

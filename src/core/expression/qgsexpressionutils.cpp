@@ -18,6 +18,7 @@
 #include "qgsvectorlayer.h"
 #include "qgscolorrampimpl.h"
 #include "qgsproviderregistry.h"
+#include "qgsvariantutils.h"
 
 ///@cond PRIVATE
 
@@ -40,7 +41,7 @@ QgsExpressionUtils::TVL QgsExpressionUtils::NOT[3] = { True, False, Unknown };
 
 QgsGradientColorRamp QgsExpressionUtils::getRamp( const QVariant &value, QgsExpression *parent, bool report_error )
 {
-  if ( value.canConvert<QgsGradientColorRamp>() )
+  if ( value.userType() == QMetaType::type( "QgsGradientColorRamp" ) )
     return value.value<QgsGradientColorRamp>();
 
   // If we get here then we can't convert so we just error and return invalid.
@@ -63,7 +64,7 @@ QString QgsExpressionUtils::getFilePathValue( const QVariant &value, QgsExpressi
   if ( res.isEmpty() )
     res = value.toString();
 
-  if ( res.isEmpty() && !value.isNull() )
+  if ( res.isEmpty() && !QgsVariantUtils::isNull( value ) )
   {
     parent->setEvalErrorString( QObject::tr( "Cannot convert value to a file path" ) );
   }
@@ -81,6 +82,17 @@ std::tuple<QVariant::Type, int> QgsExpressionUtils::determineResultType( const Q
   request.setLimit( 10 );
   request.setExpressionContext( context );
 
+  // avoid endless recursion by removing virtual fields while going through features
+  // to determine result type
+  QgsAttributeList attributes;
+  const QgsFields fields = layer->fields();
+  for ( int i = 0; i < fields.count(); i++ )
+  {
+    if ( fields.fieldOrigin( i ) != QgsFields::OriginExpression )
+      attributes << i;
+  }
+  request.setSubsetOfAttributes( attributes );
+
   QVariant value;
   QgsFeature f;
   QgsFeatureIterator it = layer->getFeatures( request );
@@ -91,7 +103,7 @@ std::tuple<QVariant::Type, int> QgsExpressionUtils::determineResultType( const Q
   {
     context.setFeature( f );
     const QVariant value = exp.evaluate( &context );
-    if ( !value.isNull() )
+    if ( !QgsVariantUtils::isNull( value ) )
     {
       return std::make_tuple( value.type(), value.userType() );
     }
@@ -100,5 +112,3 @@ std::tuple<QVariant::Type, int> QgsExpressionUtils::determineResultType( const Q
   value = QVariant();
   return std::make_tuple( value.type(), value.userType() );
 }
-
-

@@ -49,6 +49,7 @@
 #include "qgswmscapabilities.h"
 #include "qgsexception.h"
 #include "qgssettings.h"
+#include "qgssettingsregistrycore.h"
 #include "qgsogrutils.h"
 #include "qgsproviderregistry.h"
 #include "qgsruntimeprofiler.h"
@@ -208,6 +209,22 @@ QgsWmsProvider::QgsWmsProvider( QString const &uri, const ProviderOptions &optio
     return;
   }
   mCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( mSettings.mCrsId );
+
+  if ( mSettings.mTiled )
+  {
+    // WMTS - may have time dimension
+    if ( !mTileLayer->allTimeRanges.empty() )
+    {
+      Q_ASSERT_X( temporalCapabilities(), "QgsWmsProvider::QgsWmsProvider()", "Data provider temporal capabilities object does not exist" );
+      temporalCapabilities()->setHasTemporalCapabilities( true );
+
+      temporalCapabilities()->setAvailableTemporalRange( mTileLayer->temporalExtent );
+      temporalCapabilities()->setAllAvailableTemporalRanges( mTileLayer->allTimeRanges );
+      temporalCapabilities()->setDefaultInterval( mTileLayer->temporalInterval );
+      temporalCapabilities()->setFlags( mTileLayer->temporalCapabilityFlags );
+      temporalCapabilities()->setIntervalHandlingMethod( Qgis::TemporalIntervalMatchMethod::FindClosestMatchToStartOfRange );
+    }
+  }
 
   if ( profile )
     profile->switchTask( tr( "Calculate extent" ) );
@@ -1451,6 +1468,90 @@ void QgsWmsProvider::addWmstParameters( QUrlQuery &query )
   }
 }
 
+QString QgsWmsProvider::calculateWmtsTimeDimensionValue() const
+{
+  QgsDateTimeRange range = temporalCapabilities()->requestedTemporalRange();
+
+  QString format { QStringLiteral( "yyyy-MM-ddThh:mm:ssZ" ) };
+  bool dateOnly = false;
+
+  QgsProviderMetadata *metadata = QgsProviderRegistry::instance()->providerMetadata( QStringLiteral( "wms" ) );
+
+  QVariantMap uri = metadata->decodeUri( dataSourceUri() );
+
+  // Skip fetching if updates are not allowed
+  if ( !uri.value( QStringLiteral( "allowTemporalUpdates" ), true ).toBool() )
+    return QString();
+
+  if ( range.isInfinite() )
+  {
+    if ( uri.contains( QStringLiteral( "time" ) ) &&
+         !uri.value( QStringLiteral( "time" ) ).toString().isEmpty() )
+    {
+      QString time = uri.value( QStringLiteral( "time" ) ).toString();
+      QStringList timeParts = time.split( '/' );
+
+      QDateTime start = QDateTime::fromString( timeParts.at( 0 ), Qt::ISODateWithMs );
+      QDateTime end = QDateTime::fromString( timeParts.at( 1 ), Qt::ISODateWithMs );
+
+      range = QgsDateTimeRange( start, end );
+    }
+  }
+
+  if ( !uri.value( QStringLiteral( "enableTime" ), true ).toBool() )
+  {
+    format = QStringLiteral( "yyyy-MM-dd" );
+    dateOnly = true;
+  }
+
+  if ( range.begin().isValid() && range.end().isValid() )
+  {
+    QDateTime time;
+    switch ( temporalCapabilities()->intervalHandlingMethod() )
+    {
+      case Qgis::TemporalIntervalMatchMethod::MatchUsingWholeRange:
+        time = range.begin();
+        break;
+      case Qgis::TemporalIntervalMatchMethod::MatchExactUsingStartOfRange:
+        time = range.begin();
+        break;
+      case Qgis::TemporalIntervalMatchMethod::MatchExactUsingEndOfRange:
+        time = range.end();
+        break;
+      case Qgis::TemporalIntervalMatchMethod::FindClosestMatchToStartOfRange:
+        time = mSettings.findLeastClosestDateTime( range.begin(), dateOnly );
+        break;
+      case Qgis::TemporalIntervalMatchMethod::FindClosestMatchToEndOfRange:
+        time = mSettings.findLeastClosestDateTime( range.end(), dateOnly );
+        break;
+    }
+
+    QString formattedTime;
+    switch ( mTileLayer->timeFormat )
+    {
+      case QgsWmtsTileLayer::WmtsTimeFormat::yyyyMMdd:
+        formattedTime = time.toString( QStringLiteral( "yyyyMMdd" ) );
+        break;
+      case QgsWmtsTileLayer::WmtsTimeFormat::yyyy_MM_dd:
+        formattedTime = time.toString( QStringLiteral( "yyyy-MM-dd" ) );
+        break;
+      case QgsWmtsTileLayer::WmtsTimeFormat::yyyy:
+        formattedTime = time.toString( QStringLiteral( "yyyy" ) );
+        break;
+      case QgsWmtsTileLayer::WmtsTimeFormat::yyyyMMddyyyyMMddPxx:
+        formattedTime = time.toString( QStringLiteral( "yyyy-MM-ddThh:mm:ssZ" ) );
+        break;
+      case QgsWmtsTileLayer::WmtsTimeFormat::yyyyMMddThhmmssZ:
+        formattedTime = time.toString( QStringLiteral( "yyyy-MM-ddThh:mm:ssZ" ) );
+        break;
+    }
+
+    return formattedTime;
+  }
+
+  return mTileLayer->defaultTimeDimensionValue;
+}
+
 void QgsWmsProvider::createTileRequestsWMSC( const QgsWmtsTileMatrix *tm, const QgsWmsProvider::TilePositions &tiles, QgsWmsProvider::TileRequests &requests )
 {
   bool changeXY = mCaps.shouldInvertAxisOrientation( mImageCrs );
@@ -1525,7 +1626,10 @@ void QgsWmsProvider::createTileRequestsWMTS( const QgsWmtsTileMatrix *tm, const 
   if ( !getTileUrl().isNull() )
   {
     // KVP
-    QUrl url( mSettings.mIgnoreGetMapUrl ? mSettings.mBaseUrl : getTileUrl() );
+    QString baseUrl = mSettings.mIgnoreGetMapUrl ? mSettings.mBaseUrl : getTileUrl();
+
+
+    QUrl url( baseUrl );
     QUrlQuery query( url );
 
     // compose static request arguments.
@@ -1537,6 +1641,16 @@ void QgsWmsProvider::createTileRequestsWMTS( const QgsWmtsTileMatrix *tm, const 
     setQueryItem( query, QStringLiteral( "FORMAT" ), mSettings.mImageMimeType );
     setQueryItem( query, QStringLiteral( "TILEMATRIXSET" ), mTileMatrixSet->identifier );
     setQueryItem( query, QStringLiteral( "TILEMATRIX" ), tm->identifier );
+
+    if ( temporalCapabilities() &&
+         temporalCapabilities()->hasTemporalCapabilities() &&
+         !mTileLayer->timeDimensionIdentifier.isEmpty() )
+    {
+      // time dimension gets special handling
+      const QString formattedTime = calculateWmtsTimeDimensionValue();
+      if ( !formattedTime.isEmpty() )
+        setQueryItem( query, mTileLayer->timeDimensionIdentifier, formattedTime );
+    }
 
     for ( QHash<QString, QString>::const_iterator it = mSettings.mTileDimensionValues.constBegin(); it != mSettings.mTileDimensionValues.constEnd(); ++it )
     {
@@ -1573,6 +1687,16 @@ void QgsWmsProvider::createTileRequestsWMTS( const QgsWmtsTileMatrix *tm, const 
     for ( QHash<QString, QString>::const_iterator it = mSettings.mTileDimensionValues.constBegin(); it != mSettings.mTileDimensionValues.constEnd(); ++it )
     {
       url.replace( "{" + it.key() + "}", it.value(), Qt::CaseInsensitive );
+    }
+
+    if ( temporalCapabilities() &&
+         temporalCapabilities()->hasTemporalCapabilities() &&
+         !mTileLayer->timeDimensionIdentifier.isEmpty() )
+    {
+      // time dimension gets special handling
+      const QString formattedTime = calculateWmtsTimeDimensionValue( );
+      if ( !formattedTime.isEmpty() )
+        url.replace( QStringLiteral( "{%1}" ).arg( mTileLayer->timeDimensionIdentifier ),  formattedTime );
     }
 
     int i = 0;
@@ -2332,7 +2456,8 @@ int QgsWmsProvider::capabilities() const
     }
   }
 
-  if ( mSettings.mXyz )
+  bool enablePrefetch = QgsSettingsRegistryCore::settingsEnableWMSTilePrefetching.value();
+  if ( mSettings.mXyz || enablePrefetch )
   {
     capability |= Capability::Prefetch;
   }
@@ -3862,7 +3987,7 @@ void QgsWmsProvider::identifyReplyFinished()
   if ( mIdentifyReply->error() == QNetworkReply::NoError )
   {
     QVariant redirect = mIdentifyReply->attribute( QNetworkRequest::RedirectionTargetAttribute );
-    if ( !redirect.isNull() )
+    if ( !QgsVariantUtils::isNull( redirect ) )
     {
       QgsDebugMsgLevel( QStringLiteral( "identify request redirected to %1" ).arg( redirect.toString() ), 2 );
 
@@ -3877,7 +4002,7 @@ void QgsWmsProvider::identifyReplyFinished()
     }
 
     QVariant status = mIdentifyReply->attribute( QNetworkRequest::HttpStatusCodeAttribute );
-    if ( !status.isNull() && status.toInt() >= 400 )
+    if ( !QgsVariantUtils::isNull( status ) && status.toInt() >= 400 )
     {
       QVariant phrase = mIdentifyReply->attribute( QNetworkRequest::HttpReasonPhraseAttribute );
       mErrorFormat = QStringLiteral( "text/plain" );
@@ -4409,7 +4534,7 @@ void QgsWmsImageDownloadHandler::cacheReplyFinished()
   if ( mCacheReply->error() == QNetworkReply::NoError )
   {
     QVariant redirect = mCacheReply->attribute( QNetworkRequest::RedirectionTargetAttribute );
-    if ( !redirect.isNull() )
+    if ( !QgsVariantUtils::isNull( redirect ) )
     {
       mCacheReply->deleteLater();
 
@@ -4420,7 +4545,7 @@ void QgsWmsImageDownloadHandler::cacheReplyFinished()
     }
 
     QVariant status = mCacheReply->attribute( QNetworkRequest::HttpStatusCodeAttribute );
-    if ( !status.isNull() && status.toInt() >= 400 )
+    if ( !QgsVariantUtils::isNull( status ) && status.toInt() >= 400 )
     {
       QVariant phrase = mCacheReply->attribute( QNetworkRequest::HttpReasonPhraseAttribute );
 
@@ -4659,7 +4784,7 @@ void QgsWmsTiledImageDownloadHandler::tileReplyFinished()
   if ( reply->error() == QNetworkReply::NoError )
   {
     QVariant redirect = reply->attribute( QNetworkRequest::RedirectionTargetAttribute );
-    if ( !redirect.isNull() )
+    if ( !QgsVariantUtils::isNull( redirect ) )
     {
       QNetworkRequest request( redirect.toUrl() );
       QgsSetRequestInitiatorClass( request, QStringLiteral( "QgsWmsTiledImageDownloadHandler" ) );
@@ -4685,7 +4810,7 @@ void QgsWmsTiledImageDownloadHandler::tileReplyFinished()
     }
 
     QVariant status = reply->attribute( QNetworkRequest::HttpStatusCodeAttribute );
-    if ( !status.isNull() && status.toInt() >= 400 )
+    if ( !QgsVariantUtils::isNull( status ) && status.toInt() >= 400 )
     {
       QVariant phrase = reply->attribute( QNetworkRequest::HttpReasonPhraseAttribute );
       QgsWmsProvider::showMessageBox( tr( "Tile request error" ), tr( "Status: %1\nReason phrase: %2" ).arg( status.toInt() ).arg( phrase.toString() ) );
@@ -5040,7 +5165,7 @@ void QgsWmsLegendDownloadHandler::finished()
 
   QgsDebugMsgLevel( QStringLiteral( "reply OK" ), 2 );
   QVariant redirect = mReply->attribute( QNetworkRequest::RedirectionTargetAttribute );
-  if ( !redirect.isNull() )
+  if ( !QgsVariantUtils::isNull( redirect ) )
   {
     mReply->deleteLater();
     mReply = nullptr;
@@ -5049,7 +5174,7 @@ void QgsWmsLegendDownloadHandler::finished()
   }
 
   QVariant status = mReply->attribute( QNetworkRequest::HttpStatusCodeAttribute );
-  if ( !status.isNull() && status.toInt() >= 400 )
+  if ( !QgsVariantUtils::isNull( status ) && status.toInt() >= 400 )
   {
     QVariant phrase = mReply->attribute( QNetworkRequest::HttpReasonPhraseAttribute );
     QString msg( tr( "GetLegendGraphic request error" ) );

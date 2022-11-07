@@ -192,6 +192,12 @@ Qgis::VectorExportResult QgsProviderMetadata::createEmptyLayer(
   return Qgis::VectorExportResult::ErrorProviderUnsupportedFeature;
 }
 
+bool QgsProviderMetadata::createDatabase( const QString &, QString &errorMessage )
+{
+  errorMessage = QObject::tr( "The %1 provider does not support database creation" ).arg( key() );
+  return false;
+}
+
 QgsRasterDataProvider *QgsProviderMetadata::createRasterDataProvider(
   const QString &, const QString &,
   int, Qgis::DataType, int,
@@ -233,6 +239,7 @@ int QgsProviderMetadata::listStyles( const QString &, QStringList &, QStringList
   errCause = QObject::tr( "Provider %1 has no %2 method" ).arg( key(), QStringLiteral( "listStyles" ) );
   return -1;
 }
+
 
 bool QgsProviderMetadata::styleExists( const QString &, const QString &, QString &errorCause )
 {
@@ -309,7 +316,7 @@ QgsAbstractProviderConnection *QgsProviderMetadata::findConnection( const QStrin
 QgsAbstractProviderConnection *QgsProviderMetadata::createConnection( const QString &name )
 {
   Q_UNUSED( name );
-  throw QgsProviderConnectionException( QObject::tr( "Provider %1 has no %2 method" ).arg( key(), QStringLiteral( "connection" ) ) );
+  throw QgsProviderConnectionException( QObject::tr( "Provider %1 has no %2 method" ).arg( key(), QStringLiteral( "createConnection" ) ) );
 }
 
 
@@ -317,7 +324,7 @@ QgsAbstractProviderConnection *QgsProviderMetadata::createConnection( const QStr
 {
   Q_UNUSED( configuration );
   Q_UNUSED( uri );
-  throw QgsProviderConnectionException( QObject::tr( "Provider %1 has no %2 method" ).arg( key(), QStringLiteral( "connection" ) ) );
+  throw QgsProviderConnectionException( QObject::tr( "Provider %1 has no %2 method" ).arg( key(), QStringLiteral( "createConnection" ) ) );
 }
 
 void QgsProviderMetadata::deleteConnection( const QString &name )

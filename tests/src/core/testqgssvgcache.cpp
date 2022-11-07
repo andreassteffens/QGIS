@@ -25,7 +25,6 @@
 #include <QtConcurrent>
 #include <QElapsedTimer>
 #include "qgssvgcache.h"
-#include "qgsmultirenderchecker.h"
 #include "qgsapplication.h"
 
 /**

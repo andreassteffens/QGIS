@@ -184,6 +184,10 @@ void QgsDualView::initAttributeForm( const QgsFeature &feature )
     mAttributeEditor->layout()->addWidget( mAttributeForm );
   }
 
+  // This is an arbitrary yet small value to fix issue GH #50181
+  // the default value is 0.
+  mAttributeForm->setMinimumWidth( 200 );
+
   setAttributeTableConfig( mLayer->attributeTableConfig() );
 
   connect( mAttributeForm, &QgsAttributeForm::widgetValueChanged, this, &QgsDualView::featureFormAttributeChanged );
@@ -361,9 +365,14 @@ void QgsDualView::setFilterMode( QgsAttributeTableFilterModel::FilterMode filter
 
     case QgsAttributeTableFilterModel::ShowAll:
     case QgsAttributeTableFilterModel::ShowFilteredList:
+    {
+      const QString filterExpression = filterMode == QgsAttributeTableFilterModel::ShowFilteredList ? mFilterModel->filterExpression() : QString();
+      if ( !filterExpression.isEmpty() )
+        r.setFilterExpression( mFilterModel->filterExpression() );
       connect( mFilterModel, &QgsAttributeTableFilterModel::featuresFiltered, this, &QgsDualView::filterChanged );
       connect( mFilterModel, &QgsAttributeTableFilterModel::filterError, this, &QgsDualView::filterError );
       break;
+    }
 
     case QgsAttributeTableFilterModel::ShowSelected:
       connect( masterModel()->layer(), &QgsVectorLayer::selectionChanged, this, &QgsDualView::updateSelectedFeatures );

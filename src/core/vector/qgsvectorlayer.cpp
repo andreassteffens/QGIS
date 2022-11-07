@@ -26,11 +26,8 @@
 #include "qgsvectorlayer.h"
 #include "qgsactionmanager.h"
 #include "qgsapplication.h"
-#include "qgsclipper.h"
 #include "qgsconditionalstyle.h"
 #include "qgscoordinatereferencesystem.h"
-#include "qgscoordinatetransform.h"
-#include "qgsexception.h"
 #include "qgscurve.h"
 #include "qgsdatasourceuri.h"
 #include "qgsexpressionfieldbuffer.h"
@@ -39,12 +36,10 @@
 #include "qgsfeaturerequest.h"
 #include "qgsfields.h"
 #include "qgsmaplayerfactory.h"
-#include "qgsmaplayerutils.h"
 #include "qgsgeometry.h"
 #include "qgslayermetadataformatter.h"
 #include "qgslogger.h"
 #include "qgsmaplayerlegend.h"
-#include "qgsmaptopixel.h"
 #include "qgsmessagelog.h"
 #include "qgsogcutils.h"
 #include "qgspainting.h"
@@ -65,17 +60,13 @@
 #include "qgsvectorlayerjoinbuffer.h"
 #include "qgsvectorlayerlabeling.h"
 #include "qgsvectorlayerrenderer.h"
-#include "qgsvectorlayerundocommand.h"
 #include "qgsvectorlayerfeaturecounter.h"
 #include "qgspoint.h"
 #include "qgsrenderer.h"
 #include "qgssymbollayer.h"
-#include "qgssinglesymbolrenderer.h"
 #include "qgsdiagramrenderer.h"
-#include "qgsstyle.h"
 #include "qgspallabeling.h"
 #include "qgsrulebasedlabeling.h"
-#include "qgssimplifymethod.h"
 #include "qgsstoredexpressionmanager.h"
 #include "qgsexpressioncontext.h"
 #include "qgsfeedback.h"
@@ -91,8 +82,7 @@
 #include "qgsvectorlayerutils.h"
 #include "qgsvectorlayerprofilegenerator.h"
 #include "qgsprofilerequest.h"
-
-#include "diagram/qgsdiagram.h"
+#include "qgssymbollayerutils.h"
 
 #include <QDir>
 #include <QFile>
@@ -198,6 +188,11 @@ QgsVectorLayer::QgsVectorLayer( const QString &vectorLayerPath,
     {
       providerFlags |= QgsDataProvider::FlagLoadDefaultStyle;
     }
+    if ( options.forceReadOnly )
+    {
+      providerFlags |= QgsDataProvider::ForceReadOnly;
+      mDataSourceReadOnly = true;
+    }
     setDataSource( vectorLayerPath, baseName, providerKey, providerOptions, providerFlags );
   }
 
@@ -280,6 +275,7 @@ QgsVectorLayer *QgsVectorLayer::clone() const
   {
     dataSource = source();
   }
+  options.forceReadOnly = mDataSourceReadOnly;
   QgsVectorLayer *layer = new QgsVectorLayer( dataSource, name(), mProviderKey, options );
   if ( mDataProvider && layer->dataProvider() )
   {
@@ -1627,11 +1623,15 @@ bool QgsVectorLayer::readXml( const QDomNode &layer_node, QgsReadWriteContext &c
     {
       QgsDebugMsg( QStringLiteral( "Could not set data provider for layer %1" ).arg( publicSource() ) );
     }
-    const QDomElement elem = layer_node.toElement();
 
     // for invalid layer sources, we fallback to stored wkbType if available
     if ( elem.hasAttribute( QStringLiteral( "wkbType" ) ) )
       mWkbType = qgsEnumKeyToValue( elem.attribute( QStringLiteral( "wkbType" ) ), mWkbType );
+  }
+  if ( mReadFlags & QgsMapLayer::FlagForceReadOnly )
+  {
+    flags |= QgsDataProvider::ForceReadOnly;
+    mDataSourceReadOnly = true;
   }
 
   QDomElement pkeyElem = pkeyNode.toElement();
@@ -2830,12 +2830,16 @@ bool QgsVectorLayer::writeSymbology( QDomNode &node, QDomDocument &doc, QString 
     QDomElement referencedLayersElement = doc.createElement( QStringLiteral( "referencedLayers" ) );
     node.appendChild( referencedLayersElement );
 
-    const auto constReferencingRelations { QgsProject::instance()->relationManager()->referencingRelations( this ) };
-    for ( const auto &rel : constReferencingRelations )
+    const QList<QgsRelation> referencingRelations { QgsProject::instance()->relationManager()->referencingRelations( this ) };
+    for ( const QgsRelation &rel : referencingRelations )
     {
-      if ( rel.type() == QgsRelation::Normal )
+      switch ( rel.type() )
       {
+        case Qgis::RelationshipType::Normal:
         QgsWeakRelation::writeXml( this, QgsWeakRelation::Referencing, rel, referencedLayersElement, doc );
+          break;
+        case Qgis::RelationshipType::Generated:
+          break;
       }
     }
 
@@ -2843,15 +2847,18 @@ bool QgsVectorLayer::writeSymbology( QDomNode &node, QDomDocument &doc, QString 
     QDomElement referencingLayersElement = doc.createElement( QStringLiteral( "referencingLayers" ) );
     node.appendChild( referencedLayersElement );
 
-    const auto constReferencedRelations { QgsProject::instance()->relationManager()->referencedRelations( this ) };
-    for ( const auto &rel : constReferencedRelations )
+    const QList<QgsRelation> referencedRelations { QgsProject::instance()->relationManager()->referencedRelations( this ) };
+    for ( const QgsRelation &rel : referencedRelations )
     {
-      if ( rel.type() == QgsRelation::Normal )
+      switch ( rel.type() )
       {
+        case Qgis::RelationshipType::Normal:
         QgsWeakRelation::writeXml( this, QgsWeakRelation::Referenced, rel, referencingLayersElement, doc );
+          break;
+        case Qgis::RelationshipType::Generated:
+          break;
       }
     }
-
   }
 
   // write field configurations
@@ -3495,8 +3502,10 @@ bool QgsVectorLayer::deleteFeatureCascade( QgsFeatureId fid, QgsVectorLayer::Del
       for ( const QgsRelation &relation : relations )
       {
         //check if composition (and not association)
-        if ( relation.strength() == QgsRelation::Composition )
+        switch ( relation.strength() )
         {
+          case Qgis::RelationshipStrength::Composition:
+          {
           //get features connected over this relation
           QgsFeatureIterator relatedFeaturesIt = relation.getRelatedFeatures( getFeature( fid ) );
           QgsFeatureIds childFeatureIds;
@@ -3510,9 +3519,14 @@ bool QgsVectorLayer::deleteFeatureCascade( QgsFeatureId fid, QgsVectorLayer::Del
             relation.referencingLayer()->startEditing();
             relation.referencingLayer()->deleteFeatures( childFeatureIds, context );
           }
+            break;
         }
+
+          case Qgis::RelationshipStrength::Association:
+            break;
       }
     }
+  }
   }
 
   if ( mJoinBuffer->containsJoins() )
@@ -3859,13 +3873,17 @@ bool QgsVectorLayer::isSpatial() const
 
 bool QgsVectorLayer::isReadOnly() const
 {
-  return mReadOnly;
+  return mDataSourceReadOnly || mReadOnly;
 }
 
 bool QgsVectorLayer::setReadOnly( bool readonly )
 {
   // exit if the layer is in editing mode
   if ( readonly && mEditBuffer )
+    return false;
+
+  // exit if the data source is in read-only mode
+  if ( !readonly && mDataSourceReadOnly )
     return false;
 
   mReadOnly = readonly;
@@ -3876,6 +3894,9 @@ bool QgsVectorLayer::setReadOnly( bool readonly )
 bool QgsVectorLayer::supportsEditing() const
 {
   if ( ! mDataProvider )
+    return false;
+
+  if ( mDataSourceReadOnly )
     return false;
 
   return mDataProvider->capabilities() & QgsVectorDataProvider::EditingCapabilities && ! mReadOnly;
@@ -4595,7 +4616,7 @@ void QgsVectorLayer::minimumOrMaximumValue( int index, QVariant *minimum, QVaria
       while ( fit.nextFeature( f ) )
       {
         const QVariant currentValue = f.attribute( index );
-        if ( currentValue.isNull() )
+        if ( QgsVariantUtils::isNull( currentValue ) )
           continue;
 
         if ( firstValue )
@@ -5535,6 +5556,11 @@ QList<QgsRelation> QgsVectorLayer::referencingRelations( int idx ) const
 QList<QgsWeakRelation> QgsVectorLayer::weakRelations() const
 {
   return mWeakRelations;
+}
+
+void QgsVectorLayer::setWeakRelations( const QList<QgsWeakRelation> &relations )
+{
+  mWeakRelations = relations;
 }
 
 int QgsVectorLayer::listStylesInDatabase( QStringList &ids, QStringList &names, QStringList &descriptions, QString &msgError )

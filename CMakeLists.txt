@@ -17,10 +17,10 @@ set(CMAKE_LINK_DEPENDS_NO_SHARED ON)
 #############################################################
 # Project and version
 set(CPACK_PACKAGE_VERSION_MAJOR "3")
-set(CPACK_PACKAGE_VERSION_MINOR "26")
-set(CPACK_PACKAGE_VERSION_PATCH "3")
+set(CPACK_PACKAGE_VERSION_MINOR "28")
+set(CPACK_PACKAGE_VERSION_PATCH "0")
 set(COMPLETE_VERSION ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH})
-set(RELEASE_NAME "Osnabrück")
+set(RELEASE_NAME "Firenze")
 project(qgis VERSION ${COMPLETE_VERSION})
 
 if (APPLE)
@@ -441,12 +441,12 @@ if(WITH_CORE)
   #############################################################
   # search for Qt
 
-  set (WITH_QT6 FALSE CACHE BOOL "Enable (broken, experimental) Qt6 support")
-  if (WITH_QT6)
+  set (BUILD_WITH_QT6 FALSE CACHE BOOL "Enable (broken, experimental) Qt6 support")
+  if (BUILD_WITH_QT6)
     set(QT_MIN_VERSION 6.0.0)
     set(QT_VERSION_BASE "Qt6")
   else()
-    set(QT_MIN_VERSION 5.12.0)
+    set(QT_MIN_VERSION 5.14.0)
     set(QT_VERSION_BASE "Qt5")
     set(HAS_KDE_QT5_PDF_TRANSFORM_FIX FALSE CACHE BOOL "Using KDE's Qt 5.15 fork with the PDF brush transform fix")
     set(HAS_KDE_QT5_SMALL_CAPS_FIX FALSE CACHE BOOL "Using KDE's Qt 5.15 fork with the QFont::SmallCaps fix")
@@ -462,7 +462,7 @@ if(WITH_CORE)
   endif()
 
   find_package(${QT_VERSION_BASE} COMPONENTS Core Gui Widgets Network Xml Svg Concurrent Test UiTools Sql REQUIRED)
-  if (WITH_QT6)
+  if (BUILD_WITH_QT6)
     find_package(${QT_VERSION_BASE} COMPONENTS Core5Compat REQUIRED)
   else()
     # TODO only available starting from Qt 6.2
@@ -473,16 +473,13 @@ if(WITH_CORE)
   else()
     add_definitions(-DQT_NO_PRINTER)
   endif()
-  if (WITH_QTWEBKIT AND NOT WITH_QT6)
+  if (WITH_QTWEBKIT AND NOT BUILD_WITH_QT6)
     find_package(Qt5WebKit REQUIRED)
     find_package(Qt5WebKitWidgets REQUIRED)
   endif()
   if (WITH_3D)
     find_package(${QT_VERSION_BASE} COMPONENTS 3DCore 3DRender 3DInput 3DLogic 3DExtras REQUIRED)
     set(HAVE_3D TRUE)  # used in qgsconfig.h
-  endif()
-  if (APPLE)
-    find_package(${QT_VERSION_BASE} COMPONENTS MacExtras REQUIRED)
   endif()
 
   # get the Qt plugins directory
@@ -491,14 +488,14 @@ if(WITH_CORE)
   EXEC_PROGRAM(${QMAKE_EXECUTABLE} ARGS "-query QT_INSTALL_PLUGINS" RETURN_VALUE return_code OUTPUT_VARIABLE DEFAULT_QT_PLUGINS_DIR )
   set (QT_PLUGINS_DIR ${DEFAULT_QT_PLUGINS_DIR} CACHE STRING "Path to installation directory for Qt Plugins. Defaults to Qt native plugin directory")
 
-  if (WITH_QT6)
+  if (BUILD_WITH_QT6)
     message(STATUS "Found Qt version: ${Qt6Core_VERSION}")
   else()
     message(STATUS "Found Qt version: ${Qt5Core_VERSION_STRING}")
   endif()
   if (WITH_QUICK)
     find_package(${QT_VERSION_BASE} COMPONENTS Qml Quick REQUIRED)
-    if(${CMAKE_SYSTEM_NAME} MATCHES "Android")
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Android" AND NOT BUILD_WITH_QT6)
       find_package(${QT_VERSION_BASE} COMPONENTS AndroidExtras)
     endif()
 
@@ -731,6 +728,10 @@ if(ENABLE_COVERAGE)
   SETUP_TARGET_FOR_COVERAGE(qgis_coverage ctest coverage)
 endif()
 
+if(USE_ALTERNATE_LINKER)
+  include("cmake/modules/linker.cmake")
+endif()
+
 #############################################################
 # platform specific stuff
 if (WITH_CORE)
@@ -883,7 +884,7 @@ if (WITH_CORE)
   if (WITH_CLAZY)
     set(CMAKE_CXX_BASE_FLAGS "${CMAKE_CXX_FLAGS}")
     #  qcolor-from-literal crashes clang with clazy 1.11
-    set(CLAZY_BASE_CHECKS "connect-3arg-lambda,lambda-unique-connection,empty-qstringliteral,fully-qualified-moc-types,lowercase-qml-type-name,qfileinfo-exists,qmap-with-pointer-key,unused-non-trivial-variable,overridden-signal,qdeleteall,qstring-left,skipped-base-method,isempty-vs-count")
+    set(CLAZY_BASE_CHECKS "connect-3arg-lambda,lambda-unique-connection,empty-qstringliteral,fully-qualified-moc-types,lowercase-qml-type-name,qfileinfo-exists,qmap-with-pointer-key,unused-non-trivial-variable,overridden-signal,qdeleteall,qstring-left,skipped-base-method,isempty-vs-count,missing-qobject-macro")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_BASE_FLAGS} -Xclang -plugin-arg-clazy -Xclang ${CLAZY_BASE_CHECKS}")
 
     if (WERROR AND NOT ${QGISDEBUG})
@@ -971,7 +972,7 @@ message("-- Found Python executable: ${Python_EXECUTABLE} (version ${Python_VERS
 message("-- Python library: ${Python_LIBRARIES}")
 message("-- Python site-packages: ${Python_SITEARCH}")
 
-if (WITH_CORE AND WITH_BINDINGS AND NOT WITH_QT6)
+if (WITH_CORE AND WITH_BINDINGS AND NOT BUILD_WITH_QT6)
   set(PYTHON_OUTPUT_DIRECTORY ${QGIS_OUTPUT_DIRECTORY}/python)
   set (QGIS_PYTHON_OUTPUT_DIRECTORY ${PYTHON_OUTPUT_DIRECTORY}/qgis)
 
@@ -988,7 +989,7 @@ if (WITH_CORE AND WITH_BINDINGS AND NOT WITH_QT6)
   include(SIPMacros)
 
   set(SIP_INCLUDES ${PYQT_SIP_DIR} ${CMAKE_SOURCE_DIR}/python)
-  set(SIP_CONCAT_PARTS 19)
+  set(SIP_CONCAT_PARTS 20)
 
   if (NOT BINDINGS_GLOBAL_INSTALL)
     set(Python_SITEARCH ${QGIS_DATA_DIR}/python)
@@ -1019,23 +1020,13 @@ if (WITH_CORE)
 endif()
 
 ####################################################
-# clang-tidy
-set (WITH_CLANG_TIDY FALSE CACHE BOOL "Use Clang tidy")
-mark_as_advanced(WITH_CLANG_TIDY)
-if (WITH_CORE)
-  if(WITH_CLANG_TIDY)
-    find_program(
-      CLANG_TIDY_EXE
-      NAMES "clang-tidy"
-      DOC "Path to clang-tidy executable"
-      )
-    if(NOT CLANG_TIDY_EXE)
-      message(STATUS "clang-tidy not found.")
-    else()
-      message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
-      set(DO_CLANG_TIDY "${CLANG_TIDY_EXE}" "-checks=*,-clang-analyzer-alpha.*,-cppcoreguidelines*,-readability-implicit-bool-cast,-llvm-include-order,-cert-err58-cpp,-modernize-pass-by-value,-google-readability-braces-around-statements,-modernize-use-auto,-modernize-loop-convert,-readability-else-after-return,-readability-braces-around-statements,-google-runtime-references,-readability-named-parameter,-google-default-arguments,-google-readability-todo,-readability-inconsistent-declaration-parameter-name,-cert-flp30-c,-google-readability-casting,-clang-analyzer-security.FloatLoopCounter,-google-runtime-int,-modernize-use-using,-google-explicit-constructor,-google-build-using-namespace,-cert-err34-c,-clang-analyzer-core.CallAndMessage,-google-readability-function-size,-modernize-make-shared,-modernize-use-nullptr,-clang-analyzer-cplusplus.NewDeleteLeaks,-clang-analyzer-core.NonNullParamChecker,performance-unnecessary-copy-initialization,-readability-simplify-boolean-expr,-modernize-raw-string-literal,-performance-unnecessary-copy-initialization")
-    endif()
-  endif()
+# asan
+set (WITH_ASAN FALSE CACHE BOOL "Use AddressSanitizer")
+mark_as_advanced(WITH_ASAN)
+if(WITH_ASAN)
+  message(STATUS "Enabling AddressSanitizer")
+  add_compile_options(-fsanitize=address)
+  add_link_options(-fsanitize=address)
 endif()
 
 #############################################################

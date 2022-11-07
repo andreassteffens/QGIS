@@ -60,7 +60,6 @@
 #include "qgsstyleentityvisitor.h"
 #include "qgsprojectviewsettings.h"
 #include "qgsprojectstylesettings.h"
-#include "qgsprojectdisplaysettings.h"
 #include "qgsprojecttimesettings.h"
 #include "qgsvectortilelayer.h"
 #include "qgsruntimeprofiler.h"
@@ -450,9 +449,7 @@ QgsProject::QgsProject( QObject *parent, Qgis::ProjectCapabilities capabilities 
   connect( mViewSettings, &QgsProjectViewSettings::mapScalesChanged, this, &QgsProject::mapScalesChanged );
   Q_NOWARN_DEPRECATED_POP
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 13, 0)
   mStyleSettings->combinedStyleModel()->addDefaultStyle();
-#endif
 }
 
 
@@ -959,6 +956,14 @@ void QgsProject::clear()
   context.readSettings();
   setTransformContext( context );
 
+  //fallback to QGIS default measurement unit
+  bool ok = false;
+  const QgsUnitTypes::DistanceUnit distanceUnit = QgsUnitTypes::decodeDistanceUnit( mSettings.value( QStringLiteral( "/qgis/measure/displayunits" ) ).toString(), &ok );
+  setDistanceUnits( ok ? distanceUnit : QgsUnitTypes::DistanceMeters );
+  ok = false;
+  const QgsUnitTypes::AreaUnit areaUnits = QgsUnitTypes::decodeAreaUnit( mSettings.value( QStringLiteral( "/qgis/measure/areaunits" ) ).toString(), &ok );
+  setAreaUnits( ok ? areaUnits : QgsUnitTypes::AreaSquareMeters );
+
   mEmbeddedLayers.clear();
   mRelationManager->clear();
   mAnnotationManager->clear();
@@ -1000,10 +1005,6 @@ void QgsProject::clear()
 
   const bool defaultRelativePaths = mSettings.value( QStringLiteral( "/qgis/defaultProjectPathsRelative" ), true ).toBool();
   setFilePathStorage( defaultRelativePaths ? Qgis::FilePathType::Relative : Qgis::FilePathType::Absolute );
-
-  //copy default units to project
-  writeEntry( QStringLiteral( "Measurement" ), QStringLiteral( "/DistanceUnits" ), mSettings.value( QStringLiteral( "/qgis/measure/displayunits" ) ).toString() );
-  writeEntry( QStringLiteral( "Measurement" ), QStringLiteral( "/AreaUnits" ), mSettings.value( QStringLiteral( "/qgis/measure/areaunits" ) ).toString() );
 
   int red = mSettings.value( QStringLiteral( "qgis/default_canvas_color_red" ), 255 ).toInt();
   int green = mSettings.value( QStringLiteral( "qgis/default_canvas_color_green" ), 255 ).toInt();
@@ -1379,6 +1380,9 @@ bool QgsProject::addLayer( const QDomElement &layerElem, QList<QDomNode> &broken
   // Propagate trust layer metadata flag
   if ( ( mFlags & Qgis::ProjectFlag::TrustStoredLayerStatistics ) || ( flags & Qgis::ProjectReadFlag::TrustLayerMetadata ) )
     layerFlags |= QgsMapLayer::FlagTrustLayerMetadata;
+  // Propagate open layers in read-only mode
+  if ( ( flags & Qgis::ProjectReadFlag::ForceReadOnlyLayers ) )
+    layerFlags |= QgsMapLayer::FlagForceReadOnly;
 
   profile.switchTask( tr( "Load layer source" ) );
   const bool layerIsValid = mapLayer->readLayerXml( layerElem, context, layerFlags ) && mapLayer->isValid();
@@ -1648,6 +1652,15 @@ bool QgsProject::readProjectFile( const QString &filename, Qgis::ProjectReadFlag
                                readNumEntry( QStringLiteral( "Gui" ), QStringLiteral( "/SelectionColorAlphaPart" ), 255 ) );
   setSelectionColor( selectionColor );
 
+
+  const QString distanceUnitString = readEntry( QStringLiteral( "Measurement" ), QStringLiteral( "/DistanceUnits" ), QString() );
+  if ( !distanceUnitString.isEmpty() )
+    setDistanceUnits( QgsUnitTypes::decodeDistanceUnit( distanceUnitString ) );
+
+  const QString areaUnitString = readEntry( QStringLiteral( "Measurement" ), QStringLiteral( "/AreaUnits" ), QString() );
+  if ( !areaUnitString.isEmpty() )
+    setAreaUnits( QgsUnitTypes::decodeAreaUnit( areaUnitString ) );
+
   QgsReadWriteContext context;
   context.setPathResolver( pathResolver() );
   context.setProjectTranslator( this );
@@ -1754,30 +1767,6 @@ bool QgsProject::readProjectFile( const QString &filename, Qgis::ProjectReadFlag
     }
   }
 
-  element = doc->documentElement().firstChildElement( QStringLiteral( "projectFlags" ) );
-  if ( !element.isNull() )
-  {
-    mFlags = qgsFlagKeysToValue( element.attribute( QStringLiteral( "set" ) ), Qgis::ProjectFlags() );
-  }
-  else
-  {
-    // older project compatibility
-    element = doc->documentElement().firstChildElement( QStringLiteral( "evaluateDefaultValues" ) );
-    if ( !element.isNull() )
-    {
-      if ( element.attribute( QStringLiteral( "active" ), QStringLiteral( "0" ) ).toInt() == 1 )
-        mFlags |= Qgis::ProjectFlag::EvaluateDefaultValuesOnProviderSide;
-    }
-
-    // Read trust layer metadata config in the project
-    element = doc->documentElement().firstChildElement( QStringLiteral( "trust" ) );
-    if ( !element.isNull() )
-    {
-      if ( element.attribute( QStringLiteral( "active" ), QStringLiteral( "0" ) ).toInt() == 1 )
-        mFlags |= Qgis::ProjectFlag::TrustStoredLayerStatistics;
-    }
-  }
-
   // read the layer tree from project file
   profile.switchTask( tr( "Loading layer tree" ) );
   mRootGroup->setCustomProperty( QStringLiteral( "loading" ), 1 );
@@ -1853,6 +1842,8 @@ bool QgsProject::readProjectFile( const QString &filename, Qgis::ProjectReadFlag
   // now that layers are loaded, we can resolve layer tree's references to the layers
   profile.switchTask( tr( "Resolving references" ) );
   mRootGroup->resolveReferences( this );
+
+  loadProjectFlags( doc.get() );
 
   if ( !layerTreeElem.isNull() )
   {
@@ -2740,6 +2731,9 @@ bool QgsProject::writeProjectFile( const QString &filename )
   writeEntry( QStringLiteral( "Gui" ), QStringLiteral( "/SelectionColorBluePart" ), mSelectionColor.blue() );
   writeEntry( QStringLiteral( "Gui" ), QStringLiteral( "/SelectionColorAlphaPart" ), mSelectionColor.alpha() );
 
+  writeEntry( QStringLiteral( "Measurement" ), QStringLiteral( "/DistanceUnits" ), QgsUnitTypes::encodeUnit( mDistanceUnits ) );
+  writeEntry( QStringLiteral( "Measurement" ), QStringLiteral( "/AreaUnits" ), QgsUnitTypes::encodeUnit( mAreaUnits ) );
+
   // now add the optional extra properties
 #if 0
   dump_( mProperties );
@@ -3387,38 +3381,24 @@ bool QgsProject::topologicalEditing() const
   return readNumEntry( QStringLiteral( "Digitizing" ), QStringLiteral( "/TopologicalEditing" ), 0 );
 }
 
-QgsUnitTypes::DistanceUnit QgsProject::distanceUnits() const
-{
-  const QString distanceUnitString = readEntry( QStringLiteral( "Measurement" ), QStringLiteral( "/DistanceUnits" ), QString() );
-  if ( !distanceUnitString.isEmpty() )
-    return QgsUnitTypes::decodeDistanceUnit( distanceUnitString );
-
-  //fallback to QGIS default measurement unit
-  bool ok = false;
-  const QgsUnitTypes::DistanceUnit type = QgsUnitTypes::decodeDistanceUnit( mSettings.value( QStringLiteral( "/qgis/measure/displayunits" ) ).toString(), &ok );
-  return ok ? type : QgsUnitTypes::DistanceMeters;
-}
-
 void QgsProject::setDistanceUnits( QgsUnitTypes::DistanceUnit unit )
 {
-  writeEntry( QStringLiteral( "Measurement" ), QStringLiteral( "/DistanceUnits" ), QgsUnitTypes::encodeUnit( unit ) );
-}
+  if ( mDistanceUnits == unit )
+    return;
 
-QgsUnitTypes::AreaUnit QgsProject::areaUnits() const
-{
-  const QString areaUnitString = readEntry( QStringLiteral( "Measurement" ), QStringLiteral( "/AreaUnits" ), QString() );
-  if ( !areaUnitString.isEmpty() )
-    return QgsUnitTypes::decodeAreaUnit( areaUnitString );
+  mDistanceUnits = unit;
 
-  //fallback to QGIS default area unit
-  bool ok = false;
-  const QgsUnitTypes::AreaUnit type = QgsUnitTypes::decodeAreaUnit( mSettings.value( QStringLiteral( "/qgis/measure/areaunits" ) ).toString(), &ok );
-  return ok ? type : QgsUnitTypes::AreaSquareMeters;
+  emit distanceUnitsChanged();
 }
 
 void QgsProject::setAreaUnits( QgsUnitTypes::AreaUnit unit )
 {
-  writeEntry( QStringLiteral( "Measurement" ), QStringLiteral( "/AreaUnits" ), QgsUnitTypes::encodeUnit( unit ) );
+  if ( mAreaUnits == unit )
+    return;
+
+  mAreaUnits = unit;
+
+  emit areaUnitsChanged();
 }
 
 QString QgsProject::homePath() const
@@ -3906,26 +3886,47 @@ QgsProject::addMapLayer( QgsMapLayer *layer,
   return addedLayers.isEmpty() ? nullptr : addedLayers[0];
 }
 
+void QgsProject::removeAuxiliaryLayer( const QgsMapLayer *ml )
+{
+  if ( ! ml || ml->type() != QgsMapLayerType::VectorLayer )
+    return;
+
+  const QgsVectorLayer *vl = qobject_cast<const QgsVectorLayer *>( ml );
+  if ( vl && vl->auxiliaryLayer() )
+  {
+    const QgsDataSourceUri uri( vl->auxiliaryLayer()->source() );
+    QgsAuxiliaryStorage::deleteTable( uri );
+  }
+}
+
 void QgsProject::removeMapLayers( const QStringList &layerIds )
 {
+  for ( const auto &layerId : layerIds )
+    removeAuxiliaryLayer( mLayerStore->mapLayer( layerId ) );
+
   mProjectScope.reset();
   mLayerStore->removeMapLayers( layerIds );
 }
 
 void QgsProject::removeMapLayers( const QList<QgsMapLayer *> &layers )
 {
+  for ( const auto &layer : layers )
+    removeAuxiliaryLayer( layer );
+
   mProjectScope.reset();
   mLayerStore->removeMapLayers( layers );
 }
 
 void QgsProject::removeMapLayer( const QString &layerId )
 {
+  removeAuxiliaryLayer( mLayerStore->mapLayer( layerId ) );
   mProjectScope.reset();
   mLayerStore->removeMapLayer( layerId );
 }
 
 void QgsProject::removeMapLayer( QgsMapLayer *layer )
 {
+  removeAuxiliaryLayer( layer );
   mProjectScope.reset();
   mLayerStore->removeMapLayer( layer );
 }
@@ -4280,6 +4281,36 @@ bool QgsProject::accept( QgsStyleEntityVisitorInterface *visitor ) const
     return false;
 
   return true;
+}
+
+void QgsProject::loadProjectFlags( const QDomDocument *doc )
+{
+  QDomElement element = doc->documentElement().firstChildElement( QStringLiteral( "projectFlags" ) );
+  Qgis::ProjectFlags flags;
+  if ( !element.isNull() )
+  {
+    flags = qgsFlagKeysToValue( element.attribute( QStringLiteral( "set" ) ), Qgis::ProjectFlags() );
+  }
+  else
+  {
+    // older project compatibility
+    element = doc->documentElement().firstChildElement( QStringLiteral( "evaluateDefaultValues" ) );
+    if ( !element.isNull() )
+    {
+      if ( element.attribute( QStringLiteral( "active" ), QStringLiteral( "0" ) ).toInt() == 1 )
+        flags |= Qgis::ProjectFlag::EvaluateDefaultValuesOnProviderSide;
+    }
+
+    // Read trust layer metadata config in the project
+    element = doc->documentElement().firstChildElement( QStringLiteral( "trust" ) );
+    if ( !element.isNull() )
+    {
+      if ( element.attribute( QStringLiteral( "active" ), QStringLiteral( "0" ) ).toInt() == 1 )
+        flags |= Qgis::ProjectFlag::TrustStoredLayerStatistics;
+    }
+  }
+
+  setFlags( flags );
 }
 
 /// @cond PRIVATE

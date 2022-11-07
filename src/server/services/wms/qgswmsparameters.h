@@ -1445,7 +1445,7 @@ namespace QgsWms
       QMultiMap<QString, QgsWmsParametersRules> sbLayerRules(const QStringList &layers) const;
       QMultiMap<QString, bool> sbLayerLabels(const QStringList &layers) const;
 
-      QMap<QgsWmsParameter::Name, QgsWmsParameter> mWmsParameters;
+      QMultiMap<QgsWmsParameter::Name, QgsWmsParameter> mWmsParameters;
       QMap<QString, QMap<QString, QString> > mExternalWMSParameters;
       QMap<QString, QString> mSbRenderSelectionOnlyLayers;
       QList<QgsProjectVersion> mVersions;

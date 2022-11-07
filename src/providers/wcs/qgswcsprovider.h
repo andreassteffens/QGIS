@@ -449,6 +449,7 @@ class QgsWcsDownloadHandler : public QObject
 
 class QgsWcsProviderMetadata final: public QgsProviderMetadata
 {
+    Q_OBJECT
   public:
     QgsWcsProviderMetadata();
     QIcon icon() const override;
