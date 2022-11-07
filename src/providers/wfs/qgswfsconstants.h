@@ -51,6 +51,8 @@ struct QgsWFSConstants
   static const QString URI_PARAM_WFST_1_1_PREFER_COORDINATES;
   static const QString URI_PARAM_SKIP_INITIAL_GET_FEATURE;
 
+  static const QString URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE;
+  static const QString URI_PARAM_SB_FALLBACK_GEOMETRY_NAME;
   //
   static const QString VERSION_AUTO;
 };

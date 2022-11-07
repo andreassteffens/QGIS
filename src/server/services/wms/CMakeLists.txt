@@ -22,6 +22,7 @@ set (WMS_SRCS
   qgswmsrestorer.cpp
   qgswmsrendercontext.cpp
   qgswmsrequest.cpp
+  libProfiler.cpp
 )
 
 set (WMS_HDRS
@@ -46,9 +47,14 @@ foreach(_library_type MODULE STATIC)
   include_directories(${_library_name} SYSTEM PUBLIC
     ${GDAL_INCLUDE_DIR}
     ${POSTGRES_INCLUDE_DIR}
+    ${QCA_INCLUDE_DIR}
+    ${QTKEYCHAIN_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/external/SimpleCrypt
   )
 
   target_include_directories(${_library_name} PUBLIC
+    ${CMAKE_SOURCE_DIR}/src/core/auth
+    ${CMAKE_SOURCE_DIR}/src/providers/wms
     ${CMAKE_SOURCE_DIR}/src/server
     ${CMAKE_SOURCE_DIR}/src/server/services
     ${CMAKE_SOURCE_DIR}/src/server/services/wms
@@ -62,6 +68,8 @@ foreach(_library_type MODULE STATIC)
   target_link_libraries(${_library_name}
     qgis_core
     qgis_server
+    provider_wms_a
+    winmm.lib
   )
 endforeach()
 

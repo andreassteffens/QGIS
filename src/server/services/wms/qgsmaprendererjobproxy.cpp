@@ -39,7 +39,8 @@ namespace QgsWms
 #endif
     if ( mParallelRendering )
     {
-      QgsApplication::setMaxThreads( maxThreads );
+      if(QgsApplication::maxThreads() != maxThreads)
+        QgsApplication::setMaxThreads( maxThreads );
       QgsMessageLog::logMessage( QStringLiteral( "Parallel rendering activated with %1 threads" ).arg( maxThreads ), QStringLiteral( "server" ), Qgis::MessageLevel::Info );
     }
     else

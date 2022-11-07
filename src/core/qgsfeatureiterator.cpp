@@ -21,6 +21,7 @@
 #include "qgsexpressionsorter_p.h"
 #include "qgsfeedback.h"
 #include "qgscoordinatetransform.h"
+#include "qgsmessagelog.h"
 
 QgsAbstractFeatureIterator::QgsAbstractFeatureIterator( const QgsFeatureRequest &request )
   : mRequest( request )
@@ -55,18 +56,29 @@ bool QgsAbstractFeatureIterator::nextFeature( QgsFeature &f )
   }
   else
   {
-    switch ( mRequest.filterType() )
+    while (true)
     {
-      case QgsFeatureRequest::FilterExpression:
-        dataOk = nextFeatureFilterExpression( f );
-        break;
+      switch ( mRequest.filterType() )
+      {
+        case QgsFeatureRequest::FilterExpression:
+          dataOk = nextFeatureFilterExpression( f );
+          break;
+  
+        case QgsFeatureRequest::FilterFids:
+          dataOk = nextFeatureFilterFids( f );
+          break;
+  
+        default:
+          dataOk = fetchFeature( f );
+          break;
+      }
 
-      case QgsFeatureRequest::FilterFids:
-        dataOk = nextFeatureFilterFids( f );
-        break;
-
-      default:
-        dataOk = fetchFeature( f );
+      if (dataOk)
+      {
+        if (mRequest.sbTestRenderMinPixelSizeFilter(f))
+          break;
+      }
+      else
         break;
     }
   }

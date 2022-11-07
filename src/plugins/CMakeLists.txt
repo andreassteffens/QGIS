@@ -6,6 +6,9 @@ endif()
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${QGIS_OUTPUT_DIRECTORY}/${QGIS_PLUGIN_SUBDIR})
 set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${QGIS_OUTPUT_DIRECTORY}/${QGIS_PLUGIN_SUBDIR})
 
+add_subdirectory(sb_address_services)
+add_subdirectory(sb_elevation_services)
+
 add_subdirectory(topology)
 add_subdirectory(geometry_checker)
 

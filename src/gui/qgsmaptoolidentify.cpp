@@ -786,9 +786,31 @@ QMap< QString, QString > QgsMapToolIdentify::featureDerivedAttributes( const Qgs
       //find closest vertex to clicked point
       closestPoint = QgsGeometryUtils::closestVertex( *feature.geometry().constGet(), QgsPoint( layerPoint ), vId );
     }
+
+    QgsRectangle rcBounds = feature.geometry().boundingBox();
+    if (!rcBounds.isNull() && !rcBounds.isEmpty())
+    {
+      int iPrecision = 3;
+      if (layer->crs().authid().compare("EPSG:4326", Qt::CaseInsensitive) == 0)
+        iPrecision = 6;
+
+      derivedAttributes.insert(tr("([a]tapa) Minimal Bounding Rectangle"), rcBounds.toString(iPrecision));
+
+      if (layer->crs() != mCanvas->mapSettings().destinationCrs())
+      {
+        QgsCoordinateTransform ct(layer->crs(), mCanvas->mapSettings().destinationCrs(), mCanvas->mapSettings().transformContext());
+        if (ct.isValid())
+        {
+          iPrecision = 3;
+          if (mCanvas->mapSettings().destinationCrs().authid().compare("EPSG:4326", Qt::CaseInsensitive) == 0)
+            iPrecision = 6;
+
+          QgsRectangle rcBoundsTranformed = ct.transformBoundingBox(rcBounds);
+          derivedAttributes.insert(tr("([a]tapa) Minimal Bounding Rectangle (transformed)"), rcBoundsTranformed.toString(iPrecision));
+        }
+      }
+    }
   }
-
-
 
   if ( QgsWkbTypes::isMultiType( wkbType ) )
   {

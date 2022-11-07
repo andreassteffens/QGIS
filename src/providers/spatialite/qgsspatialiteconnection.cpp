@@ -695,7 +695,7 @@ skip:
   return false;
 }
 
-QgsSqliteHandle *QgsSqliteHandle::openDb( const QString &dbPath, bool shared )
+QgsSqliteHandle *QgsSqliteHandle::openDb( const QString &dbPath, bool shared, bool skipMetadataCheck )
 {
   //QMap < QString, QgsSqliteHandle* >&handles = QgsSqliteHandle::handles;
   const QMutexLocker locker( &sHandleMutex );
@@ -719,12 +719,16 @@ QgsSqliteHandle *QgsSqliteHandle::openDb( const QString &dbPath, bool shared )
   }
 
   // checking the DB for sanity
-  if ( !checkMetadata( database.get() ) )
+  if (!skipMetadataCheck)
   {
-    // failure
-    QgsDebugMsg( QStringLiteral( "Failure while connecting to: %1\n\ninvalid metadata tables" ).arg( dbPath ) );
-    return nullptr;
+  	if ( !checkMetadata( database.get() ) )
+  	{
+    	// failure
+    	QgsDebugMsg( QStringLiteral( "Failure while connecting to: %1\n\ninvalid metadata tables" ).arg( dbPath ) );
+    	return nullptr;
+  	}
   }
+  
 
   // add REGEXP function
   sqlite3_create_function( database.get(), "REGEXP", 2, SQLITE_UTF8, nullptr, fcnRegexp, nullptr, nullptr );

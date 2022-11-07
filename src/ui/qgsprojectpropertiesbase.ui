@@ -979,6 +979,34 @@
                   </property>
                  </spacer>
                 </item>
+                <item>
+                 <widget class="QToolButton" name="pbnSbOsmScales">
+                  <property name="toolTip">
+                   <string>([a]tapa) Generate OSM scales</string>
+                  </property>
+                  <property name="text">
+                   <string>…</string>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../../images/images.qrc">
+                    <normaloff>:/images/themes/default/mSbOsmScales.svg</normaloff>:/images/themes/default/mSbOsmScales.svg</iconset>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QToolButton" name="pbnSbAutoScales">
+                  <property name="toolTip">
+                   <string>([a]tapa) Generate scales starting at current scale</string>
+                  </property>
+                  <property name="text">
+                   <string>…</string>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../../images/images.qrc">
+                    <normaloff>:/images/themes/default/mSbAutoScales.svg</normaloff>:/images/themes/default/mSbAutoScales.svg</iconset>
+                  </property>
+                 </widget>
+                </item>
                </layout>
               </item>
              </layout>
@@ -3215,20 +3243,40 @@
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_28">
                     <item>
-                     <widget class="QPushButton" name="pbnLaunchOWSChecker">
-                      <property name="sizePolicy">
-                       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                        <horstretch>0</horstretch>
-                        <verstretch>0</verstretch>
-                       </sizepolicy>
-                      </property>
-                      <property name="toolTip">
-                       <string>Test the configuration</string>
-                      </property>
-                      <property name="text">
-                       <string>Launch</string>
-                      </property>
-                     </widget>
+                     <layout class="QHBoxLayout" name="horizontalLayout_11">
+                      <item>
+                       <widget class="QPushButton" name="pbnLaunchOWSChecker">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="toolTip">
+                         <string>Test the configuration for [a]tapa Atlas</string>
+                        </property>
+                        <property name="text">
+                         <string>([a]tapa) Atlas test</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="pbnSbFillLayerShortNames">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="toolTip">
+                         <string>Optimize configuration for [a]tapa Atlas</string>
+                        </property>
+                        <property name="text">
+                         <string>([a]tapa) Atlas optimizations</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
                     </item>
                     <item>
                      <widget class="QTextEdit" name="teOWSChecker">
@@ -3559,6 +3607,8 @@
   <tabstop>pbnRemoveScale</tabstop>
   <tabstop>pbnImportScales</tabstop>
   <tabstop>pbnExportScales</tabstop>
+  <tabstop>pbnSbOsmScales</tabstop>
+  <tabstop>pbnSbAutoScales</tabstop>
   <tabstop>mExtentGroupBox</tabstop>
   <tabstop>scrollArea</tabstop>
   <tabstop>scrollArea_3</tabstop>
@@ -3653,6 +3703,7 @@
   <tabstop>pbnWCSLayersDeselectAll</tabstop>
   <tabstop>mWCSUrlLineEdit</tabstop>
   <tabstop>pbnLaunchOWSChecker</tabstop>
+  <tabstop>pbnSbFillLayerShortNames</tabstop>
   <tabstop>teOWSChecker</tabstop>
   <tabstop>mStartDateTimeEdit</tabstop>
   <tabstop>mEndDateTimeEdit</tabstop>

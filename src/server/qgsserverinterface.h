@@ -177,6 +177,9 @@ class SERVER_EXPORT QgsServerInterface
      */
     virtual void reloadSettings() = 0;
 
+	virtual QStringList sbLoadedProjects() = 0 SIP_SKIP;
+
+	virtual const QString& sbTenant() = 0 SIP_SKIP;
   private:
 #ifdef SIP_RUN
     QgsServerInterface();

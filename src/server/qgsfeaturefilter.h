@@ -59,9 +59,16 @@ class SERVER_EXPORT QgsFeatureFilter : public QgsFeatureFilterProvider
      */
     void setFilter( const QgsVectorLayer *layer, const QgsExpression &expression );
 
+   /**
+    * Set SQL query substitutions for the given layer.
+    * \param layer the layer to filter
+    * \param list of substitutions
+    */
+    void sbSetQuerySubstitutions(const QgsVectorLayer *layer, const QStringList &substitutions);
+
   private:
     QMap<QString, QString> mFilters;
-
+    QMap<QString, QStringList> mSbQuerySubstitutions;
 };
 
 #endif

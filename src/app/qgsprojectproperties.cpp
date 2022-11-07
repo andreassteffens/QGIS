@@ -57,6 +57,7 @@
 #include "qgsprintlayout.h"
 #include "qgsmetadatawidget.h"
 #include "qgslayercapabilitiesmodel.h"
+#include "qgsvectordataprovider.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgsprojectservervalidator.h"
 #include "qgsprojectstorage.h"
@@ -110,6 +111,9 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
   connect( pbnImportScales, &QToolButton::clicked, this, &QgsProjectProperties::pbnImportScales_clicked );
   connect( pbnExportScales, &QToolButton::clicked, this, &QgsProjectProperties::pbnExportScales_clicked );
   connect( grpWMSExt, &QGroupBox::toggled, this, &QgsProjectProperties::wmsExtent_toggled );
+  connect( pbnSbOsmScales, &QToolButton::clicked, this, &QgsProjectProperties::pbnSbOsmScales_clicked);
+  connect( pbnSbAutoScales, &QToolButton::clicked, this, &QgsProjectProperties::pbnSbAutoScales_clicked);
+  connect( pbnWMSExtCanvas, &QPushButton::clicked, this, &QgsProjectProperties::pbnWMSExtCanvas_clicked );
   connect( pbnWMSAddSRS, &QToolButton::clicked, this, &QgsProjectProperties::pbnWMSAddSRS_clicked );
   connect( pbnWMSRemoveSRS, &QToolButton::clicked, this, &QgsProjectProperties::pbnWMSRemoveSRS_clicked );
   connect( pbnWMSSetUsedSRS, &QPushButton::clicked, this, &QgsProjectProperties::pbnWMSSetUsedSRS_clicked );
@@ -124,6 +128,7 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
   connect( pbnWCSLayersSelectAll, &QPushButton::clicked, this, &QgsProjectProperties::pbnWCSLayersSelectAll_clicked );
   connect( pbnWCSLayersDeselectAll, &QPushButton::clicked, this, &QgsProjectProperties::pbnWCSLayersDeselectAll_clicked );
   connect( pbnLaunchOWSChecker, &QPushButton::clicked, this, &QgsProjectProperties::pbnLaunchOWSChecker_clicked );
+  connect( pbnSbFillLayerShortNames, &QPushButton::clicked, this, &QgsProjectProperties::pbnSbFillLayerShortNames_clicked );
   connect( mButtonAddColor, &QToolButton::clicked, this, &QgsProjectProperties::mButtonAddColor_clicked );
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsProjectProperties::showHelp );
   connect( mCustomizeBearingFormatButton, &QPushButton::clicked, this, &QgsProjectProperties::customizeBearingFormat );
@@ -1333,6 +1338,21 @@ void QgsProjectProperties::apply()
     else
       flags &= ~QgsMapLayer::Private;
 
+    if (mLayerCapabilitiesModel->sbNavigable(layer))
+      layer->setCustomProperty("sb:Navigable", QVariant(true));
+    else
+      layer->setCustomProperty("sb:Navigable", QVariant(false));
+
+    if (mLayerCapabilitiesModel->sbSelectable(layer))
+      layer->setCustomProperty("sb:Selectable", QVariant(true));
+    else
+      layer->setCustomProperty("sb:Selectable", QVariant(false));
+
+    if (mLayerCapabilitiesModel->sbSnappable(layer))
+      layer->setCustomProperty("sb:Snappable", QVariant(true));
+    else
+      layer->setCustomProperty("sb:Snappable", QVariant(false));
+
     layer->setFlags( flags );
 
     QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( layer );
@@ -1445,7 +1465,7 @@ void QgsProjectProperties::apply()
     QgsRectangle wmsExtent = mAdvertisedExtentServer->outputExtent();
     QgsProject::instance()->writeEntry(
       QStringLiteral( "WMSExtent" ), QStringLiteral( "/" ),
-      QStringList()
+                                        QStringList()
       << qgsDoubleToString( wmsExtent.xMinimum() )
       << qgsDoubleToString( wmsExtent.yMinimum() )
       << qgsDoubleToString( wmsExtent.xMaximum() )
@@ -1992,7 +2012,7 @@ void QgsProjectProperties::wmsExtent_toggled()
     if ( mAdvertisedExtentServer->outputExtent().isEmpty() )
     {
       mAdvertisedExtentServer->setOutputExtentFromCurrent();
-    }
+}
   }
 }
 
@@ -2171,30 +2191,545 @@ void QgsProjectProperties::pbnWCSLayersDeselectAll_clicked()
   }
 }
 
+void QgsProjectProperties::sbResolveLayerPath(QgsLayerTreeNode *pNode, QString &rstrPath)
+{
+  if (!pNode)
+  {
+    if (rstrPath.endsWith("/"))
+      rstrPath.truncate(rstrPath.length() - 1);
+
+    return;
+  }
+
+  rstrPath = pNode->name() + "/" + rstrPath;
+
+  sbResolveLayerPath(pNode->parent(), rstrPath);
+}
+
 void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
 {
   QList<QgsProjectServerValidator::ValidationResult> validationResults;
   bool results = QgsProjectServerValidator::validate( QgsProject::instance(), validationResults );
 
-  QString errors;
-  if ( !results )
-  {
-    for ( const QgsProjectServerValidator::ValidationResult &result : std::as_const( validationResults ) )
-    {
-      errors += QLatin1String( "<b>" ) % QgsProjectServerValidator::displayValidationError( result.error ) % QLatin1String( " :</b> " );
-      errors += result.identifier.toString();
-    }
-  }
-  else
-  {
-    errors += tr( "Project is valid." );
-  }
-
   QString myStyle = QgsApplication::reportStyleSheet();
   myStyle.append( QStringLiteral( "body { margin: 10px; }\n " ) );
   teOWSChecker->clear();
   teOWSChecker->document()->setDefaultStyleSheet( myStyle );
-  teOWSChecker->setHtml( errors );
+  
+  QString strContent;
+  strContent += "<h1>" + tr("([a]tapa) Performing QGIS Server check. Hold on to your hat...") + "</h1>";
+  
+  if (!QgsProject::instance()->trustLayerMetadata() || !QgsProject::instance()->autoTransaction())
+  {
+    strContent += "<hr>";
+    strContent += "<h3 style='color: #f00;'>Some performance optimizations have to be reviewed:</h3>";
+
+    strContent += "<ul>";
+
+    if (!QgsProject::instance()->trustLayerMetadata())
+      strContent += "<li>" + tr("Project is not configured to trust layer metadata stored in the project file. Consider enabling this option to speed up project initialization.") + "</li>";
+
+    if (!QgsProject::instance()->autoTransaction())
+      strContent += "<li>" + tr("Automatic transaction grouping is disabled. Consider enabling transaction grouping to optimize on (spatial) database operations.") + "</li>";
+
+    strContent += + "</ul>";
+  }
+  else
+  {
+    strContent += "<h3>" + tr("([a]tapa) Main database performance options seem to be in order") + "</h3>";
+  }
+  
+  QMap<QString, QgsMapLayer*> mapLayers = QgsProject::instance()->mapLayers(true);
+  QMap<QString, QgsMapLayer*>::ConstIterator iter;
+  for (iter = mapLayers.constBegin(); iter != mapLayers.constEnd(); iter++)
+  {
+    QString strPath = "";
+    QgsLayerTreeLayer *pTreeLayer = QgsProject::instance()->layerTreeRoot()->findLayer((*iter)->id());
+    if (pTreeLayer)
+      sbResolveLayerPath(pTreeLayer, strPath);
+
+    bool bSearchable = mLayerCapabilitiesModel->searchable((*iter));
+    if (bSearchable)
+    {
+      bSearchable = false;
+
+      QgsLayerMetadata meta = (*iter)->metadata();
+      QList<QgsLayerMetadata::Constraint> qlistConstraints = meta.constraints();
+      for (int iMeta = 0; iMeta < qlistConstraints.length(); iMeta++)
+      {
+        if (qlistConstraints[iMeta].type.compare("sb:SEARCH", Qt::CaseInsensitive) == 0)
+        {
+          bSearchable = true;
+          break;
+        }
+      }
+
+      if (!bSearchable)
+      {
+        if (!strPath.isEmpty())
+          validationResults << QgsProjectServerValidator::ValidationResult(QgsProjectServerValidator::sbVectorLayerSearchNotDefined, QStringLiteral("%1 (%2)").arg((*iter)->name()).arg(strPath));
+        else
+          validationResults << QgsProjectServerValidator::ValidationResult(QgsProjectServerValidator::sbVectorLayerSearchNotDefined, (*iter)->name());
+      }
+    }
+
+    bool bSelectable = mLayerCapabilitiesModel->sbSelectable((*iter));
+    bool bSnappable = mLayerCapabilitiesModel->sbSnappable((*iter));
+    bool bNeedsWfs = bSearchable || bSelectable || bSnappable;
+
+    if (bNeedsWfs)
+    {
+      bool bFoundWfs = false;
+
+      for (int i = 0; i < twWFSLayers->rowCount(); i++)
+      {
+        QString id = twWFSLayers->item(i, 0)->data(Qt::UserRole).toString();
+        if (id.compare(iter.key(), Qt::CaseInsensitive) == 0)
+        {
+          QCheckBox *cb = nullptr;
+          cb = qobject_cast<QCheckBox *>(twWFSLayers->cellWidget(i, 1));
+          if (cb)
+            bFoundWfs = cb->isChecked();
+
+          break;
+        }
+      }
+
+      if (!bFoundWfs)
+      {
+        if (!strPath.isEmpty())
+          validationResults << QgsProjectServerValidator::ValidationResult(QgsProjectServerValidator::sbRequiredWfsNotEnabled, QStringLiteral("%1 (%2)").arg((*iter)->name()).arg(strPath));
+        else
+          validationResults << QgsProjectServerValidator::ValidationResult(QgsProjectServerValidator::sbRequiredWfsNotEnabled, (*iter)->name());
+      }
+    }
+  }
+  
+  QString strMessage;
+  for (int iResult = 0; iResult < validationResults.count(); iResult++)
+  {
+    if (validationResults[iResult].error == QgsProjectServerValidator::LayerEncoding)
+      strMessage += "<li><b>" + validationResults[iResult].identifier.toString() + ":</b> " + QgsProjectServerValidator::displayValidationError(validationResults[iResult].error) + "</li>";
+  }
+  if (!strMessage.isEmpty())
+  {
+    strMessage = "<h3 style='color: #f00;'>" + tr("Some layer encodings are not set:") + "</h3><ul>" + strMessage + "</ul>";
+    strContent += strMessage;
+  }
+  else
+    strContent += "<h3>" + tr("All layer encodings are set properly") + "</h3>";
+
+  strMessage = "";
+  for (int iResult = 0; iResult < validationResults.count(); iResult++)
+  {
+    if (validationResults[iResult].error == QgsProjectServerValidator::DuplicatedNames)
+      strMessage += "<li><b>" + validationResults[iResult].identifier.toString() + ":</b> " + QgsProjectServerValidator::displayValidationError(validationResults[iResult].error) + "</li>";
+  }
+  if (!strMessage.isEmpty())
+  {
+    strMessage = "<h3 style='color: #f00;'>" + tr("Some layers and groups have the same name or short name:") + "</h3><ul>" + strMessage + "</ul>";
+    strContent += strMessage;
+  }
+  else
+    strContent += "<h3>" + tr("All names and short names of layer and group are unique") + "</h3>";
+
+  strMessage = "";
+  for (int iResult = 0; iResult < validationResults.count(); iResult++)
+  {
+    if (validationResults[iResult].error == QgsProjectServerValidator::LayerShortName)
+      strMessage += "<li><b>" + validationResults[iResult].identifier.toString() + ":</b> " + QgsProjectServerValidator::displayValidationError(validationResults[iResult].error) + "</li>";
+  }
+  if (!strMessage.isEmpty())
+  {
+    strMessage = "<h3 style='color: #f00;'>" + tr("Some layer short names have to be updated:") + "</h3><ul>" + strMessage + "</ul>";
+    strContent += strMessage;
+  }
+  else
+    strContent += "<h3>" + tr("All layer short names are well formed") + "</h3>";
+
+  strMessage = "";
+  for (int iResult = 0; iResult < validationResults.count(); iResult++)
+  {
+    if (validationResults[iResult].error == QgsProjectServerValidator::ProjectShortName)
+      strMessage += "<li><b>" + validationResults[iResult].identifier.toString() + ":</b> " + QgsProjectServerValidator::displayValidationError(validationResults[iResult].error) + "</li>";
+  }
+  if (!strMessage.isEmpty())
+  {
+    strMessage = "<h3 style='color: #f00;'>" + tr("The project's short names has to be updated:") + "</h3><ul>" + strMessage + "</ul>";
+    strContent += strMessage;
+  }
+  else
+    strContent += "<h3>" + tr("The project's short name is unique and well formed") + "</h3>";
+
+  strMessage = "";
+  for (int iResult = 0; iResult < validationResults.count(); iResult++)
+  {
+    if (validationResults[iResult].error == QgsProjectServerValidator::sbRequiredWfsNotEnabled)
+      strMessage += "<li><b>" + validationResults[iResult].identifier.toString() + ":</b> " + QgsProjectServerValidator::displayValidationError(validationResults[iResult].error) + "</li>";
+    else if (validationResults[iResult].error == QgsProjectServerValidator::sbVectorLayerSearchNotDefined)
+      strMessage += "<li><b>" + validationResults[iResult].identifier.toString() + ":</b> " + QgsProjectServerValidator::displayValidationError(validationResults[iResult].error) + "</li>";
+  }
+  if (!strMessage.isEmpty())
+  {
+    strMessage = "<h3 style='color: #f00;'>" + tr("([a]tapa) Some inconsistent settings with regard to [a]tapa tools have to be reviewed:") + "</h3><ul>" + strMessage + "</ul>";
+    strContent += strMessage;
+  }
+  else
+    strContent += "<h3>" + tr("([a]tapa) All Atlas related tool settings are consistent") + "</h3>";
+
+  strMessage = "";
+  for (int iResult = 0; iResult < validationResults.count(); iResult++)
+  {
+    if (validationResults[iResult].error == QgsProjectServerValidator::sbRasterLayerCheckEnabledLegend 
+      || validationResults[iResult].error == QgsProjectServerValidator::sbRasterLayerMissingTiledConstraint
+      || validationResults[iResult].error == QgsProjectServerValidator::sbRasterLayerPublishableForClientFetching 
+      || validationResults[iResult].error == QgsProjectServerValidator::sbRasterLayerPublishableForClientFetching)
+    {
+      strMessage += "<li><b>" + validationResults[iResult].identifier.toString() + ":</b> " + QgsProjectServerValidator::displayValidationError(validationResults[iResult].error) + "</li>";
+    }
+  }
+  if (!strMessage.isEmpty())
+  {
+    strMessage = "<h3 style='color: #f00;'>" + tr("[Atlas] The publishing settings for some layers need to be reviewed:") + "</h3><ul>" + strMessage + "</ul>";
+    strContent += strMessage;
+  }
+  else
+    strContent += "<h3>" + tr("[Atlas] All Atlas related tool settings are consistent") + "</h3>";
+
+  strContent += "<hr>";
+  strContent += "<h1>" + tr("[Atlas] QGIS Server check done! Hat still on?") + "</h1>";
+  
+  teOWSChecker->setHtml( strContent );
+}
+
+void QgsProjectProperties::sbCollectLayerShortNames(QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapShortNames)
+{
+  // nothing to be done here for now
+}
+
+QString QgsProjectProperties::sbDetermineShortName(QString strTitle, QString strPath, QMultiMap<QString, QPair<QString, QString>> &mapShortNames)
+{
+  QString strName = strTitle.toLower().replace("Ü", "Ue");
+  strName = strName.replace("ü", "ue");
+  strName = strName.replace("Ö", "Oe");
+  strName = strName.replace("ö", "oe");
+  strName = strName.replace("Ä", "Ae");
+  strName = strName.replace("ä", "ae");
+  strName = strName.replace("ß", "ss");
+  strName = strName.replace("(", "_");
+  strName = strName.replace(")", "_");
+  strName = strName.replace("[", "_");
+  strName = strName.replace("]", "_");
+  strName = strName.replace("{", "_");
+  strName = strName.replace("}", "_");
+  strName = strName.replace(".", "_");
+  strName = strName.replace(",", "_");
+  strName = strName.replace("#", "_");
+  strName = strName.replace("§", "_");
+  strName = strName.replace("&", "_");
+  strName = strName.replace("/", "_");
+  strName = strName.replace("\\", "_");
+  strName = strName.replace("=", "_");
+  strName = strName.replace(" ", "_");
+  strName = strName.replace(":", "_");
+  strName = strName.replace(";", "_");
+
+  if (!mapShortNames.contains(strName))
+  {
+    mapShortNames.insert(strName, QPair<QString, QString>(strPath, strTitle));
+    return strName;
+  }
+
+  for (int iCount = 1; iCount < 1000; iCount++)
+  {
+    QString strIndexedName = QString("%1_%2").arg(strName).arg(iCount);
+    if (!mapShortNames.contains(strIndexedName))
+    {
+      mapShortNames.insert(strIndexedName, QPair<QString, QString>(strPath, strTitle));
+      strName = strIndexedName;
+      break;
+    }
+  }
+
+  return strName;
+}
+
+void QgsProjectProperties::sbBuildLayerPath(QgsLayerTreeNode* node, QString &path)
+{
+  if (path.isNull() || path.isEmpty())
+    path = node->name();
+  else
+    path = node->name() + "=&gt;" + path;
+
+  if (node->parent())
+    sbBuildLayerPath(node->parent(), path);
+}
+
+void QgsProjectProperties::sbFillLayerShortNames(QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QPair<QString, QString>> &mapShortNames, bool bSynchronizeTreeAndWmsTitles)
+{
+  QList< QgsLayerTreeNode * > treeGroupChildren = treeGroup->children();
+  for (int i = 0; i < treeGroupChildren.size(); ++i)
+  {
+    QgsLayerTreeNode *treeNode = treeGroupChildren.at(i);
+    if (treeNode->nodeType() == QgsLayerTreeNode::NodeGroup)
+    {
+      QgsLayerTreeGroup *treeGroupChild = static_cast<QgsLayerTreeGroup *>(treeNode);
+
+      QString strShortName = treeGroupChild->customProperty(QStringLiteral("wmsShortName")).toString();
+
+      bool bSetName = true;
+      if (!strShortName.isEmpty())
+        bSetName = !(strShortName.startsWith("_") || strShortName.startsWith("sb_"));
+
+      if (!bSetName)
+        continue;
+
+      QString strPath;
+      sbResolveLayerPath(treeNode, strPath);
+
+      QString strTitle = treeGroupChild->name().trimmed();
+      strShortName = sbDetermineShortName(strTitle, strPath, mapShortNames);
+
+      treeGroupChild->setCustomProperty(QStringLiteral("wmsShortName"), strShortName);
+      treeGroupChild->setCustomProperty(QStringLiteral("wmsTitle"), strTitle);
+
+      sbFillLayerShortNames(treeGroupChild, mapShortNames, bSynchronizeTreeAndWmsTitles);
+    }
+    else
+    {
+      QgsLayerTreeLayer *treeLayer = static_cast<QgsLayerTreeLayer *>(treeNode);
+      QgsMapLayer *l = treeLayer->layer();
+      if (l)
+      {
+        QString strShortName = l->shortName();
+
+        bool bSetName = true;
+        if (!strShortName.isEmpty())
+          bSetName = !(strShortName.startsWith("_") || strShortName.startsWith("sb_"));
+
+        if (!bSetName)
+          continue;
+
+        QString strPath;
+        sbResolveLayerPath(treeNode, strPath);
+
+        QString strTitle = l->title();
+        if (strTitle.isEmpty() || bSynchronizeTreeAndWmsTitles)
+          strTitle = treeLayer->name();
+        strShortName = sbDetermineShortName(strTitle, strPath, mapShortNames);
+
+        l->setShortName(strShortName);
+        l->setTitle(strTitle);
+        treeLayer->setCustomProperty(QStringLiteral("wmsShortName"), strShortName);
+        treeLayer->setCustomProperty(QStringLiteral("wmsTitle"), strTitle);
+      }
+    }
+  }
+}
+
+void QgsProjectProperties::sbPrecalculateLayerMetadata(QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapLayerMetadata)
+{
+  QList< QgsLayerTreeNode * > treeGroupChildren = treeGroup->children();
+  for (int i = 0; i < treeGroupChildren.size(); ++i)
+  {
+    QgsLayerTreeNode *treeNode = treeGroupChildren.at(i);
+    if (treeNode->nodeType() == QgsLayerTreeNode::NodeGroup)
+    {
+      QgsLayerTreeGroup *treeGroupChild = static_cast<QgsLayerTreeGroup *>(treeNode);
+      sbPrecalculateLayerMetadata(treeGroupChild, mapLayerMetadata);
+    }
+    else
+    {
+      QgsLayerTreeLayer *treeLayer = static_cast<QgsLayerTreeLayer *>(treeNode);
+      QgsMapLayer *l = treeLayer->layer();
+      if (l)
+      {
+        if (l->dataProvider()->name().compare(QLatin1String("spatialite"), Qt::CaseInsensitive) == 0)
+        {
+          QList<QgsLayerMetadata::Constraint> qlistConstraints = l->metadata().constraints();
+          if (qlistConstraints.length() > 0)
+          {
+            bool bUseCachedMetadata = false;
+
+            for (int i = 0; i < qlistConstraints.length(); i++)
+            {
+              if (qlistConstraints[i].type.compare("sb:USE_CACHED_METADATA", Qt::CaseInsensitive) == 0)
+              {
+                if (qlistConstraints[i].constraint.compare(QStringLiteral("true"), Qt::CaseInsensitive) == 0)
+                  bUseCachedMetadata = true;
+              }
+            }
+
+            if (bUseCachedMetadata)
+            {
+              QgsVectorDataProvider *prov = static_cast<QgsVectorDataProvider *>(l->dataProvider());
+              QgsRectangle rcExtent = prov->extent();
+              qlonglong lFeatureCount = prov->featureCount();
+
+              l->setCustomProperty(QStringLiteral("SB_CACHED_FEATURE_COUNT"), lFeatureCount);
+              l->setCustomProperty(QStringLiteral("SB_CACHED_FEATURE_EXTENT"), rcExtent.asWktPolygon());
+
+              QString strPath = "";
+              sbBuildLayerPath(treeNode, strPath);
+              if (!mapLayerMetadata.contains(strPath))
+                mapLayerMetadata.insert(strPath, rcExtent.asWktPolygon() + " | " + QString::number(lFeatureCount));
+            }
+            else
+            {
+              l->removeCustomProperty("SB_CACHED_FEATURE_COUNT");
+              l->removeCustomProperty("SB_CACHED_FEATURE_EXTENT");
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void QgsProjectProperties::sbCollectWfsToolLayerIds(QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapLayerIds)
+{
+  QList< QgsLayerTreeNode * > treeGroupChildren = treeGroup->children();
+  for (int i = 0; i < treeGroupChildren.size(); ++i)
+  {
+    QgsLayerTreeNode *treeNode = treeGroupChildren.at(i);
+    if (treeNode->nodeType() == QgsLayerTreeNode::NodeGroup)
+    {
+      QgsLayerTreeGroup *treeGroupChild = static_cast<QgsLayerTreeGroup *>(treeNode);
+      sbCollectWfsToolLayerIds(treeGroupChild, mapLayerIds);
+    }
+    else
+    {
+      QgsLayerTreeLayer *treeLayer = static_cast<QgsLayerTreeLayer *>(treeNode);
+      QgsMapLayer *l = treeLayer->layer();
+      if (l)
+      {
+        bool bSearchable = mLayerCapabilitiesModel->searchable(l);
+        if (bSearchable)
+        {
+          bSearchable = false;
+
+          QgsLayerMetadata meta = l->metadata();
+          QList<QgsLayerMetadata::Constraint> qlistConstraints = meta.constraints();
+          for (int iMeta = 0; iMeta < qlistConstraints.length(); iMeta++)
+          {
+            if (qlistConstraints[iMeta].type.compare("sb:SEARCH", Qt::CaseInsensitive) == 0 && bSearchable)
+            {
+              bSearchable = true;
+              break;
+            }
+          }
+        }
+
+        bool bSelectable = mLayerCapabilitiesModel->sbSelectable(l);
+        bool bSnappable = mLayerCapabilitiesModel->sbSnappable(l);
+        bool bNeedsWfs = bSearchable || bSelectable || bSnappable;
+
+        if (bNeedsWfs)
+        {
+          QString strPath = "";
+          sbResolveLayerPath(treeNode, strPath);
+          mapLayerIds.insert(l->id(), strPath);
+        }
+      }
+    }
+  }
+}
+
+void QgsProjectProperties::pbnSbFillLayerShortNames_clicked()
+{
+  bool bSynchronizeTreeAndWmsTitles = (QMessageBox::question(this,
+    tr("Synchronize WMS layer titles"),
+    tr("Do you want to synchronize WMS layer titles with the layer names in the QGIS layer tree? (Existing WMS layer titles will be overriden!)")) == QMessageBox::Yes);
+
+  QString myStyle = QgsApplication::reportStyleSheet();
+  myStyle.append(QStringLiteral("body { margin: 10px; }\n "));
+  teOWSChecker->clear();
+  teOWSChecker->document()->setDefaultStyleSheet(myStyle);
+
+  QString strContent;
+  strContent = "<h1>" + tr("Performing project optimizations for [a]tapa Atlas publication...") + "</h1>";
+
+  strContent += "<hr>";
+
+  QMultiMap<QString, QPair<QString, QString>> mapShortNames;
+  sbFillLayerShortNames(QgisApp::instance()->layerTreeView()->layerTreeModel()->rootGroup(), mapShortNames, bSynchronizeTreeAndWmsTitles);
+  if (mapShortNames.count() > 0)
+  {
+    QStringList listMessages;
+    QMultiMap<QString, QPair<QString, QString>>::const_iterator iter;
+    for (iter = mapShortNames.begin(); iter != mapShortNames.end(); iter++)
+      listMessages.append(QStringLiteral("%1 =&gt; Name: %2 | Title: %3").arg(iter.value().first).arg(iter.key()).arg(iter.value().second));
+
+    QString strMessage = "<h3 style='color: #f00;'>" + tr("Setting WMS layer names and titles...") + "</h3><ul><li>" + listMessages.join(QStringLiteral("</li><li>")) + "</li></ul>";
+    strContent += strMessage;
+  }
+  else
+    strContent += "<h3>" + tr("All layer names and titles are already set according to standard.") + "</h3>";
+
+  QMultiMap<QString, QString> mapLayerMetadata;
+  sbPrecalculateLayerMetadata(QgisApp::instance()->layerTreeView()->layerTreeModel()->rootGroup(), mapLayerMetadata);
+  if (mapLayerMetadata.count() > 0)
+  {
+    QStringList listMessages;
+    QMultiMap<QString, QString>::const_iterator iter;
+    for (iter = mapLayerMetadata.begin(); iter != mapLayerMetadata.end(); iter++)
+    {
+      listMessages.append(QStringLiteral("Calculated metadata for layer %2 (%1)").arg(iter.key()).arg(iter.value()));
+    }
+
+    strContent += "<hr>";
+    QString strMessage = "<h3 style='color: #f00;'>" + tr("Precalculating layer metadata...") + "</h3><ul><li>" + listMessages.join(QStringLiteral("</li><li>")) + "</li></ul>";
+    strContent += strMessage;
+  }
+  else
+    strContent += "<h3>" + tr("No layer has been marked for metadata precalculation.") + "</h3>";
+
+  QMultiMap<QString, QString> mapWfsLayerIds;
+  sbCollectWfsToolLayerIds(QgisApp::instance()->layerTreeView()->layerTreeModel()->rootGroup(), mapWfsLayerIds);
+  if (mapWfsLayerIds.count() > 0)
+  {
+    QStringList listMessages;
+
+    QMultiMap<QString, QString>::const_iterator iter;
+    for (iter = mapWfsLayerIds.begin(); iter != mapWfsLayerIds.end(); iter++)
+    {
+      bool bModified = false;
+      for (int i = 0; i < twWFSLayers->rowCount(); i++)
+      {
+        QString id = twWFSLayers->item(i, 0)->data(Qt::UserRole).toString();
+        if (id.compare(iter.key(), Qt::CaseInsensitive) == 0)
+        {
+          QCheckBox *cb = nullptr;
+          cb = qobject_cast<QCheckBox *>(twWFSLayers->cellWidget(i, 1));
+          if (cb)
+          {
+            if (!cb->isChecked())
+            {
+              cb->setChecked(true);
+              bModified = true;
+            }
+          }
+
+           break;
+        }
+      }
+
+      if(bModified)
+        listMessages.append(QStringLiteral("Activating WFS for layer %2 (%1)").arg(iter.key()).arg(iter.value()));
+    }
+
+    strContent += "<hr>";
+
+    QString strMessage = "<h3 style='color: #f00;'>" + tr("Setting WFS layer availabilities based on tool configuration...") + "</h3><ul><li>" + listMessages.join(QStringLiteral("</li><li>")) + "</li></ul>";
+    strContent += strMessage;
+  }
+
+  strContent += "<hr>";
+  strContent += "<h1>" + tr("[a]tapa Atlas optimizations done!") + "</h1>";
+
+  teOWSChecker->setHtml(strContent);
+
+  QgsProject::instance()->setDirty();
 }
 
 void QgsProjectProperties::pbnAddScale_clicked()
@@ -2270,6 +2805,47 @@ void QgsProjectProperties::pbnExportScales_clicked()
   if ( !QgsScaleUtils::saveScaleList( fileName, myScales, msg ) )
   {
     QgsDebugMsg( msg );
+  }
+}
+
+void QgsProjectProperties::pbnSbOsmScales_clicked()
+{
+  lstScales->clear();
+
+  addScaleToScaleList(QStringLiteral("1:500000000"));
+  addScaleToScaleList(QStringLiteral("1:250000000"));
+  addScaleToScaleList(QStringLiteral("1:150000000"));
+  addScaleToScaleList(QStringLiteral("1:70000000"));
+  addScaleToScaleList(QStringLiteral("1:35000000"));
+  addScaleToScaleList(QStringLiteral("1:15000000"));
+  addScaleToScaleList(QStringLiteral("1:10000000"));
+  addScaleToScaleList(QStringLiteral("1:4000000"));
+  addScaleToScaleList(QStringLiteral("1:2000000"));
+  addScaleToScaleList(QStringLiteral("1:1000000"));
+  addScaleToScaleList(QStringLiteral("1:500000"));
+  addScaleToScaleList(QStringLiteral("1:250000"));
+  addScaleToScaleList(QStringLiteral("1:150000"));
+  addScaleToScaleList(QStringLiteral("1:70000"));
+  addScaleToScaleList(QStringLiteral("1:35000"));
+  addScaleToScaleList(QStringLiteral("1:15000"));
+  addScaleToScaleList(QStringLiteral("1:8000"));
+  addScaleToScaleList(QStringLiteral("1:4000"));
+  addScaleToScaleList(QStringLiteral("1:2000"));
+  addScaleToScaleList(QStringLiteral("1:1000"));
+  addScaleToScaleList(QStringLiteral("1:500"));
+  addScaleToScaleList(QStringLiteral("1:250"));
+  addScaleToScaleList(QStringLiteral("1:150"));
+}
+
+void QgsProjectProperties::pbnSbAutoScales_clicked()
+{
+  lstScales->clear();
+
+  int iStartScale = (int)(round(mMapCanvas->scale()));
+
+  for (int iScale = iStartScale; iScale >= 10; iScale = iScale / 2)
+  {
+    addScaleToScaleList(QStringLiteral("1:%1").arg(iScale));
   }
 }
 

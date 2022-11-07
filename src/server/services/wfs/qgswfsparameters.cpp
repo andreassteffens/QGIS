@@ -174,8 +174,29 @@ namespace QgsWfs
     const QgsWfsParameter pExpFilter = QgsWfsParameter( QgsWfsParameter::EXP_FILTER );
     save( pExpFilter );
 
+	const QgsWfsParameter pSbRules = QgsWfsParameter(QgsWfsParameter::SBRULES);
+	save(pSbRules);
+
     const QgsWfsParameter pGeometryName = QgsWfsParameter( QgsWfsParameter::GEOMETRYNAME );
     save( pGeometryName );
+
+	const QgsWfsParameter pSbJsonNoTransform = QgsWfsParameter(QgsWfsParameter::SBJSONNOTRANSFORM,
+															   QVariant::Bool,
+															   QVariant(false));
+	save(pSbJsonNoTransform);
+
+	const QgsWfsParameter pSbAllowEmptyPropertyList = QgsWfsParameter(QgsWfsParameter::SBALLOWEMPTYPROPERTYLIST,
+																QVariant::Bool,
+																QVariant(false));
+	save(pSbAllowEmptyPropertyList);
+
+	const QgsWfsParameter pSbOutputType = QgsWfsParameter(QgsWfsParameter::SBGEOMETRYOUTPUT);
+	save(pSbOutputType);
+
+	const QgsWfsParameter pSbWithMapTip = QgsWfsParameter(QgsWfsParameter::SBWITHMAPTIP,
+		QVariant::Bool,
+		QVariant(false));
+	save(pSbWithMapTip);
   }
 
   QgsWfsParameters::QgsWfsParameters( const QgsServerParameters &parameters )
@@ -262,6 +283,8 @@ namespace QgsWfs
       f = Format::GML2;
     else if ( fStr.compare( QLatin1String( "gml3" ), Qt::CaseInsensitive ) == 0 )
       f = Format::GML3;
+    else if ( fStr.compare( QLatin1String( "geojson" ), Qt::CaseInsensitive ) == 0 || fStr.compare(QLatin1String("json"), Qt::CaseInsensitive) == 0)
+      f = Format::GeoJSON;
 
     if ( f == Format::NONE &&
          request().compare( QLatin1String( "describefeaturetype" ), Qt::CaseInsensitive ) == 0 &&
@@ -358,9 +381,83 @@ namespace QgsWfs
     return mWfsParameters[ QgsWfsParameter::EXP_FILTER ].toExpressionList();
   }
 
+  QStringList QgsWfsParameters::sbRules() const
+  {
+	  const QString strRules = mWfsParameters[QgsWfsParameter::SBRULES].toString();
+	  QStringList listLayerTerms = strRules.split(';');
+
+	  return listLayerTerms;
+  }
+
+  QMultiMap<QString, QgsWfsParametersRules> QgsWfsParameters::sbLayerRules(const QStringList &layers) const
+  {
+	  const QStringList listLayerTerms = sbRules();
+	  QMultiMap<QString, QgsWfsParametersRules> mapRules;
+
+	  for (int iTerm = 0; iTerm < listLayerTerms.count(); iTerm++)
+	  {
+		  QString strTerm = listLayerTerms[iTerm];
+		  if (!strTerm.contains(':'))
+			  continue;
+
+		  QStringList listLayerParts = strTerm.split(':');
+		  if (listLayerParts.count() != 2)
+			  continue;
+
+		  QString strLayer = listLayerParts[0];
+		  if (!layers.contains(strLayer))
+			  continue;
+
+		  if (!mapRules.contains(strLayer))
+			  mapRules.insert(strLayer, QgsWfsParametersRules());
+
+		  QMultiMap<QString, QgsWfsParametersRules>::iterator it = mapRules.find(strLayer);
+
+		  int iActiveCount = 0;
+
+		  QStringList listLayerRuleTerms = listLayerParts[1].split(',');
+		  for (int iRule = 0; iRule < listLayerRuleTerms.count(); iRule++)
+		  {
+			  QString strRuleTerm = listLayerRuleTerms[iRule];
+
+			  QStringList listRuleParts = strRuleTerm.split('=');
+			  if (listRuleParts.count() != 2)
+				  continue;
+
+			  QString strRule = listRuleParts[0];
+			  bool bState = listRuleParts[1].compare("true", Qt::CaseInsensitive) == 0;
+
+			  it->mRules.append(QPair<QString, bool>(strRule, bState));
+
+			  if (bState)
+				  iActiveCount++;
+		  }
+
+		  if (iActiveCount == listLayerRuleTerms.count())
+			  mapRules.erase(it);
+	  }
+
+	  return mapRules;
+  }
+
   QString QgsWfsParameters::geometryNameAsString() const
   {
     return mWfsParameters[ QgsWfsParameter::GEOMETRYNAME ].toString();
+  }
+
+  bool QgsWfsParameters::sbJsonNoTransform() const
+  {
+	  return mWfsParameters[QgsWfsParameter::SBJSONNOTRANSFORM].toBool();
+  }
+
+  bool QgsWfsParameters::sbAllowEmptyPropertyList() const
+  {
+	  return mWfsParameters[QgsWfsParameter::SBALLOWEMPTYPROPERTYLIST].toBool();
+  }
+
+  bool QgsWfsParameters::sbWithMapTip() const
+  {
+	  return mWfsParameters[QgsWfsParameter::SBWITHMAPTIP].toBool();
   }
 
   QgsProjectVersion QgsWfsParameters::versionAsNumber() const

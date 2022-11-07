@@ -70,6 +70,41 @@ namespace QgsWms
     return  href;
   }
 
+  QString sbGetLayerMetadataUrl(const QgsServerRequest &request, const QgsProject *project, const QString &layer)
+  {
+	  static QSet<QString> sFilter
+	  {
+		  QStringLiteral("REQUEST"),
+		  QStringLiteral("VERSION"),
+		  QStringLiteral("SERVICE"),
+		  QStringLiteral("LAYERS"),
+		  QStringLiteral("STYLES"),
+		  QStringLiteral("SLD_VERSION"),
+		  QStringLiteral("_DC")
+	  };
+
+	  QUrl href = request.url();
+	  QUrlQuery q(href);
+
+	  for (auto param : q.queryItems())
+	  {
+		  if (sFilter.contains(param.first.toUpper()))
+			  q.removeAllQueryItems(param.first);
+	  }
+
+	  q.addQueryItem("SERVICE", "sb");
+	  q.addQueryItem("REQUEST", "GetLayerMetadata");
+	  q.addQueryItem("LAYER", layer);
+
+	  href.setQuery(q);
+
+	  return href.toString();
+  }
+
+  void sbProfilerOutput(const char *pszOut)
+  {
+	  QgsMessageLog::logMessage(pszOut, "Server", Qgis::Warning);
+  }
 
   ImageOutputFormat parseImageFormat( const QString &format )
   {
@@ -190,4 +225,36 @@ namespace QgsWms
                                     parameter );
     }
   }
+  QString extractUrlBase(const QString &url)
+  {
+	  if (url.indexOf('?') == -1)
+		return url;
+	  
+	  QString qstrUrl = url.left(url.indexOf('?'));
+	  return qstrUrl;
+  }
+
+  QUrlQuery buildUrlQuery(const QString &url)
+  {
+	  QUrlQuery ret;
+
+	  if (url.indexOf('?') == -1)
+		  return ret;
+
+	  QString qstrUrl = url.left(url.indexOf('?') + 1);
+	  //ret = QUrlQuery(qstrUrl);
+	  
+	  QString tmp = url.right(url.length() - url.indexOf('?') - 1);
+	  QStringList paramlist = tmp.split('&');
+
+	  for (int i = 0; i < paramlist.count(); i++)
+	  {
+			QStringList paramarg = paramlist[i].split('=');
+			if(paramarg.count() == 2)
+				ret.addQueryItem(paramarg[0], paramarg[1]);
+	  }
+
+	  return ret;
+  }
+  
 } // namespace QgsWms

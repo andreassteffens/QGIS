@@ -221,7 +221,9 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
       break;
   }
 
-  if ( request.filterType() == QgsFeatureRequest::FilterExpression )
+  
+
+  if ( request.filterType() == QgsFeatureRequest::FilterExpression || request.sbHasRenderMinPixelSizeFilter() )
   {
     QgsSqlExpressionCompiler *compiler = nullptr;
     if ( source->mDriverName == QLatin1String( "SQLite" ) || source->mDriverName == QLatin1String( "GPKG" ) )
@@ -233,7 +235,32 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
       compiler = new QgsOgrExpressionCompiler( source, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
     }
 
-    QgsSqlExpressionCompiler::Result result = compiler->compile( request.filterExpression() );
+    QgsSqlExpressionCompiler::Result result;
+    
+    //if ( request.sbHasRenderMinPixelSizeFilter() )
+    //{
+    //  QString strGeometryColumn = OGR_L_GetGeometryColumn(mOgrLayer);
+    //  if (!strGeometryColumn.isEmpty())
+    //  {
+    //    QString strExpression;
+
+    //    if (request.filterType() == QgsFeatureRequest::FilterExpression)
+    //      strExpression = request.filterExpression()->expression();
+
+
+    //    //request.sbGetRenderMinPixelSizeFilterValue()
+
+    //    //QString strMinPixelSizeExpression = "((ST_MaxX(" + strGeometryColumn + ") - ST_MinX(" + strGeometryColumn + ")) > 0) AND ((ST_MaxY(" + strGeometryColumn + ") - ST_MinY(" + strGeometryColumn + ")) > 0)";
+
+    //    if ( strExpression.isEmpty() )
+    //      strExpression = strMinPixelSizeExpression;
+    //    else
+    //      strExpression = "(" + strExpression + ") AND (" + strMinPixelSizeExpression + ")";
+    //  }
+    //}
+    //else
+       result = compiler->compile( request.filterExpression() );
+
     if ( result == QgsSqlExpressionCompiler::Complete || result == QgsSqlExpressionCompiler::Partial )
     {
       QString whereClause = compiler->result();
@@ -281,7 +308,6 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
 
   //start with first feature
   rewind();
-
 }
 
 QgsOgrFeatureIterator::~QgsOgrFeatureIterator()

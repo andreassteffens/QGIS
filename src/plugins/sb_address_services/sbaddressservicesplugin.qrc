@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/sbaddressservices/" >
+        <file>./icons/sb_address_services.png</file>
+        <file>./icons/search.svg</file>
+		    <file>./icons/close.svg</file>
+		    <file>./icons/map-marker.svg</file>
+		    <file>./icons/info-circle.svg</file>
+    </qresource>
+</RCC>

@@ -231,9 +231,8 @@ namespace QgsWms
     }
   }
 
-  QgsLayerTreeModel *legendModel( const QgsWmsRenderContext &context, QgsLayerTree &tree )
+  QgsLayerTreeModel *legendModel( QgsWmsRenderContext &context, QgsLayerTree &tree )
   {
-
     const QgsWmsParameters parameters = context.parameters();
     std::unique_ptr<QgsLayerTreeModel> model( new QgsLayerTreeModel( &tree ) );
     std::unique_ptr<QgsMapSettings> mapSettings;
@@ -346,16 +345,33 @@ namespace QgsWms
     return tree.release();
   }
 
-  QgsLayerTreeModelLegendNode *legendNode( const QString &rule,  QgsLayerTreeModel &model )
+  QgsLayerTreeModelLegendNode *legendNode( const QString &rule, QgsLayerTreeModel &model )
   {
     for ( QgsLayerTreeLayer *layer : model.rootGroup()->findLayers() )
     {
+      int iIndex = 0;
       for ( QgsLayerTreeModelLegendNode *node : model.layerLegendNodes( layer ) )
       {
-        if ( node->data( Qt::DisplayRole ).toString().compare( rule ) == 0 )
+        QString strCmp = node->data(Qt::DisplayRole).toString();
+        if ( strCmp.compare( rule ) == 0 )
           return node;
+
+        strCmp = node->data(QgsLayerTreeModelLegendNode::LegendNodeRoles::RuleKeyRole).toString();
+        if ( strCmp.compare(rule) == 0 )
+          return node;
+
+        bool bOk = false;
+        int iRule = rule.toInt( &bOk );
+        if ( bOk )
+        {
+          if (iRule == iIndex)
+            return node;
+        }
+
+        iIndex++;
       }
     }
+
     return nullptr;
   }
 } // namespace QgsWms

@@ -718,6 +718,11 @@ QgsMapUnitScale QgsMarkerSymbolLayer::mapUnitScale() const
   return QgsMapUnitScale();
 }
 
+double QgsMarkerSymbolLayer::sbPainterSize(QgsSymbolRenderContext &context) const
+{
+  return 24;
+}
+
 void QgsLineSymbolLayer::setOutputUnit( QgsUnitTypes::RenderUnit unit )
 {
   mWidthUnit = unit;

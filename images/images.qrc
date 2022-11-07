@@ -306,6 +306,8 @@
         <file>themes/default/mActionFilePrint.svg</file>
         <file>themes/default/mActionFileSave.svg</file>
         <file>themes/default/mActionFileSaveAs.svg</file>
+        <file>themes/default/mSbOsmScales.svg</file>
+        <file>themes/default/mSbAutoScales.svg</file>
         <file>themes/default/mActionFillRing.svg</file>
         <file>themes/default/mActionFilter.svg</file>
         <file>themes/default/mActionFilter2.svg</file>

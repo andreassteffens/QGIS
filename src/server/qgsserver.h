@@ -28,6 +28,7 @@
 #define QGSSERVER_H
 
 #include <QFileInfo>
+#include <QMap>
 #include "qgsrequesthandler.h"
 #include "qgsconfigcache.h"
 #include "qgscapabilitiescache.h"
@@ -37,6 +38,9 @@
 #include "qgsserverinterfaceimpl.h"
 #include "qgis_server.h"
 #include "qgsserverrequest.h"
+#include "sbservercachefilter.h"
+#include "sbUnloadProjectFileWatcher.h"
+#include "SimpleCrypt.h"
 
 class QgsServerResponse;
 class QgsProject;
@@ -45,14 +49,20 @@ class QgsProject;
  * \ingroup server
  * \brief The QgsServer class provides OGC web services.
  */
-class SERVER_EXPORT QgsServer
+class SERVER_EXPORT QgsServer : public QObject
 {
   public:
 
     /**
      * Creates the server instance
      */
-    QgsServer();
+
+	QgsServer();
+    QgsServer(const QString& strTenant);
+	~QgsServer();
+
+	
+	const QString& sbTenant() SIP_SKIP; 
 
     /**
      * Set environment variable
@@ -80,6 +90,8 @@ class SERVER_EXPORT QgsServer
     //! Returns a pointer to the server interface
     QgsServerInterfaceImpl SIP_PYALTERNATIVETYPE( QgsServerInterface ) *serverInterface() { return sServerInterface; }
 
+	int sbPreloadProjects();
+
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
 
     /**
@@ -95,8 +107,8 @@ class SERVER_EXPORT QgsServer
     QgsServer &operator=( const QgsServer & );
 #endif
 
-    //! Server initialization
-    static bool init();
+	//! Server initialization
+    static bool init(const QString& strTenant);
 
     /**
      * Returns the configuration file path.
@@ -124,20 +136,31 @@ class SERVER_EXPORT QgsServer
      */
     static void setupNetworkAccessManager();
 
+    //! Create and return a request handler instance
+    static QgsRequestHandler *createRequestHandler( const QgsServerRequest &request, QgsServerResponse &response );
+
+	  static QString sbGetDecryptedProjectPath(QString strPath);
+
+    // Return the server name
+    static QString &serverName();
+
     // Status
     static QString *sConfigFilePath;
     static QgsCapabilitiesCache *sCapabilitiesCache;
     static QgsServerInterfaceImpl *sServerInterface;
+	  static sbServerCacheFilter *sSbServerCacheFilter;
     //! Initialization must run once for all servers
     static bool sInitialized;
 
     //! service registry
     static QgsServiceRegistry *sServiceRegistry;
 
-    //! cache
-    QgsConfigCache *mConfigCache = nullptr;
+	  QString mSbTenant;
+	  sbUnloadProjectFileWatcher mSbUnloadWatcher;
 
     //! Initialize locale
     static void initLocale();
+
+	  static SimpleCrypt sCrypto;
 };
 #endif // QGSSERVER_H

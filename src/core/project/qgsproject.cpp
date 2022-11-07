@@ -1805,6 +1805,20 @@ bool QgsProject::readProjectFile( const QString &filename, Qgis::ProjectReadFlag
     // we let a custom handler decide what to do with missing layers
     // (default implementation ignores them, there's also a GUI handler that lets user choose correct path)
     mBadLayerHandler->handleBadLayers( brokenNodes );
+
+    for (const QDomNode &layer : brokenNodes)
+    {
+      QDomNode dataSourceNode = layer.namedItem(QStringLiteral("datasource"));
+      if (!dataSourceNode.isNull())
+      {
+        QString strLayerName = dataSourceNode.toElement().text();
+
+        QList<QgsReadWriteContext::ReadWriteMessage> listMessages;
+        listMessages.append(QgsReadWriteContext::ReadWriteMessage("Bad layer dismissed!"));
+
+   	    emit loadingLayerMessageReceived(strLayerName, listMessages);
+      }
+    }
   }
 
   mMainAnnotationLayer->readLayerXml( doc->documentElement().firstChildElement( QStringLiteral( "main-annotation-layer" ) ), context );
@@ -3523,7 +3537,7 @@ QgsLayerTree *QgsProject::layerTreeRoot() const
   return mRootGroup;
 }
 
-QgsMapThemeCollection *QgsProject::mapThemeCollection()
+QgsMapThemeCollection *QgsProject::mapThemeCollection() const
 {
   return mMapThemeCollection.get();
 }

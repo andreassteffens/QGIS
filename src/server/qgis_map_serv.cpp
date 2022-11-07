@@ -23,12 +23,17 @@
 #include "qgsfcgiserverrequest.h"
 #include "qgsapplication.h"
 #include "qgscommandlineutils.h"
+#include "qgsmapserviceexception.h"
 
 #include <fcgi_stdio.h>
 #include <cstdlib>
 
 #include <QFontDatabase>
 #include <QString>
+
+#ifdef Q_OS_WIN
+  #include <eh.h>
+#endif
 
 int fcgi_accept()
 {
@@ -42,6 +47,35 @@ int fcgi_accept()
 #endif
 }
 
+void Debug(QString &strMessage)
+{
+  return;
+
+  QFile file("d:\\qgis_server_debug.txt");
+  if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append))
+    return;
+
+  QTextStream out(&file);
+  out << strMessage;
+}
+
+#ifdef Q_OS_WIN
+void SETranslator(unsigned int u, struct _EXCEPTION_POINTERS *pExp) 
+{
+  std::string error = "SE Exception: ";
+  switch (u) {
+    case 0xC0000005:
+      error += "Access Violation";
+      break;
+    default:
+      char result[11];
+      sprintf_s(result, 11, "0x%08X", u);
+      error += result;
+  };
+  throw std::exception(error.c_str());
+}
+#endif
+
 int main( int argc, char *argv[] )
 {
   if ( argc >= 2 )
@@ -53,7 +87,7 @@ int main( int argc, char *argv[] )
     }
   }
 
-  // Test if the environ variable DISPLAY is defined
+  // Test if the environment variable DISPLAY is defined
   // if it's not, the server is running in offscreen mode
   // Qt supports using various QPA (Qt Platform Abstraction) back ends
   // for rendering. You can specify the back end to use with the environment
@@ -70,34 +104,69 @@ int main( int argc, char *argv[] )
     qputenv( "QT_QPA_PLATFORM", "offscreen" );
     QgsMessageLog::logMessage( "DISPLAY not set, running in offscreen mode, all printing capabilities will not be available.", "Server", Qgis::MessageLevel::Info );
   }
+  
+#ifdef Q_OS_WIN
+  _set_se_translator(SETranslator);
+#endif
+  
   // since version 3.0 QgsServer now needs a qApp so initialize QgsApplication
   const QgsApplication app( argc, argv, withDisplay, QString(), QStringLiteral( "server" ) );
-  QgsServer server;
+  
+  QgsMessageLog::logMessage(QStringLiteral("STARTING QGIS SERVER"), QStringLiteral("Server"), Qgis::Warning);
+  
+  try
+  {
+    QString strTenant = "";
+
+    if (argc == 2)
+      strTenant = argv[1];
+
+    QgsServer server(strTenant);
+
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
-  server.initPython();
+    server.initPython();
 #endif
 
 #ifdef Q_OS_WIN
-  // Initialize font database before fcgi_accept.
-  // When using FCGI with IIS, environment variables (QT_QPA_FONTDIR in this case) are lost after fcgi_accept().
-  QFontDatabase fontDB;
+    // Initialize font database before fcgi_accept.
+    // When using FCGI with IIS, environment variables (QT_QPA_FONTDIR in this case) are lost after fcgi_accept().
+    QFontDatabase fontDB;
+
+    int iRet = server.sbPreloadProjects();
 #endif
 
-  // Starts FCGI loop
-  while ( fcgi_accept() >= 0 )
-  {
-    QgsFcgiServerRequest  request;
-    QgsFcgiServerResponse response( request.method() );
-    if ( ! request.hasError() )
+    // Starts FCGI loop
+    while ( fcgi_accept() >= 0 )
     {
-      server.handleRequest( request, response );
-    }
-    else
-    {
-      response.sendError( 400, "Bad request" );
+      QgsFcgiServerRequest  request;
+      QgsFcgiServerResponse response( request.method() );
+      if ( ! request.hasError() )
+      {
+        server.handleRequest( request, response );
+      }
+      else
+      {
+        response.sendError( 400, "Bad request" );
+      }
     }
   }
+  catch (QgsServerException &ex)
+  {
+    QgsMessageLog::logMessage(QStringLiteral("QgsServerException: %1").arg(ex.what()), QStringLiteral("Server"), Qgis::Critical);
+  }
+  catch (QgsException &ex)
+  {
+    // Internal server error
+    QgsMessageLog::logMessage(QStringLiteral("QgsServerException: %1").arg(ex.what()), QStringLiteral("Server"), Qgis::Critical);
+  }
+  catch (...)
+  {
+    QgsMessageLog::logMessage(QStringLiteral("Unknown exception"), QStringLiteral("Server"), Qgis::Critical);
+  }
+
+  QgsMessageLog::logMessage(QStringLiteral("STOPPING QGIS SERVER"), QStringLiteral("Server"), Qgis::Warning);
+
   QgsApplication::exitQgis();
+
   return 0;
 }
-

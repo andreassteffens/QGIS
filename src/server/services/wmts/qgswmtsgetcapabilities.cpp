@@ -394,14 +394,20 @@ namespace QgsWmts
 
           QgsRectangle rect;
           const QgsCoordinateReferenceSystem crs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( tms.ref );
-          const QgsCoordinateTransform exGeoTransform( wgs84, crs, project );
-          try
+          
+          if (wmtsLayer.sbCrsBoundingRects.contains(crs.authid()))
+            rect = wmtsLayer.sbCrsBoundingRects[crs.authid()];
+          else
           {
-            rect = exGeoTransform.transformBoundingBox( wmtsLayer.wgs84BoundingRect );
-          }
-          catch ( const QgsCsException & )
-          {
-            continue;
+            const QgsCoordinateTransform exGeoTransform( wgs84, crs, project );
+            try
+            {
+              rect = exGeoTransform.transformBoundingBox( wmtsLayer.wgs84BoundingRect );
+            }
+            catch ( const QgsCsException & )
+            {
+              continue;
+            }
           }
 
           int precision = 3;

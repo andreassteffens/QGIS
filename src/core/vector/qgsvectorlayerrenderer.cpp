@@ -42,6 +42,7 @@
 #include "qgsvectorlayertemporalproperties.h"
 #include "qgsmapclippingutils.h"
 #include "qgsfeaturerenderergenerator.h"
+#include "qgsproject.h"
 
 #include <QPicture>
 #include <QTimer>
@@ -87,6 +88,77 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
   }
 
   mSelectedFeatureIds = layer->selectedFeatureIds();
+  
+  mSbRenderSelectionOnly = layer->sbRenderSelectionOnly();
+  
+  bool bOk = false;
+  mSbRenderMinPixelSize = -1;
+  mSbRenderMinPixelSizeMaxScale = -1;
+  mSbRenderMinPixelSizeDebug = false;
+  mSbRenderMinPixelSizeSourceFiltering = layer->providerType().compare("ogr", Qt::CaseInsensitive) == 0;
+
+  if(QgsProject::instance()->metadata().keywords().contains("sb:RENDER_MIN_PIXEL_SIZE"))
+  {
+    QString strValue = QgsProject::instance()->metadata().keywords("sb:RENDER_MIN_PIXEL_SIZE")[0];
+    if (!strValue.isEmpty())
+    {
+      double dValue = 0;
+      dValue = strValue.toDouble(&bOk);
+      if (bOk)
+        mSbRenderMinPixelSize = dValue;
+    }
+  }
+
+  if (QgsProject::instance()->metadata().keywords().contains("sb:RENDER_MIN_PIXEL_SIZE_MAX_SCALE"))
+  {
+    QString strValue = QgsProject::instance()->metadata().keywords("sb:RENDER_MIN_PIXEL_SIZE_MAX_SCALE")[0];
+    if ( !strValue.isEmpty() )
+    {
+      double dValue = 0;
+      dValue = strValue.toDouble(&bOk);
+      if (bOk)
+        mSbRenderMinPixelSizeMaxScale = dValue;
+    }
+  }
+
+  if (QgsProject::instance()->metadata().keywords().contains("sb:RENDER_MIN_PIXEL_SIZE_DEBUG"))
+  {
+    QString strValue = QgsProject::instance()->metadata().keywords("sb:RENDER_MIN_PIXEL_SIZE_DEBUG")[0];
+    if( !strValue.isEmpty() )
+      mSbRenderMinPixelSizeDebug = strValue.compare("true", Qt::CaseInsensitive) == 0;
+  }
+
+  QList<QgsLayerMetadata::Constraint> qlistConstraints = layer->metadata().constraints();
+  for (int iConstraint = 0; iConstraint < qlistConstraints.count(); iConstraint++)
+  {
+    bOk = false;
+    if (qlistConstraints[iConstraint].type.compare("sb:RENDER_MIN_PIXEL_SIZE", Qt::CaseInsensitive) == 0)
+    {
+      double dValue = 0;
+      dValue = qlistConstraints[iConstraint].constraint.toDouble(&bOk);
+      if (bOk)
+        mSbRenderMinPixelSize = dValue;
+    }
+
+    bOk = false;
+    if (qlistConstraints[iConstraint].type.compare("sb:RENDER_MIN_PIXEL_SIZE_MAX_SCALE", Qt::CaseInsensitive) == 0)
+    {
+      double dValue = 0;
+      dValue = qlistConstraints[iConstraint].constraint.toDouble(&bOk);
+      if (bOk)
+        mSbRenderMinPixelSizeMaxScale = dValue;
+    }
+
+    if (qlistConstraints[iConstraint].type.compare("sb:RENDER_MIN_PIXEL_SIZE_DEBUG", Qt::CaseInsensitive) == 0)
+      mSbRenderMinPixelSizeDebug = qlistConstraints[iConstraint].constraint.compare("true", Qt::CaseInsensitive) == 0;
+  }
+
+  if (mLayer->extent().isFinite() && !mLayer->extent().isNull())
+    mSbScaleFactor = context.coordinateTransform().scaleFactor(mLayer->extent());
+  else
+    mSbScaleFactor = 1;
+
+  mSbMapUnitsPerPixel = context.mapToPixel().mapUnitsPerPixel();
 
   mDrawVertexMarkers = nullptr != layer->editBuffer();
 
@@ -290,6 +362,9 @@ bool QgsVectorLayerRenderer::renderInternal( QgsFeatureRenderer *renderer )
                                      .setFilterRect( requestExtent )
                                      .setSubsetOfAttributes( mAttrNames, mFields )
                                      .setExpressionContext( context.expressionContext() );
+
+  featureRequest.sbSetRenderMinPixelSizeFilter(mSbRenderMinPixelSize, mSbRenderMinPixelSizeMaxScale, mSbScaleFactor, mSbMapUnitsPerPixel, renderContext()->rendererScale(), mGeometryType, mSbRenderMinPixelSizeSourceFiltering);
+
   if ( renderer->orderByEnabled() )
   {
     featureRequest.setOrderBy( renderer->orderBy() );
@@ -452,6 +527,12 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
       if ( !fet.hasGeometry() || fet.geometry().isEmpty() )
         continue; // skip features without geometry
 
+      if (mSbRenderSelectionOnly)
+      {
+        if (!mSelectedFeatureIds.contains(fet.id()))
+          continue;
+      }
+
       if ( clipEngine && !clipEngine->intersects( fet.geometry().constGet() ) )
         continue; // skip features outside of clipping region
 
@@ -576,6 +657,12 @@ void QgsVectorLayerRenderer::drawRendererLevels( QgsFeatureRenderer *renderer, Q
 
     if ( !fet.hasGeometry() )
       continue; // skip features without geometry
+
+    if (mSbRenderSelectionOnly)
+    {
+      if (!mSelectedFeatureIds.contains(fet.id()))
+        continue;
+    }
 
     if ( clipEngine && !clipEngine->intersects( fet.geometry().constGet() ) )
       continue; // skip features outside of clipping region

@@ -30,6 +30,7 @@
 #include "qgsmapcanvas.h"
 #include "qgsprojectmetadata.h"
 #include "qgsproject.h"
+#include "qgsmessagelog.h"
 
 QgsMetadataWidget::QgsMetadataWidget( QWidget *parent, QgsMapLayer *layer )
   : QWidget( parent ),
@@ -541,7 +542,9 @@ void QgsMetadataWidget::setUiFromMetadata()
     mRightsModel->setStringList( layerMetadata->rights() );
 
     // Constraints
-    mConstraintsModel->clear();
+	while (mConstraintsModel->rowCount() > 0)
+		mConstraintsModel->removeRow(0);
+
     const QList<QgsLayerMetadata::Constraint> &constraints = layerMetadata->constraints();
     for ( const QgsLayerMetadata::Constraint &constraint : constraints )
     {

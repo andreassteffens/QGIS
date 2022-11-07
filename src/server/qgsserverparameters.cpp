@@ -170,7 +170,7 @@ QStringList QgsServerParameterDefinition::toExpressionList() const
 
   auto isOgcFilter = [filter]()
   {
-    return filter.contains( QStringLiteral( "<Filter>" ) ) or filter.contains( QStringLiteral( "()" ) );
+    return filter.contains( QStringLiteral( "<Filter>" ) ) || filter.contains( QStringLiteral( "()" ) );
   };
 
   while ( pos < filter.size() )
@@ -583,6 +583,11 @@ QString QgsServerParameters::fileName() const
   return value( QgsServerParameter::FILE_NAME ).toString();
 }
 
+bool QgsServerParameters::sbSetParameter(const QString &name, const QString &value)
+{
+	return loadParameter(name, value);
+}
+
 QString QgsServerParameters::service() const
 {
   QString serviceValue = value( QgsServerParameter::SERVICE ).toString();
@@ -621,6 +626,11 @@ QMap<QString, QString> QgsServerParameters::toMap() const
   }
 
   return params;
+}
+
+QString QgsServerParameters::sbPostFormat() const
+{
+	return value(QgsServerParameter::SBPOSTFORMAT).toString();
 }
 
 QString QgsServerParameters::request() const

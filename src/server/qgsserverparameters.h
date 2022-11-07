@@ -199,7 +199,8 @@ class SERVER_EXPORT QgsServerParameter : public QgsServerParameterDefinition
       VERSION_SERVICE, // conflict with #define VERSION
       REQUEST,
       MAP,
-      FILE_NAME
+      FILE_NAME,
+	  SBPOSTFORMAT
     };
     Q_ENUM( Name )
 
@@ -338,6 +339,14 @@ class SERVER_EXPORT QgsServerParameters
      * \returns version
      */
     virtual QString version() const;
+
+	/**
+	* Returns the format indicator for POST data
+	* \returns POST format
+	*/
+	QString sbPostFormat() const;
+
+	virtual bool sbSetParameter(const QString &name, const QString &value);
 
   protected:
 

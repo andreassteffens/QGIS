@@ -8,6 +8,7 @@ set (wcs_SRCS
   qgswcsgetcapabilities.cpp
   qgswcsdescribecoverage.cpp
   qgswcsgetcoverage.cpp
+  ${CMAKE_SOURCE_DIR}/external/SimpleCrypt/SimpleCrypt.cpp
 )
 
 ########################################################
@@ -28,12 +29,13 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src/server/services
   ${CMAKE_SOURCE_DIR}/src/server/services/wcs
 
+  ${CMAKE_SOURCE_DIR}/external/SimpleCrypt
+
   ${CMAKE_BINARY_DIR}/src/python
   ${CMAKE_BINARY_DIR}/src/analysis
   ${CMAKE_BINARY_DIR}/src/server
 
   ${CMAKE_CURRENT_BINARY_DIR}
-
 )
 
 

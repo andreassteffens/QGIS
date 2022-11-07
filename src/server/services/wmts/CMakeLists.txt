@@ -9,6 +9,7 @@ set (WMTS_SRCS
   qgswmtsgettile.cpp
   qgswmtsgetfeatureinfo.cpp
   qgswmtsparameters.cpp
+  ${CMAKE_SOURCE_DIR}/external/SimpleCrypt/SimpleCrypt.cpp
 )
 
 set (WMTS_HDRS
@@ -35,12 +36,13 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src/server/services/wmts
   ${CMAKE_SOURCE_DIR}/src/server/services/wms
 
+  ${CMAKE_SOURCE_DIR}/external/SimpleCrypt
+
   ${CMAKE_BINARY_DIR}/src/python
   ${CMAKE_BINARY_DIR}/src/analysis
   ${CMAKE_BINARY_DIR}/src/server
 
   ${CMAKE_CURRENT_BINARY_DIR}
-
 )
 
 

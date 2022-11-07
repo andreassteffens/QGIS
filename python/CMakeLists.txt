@@ -244,6 +244,7 @@ endif()
 if (WITH_SERVER AND WITH_SERVER_PLUGINS)
   include_directories(
     ../src/server
+   ${CMAKE_SOURCE_DIR}/external/SimpleCrypt
    ${CMAKE_BINARY_DIR}/src/server
   )
 

@@ -1225,7 +1225,7 @@ QString QgsApplication::userStylePath()
 
 QRegularExpression QgsApplication::shortNameRegularExpression()
 {
-  const thread_local QRegularExpression regexp( QRegularExpression::anchoredPattern( QStringLiteral( "^[A-Za-z][A-Za-z0-9\\._-]*" ) ) );
+  const thread_local QRegularExpression regexp( QRegularExpression::anchoredPattern( QStringLiteral( "^[A-Za-z_][A-Za-z0-9\\._-]*" ) ) );
   return regexp;
 }
 

@@ -25,6 +25,9 @@
 #include "qgsserverinterface.h"
 #include "qgscapabilitiescache.h"
 #include "qgsservercachemanager.h"
+#include "qgsconfigcache.h"
+
+#include <qstringlist.h>
 
 /**
  * \ingroup server
@@ -39,7 +42,8 @@ class SERVER_EXPORT QgsServerInterfaceImpl : public QgsServerInterface
     //! Constructor
     explicit QgsServerInterfaceImpl( QgsCapabilitiesCache *capCache,
                                      QgsServiceRegistry *srvRegistry,
-                                     QgsServerSettings *serverSettings );
+                                     QgsServerSettings *serverSettings,
+	                                   const QString& strTenant);
 
 
     ~QgsServerInterfaceImpl() override;
@@ -89,6 +93,10 @@ class SERVER_EXPORT QgsServerInterfaceImpl : public QgsServerInterface
 
     void reloadSettings() override;
 
+    QStringList sbLoadedProjects() override;
+
+	  const QString& sbTenant() override;
+
   private:
 
     QString mConfigFilePath;
@@ -99,7 +107,8 @@ class SERVER_EXPORT QgsServerInterfaceImpl : public QgsServerInterface
     QgsRequestHandler *mRequestHandler = nullptr;
     QgsServiceRegistry *mServiceRegistry = nullptr;
     QgsServerSettings *mServerSettings = nullptr;
-
+	  
+    QString mSbTenant;
 };
 
 #endif // QGSSERVERINTERFACEIMPL_H

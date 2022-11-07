@@ -43,5 +43,8 @@ const QString QgsWFSConstants::URI_PARAM_PAGE_SIZE( "pageSize" );
 const QString QgsWFSConstants::URI_PARAM_WFST_1_1_PREFER_COORDINATES( "preferCoordinatesForWfsT11" );
 const QString QgsWFSConstants::URI_PARAM_SKIP_INITIAL_GET_FEATURE( "skipInitialGetFeature" );
 
+const QString QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE("sbFallbackGeometryType");
+const QString QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_NAME("sbFallbackGeometryName");
+
 const QString QgsWFSConstants::VERSION_AUTO( QStringLiteral( "auto" ) );
 

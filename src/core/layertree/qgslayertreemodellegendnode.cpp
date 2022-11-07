@@ -177,6 +177,13 @@ QSizeF QgsLayerTreeModelLegendNode::drawSymbolText( const QgsLegendSettings &set
 
   labelSize.rheight() = lines.count() * textHeight + ( lines.count() - 1 ) * ( settings.lineSpacing() + textDescent );
 
+  bool bHasNonEmptyText = false;
+  for (QStringList::ConstIterator itemPart = lines.constBegin(); itemPart != lines.constEnd(); ++itemPart)
+    bHasNonEmptyText = bHasNonEmptyText || !itemPart->trimmed().isEmpty();
+
+  if ( !bHasNonEmptyText )
+    return labelSize;
+
   double labelXMin = 0.0;
   double labelXMax = 0.0;
   double labelY = 0.0;
@@ -215,29 +222,32 @@ QSizeF QgsLayerTreeModelLegendNode::drawSymbolText( const QgsLegendSettings &set
 
   for ( QStringList::ConstIterator itemPart = lines.constBegin(); itemPart != lines.constEnd(); ++itemPart )
   {
-    const double lineWidth = settings.textWidthMillimeters( symbolLabelFont, *itemPart );
-    labelSize.rwidth() = std::max( lineWidth, double( labelSize.width() ) );
-
-    if ( ctx && ctx->painter )
+    if (!itemPart->trimmed().isEmpty() )
     {
-      switch ( settings.style( QgsLegendStyle::SymbolLabel ).alignment() )
+      const double lineWidth = settings.textWidthMillimeters(symbolLabelFont, *itemPart);
+      labelSize.rwidth() = std::max(lineWidth, double(labelSize.width()));
+
+      if (ctx && ctx->painter)
       {
+        switch (settings.style(QgsLegendStyle::SymbolLabel).alignment())
+        {
         case Qt::AlignLeft:
         default:
-          settings.drawText( ctx->painter, labelXMin, labelY, *itemPart, symbolLabelFont );
+          settings.drawText(ctx->painter, labelXMin, labelY, *itemPart, symbolLabelFont);
           break;
 
         case Qt::AlignRight:
-          settings.drawText( ctx->painter, labelXMax - lineWidth, labelY, *itemPart, symbolLabelFont );
+          settings.drawText(ctx->painter, labelXMax - lineWidth, labelY, *itemPart, symbolLabelFont);
           break;
 
         case Qt::AlignHCenter:
-          settings.drawText( ctx->painter, labelXMin + ( labelXMax - labelXMin - lineWidth ) / 2.0, labelY, *itemPart, symbolLabelFont );
+          settings.drawText(ctx->painter, labelXMin + (labelXMax - labelXMin - lineWidth) / 2.0, labelY, *itemPart, symbolLabelFont);
           break;
-      }
+        }
 
-      if ( itemPart != ( lines.end() - 1 ) )
-        labelY += textDescent + settings.lineSpacing() + textHeight;
+        if (itemPart != (lines.end() - 1))
+          labelY += textDescent + settings.lineSpacing() + textHeight;
+      }
     }
   }
 
@@ -360,7 +370,7 @@ QSize QgsSymbolLegendNode::minimumIconSize( QgsRenderContext *context ) const
       // It's not possible to get a restricted size symbol, so we restrict
       // pixmap target size to be sure it would fit MAXIMUM_SIZE
       maxSize = static_cast<int>( std::round( MAXIMUM_SIZE * context->scaleFactor() ) );
-    }
+  }
 
     const QSize size( mItem.symbol()->type() == Qgis::SymbolType::Marker ? maxSize : minSz.width(),
                       maxSize );
@@ -661,6 +671,18 @@ QSizeF QgsSymbolLegendNode::drawSymbol( const QgsLegendSettings &settings, ItemC
 
   if ( QgsMarkerSymbol *markerSymbol = dynamic_cast<QgsMarkerSymbol *>( s ) )
   {
+    if (settings.sbScaleIndependentSymbol() && markerSymbol->sizeUnit() == QgsUnitTypes::RenderMapUnits)
+    {
+      for (int i = 0; i < 20; i++) 
+      {
+         double dPainterSize = markerSymbol->size(*context);
+         if (dPainterSize >= 10)
+           break;
+
+         context->setRendererScale(context->rendererScale() * 1.5);
+      }
+    }
+
     const double size = markerSymbol->size( *context ) / context->scaleFactor();
     height = size;
     width = size;
@@ -685,8 +707,14 @@ QSizeF QgsSymbolLegendNode::drawSymbol( const QgsLegendSettings &settings, ItemC
   }
   if ( ctx && ctx->painter )
   {
-    const double currentYCoord = ctx->top + ( itemHeight - desiredHeight ) / 2;
+    double currentYCoord = ctx->top + ( itemHeight - desiredHeight ) / 2;
     QPainter *p = ctx->painter;
+
+    if (settings.sbNoWidthHeightOffset())
+    {
+      heightOffset = 0;
+      widthOffset = currentYCoord = 0.4;
+    }
 
     //setup painter scaling to dots so that raster symbology is drawn to scale
     const double dotsPerMM = context->scaleFactor();
@@ -706,6 +734,11 @@ QSizeF QgsSymbolLegendNode::drawSymbol( const QgsLegendSettings &settings, ItemC
         break;
       case Qt::AlignRight:
         p->translate( ctx->columnRight - widthOffset - width, currentYCoord + heightOffset );
+        break;
+      case Qt::AlignCenter:
+        {
+          p->translate(ctx->columnLeft + ((desiredWidth - width) / 2.0), ctx->top + ((desiredHeight - height) / 2.0));
+        }
         break;
     }
 

@@ -18,7 +18,7 @@ if not "%PROGRAMFILES(X86)%"=="" set PF86=%PROGRAMFILES(X86)%
 if "%PF86%"=="" set PF86=%PROGRAMFILES%
 if "%PF86%"=="" (echo PROGRAMFILES not set & goto error)
 
-if "%VCSDK%"=="" set VCSDK=10.0.14393.0
+if "%VCSDK%"=="" set VCSDK=10.0.19041.0
 
 set ARCH=%1
 if "%ARCH%"=="x86" goto x86
@@ -27,15 +27,15 @@ goto usage
 
 :x86
 set VCARCH=x86
-set CMAKE_COMPILER_PATH=%PF86%\Microsoft Visual Studio 14.0\VC\bin
-set DBGHLP_PATH=%PF86%\Microsoft Visual Studio 14.0\Common7\IDE\Remote Debugger\x86
+set CMAKE_COMPILER_PATH=%PF86%\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x86
+set DBGHLP_PATH=%PF86%\Microsoft Visual Studio\2019\Community\Common7\IDE\Remote Debugger\x86
 set SETUPAPI_LIBRARY=%PF86%\Windows Kits\10\Lib\%VCSDK%\um\x86\SetupAPI.Lib
 goto archset
 
 :x86_64
 set VCARCH=amd64
-set CMAKE_COMPILER_PATH=%PF86%\Microsoft Visual Studio 14.0\VC\bin\amd64
-set DBGHLP_PATH=%PF86%\Microsoft Visual Studio 14.0\Common7\IDE\Remote Debugger\x64
+set CMAKE_COMPILER_PATH=%PF86%\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64
+set DBGHLP_PATH=%PF86%\Microsoft Visual Studio\2019\Community\Common7\IDE\Remote Debugger\x64
 set SETUPAPI_LIBRARY=%PF86%\Windows Kits\10\Lib\%VCSDK%\um\x64\SetupAPI.Lib
 
 :archset
@@ -48,16 +48,19 @@ set CLCACHE_CL=%CMAKE_COMPILER_PATH:\=/%/cl.exe
 if "%OSGEO4W_ROOT%"=="" if "%ARCH%"=="x86" (
 	set OSGEO4W_ROOT=C:\OSGeo4W
 ) else (
-	set OSGEO4W_ROOT=C:\OSGeo4W64
+	set OSGEO4W_ROOT=C:\OSGeo4W
 )
 
 if not exist "%OSGEO4W_ROOT%\bin\o4w_env.bat" (echo o4w_env.bat not found & goto error)
 call "%OSGEO4W_ROOT%\bin\o4w_env.bat"
-call "%OSGEO4W_ROOT%\bin\py3_env.bat"
-call "%OSGEO4W_ROOT%\bin\qt5_env.bat"
+REM call "%OSGEO4W_ROOT%\bin\py3_env.bat"
+REM call "%OSGEO4W_ROOT%\bin\qt5_env.bat"
 
-set VS140COMNTOOLS=%PF86%\Microsoft Visual Studio 14.0\Common7\Tools\
-call "%PF86%\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" %VCARCH%
+set VS160COMNTOOLS=%PF86%\Microsoft Visual Studio\2019\Community\Common7\Tools
+call "%PF86%\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" %VCARCH%
+
+REM set VS140COMNTOOLS=%PF86%\Microsoft Visual Studio 14.0\Common7\Tools\
+REM call "%PF86%\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" %VCARCH%
 
 path %path%;%PF86%\Microsoft Visual Studio 14.0\VC\bin
 

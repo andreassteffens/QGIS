@@ -21,6 +21,7 @@
 #include "qgslayertreemodel.h"
 #include "qgsvectorlayer.h"
 #include "qgsproject.h"
+#include "qgsmessagelog.h"
 
 QgsLayerCapabilitiesModel::QgsLayerCapabilitiesModel( QgsProject *project, QObject *parent )
   : QSortFilterProxyModel( parent )
@@ -33,6 +34,30 @@ QgsLayerCapabilitiesModel::QgsLayerCapabilitiesModel( QgsProject *project, QObje
     mIdentifiableLayers.insert( it.value(), it.value()->flags().testFlag( QgsMapLayer::Identifiable ) );
     mRemovableLayers.insert( it.value(), it.value()->flags().testFlag( QgsMapLayer::Removable ) );
     mPrivateLayers.insert( it.value(), it.value()->flags().testFlag( QgsMapLayer::Private ) );
+    
+    bool bNavigable = false;
+    QVariant varNavigable = it.value()->customProperty("sb:Navigable");
+    if (!varNavigable.isNull())
+    {
+        bNavigable = varNavigable.toBool();
+    }
+    mSbNavigableLayers.insert(it.value(), it.value()->type() == QgsMapLayerType::VectorLayer && bNavigable);
+
+    bool bSelectable = false;
+    QVariant varSelectable = it.value()->customProperty("sb:Selectable");
+    if (!varSelectable.isNull())
+    {
+        bSelectable = varSelectable.toBool();
+    }
+    mSbSelectableLayers.insert(it.value(), it.value()->type() == QgsMapLayerType::VectorLayer && bSelectable);
+
+    bool bSnappable = false;
+    QVariant varSnappable = it.value()->customProperty("sb:Snappable");
+    if (!varSnappable.isNull())
+    {
+        bSnappable = varSnappable.toBool();
+    }
+    mSbSnappableLayers.insert(it.value(), it.value()->type() == QgsMapLayerType::VectorLayer && bSnappable);
   }
 }
 
@@ -92,10 +117,25 @@ bool QgsLayerCapabilitiesModel::searchable( QgsMapLayer *layer ) const
   return mSearchableLayers.value( layer, false );
 }
 
+bool QgsLayerCapabilitiesModel::sbNavigable(QgsMapLayer *layer) const
+{
+  return mSbNavigableLayers.value(layer, false);
+}
+
+bool QgsLayerCapabilitiesModel::sbSelectable(QgsMapLayer *layer) const
+{
+  return mSbSelectableLayers.value(layer, false);
+}
+
+bool QgsLayerCapabilitiesModel::sbSnappable(QgsMapLayer *layer) const
+{
+  return mSbSnappableLayers.value(layer, false);
+}
+
 int QgsLayerCapabilitiesModel::columnCount( const QModelIndex &parent ) const
 {
   Q_UNUSED( parent )
-  return 6;
+  return 9;
 }
 
 QVariant QgsLayerCapabilitiesModel::headerData( int section, Qt::Orientation orientation, int role ) const
@@ -118,6 +158,12 @@ QVariant QgsLayerCapabilitiesModel::headerData( int section, Qt::Orientation ori
           return tr( "Required" );
         case PrivateColumn:
           return tr( "Private" );
+        case sbNavigableColumn:
+          return tr("[a]tapa Navigable");
+        case sbSelectableColumn:
+          return tr("[a]tapa Selectable");
+        case sbSnappableColumn:
+          return tr("[a]tapa Snappable");
         default:
           return QVariant();
       }
@@ -138,6 +184,12 @@ QVariant QgsLayerCapabilitiesModel::headerData( int section, Qt::Orientation ori
           return tr( "Layers which are protected from inadvertent removal from the project." );
         case PrivateColumn:
           return tr( "Layers which are not shown in the legend." );
+        case sbNavigableColumn:
+          return tr("Layers whose features can be navigated to using the Google Maps Tool integrated into the [a]tapa Atlas.");
+        case sbSelectableColumn:
+          return tr("Layers whose features can be selected using the Object Selection Tool integrated into the [a]tapa Atlas.");
+        case sbSnappableColumn:
+          return tr("Layers whose features can be snapped to using the Snapping Tool integrated into the [a]tapa Atlas.");
         default:
           return QVariant();
       }
@@ -201,6 +253,27 @@ Qt::ItemFlags QgsLayerCapabilitiesModel::flags( const QModelIndex &idx ) const
       case PrivateColumn:
       {
         return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsUserCheckable;
+      }
+      case sbNavigableColumn:
+      {
+        if (layer->isSpatial())
+        {
+          return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable | Qt::ItemIsUserCheckable;
+        }
+      }
+      case sbSelectableColumn:
+      {
+        if (layer->isSpatial())
+        {
+          return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable | Qt::ItemIsUserCheckable;
+        }
+      }
+      case sbSnappableColumn:
+      {
+        if (layer->isSpatial())
+        {
+          return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable | Qt::ItemIsUserCheckable;
+        }
       }
     }
   }
@@ -300,6 +373,21 @@ QVariant QgsLayerCapabilitiesModel::data( const QModelIndex &idx, int role ) con
 
         case PrivateColumn:
           return mPrivateLayers.value( layer, false ) ? trueValue : falseValue;
+
+        case sbNavigableColumn:
+          if (layer->type() == QgsMapLayerType::VectorLayer)
+            return mSbNavigableLayers.value(layer, true) ? trueValue : falseValue;
+          break;
+
+        case sbSelectableColumn:
+          if (layer->type() == QgsMapLayerType::VectorLayer)
+            return mSbSelectableLayers.value(layer, true) ? trueValue : falseValue;
+          break;
+
+        case sbSnappableColumn:
+          if (layer->type() == QgsMapLayerType::VectorLayer)
+            return mSbSnappableLayers.value(layer, true) ? trueValue : falseValue;
+          break;
       }
     }
   }
@@ -378,6 +466,39 @@ bool QgsLayerCapabilitiesModel::setData( const QModelIndex &index, const QVarian
           {
             mPrivateLayers.insert( layer, isPrivate );
             emit dataChanged( index, index );
+            return true;
+          }
+          break;
+        }
+        case sbNavigableColumn:
+        {
+          bool navigable = value == Qt::Checked;
+          if (navigable != mSbNavigableLayers.value(layer, true))
+          {
+            mSbNavigableLayers.insert(layer, navigable);
+            emit dataChanged(index, index);
+            return true;
+          }
+          break;
+        }
+        case sbSelectableColumn:
+        {
+          bool selectable = value == Qt::Checked;
+          if (selectable != mSbSelectableLayers.value(layer, true))
+          {
+            mSbSelectableLayers.insert(layer, selectable);
+            emit dataChanged(index, index);
+            return true;
+          }
+          break;
+        }
+        case sbSnappableColumn:
+        {
+          bool snappable = value == Qt::Checked;
+          if (snappable != mSbSnappableLayers.value(layer, true))
+          {
+            mSbSnappableLayers.insert(layer, snappable);
+            emit dataChanged(index, index);
             return true;
           }
           break;

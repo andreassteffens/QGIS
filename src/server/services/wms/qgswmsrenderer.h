@@ -72,7 +72,7 @@ namespace QgsWms
        * \param context The rendering context.
        * \since QGIS 3.8
        */
-      QgsRenderer( const QgsWmsRenderContext &context );
+      QgsRenderer( QgsWmsRenderContext &context );
 
       /**
        * Destructor for QgsRenderer.
@@ -161,8 +161,17 @@ namespace QgsWms
       // Set layer opacity
       void setLayerOpacity( QgsMapLayer *layer, int opacity ) const;
 
+      // Set layer display rules
+      void sbSetLayerRules(QgsMapLayer *layer, const QList<QPair<QString, bool>> &rules);
+
+      // Set layer label visibility
+      void sbSetLayerLabels(QgsMapLayer *layer, bool bState);
+
       // Set layer filter and dimension
       void setLayerFilter( QgsMapLayer *layer, const QList<QgsWmsParametersFilter> &filters );
+
+     // Set layer query substitutions
+     void sbSetLayerQuerySubstitutions(QgsMapLayer *layer, const QStringList &substitution);
 
       QStringList dimensionFilter( QgsVectorLayer *layer ) const;
 
@@ -170,7 +179,7 @@ namespace QgsWms
       void setLayerAccessControlFilter( QgsMapLayer *layer ) const;
 
       // Set layer selection
-      void setLayerSelection( QgsMapLayer *layer, const QStringList &fids ) const;
+      void setLayerSelection( QgsMapLayer *layer, const QStringList &fids, bool bRenderSelectionOnly ) const;
 
       // Combine map extent with layer extent
       void updateExtent( const QgsMapLayer *layer, QgsMapSettings &mapSettings ) const;
@@ -319,7 +328,7 @@ namespace QgsWms
        *\param atlasPrint true if atlas is used for printing
        *\returns true in case of success
        */
-      bool configurePrintLayout( QgsPrintLayout *c, const QgsMapSettings &mapSettings, bool atlasPrint = false );
+      bool configurePrintLayout( QgsPrintLayout *c, const QgsMapSettings &mapSettings, double* pdScale, bool atlasPrint = false );
 
       void removeTemporaryLayers();
 
@@ -335,7 +344,7 @@ namespace QgsWms
 
       const QgsProject *mProject = nullptr;
       QList<QgsMapLayer *> mTemporaryLayers;
-      const QgsWmsRenderContext &mContext;
+      QgsWmsRenderContext &mContext;
 
       //! True when temporal capabilities are activated and TIME was parsed successfully
       bool mIsTemporal = false;

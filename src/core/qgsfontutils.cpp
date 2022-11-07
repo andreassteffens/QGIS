@@ -19,9 +19,11 @@
 #include "qgslogger.h"
 #include "qgssettings.h"
 #include "qgis.h"
+#include "qgsmessagelog.h"
 
 #include <QApplication>
 #include <QFile>
+#include <QDir>
 #include <QFont>
 #include <QFontDatabase>
 #include <QFontInfo>
@@ -251,6 +253,35 @@ bool QgsFontUtils::updateFontViaStyle( QFont &f, const QString &fontstyle, bool 
 QString QgsFontUtils::standardTestFontFamily()
 {
   return QStringLiteral( "QGIS Vera Sans" );
+}
+
+int QgsFontUtils::loadLocalResourceFonts(const QString &directory)
+{
+	int iRet = 0;
+
+	try
+	{
+		QStringList nameFilter;
+		nameFilter << "*.ttf" << "*.otf" << "*.ttc" << "*.fon";
+		QDir qdirectory(directory);
+		QStringList listFiles = qdirectory.entryList(nameFilter);
+		for (const QString &file : listFiles)
+		{
+			QString strFontFile = directory + "\\" + file;
+
+			int fontID = QFontDatabase::addApplicationFont(strFontFile);
+			if (fontID != -1)
+				iRet++;
+			else
+				QgsMessageLog::logMessage("Failed to load font '" + strFontFile + "'", QStringLiteral("Server"), Qgis::Warning);
+		}
+	}
+	catch (...)
+	{
+		QgsMessageLog::logMessage("Font loading exception from path '" + directory + "'", QStringLiteral("Server"), Qgis::Critical);
+	}
+
+	return iRet;
 }
 
 bool QgsFontUtils::loadStandardTestFonts( const QStringList &loadstyles )

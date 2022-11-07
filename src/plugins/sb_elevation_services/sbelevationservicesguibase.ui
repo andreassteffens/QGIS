@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>sbElevationServicesGuiBase</class>
+ <widget class="QWidget" name="sbElevationServicesGuiBase">
+  <property name="enabled">
+   <bool>true</bool>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>487</width>
+    <height>219</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>0</width>
+    <height>40</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>[a]tapa Elevation Services</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
+   <item>
+    <widget class="QTabWidget" name="mTabsServices">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>70</height>
+      </size>
+     </property>
+     <property name="currentIndex">
+      <number>1</number>
+     </property>
+     <widget class="QWidget" name="mTabInfo">
+      <attribute name="title">
+       <string>Elevation Info</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,0">
+       <item row="0" column="0" colspan="2">
+        <widget class="QPushButton" name="mPbtnActivateInfo">
+         <property name="text">
+          <string>Activate</string>
+         </property>
+         <property name="icon">
+          <iconset resource="sbelevationservices.qrc">
+           <normaloff>:/sbelevationservices/icons/info-circle.svg</normaloff>:/sbelevationservices/icons/info-circle.svg</iconset>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="mTabSettings">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+      <attribute name="title">
+       <string>Settings</string>
+      </attribute>
+      <layout class="QFormLayout" name="formLayout">
+       <item row="0" column="0">
+        <widget class="QLabel" name="mLblGoogleKey">
+         <property name="text">
+          <string>Google API Key</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLineEdit" name="mLeGoogleKey"/>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="mPteResult">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>40</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>16777215</height>
+      </size>
+     </property>
+     <property name="lineWrapMode">
+      <enum>QPlainTextEdit::WidgetWidth</enum>
+     </property>
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="mPbtnClearResults">
+       <property name="text">
+        <string>Clear results</string>
+       </property>
+       <property name="icon">
+        <iconset resource="sbelevationservices.qrc">
+         <normaloff>:/sbelevationservices/icons/close.svg</normaloff>:/sbelevationservices/icons/close.svg</iconset>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>mPbtnClearResults</tabstop>
+  <tabstop>mTabsServices</tabstop>
+  <tabstop>mPbtnActivateInfo</tabstop>
+ </tabstops>
+ <resources>
+  <include location="sbelevationservices.qrc"/>
+ </resources>
+ <connections/>
+</ui>

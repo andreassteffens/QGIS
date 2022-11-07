@@ -746,7 +746,6 @@ QgsXyzLayerItem::QgsXyzLayerItem( QgsDataItem *parent, QString name, QString pat
 
 // ---------------------------------------------------------------------------
 
-
 QVector<QgsDataItem *> QgsWmsDataItemProvider::createDataItems( const QString &path, QgsDataItem *parentItem )
 {
   QVector<QgsDataItem *> items;

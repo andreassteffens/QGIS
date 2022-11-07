@@ -61,6 +61,7 @@ email                : tim at linfiniti.com
 #include "qgsrasterpipe.h"
 #include "qgsrasterlayerelevationproperties.h"
 #include "qgsrasterlayerprofilegenerator.h"
+#include "qgsmessagelog.h"
 
 #include <cmath>
 #include <cstdio>
@@ -132,8 +133,52 @@ QgsRasterLayer::QgsRasterLayer( const QString &uri,
 
   QgsDebugMsgLevel( QStringLiteral( "Entered" ), 4 );
   setProviderType( providerKey );
+  
+  QList<QgsDataProvider::sbRasterBandStatistics> listRasterStatistics;
+  bool bMetaStatsValid = true;
+  for (int iMeta = 0; iMeta < metadata().constraints().length() && bMetaStatsValid; iMeta++)
+  {
+    QString strType = metadata().constraints()[iMeta].type;
+    if (strType.compare("sb:RASTER_BAND_STATISTICS", Qt::CaseInsensitive) == 0)
+    {
+      QString strValue = metadata().constraints()[iMeta].constraint;
 
-  const QgsDataProvider::ProviderOptions providerOptions { options.transformContext };
+      QStringList listParts = strValue.split(' ');
+      if (listParts.length() != 4)
+      {
+        bMetaStatsValid = false;
+          break;
+      }
+
+      QgsDataProvider::sbRasterBandStatistics stats;
+
+      bool bBandOk = true;
+      bool bValueOk = false;
+
+      stats.min = listParts[0].toDouble(&bValueOk);
+      bBandOk = bBandOk && bValueOk;
+      stats.max = listParts[1].toDouble(&bValueOk);
+      bBandOk = bBandOk && bValueOk;
+      stats.mean = listParts[2].toDouble(&bValueOk);
+      bBandOk = bBandOk && bValueOk;
+      stats.stdDev = listParts[3].toDouble(&bValueOk);
+      bBandOk = bBandOk && bValueOk;
+
+      if (bBandOk)
+        listRasterStatistics.append(stats);
+      else
+      {
+        bMetaStatsValid = false;
+          break;
+      }
+    }
+  }
+
+  QgsDataProvider::ProviderOptions providerOptions{ options.transformContext };
+
+  if (bMetaStatsValid)
+    providerOptions.sbRasterBandStatistics = listRasterStatistics;
+
   QgsDataProvider::ReadFlags providerFlags = QgsDataProvider::ReadFlags();
   if ( options.loadDefaultStyle )
   {

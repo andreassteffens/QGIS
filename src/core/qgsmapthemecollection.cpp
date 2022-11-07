@@ -564,12 +564,21 @@ void QgsMapThemeCollection::readXml( const QDomDocument &doc )
   reconnectToLayersStyleManager();
   emit mapThemesChanged();
 }
-
 void QgsMapThemeCollection::writeXml( QDomDocument &doc )
 {
   QDomElement visPresetsElem = doc.createElement( QStringLiteral( "visibility-presets" ) );
+	writeXmlContent(visPresetsElem, doc, false);
 
-  QList< QString > keys = mMapThemes.keys();
+	QDomElement parentQgis = doc.firstChildElement(QStringLiteral("qgis"));
+	if (!parentQgis.isNull())
+		parentQgis.appendChild(visPresetsElem);
+	else
+		doc.appendChild(visPresetsElem);
+}
+
+void QgsMapThemeCollection::writeXmlContent(QDomElement &parent, QDomDocument &doc, bool bUseWmsNames)
+{
+     QList< QString > keys = mMapThemes.keys();
 
   std::sort( keys.begin(), keys.end() );
 
@@ -587,6 +596,14 @@ void QgsMapThemeCollection::writeXml( QDomDocument &doc )
       if ( !layerRec.layer() )
         continue;
       QString layerID = layerRec.layer()->id();
+
+	  if (bUseWmsNames)
+	  {
+		  QVariant qvarName = layerRec.layer()->customProperty(QStringLiteral("wmsShortName"));
+		  if (qvarName.isValid() && !qvarName.isNull())
+			  layerID = qvarName.toString();
+	  }
+
       QDomElement layerElem = doc.createElement( QStringLiteral( "layer" ) );
       layerElem.setAttribute( QStringLiteral( "id" ), layerID );
       layerElem.setAttribute( QStringLiteral( "visible" ), layerRec.isVisible ? QStringLiteral( "1" ) : QStringLiteral( "0" ) );
@@ -649,10 +666,8 @@ void QgsMapThemeCollection::writeXml( QDomDocument &doc )
       visPresetElem.appendChild( expandedGroupElems );
     }
 
-    visPresetsElem.appendChild( visPresetElem );
+    parent.appendChild( visPresetElem );
   }
-
-  doc.firstChildElement( QStringLiteral( "qgis" ) ).appendChild( visPresetsElem );
 }
 
 void QgsMapThemeCollection::registryLayersRemoved( const QStringList &layerIDs )

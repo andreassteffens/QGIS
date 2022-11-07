@@ -195,6 +195,8 @@ class QgsWmsProvider final: public QgsRasterDataProvider
     Q_OBJECT
 
   public:
+    //! Parsed response of server's capabilities - initially (or on error) may be invalid
+    QgsWmsCapabilities mCaps;
 
     static QString WMS_KEY;
     static QString WMS_DESCRIPTION;
@@ -242,6 +244,8 @@ class QgsWmsProvider final: public QgsRasterDataProvider
 
     bool isValid() const override;
 
+    bool getMinMaxScale(double &dMin, double &dMax);
+
 #if 0
 
     /**
@@ -254,6 +258,7 @@ class QgsWmsProvider final: public QgsRasterDataProvider
     virtual QString getFeatureInfoUrl() const;
     virtual QString getTileUrl() const;
     virtual QString getLegendGraphicUrl() const;
+    virtual QStringList getLegendGraphicUrls() const;
 
     //! Gets WMS version string
     QString wmsVersion();
@@ -440,6 +445,8 @@ class QgsWmsProvider final: public QgsRasterDataProvider
     void setSRSQueryItem( QUrlQuery &url );
 
     bool ignoreExtents() const override;
+	
+    QString mServiceMetadataURL;
 
   private:
 
@@ -572,8 +579,6 @@ class QgsWmsProvider final: public QgsRasterDataProvider
     //! See if calculateExtents() needs to be called before extent() returns useful data
     mutable bool mExtentDirty = true;
 
-    QString mServiceMetadataURL;
-
     //! tile request number, cache hits and misses
     int mTileReqNo = 0;
 
@@ -587,9 +592,6 @@ class QgsWmsProvider final: public QgsRasterDataProvider
 
     QgsCoordinateReferenceSystem mCrs;
     QgsLayerMetadata mLayerMetadata;
-
-    //! Parsed response of server's capabilities - initially (or on error) may be invalid
-    QgsWmsCapabilities mCaps;
 
     //! User's settings (URI, authorization, layer, style, ...)
     QgsWmsSettings mSettings;

@@ -144,6 +144,11 @@ namespace QgsWms
        */
       QgsWmsParametersLayer parameters( const QgsMapLayer &layer ) const;
 
+	  /** 
+	  *
+	  */
+	  void sbAddRenderSelectionOnlyLayer(QString strLayer);
+
       /**
        * Returns the image quality to use for rendering according to the
        * current configuration.

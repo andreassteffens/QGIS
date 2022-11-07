@@ -36,8 +36,7 @@ namespace QgsWms
    */
   QDomElement getLayersAndStylesCapabilitiesElement( QDomDocument &doc,
       QgsServerInterface *serverIface,
-      const QgsProject *project,
-      const QgsWmsRequest &request,
+      const QgsProject *project, const QgsWmsRequest &request,
       bool projectSettings );
 
   /**
@@ -65,8 +64,7 @@ namespace QgsWms
   /**
    * Create Service element for get capabilities document
    */
-  QDomElement getServiceElement( QDomDocument &doc, const QgsProject *project,
-                                 const QgsWmsRequest &request, const QgsServerSettings *serverSettings );
+  QDomElement getServiceElement( QgsServerInterface *serverIface, QDomDocument &doc, const QgsProject *project, const QgsWmsRequest &request, const QgsServerSettings *serverSettings, bool projectSettings );
 
   /**
    * Output GetCapabilities response
@@ -85,9 +83,7 @@ namespace QgsWms
    * \param projectSettings If TRUE, adds extended project information (does not validate against WMS schema)
    * \returns GetCapabilities XML document
    */
-  QDomDocument getCapabilities( QgsServerInterface *serverIface, const QgsProject *project,
-                                const QgsWmsRequest &request,
-                                bool projectSettings );
+  QDomDocument getCapabilities( QgsServerInterface *serverIface, const QgsProject *project, const QgsWmsRequest &request, bool projectSettings );
 
   bool hasQueryableChildren( const QgsLayerTreeNode *childNode, const QStringList &wmsRestrictedLayers );
 } // namespace QgsWms

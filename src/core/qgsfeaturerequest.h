@@ -478,6 +478,9 @@ class CORE_EXPORT QgsFeatureRequest
      */
     const QgsFeatureIds &filterFids() const { return mFilterFids; }
 
+    void sbSetQuerySubstitutions(const QStringList &substitutions);
+    const QStringList &sbQuerySubstitutions() const { return mSbQuerySubstitutions; }
+
     /**
      * Sets invalid geometry checking behavior.
      * \note Invalid geometry checking is not performed when retrieving features
@@ -833,6 +836,10 @@ class CORE_EXPORT QgsFeatureRequest
      */
     std::function< void( const QgsFeature & ) > transformErrorCallback() const { return mTransformErrorCallback; } SIP_SKIP
 
+    void sbSetRenderMinPixelSizeFilter(double dRenderMinPixelSize, int iRenderMinPixelSizeMaxScale, double dScaleFactor, double dMapUnitsPerPixel, double dCurrentScale, QgsWkbTypes::GeometryType geometryType, bool bRenderMinPixelSizeSourceFiltering) SIP_SKIP;
+    bool sbHasRenderMinPixelSizeFilter() const SIP_SKIP;
+    void sbGetRenderMinPixelSizeFilterValue(double* pdRenderMinPixelSize, int* piRenderMinPixelSizeMaxScale, double* pdScaleFactor, double* pdMapUnitsPerPixel, double* pdCurrentScale, QgsWkbTypes::GeometryType* pgeometryType) const SIP_SKIP;
+    bool sbTestRenderMinPixelSizeFilter(const QgsFeature& f) const SIP_SKIP;
 
     /**
      * Check if a feature is accepted by this requests filter
@@ -978,6 +985,7 @@ class CORE_EXPORT QgsFeatureRequest
 
     QgsFeatureId mFilterFid = -1;
     QgsFeatureIds mFilterFids;
+    QStringList mSbQuerySubstitutions;
     std::unique_ptr< QgsExpression > mFilterExpression;
     QgsExpressionContext mExpressionContext;
     Flags mFlags = Flags();
@@ -993,6 +1001,13 @@ class CORE_EXPORT QgsFeatureRequest
     int mTimeout = -1;
     int mRequestMayBeNested = false;
     QgsFeedback *mFeedback = nullptr;
+    double mSbRenderMinPixelSize;
+    int mSbRenderMinPixelSizeMaxScale;
+    double mSbScaleFactor;
+    double mSbMapUnitsPerPixel;
+    double mSbCurrentScale;
+    QgsWkbTypes::GeometryType mSbGeometryType;
+    bool mSbRenderMinPixelSizeSourceFiltering;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS( QgsFeatureRequest::Flags )

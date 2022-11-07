@@ -105,14 +105,19 @@ touch %SRCDIR%\CMakeLists.txt
 echo CMAKE: %DATE% %TIME%
 if errorlevel 1 goto error
 
-if "%CMAKEGEN%"=="" set CMAKEGEN=Ninja
+if "%CMAKEGEN%"=="" set CMAKEGEN=Visual Studio 16 2019
+if "%ARCH%"=="x86" (
+	set CMAKEARCH=x86
+) else (
+	set CMAKEARCH=x64
+)
 if "%CC%"=="" set CC="%CMAKE_COMPILER_PATH:\=/%/cl.exe"
 if "%CXX%"=="" set CXX="%CMAKE_COMPILER_PATH:\=/%/cl.exe"
 if "%OSGEO4W_CXXFLAGS%"=="" set OSGEO4W_CXXFLAGS=/MD /Z7 /MP /O2 /Ob2 /D NDEBUG
 
 for %%i in (%PYTHONHOME%) do set PYVER=%%~ni
 
-cmake -G "%CMAKEGEN%" ^
+cmake -G "%CMAKEGEN%" -A %CMAKEARCH% ^
 	-D CMAKE_CXX_COMPILER="%CXX:\=/%" ^
 	-D CMAKE_C_COMPILER="%CC:\=/%" ^
 	-D CMAKE_LINKER="%CMAKE_COMPILER_PATH:\=/%/link.exe" ^
@@ -127,13 +132,17 @@ cmake -G "%CMAKEGEN%" ^
 	-D WITH_QSPATIALITE=TRUE ^
 	-D WITH_SERVER=TRUE ^
 	-D WITH_HANA=TRUE ^
-	-D SERVER_SKIP_ECW=TRUE ^
+	-D WITH_PDAL=TRUE ^
+	-D WITH_SERVER_PLUGINS=TRUE ^
+	-D SERVER_SKIP_ECW=FALSE ^
 	-D WITH_GRASS=TRUE ^
 	-D WITH_3D=TRUE ^
 	-D WITH_GRASS7=TRUE ^
 	-D GRASS_PREFIX7=%GRASS_PREFIX:\=/% ^
 	-D WITH_ORACLE=TRUE ^
 	-D WITH_CUSTOM_WIDGETS=TRUE ^
+	-D ENABLE_TESTS=FALSE ^
+	-D ENABLE_TESTING=FALSE ^
 	-D CMAKE_BUILD_TYPE=%BUILDCONF% ^
 	-D CMAKE_CONFIGURATION_TYPES=%BUILDCONF% ^
 	-D SETUPAPI_LIBRARY="%SETUPAPI_LIBRARY%" ^
@@ -451,7 +460,7 @@ for %%g IN (%GRASS_VERSIONS%) do (
 )
 
 %TAR% -C %OSGEO4W_ROOT% -cjf %ARCH%/release/qgis/%PACKAGENAME%-oracle-provider/%PACKAGENAME%-oracle-provider-%VERSION%-%PACKAGE%.tar.bz2 ^
-	"apps/%PACKAGENAME%/plugins/oracleprovider.dll" ^
+	"apps/%PACKAGENAME%/plugins/provider_oracle.dll" ^
 	"apps/%PACKAGENAME%/qtplugins/sqldrivers/qsqlocispatial.dll"
 if errorlevel 1 (echo tar oracle-provider failed & goto error)
 

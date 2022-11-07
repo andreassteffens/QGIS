@@ -893,7 +893,7 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
      * \note renamed in QGIS 3.0, formerly QgsVisibilityPresetCollection
      * \since QGIS 2.12
      */
-    QgsMapThemeCollection *mapThemeCollection();
+    QgsMapThemeCollection *mapThemeCollection() const;
 
     /**
      * Returns pointer to the project's annotation manager.

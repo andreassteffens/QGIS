@@ -464,6 +464,21 @@ class GUI_EXPORT QgsLayoutItemGuiRegistry : public QObject
      * "
      */
 
+    /*
+     * IMPORTANT: While it seems like /Factory/ would be the correct annotations here, that's not
+     * the case.
+     * As per Phil Thomson's advice on https://www.riverbankcomputing.com/pipermail/pyqt/2017-July/039450.html:
+     *
+     * "
+     * /Factory/ is used when the instance returned is guaranteed to be new to Python.
+     * In this case it isn't because it has already been seen when being returned by QgsProcessingAlgorithm::createInstance()
+     * (However for a different sub-class implemented in C++ then it would be the first time it was seen
+     * by Python so the /Factory/ on create() would be correct.)
+     *
+     * You might try using /TransferBack/ on create() instead - that might be the best compromise.
+     * "
+     */
+
     /**
      * Creates a new instance of a layout item configuration widget for the specified \a item.
      */
