@@ -113,7 +113,6 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
   connect( grpWMSExt, &QGroupBox::toggled, this, &QgsProjectProperties::wmsExtent_toggled );
   connect( pbnSbOsmScales, &QToolButton::clicked, this, &QgsProjectProperties::pbnSbOsmScales_clicked);
   connect( pbnSbAutoScales, &QToolButton::clicked, this, &QgsProjectProperties::pbnSbAutoScales_clicked);
-  connect( pbnWMSExtCanvas, &QPushButton::clicked, this, &QgsProjectProperties::pbnWMSExtCanvas_clicked );
   connect( pbnWMSAddSRS, &QToolButton::clicked, this, &QgsProjectProperties::pbnWMSAddSRS_clicked );
   connect( pbnWMSRemoveSRS, &QToolButton::clicked, this, &QgsProjectProperties::pbnWMSRemoveSRS_clicked );
   connect( pbnWMSSetUsedSRS, &QPushButton::clicked, this, &QgsProjectProperties::pbnWMSSetUsedSRS_clicked );

@@ -1611,6 +1611,7 @@ bool QgsVectorLayer::readXml( const QDomNode &layer_node, QgsReadWriteContext &c
     }
   }
 
+  const QDomElement elem = layer_node.toElement();
   QgsDataProvider::ProviderOptions options { context.transformContext() };
   QgsDataProvider::ReadFlags flags;
   if ( mReadFlags & QgsMapLayer::FlagTrustLayerMetadata )

@@ -1448,7 +1448,7 @@ namespace QgsWms
 
   QStringList QgsWmsParameters::sbQuerySubstitutions() const
   {
-    const QString strQuerySubstitutions = mWmsParameters[QgsWmsParameter::SBQUERYSUBSTITUTIONS].toString();
+    const QString strQuerySubstitutions = mWmsParameters.value( QgsWmsParameter::SBQUERYSUBSTITUTIONS ).toString();
     QStringList listLayerTerms = strQuerySubstitutions.split(';');
 
     return listLayerTerms;
@@ -1456,7 +1456,7 @@ namespace QgsWms
 
   QStringList QgsWmsParameters::sbLabels() const
   {
-    const QString strLabels = mWmsParameters[QgsWmsParameter::SBLABELS].toString();
+    const QString strLabels = mWmsParameters.value( QgsWmsParameter::SBLABELS ).toString();
     QStringList listLayerTerms = strLabels.split(';');
 
     return listLayerTerms;
@@ -1464,7 +1464,7 @@ namespace QgsWms
 
   QStringList QgsWmsParameters::sbRules() const
   {
-     const QString strRules = mWmsParameters[QgsWmsParameter::SBRULES].toString();
+     const QString strRules = mWmsParameters.value( QgsWmsParameter::SBRULES ).toString();
      QStringList listLayerTerms = strRules.split(';');
 
      return listLayerTerms;
@@ -1472,14 +1472,14 @@ namespace QgsWms
 
   QString QgsWmsParameters::sbKey() const
   {
-    const QString strKey = mWmsParameters[QgsWmsParameter::SBKEY].toString();
+    const QString strKey = mWmsParameters.value( QgsWmsParameter::SBKEY ).toString();
 
     return strKey;
   }
 
   bool QgsWmsParameters::sbWithLabel() const
   {
-    const QString strKey = mWmsParameters[QgsWmsParameter::SBWITHLABEL].toString();
+    const QString strKey = mWmsParameters.value( QgsWmsParameter::SBWITHLABEL ).toString();
 
     if (strKey.isEmpty())
       return false;
@@ -1492,7 +1492,7 @@ namespace QgsWms
 
   bool QgsWmsParameters::sbAlwaysRenderSelection() const
   {
-    const QString strKey = mWmsParameters[QgsWmsParameter::SBALWAYSRENDERSELECTION].toString();
+    const QString strKey = mWmsParameters.value( QgsWmsParameter::SBALWAYSRENDERSELECTION ).toString();
 
     if (strKey.isEmpty())
       return false;
@@ -1505,7 +1505,7 @@ namespace QgsWms
 
   bool QgsWmsParameters::sbAllowUnsafe() const
   {
-    const QString strKey = mWmsParameters[QgsWmsParameter::SBALLOWUNSAFE].toString();
+    const QString strKey = mWmsParameters.value( QgsWmsParameter::SBALLOWUNSAFE ).toString();
 
     if (strKey.isEmpty())
       return false;
