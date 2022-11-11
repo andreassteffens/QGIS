@@ -159,11 +159,11 @@ QVariant QgsLayerCapabilitiesModel::headerData( int section, Qt::Orientation ori
         case PrivateColumn:
           return tr( "Private" );
         case sbNavigableColumn:
-          return tr("[a]tapa Navigable");
+          return tr( "([a]tapa) Navigable" );
         case sbSelectableColumn:
-          return tr("[a]tapa Selectable");
+          return tr( "([a]tapa) Selectable" );
         case sbSnappableColumn:
-          return tr("[a]tapa Snappable");
+          return tr( "([a]tapa) Snappable" );
         default:
           return QVariant();
       }
