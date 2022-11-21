@@ -1482,6 +1482,8 @@ namespace QgsWms
     }
 
     QDomDocument result;
+    const QDomNode header = result.createProcessingInstruction( QStringLiteral( "xml" ), QStringLiteral( "version=\"1.0\" encoding=\"UTF-8\"" ) );
+    result.appendChild( header );
 
     QDomElement getFeatureInfoElement;
     QgsWmsParameters::Format infoFormat = mWmsParameters.infoFormat();

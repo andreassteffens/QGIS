@@ -2798,9 +2798,19 @@ gdal::ogr_feature_unique_ptr QgsVectorFileWriter::createFeature( const QgsFeatur
         // add m/z values if not present in the input wkb type -- this is needed for formats which determine
         // geometry type based on features, e.g. geojson
         if ( QgsWkbTypes::hasZ( mWkbType ) && !QgsWkbTypes::hasZ( geom.wkbType() ) )
-          geom.get()->addZValue( 0 );
+        {
+          if ( mOgrDriverName == QLatin1String( "ESRI Shapefile" ) )
+            geom.get()->addZValue( std::numeric_limits<double>::quiet_NaN() );
+          else
+            geom.get()->addZValue( 0 );
+        }
         if ( QgsWkbTypes::hasM( mWkbType ) && !QgsWkbTypes::hasM( geom.wkbType() ) )
-          geom.get()->addMValue( 0 );
+        {
+          if ( mOgrDriverName == QLatin1String( "ESRI Shapefile" ) )
+            geom.get()->addMValue( std::numeric_limits<double>::quiet_NaN() );
+          else
+            geom.get()->addMValue( 0 );
+        }
 
         if ( !mGeom2 )
         {
@@ -2824,7 +2834,11 @@ gdal::ogr_feature_unique_ptr QgsVectorFileWriter::createFeature( const QgsFeatur
           return nullptr;
         }
 
-        QByteArray wkb( geom.asWkb() );
+        QgsAbstractGeometry::WkbFlags wkbFlags;
+        if ( mOgrDriverName == QLatin1String( "ESRI Shapefile" ) )
+          wkbFlags |= QgsAbstractGeometry::FlagExportNanAsDoubleMin;
+
+        QByteArray wkb( geom.asWkb( wkbFlags ) );
         OGRErr err = OGR_G_ImportFromWkb( mGeom2, reinterpret_cast<unsigned char *>( const_cast<char *>( wkb.constData() ) ), wkb.length() );
         if ( err != OGRERR_NONE )
         {
@@ -2840,7 +2854,11 @@ gdal::ogr_feature_unique_ptr QgsVectorFileWriter::createFeature( const QgsFeatur
       }
       else // wkb type matches
       {
-        QByteArray wkb( geom.asWkb( QgsAbstractGeometry::FlagExportTrianglesAsPolygons ) );
+        QgsAbstractGeometry::WkbFlags wkbFlags = QgsAbstractGeometry::FlagExportTrianglesAsPolygons;
+        if ( mOgrDriverName == QLatin1String( "ESRI Shapefile" ) )
+          wkbFlags |= QgsAbstractGeometry::FlagExportNanAsDoubleMin;
+
+        QByteArray wkb( geom.asWkb( wkbFlags ) );
         OGRGeometryH ogrGeom = createEmptyGeometry( mWkbType );
         OGRErr err = OGR_G_ImportFromWkb( ogrGeom, reinterpret_cast<unsigned char *>( const_cast<char *>( wkb.constData() ) ), wkb.length() );
         if ( err != OGRERR_NONE )
