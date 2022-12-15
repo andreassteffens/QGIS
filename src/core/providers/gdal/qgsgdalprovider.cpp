@@ -87,8 +87,6 @@ const int MAX_CACHE_SIZE = 50;
 
 struct QgsGdalProgress
 {
-  int type;
-  QgsGdalProvider *provider = nullptr;
   QgsRasterBlockFeedback *feedback = nullptr;
 };
 //
@@ -100,27 +98,15 @@ int CPL_STDCALL progressCallback( double dfComplete,
 {
   Q_UNUSED( pszMessage )
 
-  static double sDfLastComplete = -1.0;
-
   QgsGdalProgress *prog = static_cast<QgsGdalProgress *>( pProgressArg );
 
-  if ( sDfLastComplete > dfComplete )
+  if ( QgsRasterBlockFeedback *feedback = prog->feedback )
   {
-    if ( sDfLastComplete >= 1.0 )
-      sDfLastComplete = -1.0;
-    else
-      sDfLastComplete = dfComplete;
-  }
+    feedback->setProgress( dfComplete * 100 );
 
-  if ( std::floor( sDfLastComplete * 10 ) != std::floor( dfComplete * 10 ) )
-  {
-    if ( prog->feedback )
-      prog->feedback->setProgress( dfComplete * 100 );
+    if ( feedback->isCanceled() )
+      return false;
   }
-  sDfLastComplete = dfComplete;
-
-  if ( prog->feedback && prog->feedback->isCanceled() )
-    return false;
 
   return true;
 }
@@ -1948,8 +1934,6 @@ QgsRasterHistogram QgsGdalProvider::histogram( int bandNo,
   QgsDebugMsgLevel( QStringLiteral( "xSize() = %1 ySize() = %2 sampleSize = %3 bApproxOK = %4" ).arg( xSize() ).arg( ySize() ).arg( sampleSize ).arg( bApproxOK ), 2 );
 
   QgsGdalProgress myProg;
-  myProg.type = QgsRaster::ProgressHistogram;
-  myProg.provider = this;
   myProg.feedback = feedback;
 
 #if 0 // this is the old method
@@ -2194,8 +2178,6 @@ QString QgsGdalProvider::buildPyramids( const QList<QgsRasterPyramid> &rasterPyr
   {
     //build the pyramid and show progress to console
     QgsGdalProgress myProg;
-    myProg.type = QgsRaster::ProgressPyramids;
-    myProg.provider = this;
     myProg.feedback = feedback;
     myError = GDALBuildOverviews( mGdalBaseDataset, method,
                                   myOverviewLevelsVector.size(), myOverviewLevelsVector.data(),
@@ -2860,22 +2842,16 @@ QgsRasterBandStats QgsGdalProvider::bandStatistics( int bandNo, int stats, const
   double pdfMean;
   double pdfStdDev;
   QgsGdalProgress myProg;
-  myProg.type = QgsRaster::ProgressHistogram;
-  myProg.provider = this;
   myProg.feedback = feedback;
 
   // try to fetch the cached stats (bForce=FALSE)
-  // GDALGetRasterStatistics() do not work correctly with bApproxOK=false and bForce=false/true
-  // see above and https://trac.osgeo.org/gdal/ticket/4857
-  // -> Cannot used cached GDAL stats for exact
-
   CPLErr myerval =
-    GDALGetRasterStatistics( myGdalBand, bApproxOK, true, &pdfMin, &pdfMax, &pdfMean, &pdfStdDev );
+    GDALGetRasterStatistics( myGdalBand, bApproxOK, false, &pdfMin, &pdfMax, &pdfMean, &pdfStdDev );
 
   QgsDebugMsgLevel( QStringLiteral( "myerval = %1" ).arg( myerval ), 2 );
 
   // if cached stats are not found, compute them
-  if ( !bApproxOK || CE_None != myerval )
+  if ( CE_None != myerval )
   {
     QgsDebugMsgLevel( QStringLiteral( "Calculating statistics by GDAL" ), 2 );
     myerval = GDALComputeRasterStatistics( myGdalBand, bApproxOK,
