@@ -159,12 +159,12 @@ namespace QgsWms
       }
       else
       {
-        QgsMessageLog::logMessage( QStringLiteral( "Set WMS capabilities document in cache" ), QStringLiteral( "Server" ) );
+        QgsMessageLog::logMessage( QStringLiteral( "Set WMS capabilities document in cache" ), QStringLiteral( "Server" ), Qgis::Info );
       }
     }
     else
     {
-      QgsMessageLog::logMessage( QStringLiteral( "Found WMS capabilities document in cache" ), QStringLiteral( "Server" ) );
+      QgsMessageLog::logMessage( QStringLiteral( "Found WMS capabilities document in cache" ), QStringLiteral( "Server" ), Qgis::Info );
     }
 
     response.setHeader( QStringLiteral( "Content-Type" ), QStringLiteral( "text/xml; charset=utf-8" ) );

@@ -217,7 +217,7 @@ int QgsServer::sbPreloadProjects()
     strTenant = "default";
 
   QString strPreloadConfig = QDir(sSettings->cacheDirectory()).filePath("preload_" + strTenant);
-  QgsMessageLog::logMessage(QStringLiteral("Attempting to preload projects from '%1' ...").arg(strPreloadConfig), QStringLiteral("Server"), Qgis::Warning);
+  QgsMessageLog::logMessage(QStringLiteral("Attempting to preload projects from '%1' ...").arg(strPreloadConfig), QStringLiteral("Server"), Qgis::Info);
   if (QFile::exists(strPreloadConfig))
   {
     QFile fileConfig(strPreloadConfig);
