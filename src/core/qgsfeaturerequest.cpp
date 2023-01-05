@@ -33,6 +33,7 @@ QgsFeatureRequest::QgsFeatureRequest()
   mSbCurrentScale = 0;
   mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
   mSbRenderMinPixelSizeSourceFiltering = false;
+  mSbRenderMinPixelSizeDebug = false;
 }
 
 QgsFeatureRequest::~QgsFeatureRequest() = default;
@@ -48,6 +49,7 @@ QgsFeatureRequest::QgsFeatureRequest( QgsFeatureId fid )
   mSbCurrentScale = 0;
   mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
   mSbRenderMinPixelSizeSourceFiltering = false;
+  mSbRenderMinPixelSizeDebug = false;
 }
 
 QgsFeatureRequest::QgsFeatureRequest( const QgsFeatureIds &fids )
@@ -61,6 +63,7 @@ QgsFeatureRequest::QgsFeatureRequest( const QgsFeatureIds &fids )
   mSbCurrentScale = 0;
   mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
   mSbRenderMinPixelSizeSourceFiltering = false;
+  mSbRenderMinPixelSizeDebug = false;
 }
 
 QgsFeatureRequest::QgsFeatureRequest( const QgsRectangle &rect )
@@ -74,6 +77,7 @@ QgsFeatureRequest::QgsFeatureRequest( const QgsRectangle &rect )
   mSbCurrentScale = 0;
   mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
   mSbRenderMinPixelSizeSourceFiltering = false;
+  mSbRenderMinPixelSizeDebug = false;
 }
 
 QgsFeatureRequest::QgsFeatureRequest( const QgsExpression &expr, const QgsExpressionContext &context )
@@ -88,6 +92,7 @@ QgsFeatureRequest::QgsFeatureRequest( const QgsExpression &expr, const QgsExpres
   mSbCurrentScale = 0;
   mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
   mSbRenderMinPixelSizeSourceFiltering = false;
+  mSbRenderMinPixelSizeDebug = false;
 }
 
 QgsFeatureRequest::QgsFeatureRequest( const QgsFeatureRequest &rh )
@@ -137,6 +142,7 @@ QgsFeatureRequest &QgsFeatureRequest::operator=( const QgsFeatureRequest &rh )
   mSbCurrentScale = rh.mSbCurrentScale;
   mSbGeometryType = rh.mSbGeometryType;
   mSbRenderMinPixelSizeSourceFiltering = rh.mSbRenderMinPixelSizeSourceFiltering;
+  mSbRenderMinPixelSizeDebug = rh.mSbRenderMinPixelSizeDebug;
   mSbQuerySubstitutions = rh.mSbQuerySubstitutions;
   return *this;
 }
@@ -359,18 +365,19 @@ QgsFeatureRequest &QgsFeatureRequest::setTransformErrorCallback( const std::func
   return *this;
 }
 
-void QgsFeatureRequest::sbSetRenderMinPixelSizeFilter(double dRenderMinPixelSize, int iRenderMinPixelSizeMaxScale, double dScaleFactor, double dMapUnitsPerPixel, double dCurrentScale, QgsWkbTypes::GeometryType geometryType, bool bRenderMinPixelSizeSourceFiltering)
+void QgsFeatureRequest::sbSetRenderMinPixelSizeFilter(double dRenderMinPixelSize, int iRenderMinPixelSizeMaxScale, double dScaleFactor, double dMapUnitsPerPixel, double dCurrentScale, QgsWkbTypes::GeometryType geometryType, bool bRenderMinPixelSizeSourceFiltering, bool bRenderMinPixelSizeDebug)
 {
   mSbRenderMinPixelSize = dRenderMinPixelSize;
   mSbRenderMinPixelSizeMaxScale = iRenderMinPixelSizeMaxScale;
   mSbScaleFactor = dScaleFactor;
   mSbMapUnitsPerPixel = dMapUnitsPerPixel;
+  mSbRenderMinPixelSizeDebug = bRenderMinPixelSizeDebug;
   mSbCurrentScale = dCurrentScale;
   mSbGeometryType = geometryType;
   mSbRenderMinPixelSizeSourceFiltering = bRenderMinPixelSizeSourceFiltering;
 }
 
-void QgsFeatureRequest::sbGetRenderMinPixelSizeFilterValue(double* pdRenderMinPixelSize, int* piRenderMinPixelSizeMaxScale, double* pdScaleFactor, double* pdMapUnitsPerPixel, double* pdCurrentScale, QgsWkbTypes::GeometryType* pgeometryType) const
+void QgsFeatureRequest::sbGetRenderMinPixelSizeFilterValue(double* pdRenderMinPixelSize, int* piRenderMinPixelSizeMaxScale, double* pdScaleFactor, double* pdMapUnitsPerPixel, double* pdCurrentScale, QgsWkbTypes::GeometryType* pgeometryType, bool* pbRenderMinPixelSizeDebug) const
 {
   *pdRenderMinPixelSize = mSbRenderMinPixelSize;
   *piRenderMinPixelSizeMaxScale = mSbRenderMinPixelSizeMaxScale;
@@ -378,11 +385,12 @@ void QgsFeatureRequest::sbGetRenderMinPixelSizeFilterValue(double* pdRenderMinPi
   *pdMapUnitsPerPixel = mSbMapUnitsPerPixel;
   *pdCurrentScale = mSbCurrentScale;
   *pgeometryType = mSbGeometryType;
+  *pbRenderMinPixelSizeDebug = mSbRenderMinPixelSizeDebug;
 }
 
 bool QgsFeatureRequest::sbHasRenderMinPixelSizeFilter() const
 {
-  return (mSbRenderMinPixelSize > 0 && mSbRenderMinPixelSizeMaxScale > 0); 
+  return (mSbRenderMinPixelSize > 0 && mSbRenderMinPixelSizeMaxScale > 0 && mSbCurrentScale > mSbRenderMinPixelSizeMaxScale);
 }
 
 bool QgsFeatureRequest::sbTestRenderMinPixelSizeFilter(const QgsFeature& f) const
