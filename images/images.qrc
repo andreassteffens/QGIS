@@ -706,6 +706,7 @@
         <file>themes/default/mActionCircularStringRadius.svg</file>
         <file>themes/default/vector_grid.svg</file>
         <file>themes/default/legend.svg</file>
+        <file>themes/default/sb_joinedtoggle.svg</file>
         <file>themes/default/multieditChangedValues.svg</file>
         <file>themes/default/multieditMixedValues.svg</file>
         <file>themes/default/multieditSameValues.svg</file>

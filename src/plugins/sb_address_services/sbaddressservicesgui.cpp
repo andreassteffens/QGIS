@@ -29,8 +29,8 @@
 #include <qjsonarray.h>
 #include <qnetworkreply.h>
 
-#define GOOGLE_ADDRESS_SEARCH_URL "https://maps.google.com/maps/api/geocode/json?sensor=false&address=";
-#define GOOGLE_ADDRESS_INFO_URL "https://maps.googleapis.com/maps/api/geocode/json?sensor=false&latlng=";
+#define GOOGLE_ADDRESS_SEARCH_URL "https://maps.google.com/maps/api/geocode/json?sensor=false&address="
+#define GOOGLE_ADDRESS_INFO_URL "https://maps.googleapis.com/maps/api/geocode/json?sensor=false&latlng="
 
 #ifndef SAFE_DELETE
 #define SAFE_DELETE(p) { if(p) { delete (p); (p)=NULL; } }

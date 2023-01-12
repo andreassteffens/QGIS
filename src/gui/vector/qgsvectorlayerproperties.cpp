@@ -39,6 +39,7 @@
 #include "qgsmaplayerconfigwidgetfactory.h"
 #include "qgsmaplayerstyleguiutils.h"
 #include "qgsmetadatawidget.h"
+#include "sbjoinedtogglewidget.h"
 #include "qgsmetadataurlitemdelegate.h"
 #include "qgsnative.h"
 #include "qgsproject.h"
@@ -243,6 +244,14 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
   mMetadataWidget->setMapCanvas( mCanvas );
   metadataLayout->addWidget( mMetadataWidget );
   metadataFrame->setLayout( metadataLayout );
+
+  // Joined Toggle tab
+  QVBoxLayout* toggleLayout = new QVBoxLayout(joinedToggleFrame);
+  toggleLayout->setContentsMargins(0, 0, 0, 0);
+  mSbJoinedToggleWidget = new sbJoinedToggleWidget(this, mLayer);
+  mSbJoinedToggleWidget->layout()->setContentsMargins(0, 0, 0, 0);
+  toggleLayout->addWidget(mSbJoinedToggleWidget);
+  joinedToggleFrame->setLayout(toggleLayout);
 
   QVBoxLayout *temporalLayout = new QVBoxLayout( temporalFrame );
   temporalLayout->setContentsMargins( 0, 0, 0, 0 );

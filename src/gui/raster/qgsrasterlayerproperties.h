@@ -36,6 +36,7 @@ class QgsMapLayer;
 class QgsMapCanvas;
 class QgsRasterLayer;
 class QgsMetadataWidget;
+class sbJoinedToggleWidget;
 class QgsRasterRenderer;
 class QgsRasterRendererWidget;
 class QgsRasterHistogramWidget;
@@ -233,6 +234,7 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsOptionsDialogBase, private
 
     QgsRasterRendererWidget *mRendererWidget = nullptr;
     QgsMetadataWidget *mMetadataWidget = nullptr;
+    sbJoinedToggleWidget* mSbJoinedToggleWidget = nullptr;
 
     QgsRasterTransparencyWidget *mRasterTransparencyWidget = nullptr;
 

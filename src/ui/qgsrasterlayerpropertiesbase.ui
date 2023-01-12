@@ -127,6 +127,18 @@
          </item>
          <item>
           <property name="text">
+           <string>Joined Toggle</string>
+          </property>
+          <property name="toolTip">
+           <string>([a]tapa) Joined Visibility Toggle Settings</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../images/images.qrc">
+            <normaloff>:/images/themes/default/sb_joinedtoggle.svg</normaloff>:/images/themes/default/sb_joinedtoggle.svg</iconset>
+          </property>
+         </item>
+         <item>
+          <property name="text">
            <string>Transparency</string>
           </property>
           <property name="toolTip">
@@ -934,6 +946,32 @@
                </item>
               </layout>
              </widget>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="mOptsPage_JoinedToggle">
+          <layout class="QVBoxLayout" name="verticalLayout_47">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QFrame" name="joinedToggleFrame">
+             <property name="frameShape">
+              <enum>QFrame::NoFrame</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
             </widget>
            </item>
           </layout>
