@@ -17,6 +17,7 @@
 #define QGSLAYERTREEMODEL_H
 
 #include "qgis_core.h"
+#include <QMap>
 #include <QAbstractItemModel>
 #include <QFont>
 #include <QIcon>
@@ -386,6 +387,8 @@ class CORE_EXPORT QgsLayerTreeModel : public QAbstractItemModel
     QPersistentModelIndex mCurrentIndex;
     //! Minimal number of nodes when legend should be automatically collapsed. -1 = disabled
     int mAutoCollapseLegendNodesCount;
+
+    QMap<QString, QString> mSbJoinedToggleCascadedLayers;
 
     /**
      * Structure that stores tree representation of map layer's legend.

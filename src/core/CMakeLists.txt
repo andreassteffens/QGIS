@@ -901,6 +901,7 @@ set(QGIS_CORE_SRCS
   qgsuserprofile.cpp
   qgsuserprofilemanager.cpp
 
+  sbjoinedtoggleutils.cpp
 )
 
 if (WITH_INTERNAL_POLY2TRI)
@@ -1889,6 +1890,8 @@ set(QGIS_CORE_HDRS
   vectortile/qgsvectortileutils.h
   vectortile/qgsvectortilewriter.h
   vectortile/qgsvtpktiles.h
+  
+  sbjoinedtoggleutils.h
 )
 
 set(QGIS_CORE_PRIVATE_HDRS

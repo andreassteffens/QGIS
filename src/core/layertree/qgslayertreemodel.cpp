@@ -37,6 +37,7 @@
 #include "qgsiconutils.h"
 #include "qgsmimedatautils.h"
 #include "qgssettingsregistrycore.h"
+#include "sbjoinedtoggleutils.h"
 
 #include <QPalette>
 
@@ -758,6 +759,48 @@ void QgsLayerTreeModel::nodeVisibilityChanged( QgsLayerTreeNode *node )
 
   const QModelIndex index = node2index( node );
   emit dataChanged( index, index );
+
+  if (node->nodeType() == QgsLayerTreeNode::NodeType::NodeLayer)
+  {
+    QgsLayerTreeLayer* layerNode = (QgsLayerTreeLayer*)node;
+    QgsMapLayer* layer = layerNode->layer();
+
+    bool bEnteredCascading = mSbJoinedToggleCascadedLayers.isEmpty();
+    if ( bEnteredCascading )
+      mSbJoinedToggleCascadedLayers.insert( layerNode->layerId(), layerNode->layerId() );
+    else
+    {
+      if ( mSbJoinedToggleCascadedLayers.contains( layerNode->layerId() ) )
+        return;
+    }
+
+    bool bParentVisible = layerNode->isVisible();
+
+    QList<sbJoinedToggleLayerSettings> listSettings = sbJoinedToggleUtils::getJoinedToggleLayers( layer );
+    for ( QList<sbJoinedToggleLayerSettings>::const_iterator iter = listSettings.constBegin(); iter != listSettings.constEnd(); iter++ )
+    {
+      if ( mSbJoinedToggleCascadedLayers.contains(iter->layerId) )
+        continue;
+
+      QgsLayerTreeLayer* layerJoined = mRootNode->findLayer(iter->layerId);
+      if ( layerJoined == NULL )
+        continue;
+
+      if ( bParentVisible )
+      {
+        if ( iter->activateWithReference )
+          layerJoined->setItemVisibilityChecked( !iter->invertBehavior );
+      }
+      else
+      {
+        if ( iter->deactivateWithReference )
+          layerJoined->setItemVisibilityChecked( iter->invertBehavior );
+      } 
+    }
+
+    if ( bEnteredCascading )
+      mSbJoinedToggleCascadedLayers.clear();
+  }
 }
 
 void QgsLayerTreeModel::nodeNameChanged( QgsLayerTreeNode *node, const QString &name )

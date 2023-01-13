@@ -908,6 +908,9 @@ void QgsRasterLayerProperties::apply()
   mMetadataWidget->acceptMetadata();
   mMetadataFilled = false;
 
+  if ( mSbJoinedToggleWidget )
+    mSbJoinedToggleWidget->applyToLayer();
+
   //transparency settings
   QgsRasterRenderer *rasterRenderer = mRasterLayer->renderer();
   if ( rasterRenderer )

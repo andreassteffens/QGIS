@@ -701,6 +701,9 @@ void QgsVectorLayerProperties::apply()
   mMetadataWidget->acceptMetadata();
   mMetadataFilled = false;
 
+  if ( mSbJoinedToggleWidget )
+    mSbJoinedToggleWidget->applyToLayer();
+
   // save masking settings
   if ( mMaskingWidget && mMaskingWidget->hasBeenPopulated() )
     mMaskingWidget->apply();

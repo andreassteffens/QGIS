@@ -37,13 +37,13 @@ class GUI_EXPORT sbJoinedToggleWidget : public QWidget, private Ui::sbJoinedTogg
      */
     sbJoinedToggleWidget( QWidget *pParent SIP_TRANSFERTHIS = nullptr, QgsMapLayer *pLayer = nullptr );
 
+    void applyToLayer();
+
   public slots:
 
   signals:
 
   private slots:
-    void onCheckBoxStateChanged( int iState );
-    void onReferencedLayerChanged( QgsMapLayer* pLayer);
     
   private:
     QgsMapLayer *mpLayer = nullptr;
