@@ -40,6 +40,7 @@
 #include "qgsmaplayerstyleguiutils.h"
 #include "qgsmetadatawidget.h"
 #include "sbjoinedtogglewidget.h"
+#include "sbminpixelsizefilterutils.h"
 #include "qgsmetadataurlitemdelegate.h"
 #include "qgsnative.h"
 #include "qgsproject.h"
@@ -588,6 +589,16 @@ void QgsVectorLayerProperties::syncToLayer()
   else if ( mCanvas )
     mReferenceScaleWidget->setScale( mCanvas->scale() );
 
+  bool minPixelSizeFilterEnabled;
+  double minPixelSizeFilterSize;
+  double minPixelSizeFilterMaxScale;
+  bool minPixelSizeFilterDebugMode;
+  sbMinPixelSizeFilterUtils::getFilterProperties( mLayer, &minPixelSizeFilterEnabled, &minPixelSizeFilterSize, &minPixelSizeFilterMaxScale, &minPixelSizeFilterDebugMode );
+  mUseMinPixelSizeFilter->setChecked( minPixelSizeFilterEnabled );
+  mMinPixelSizeSpinBox->setValue( minPixelSizeFilterSize );
+  mMinPixelSizeMaxScaleWidget->setScale( minPixelSizeFilterSize );
+  mMinPixelSizeDebugCheck->setChecked( minPixelSizeFilterDebugMode );
+
   // get simplify drawing configuration
   const QgsVectorSimplifyMethod &simplifyMethod = mLayer->simplifyMethod();
   mSimplifyDrawingGroupBox->setChecked( simplifyMethod.simplifyHints() != QgsVectorSimplifyMethod::NoSimplification );
@@ -856,6 +867,12 @@ void QgsVectorLayerProperties::apply()
   simplifyMethod.setMaximumScale( mSimplifyMaximumScaleComboBox->scale() );
   mLayer->setSimplifyMethod( simplifyMethod );
 
+  bool minPixelSizeFilterEnabled = mUseMinPixelSizeFilter->isChecked();
+  double minPixelSizeFilterSize = mMinPixelSizeSpinBox->value();
+  double minPixelSizeFilterMaxScale = mMinPixelSizeMaxScaleWidget->scale();
+  bool minPixelSizeFilterDebugMode = mMinPixelSizeDebugCheck->isChecked();
+  sbMinPixelSizeFilterUtils::setFilterProperties( mLayer, minPixelSizeFilterEnabled, minPixelSizeFilterSize, minPixelSizeFilterMaxScale, minPixelSizeFilterDebugMode );
+  
   if ( mLayer->renderer() )
   {
     mLayer->renderer()->setForceRasterRender( mForceRasterCheckBox->isChecked() );

@@ -112,7 +112,7 @@ class QgsVectorLayerRenderer : public QgsMapLayerRenderer
     QgsFeatureIds mSelectedFeatureIds;
     bool mSbRenderSelectionOnly;
     double mSbRenderMinPixelSize;
-    int mSbRenderMinPixelSizeMaxScale;
+    double mSbRenderMinPixelSizeMaxScale;
     bool mSbRenderMinPixelSizeDebug;
     bool mSbRenderMinPixelSizeSourceFiltering;
     double mSbScaleFactor;
