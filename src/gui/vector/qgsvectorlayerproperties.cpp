@@ -596,7 +596,7 @@ void QgsVectorLayerProperties::syncToLayer()
   sbMinPixelSizeFilterUtils::getFilterProperties( mLayer, &minPixelSizeFilterEnabled, &minPixelSizeFilterSize, &minPixelSizeFilterMaxScale, &minPixelSizeFilterDebugMode );
   mUseMinPixelSizeFilter->setChecked( minPixelSizeFilterEnabled );
   mMinPixelSizeSpinBox->setValue( minPixelSizeFilterSize );
-  mMinPixelSizeMaxScaleWidget->setScale( minPixelSizeFilterSize );
+  mMinPixelSizeMaxScaleWidget->setScale( minPixelSizeFilterMaxScale );
   mMinPixelSizeDebugCheck->setChecked( minPixelSizeFilterDebugMode );
 
   // get simplify drawing configuration
