@@ -92,7 +92,6 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
   
   mSbRenderSelectionOnly = layer->sbRenderSelectionOnly();
   
-  bool bOk = false;
   bool bRenderMinPixelSizeFilter;
   mSbRenderMinPixelSize = -1;
   mSbRenderMinPixelSizeMaxScale = -1;
@@ -102,31 +101,6 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
   sbMinPixelSizeFilterUtils::getFilterProperties(mLayer, &bRenderMinPixelSizeFilter, &mSbRenderMinPixelSize, &mSbRenderMinPixelSizeMaxScale, &mSbRenderMinPixelSizeDebug);
   if (!bRenderMinPixelSizeFilter)
     mSbRenderMinPixelSize = mSbRenderMinPixelSizeMaxScale = -1;
-
-  QList<QgsLayerMetadata::Constraint> qlistConstraints = layer->metadata().constraints();
-  for (int iConstraint = 0; iConstraint < qlistConstraints.count(); iConstraint++)
-  {
-    bOk = false;
-    if (qlistConstraints[iConstraint].type.compare("sb:RENDER_MIN_PIXEL_SIZE", Qt::CaseInsensitive) == 0)
-    {
-      double dValue = 0;
-      dValue = qlistConstraints[iConstraint].constraint.toDouble(&bOk);
-      if (bOk)
-        mSbRenderMinPixelSize = dValue;
-    }
-
-    bOk = false;
-    if (qlistConstraints[iConstraint].type.compare("sb:RENDER_MIN_PIXEL_SIZE_MAX_SCALE", Qt::CaseInsensitive) == 0)
-    {
-      double dValue = 0;
-      dValue = qlistConstraints[iConstraint].constraint.toDouble(&bOk);
-      if (bOk)
-        mSbRenderMinPixelSizeMaxScale = dValue;
-    }
-
-    if (qlistConstraints[iConstraint].type.compare("sb:RENDER_MIN_PIXEL_SIZE_DEBUG", Qt::CaseInsensitive) == 0)
-      mSbRenderMinPixelSizeDebug = qlistConstraints[iConstraint].constraint.compare("true", Qt::CaseInsensitive) == 0;
-  }
 
   if (mLayer->extent().isFinite() && !mLayer->extent().isNull())
     mSbScaleFactor = context.coordinateTransform().scaleFactor(mLayer->extent());
