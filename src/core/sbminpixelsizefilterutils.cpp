@@ -30,18 +30,18 @@ void sbMinPixelSizeFilterUtils::getFilterProperties( QgsMapLayer *pLayer, bool* 
   *pbDebug = false;
 
   QVariant varEnabled = pLayer->customProperty( MIN_PIXEL_SIZE_FILTER_ENABLED_KEY, QVariant( false ) );
-  if ( varEnabled.isValid() )
+  if ( varEnabled.isValid() && varEnabled.type() == QVariant::Type::Bool )
     *pbEnabled = varEnabled.toBool();
 
-  QVariant varMinPixelSize = pLayer->customProperty( MIN_PIXEL_SIZE_FILTER_ENABLED_KEY, QVariant( (double)2 ) );
-  if ( varMinPixelSize.isValid() )
+  QVariant varMinPixelSize = pLayer->customProperty( MIN_PIXEL_SIZE_FILTER_SIZE_KEY, QVariant( (double)2 ) );
+  if ( varMinPixelSize.isValid() && varMinPixelSize.type() == QVariant::Type::Double )
     *pdMinPixelSize = varMinPixelSize.toDouble();
 
   QVariant varMaxScale = pLayer->customProperty( MIN_PIXEL_SIZE_FILTER_MAX_SCALE_KEY, QVariant( (double)5000 ) );
-  if ( varMaxScale.isValid() )
-    *pdMinPixelSize = varMaxScale.toDouble();
+  if ( varMaxScale.isValid() && varMaxScale.type() == QVariant::Type::Double )
+    *pdMaxScale = varMaxScale.toDouble();
 
-  QVariant varDebug = pLayer->customProperty( MIN_PIXEL_SIZE_FILTER_ENABLED_KEY, QVariant( false ) );
-  if ( varDebug.isValid() )
-    *pbEnabled = varDebug.toBool();
+  QVariant varDebug = pLayer->customProperty( MIN_PIXEL_SIZE_FILTER_DEBUG_KEY, QVariant( false ) );
+  if ( varDebug.isValid() && varDebug.type() == QVariant::Type::Bool )
+    *pbDebug = varDebug.toBool();
 }
