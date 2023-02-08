@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """QGIS Unit tests for QgsMapLayerUtils.
 
 .. note:: This program is free software; you can redistribute it and/or modify
@@ -12,7 +11,6 @@ __copyright__ = 'Copyright 2021, The QGIS Project'
 
 
 import qgis  # NOQA
-
 from qgis.core import (
     QgsMapLayerUtils,
     QgsCoordinateReferenceSystem,
@@ -25,6 +23,7 @@ from qgis.core import (
     QgsMapLayerType
 )
 from qgis.testing import start_app, unittest
+
 from utilities import unitTestDataPath
 
 start_app()

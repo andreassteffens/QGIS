@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """QGIS Unit tests for Processing algorithm runner(s).
 
 .. note:: This program is free software; you can redistribute it and/or modify
@@ -10,10 +9,8 @@ __author__ = 'Alessandro Pasotti'
 __date__ = '2019-02'
 __copyright__ = 'Copyright 2019, The QGIS Project'
 
-from qgis.PyQt.QtCore import QCoreApplication
-from qgis.testing import start_app, unittest
-
 from processing.core.Processing import Processing
+from qgis.PyQt.QtCore import QCoreApplication
 from qgis.analysis import QgsNativeAlgorithms
 from qgis.core import (
     QgsApplication,
@@ -25,6 +22,7 @@ from qgis.core import (
     QgsProcessingFeedback,
     QgsTask
 )
+from qgis.testing import start_app, unittest
 
 start_app()
 

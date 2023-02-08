@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """QGIS Unit tests for QgsGraduatedSymbolRenderer
 
 .. note:: This program is free software; you can redistribute it and/or modify
@@ -11,8 +10,9 @@ __date__ = '3/10/2014'
 __copyright__ = 'Copyright 2014, The QGIS Project'
 
 import qgis  # NOQA
-
-from qgis.testing import unittest, start_app
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (QgsGraduatedSymbolRenderer,
                        QgsRendererRange,
                        QgsRendererRangeLabelFormat,
@@ -25,9 +25,7 @@ from qgis.core import (QgsGraduatedSymbolRenderer,
                        QgsReadWriteContext,
                        QgsRenderContext
                        )
-from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtXml import QDomDocument
-from qgis.PyQt.QtGui import QColor
+from qgis.testing import unittest, start_app
 
 start_app()
 
@@ -238,7 +236,7 @@ class TestQgsGraduatedSymbolRenderer(unittest.TestCase):
             format.setTrimTrailingZeroes(trim)
             result = format.formatNumber(value)
             self.assertEqual(result, expected,
-                             "Number format error {0}:{1}:{2} => {3}".format(
+                             "Number format error {}:{}:{} => {}".format(
                                  precision, trim, value, result))
 
         # Label tests - label format, expected result.
@@ -261,7 +259,7 @@ class TestQgsGraduatedSymbolRenderer(unittest.TestCase):
             label, expected = t
             format.setFormat(label)
             result = format.labelForLowerUpper(lower, upper)
-            self.assertEqual(result, expected, "Label format error {0} => {1}".format(
+            self.assertEqual(result, expected, "Label format error {} => {}".format(
                 label, result))
 
         range = QgsRendererRange()
@@ -270,7 +268,7 @@ class TestQgsGraduatedSymbolRenderer(unittest.TestCase):
         label = ltests[0][0]
         format.setFormat(label)
         result = format.labelForRange(range)
-        self.assertEqual(result, ltests[0][1], "Label for range error {0} => {1}".format(
+        self.assertEqual(result, ltests[0][1], "Label for range error {} => {}".format(
             label, result))
 
     def testQgsGraduatedSymbolRenderer_1(self):

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """QGIS Unit tests for QgsLayoutManagerModel.
 
 .. note:: This program is free software; you can redistribute it and/or modify
@@ -11,9 +10,7 @@ __date__ = '11/03/2019'
 __copyright__ = 'Copyright 2019, The QGIS Project'
 
 import qgis  # NOQA
-
-from qgis.PyQt.QtXml import QDomDocument
-
+from qgis.PyQt.QtCore import Qt, QModelIndex
 from qgis.core import (QgsPrintLayout,
                        QgsLayoutManager,
                        QgsLayoutManagerModel,
@@ -21,8 +18,8 @@ from qgis.core import (QgsPrintLayout,
                        QgsProject,
                        QgsReport,
                        )
-from qgis.PyQt.QtCore import Qt, QModelIndex
 from qgis.testing import start_app, unittest
+
 from utilities import unitTestDataPath
 
 start_app()
