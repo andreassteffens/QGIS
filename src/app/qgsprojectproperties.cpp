@@ -2205,7 +2205,7 @@ void QgsProjectProperties::sbResolveLayerPath(QgsLayerTreeNode *pNode, QString &
 void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
 {
   QList<QgsProjectServerValidator::ValidationResult> validationResults;
-  bool results = QgsProjectServerValidator::validate( QgsProject::instance(), validationResults );
+  QgsProjectServerValidator::validate( QgsProject::instance(), validationResults );
 
   QString myStyle = QgsApplication::reportStyleSheet();
   myStyle.append( QStringLiteral( "body { margin: 10px; }\n " ) );
@@ -2818,29 +2818,29 @@ void QgsProjectProperties::pbnSbOsmScales_clicked()
 {
   lstScales->clear();
 
-  addScaleToScaleList(QStringLiteral("1:500000000"));
-  addScaleToScaleList(QStringLiteral("1:250000000"));
-  addScaleToScaleList(QStringLiteral("1:150000000"));
-  addScaleToScaleList(QStringLiteral("1:70000000"));
-  addScaleToScaleList(QStringLiteral("1:35000000"));
-  addScaleToScaleList(QStringLiteral("1:15000000"));
-  addScaleToScaleList(QStringLiteral("1:10000000"));
-  addScaleToScaleList(QStringLiteral("1:4000000"));
-  addScaleToScaleList(QStringLiteral("1:2000000"));
-  addScaleToScaleList(QStringLiteral("1:1000000"));
-  addScaleToScaleList(QStringLiteral("1:500000"));
-  addScaleToScaleList(QStringLiteral("1:250000"));
-  addScaleToScaleList(QStringLiteral("1:150000"));
-  addScaleToScaleList(QStringLiteral("1:70000"));
-  addScaleToScaleList(QStringLiteral("1:35000"));
-  addScaleToScaleList(QStringLiteral("1:15000"));
-  addScaleToScaleList(QStringLiteral("1:8000"));
-  addScaleToScaleList(QStringLiteral("1:4000"));
-  addScaleToScaleList(QStringLiteral("1:2000"));
-  addScaleToScaleList(QStringLiteral("1:1000"));
-  addScaleToScaleList(QStringLiteral("1:500"));
-  addScaleToScaleList(QStringLiteral("1:250"));
-  addScaleToScaleList(QStringLiteral("1:150"));
+  addScaleToScaleList(500000000);
+  addScaleToScaleList(250000000);
+  addScaleToScaleList(150000000);
+  addScaleToScaleList(70000000);
+  addScaleToScaleList(35000000);
+  addScaleToScaleList(15000000);
+  addScaleToScaleList(10000000);
+  addScaleToScaleList(4000000);
+  addScaleToScaleList(2000000);
+  addScaleToScaleList(1000000);
+  addScaleToScaleList(500000);
+  addScaleToScaleList(250000);
+  addScaleToScaleList(150000);
+  addScaleToScaleList(70000);
+  addScaleToScaleList(35000);
+  addScaleToScaleList(15000);
+  addScaleToScaleList(8000);
+  addScaleToScaleList(4000);
+  addScaleToScaleList(2000);
+  addScaleToScaleList(1000);
+  addScaleToScaleList(500);
+  addScaleToScaleList(250);
+  addScaleToScaleList(150);
 }
 
 void QgsProjectProperties::pbnSbAutoScales_clicked()
@@ -2851,7 +2851,7 @@ void QgsProjectProperties::pbnSbAutoScales_clicked()
 
   for (int iScale = iStartScale; iScale >= 10; iScale = iScale / 2)
   {
-    addScaleToScaleList(QStringLiteral("1:%1").arg(iScale));
+    addScaleToScaleList(iScale);
   }
 }
 
