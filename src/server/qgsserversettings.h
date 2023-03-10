@@ -67,8 +67,9 @@ class SERVER_EXPORT QgsServerSettingsEnv : public QObject
       QGIS_SERVER_API_WFS3_MAX_LIMIT, //!< Maximum value for "limit" in a features request, defaults to 10000 (since QGIS 3.10).
       QGIS_SERVER_OVERRIDE_SYSTEM_LOCALE,  //! Override system locale (since QGIS 3.8)
       QGIS_SERVER_FONTS_DIRECTORY,
-	  QGIS_SERVER_USE_SB_CACHE,
-	  QGIS_SERVER_SB_UNLOAD_WATCHER_INTERVAL,
+      QGIS_SERVER_IGNORE_FORWARDED_FOR_HEADER,
+      QGIS_SERVER_USE_SB_CACHE,
+      QGIS_SERVER_SB_UNLOAD_WATCHER_INTERVAL,
       QGIS_SERVER_TRUST_LAYER_METADATA, //!< Trust layer metadata. Improves project read time. (since QGIS 3.16).
       QGIS_SERVER_FORCE_READONLY_LAYERS, //!< Force to open layers in read-only mode. (since QGIS 3.28).
       QGIS_SERVER_DISABLE_GETPRINT, //!< Disabled WMS GetPrint request and don't load layouts. Improves project read time. (since QGIS 3.16).
@@ -228,6 +229,11 @@ class SERVER_EXPORT QgsServerSettings
 	   * Returns if internal sb server cache shall be used.
 	   */
 	  bool sbUseCache() const;
+
+    /**
+    * Returns if FORWARDED-FOR header should be ignored when building service URLs
+    */
+    bool sbIgnoreForwardedForHeader() const;
 
     /**
      * Returns the server-wide max height of a WMS GetMap request. The lower one of this and the project configuration is used.

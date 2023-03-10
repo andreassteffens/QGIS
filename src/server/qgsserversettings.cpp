@@ -193,7 +193,7 @@ void QgsServerSettings::initSettings()
                                         QgsServerSettingsEnv::DEFAULT_VALUE,
                                         QStringLiteral( "Show group (thousands) separator" ),
                                         QStringLiteral( "/locale/showGroupSeparator" ),
-                                        QVariant::String,
+                                        QVariant::Bool,
                                         QVariant( false ),
                                         QVariant()
                                       };
@@ -201,37 +201,48 @@ void QgsServerSettings::initSettings()
 
   // unload project watcher
   const Setting sUnloadWatcherInterval = { QgsServerSettingsEnv::QGIS_SERVER_SB_UNLOAD_WATCHER_INTERVAL,
-	  QgsServerSettingsEnv::DEFAULT_VALUE,
-	  "Specify the interval [ms] used for checking changes in the unload configuration file",
-	  "/unload_watcher/interval",
-	  QVariant::Int,
-	  QVariant(8000),
-	  QVariant()
-  };
+                                           QgsServerSettingsEnv::DEFAULT_VALUE,
+                                           QStringLiteral( "Specify the interval [ms] used for checking changes in the unload configuration file" ),
+                                           QStringLiteral( "/unload_watcher/interval" ),
+                                           QVariant::Int,
+                                           QVariant( 8000 ),
+	                                         QVariant()
+                                         };
   mSettings[sUnloadWatcherInterval.envVar] = sUnloadWatcherInterval;
 
   // fonts directory
   const Setting sFontsDir = { QgsServerSettingsEnv::QGIS_SERVER_FONTS_DIRECTORY,
-	  QgsServerSettingsEnv::DEFAULT_VALUE,
-	  "Specify the fonts directory",
-	  "/fonts/directory",
-	  QVariant::String,
-	  QVariant(""),
-	  QVariant()
-  };
+                              QgsServerSettingsEnv::DEFAULT_VALUE,
+                              QStringLiteral( "Specify the fonts directory" ),
+                              QStringLiteral( "/fonts/directory" ),
+                              QVariant::String,
+                              QVariant(""),
+                              QVariant()
+                            };
   mSettings[sFontsDir.envVar] = sFontsDir;
 
   // internal sb cache
   const Setting sUseSbCache = { QgsServerSettingsEnv::QGIS_SERVER_USE_SB_CACHE,
-	  QgsServerSettingsEnv::DEFAULT_VALUE,
-	  "Use sb server cache",
-	  "/cache/useSb",
-	  QVariant::String,
-	  QVariant( false ),
-	  QVariant()
-  };
+                                QgsServerSettingsEnv::DEFAULT_VALUE,
+                                QStringLiteral( "Use sb server cache" ),
+                                QStringLiteral( "/cache/useSb" ),
+                                QVariant::String,
+                                QVariant( false ),
+                                QVariant()
+                              };
   mSettings[sUseSbCache.envVar] = sUseSbCache;
-  
+
+  // handling FORWARDED-FOR header
+  const Setting sIgnoreForwardedForHeader = { QgsServerSettingsEnv::QGIS_SERVER_IGNORE_FORWARDED_FOR_HEADER,
+                                QgsServerSettingsEnv::DEFAULT_VALUE,
+                                QStringLiteral( "Ignore FORWARDED-FOR header when building service URLs" ),
+                                QString(),
+                                QVariant::Bool,
+                                QVariant(false),
+                                QVariant()
+  };
+  mSettings[sIgnoreForwardedForHeader.envVar] = sIgnoreForwardedForHeader;
+
   // max height
   const Setting sMaxHeight = { QgsServerSettingsEnv::QGIS_SERVER_WMS_MAX_HEIGHT,
                                QgsServerSettingsEnv::DEFAULT_VALUE,
@@ -605,6 +616,11 @@ QString QgsServerSettings::fontsDirectory() const
 bool QgsServerSettings::sbUseCache() const
 {
 	return value(QgsServerSettingsEnv::QGIS_SERVER_USE_SB_CACHE).toBool();
+}
+
+bool QgsServerSettings::sbIgnoreForwardedForHeader() const
+{
+  return value(QgsServerSettingsEnv::QGIS_SERVER_IGNORE_FORWARDED_FOR_HEADER).toBool();
 }
 
 QString QgsServerSettings::logFile() const

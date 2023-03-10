@@ -374,7 +374,7 @@ QString QgsServerProjectUtils::serviceUrl( const QString &service, const QgsServ
     }
   }
 
-  if ( host.isEmpty() )
+  if ( host.isEmpty() && !settings.sbIgnoreForwardedForHeader() )
   {
     host = request.header( QgsServerRequest::RequestHeader::X_FORWARDED_HOST );
     proto = request.header( QgsServerRequest::RequestHeader::X_FORWARDED_PROTO );
