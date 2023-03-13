@@ -229,7 +229,8 @@ json QgsLandingPageUtils::projectInfo( const QString &projectUri, const QgsServe
   json info = json::object();
   info[ "id" ] = QCryptographicHash::hash( projectUri.toUtf8(), QCryptographicHash::Md5 ).toHex();
 
-  const QgsProject *p { QgsConfigCache::instance()->project( projectUri, serverSettings ) };
+  bool sbJustLoaded = false;
+  const QgsProject *p { QgsConfigCache::instance()->project( projectUri, &sbJustLoaded, serverSettings ) };
 
   if ( p )
   {

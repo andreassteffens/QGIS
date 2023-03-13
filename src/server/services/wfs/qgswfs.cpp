@@ -59,7 +59,7 @@ namespace QgsWfs
       QString version() const override { return mVersion; }
 
       void executeRequest( const QgsServerRequest &request, QgsServerResponse &response,
-                           const QgsProject *project ) override
+                           const QgsProject *project, bool sbJustLoaded ) override
       {
         const QgsWfsParameters params( QUrlQuery( request.url() ) );
 
@@ -85,11 +85,11 @@ namespace QgsWfs
 				// Supports WFS 1.0.0
 				if (QSTR_COMPARE(versionString, "1.0.0"))
 				{
-					v1_0_0::writeGetCapabilities(mServerIface, project, versionString, request, response);
+					v1_0_0::writeGetCapabilities(mServerIface, project, versionString, request, response, sbJustLoaded);
 				}
 				else
 				{
-					writeGetCapabilities(mServerIface, project, versionString, request, response);
+					writeGetCapabilities(mServerIface, project, versionString, request, response, sbJustLoaded);
 				}
 			}
 			catch (QgsServerException &ex)

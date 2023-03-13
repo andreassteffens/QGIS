@@ -49,7 +49,7 @@ namespace QgsWmts
       QString version() const override { return implementationVersion(); }
 
       void executeRequest( const QgsServerRequest &request, QgsServerResponse &response,
-                           const QgsProject *project ) override
+                           const QgsProject *project, bool sbJustLoaded ) override
       {
         Q_UNUSED( project )
 
@@ -74,7 +74,7 @@ namespace QgsWmts
         {
 			try
 			{
-				writeGetCapabilities(mServerIface, project, versionString, request, response);
+				writeGetCapabilities(mServerIface, project, versionString, request, response, sbJustLoaded);
 			}
 			catch (QgsServerException &ex)
 			{
@@ -105,7 +105,7 @@ namespace QgsWmts
         {
 			try
 			{
-				writeGetTile(mServerIface, project, versionString, request, response);
+				writeGetTile(mServerIface, project, versionString, request, response, sbJustLoaded);
 			}
 			catch (QgsServerException &ex)
 			{
@@ -136,7 +136,7 @@ namespace QgsWmts
         {
 			try
 			{
-				writeGetFeatureInfo(mServerIface, project, versionString, request, response);
+				writeGetFeatureInfo(mServerIface, project, versionString, request, response, sbJustLoaded);
 			}
 			catch (QgsServerException &ex)
 			{

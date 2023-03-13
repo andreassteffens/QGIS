@@ -68,7 +68,7 @@ namespace QgsWms
       QString version() const override { return mVersion; }
 
       void executeRequest( const QgsServerRequest &request, QgsServerResponse &response,
-                           const QgsProject *project ) override
+                           const QgsProject *project, bool sbJustLoaded ) override
       {
         // Get the request
         const QgsWmsRequest wmsRequest( request );
@@ -84,7 +84,7 @@ namespace QgsWms
         {
           try
           {
-            writeGetCapabilities( mServerIface, project, wmsRequest, response );
+            writeGetCapabilities( mServerIface, project, wmsRequest, response, sbJustLoaded );
           }
           catch (QgsServerException &ex)
           {
@@ -115,7 +115,7 @@ namespace QgsWms
         {
           try
           {
-            writeGetCapabilities( mServerIface, project, request, response, true );
+            writeGetCapabilities( mServerIface, project, request, response, sbJustLoaded, true );
           }
           catch (QgsServerException &ex)
           {

@@ -23,6 +23,6 @@ namespace QgsWmts
    */
   void writeGetFeatureInfo( QgsServerInterface *serverIface, const QgsProject *project,
                             const QString &version,  const QgsServerRequest &request,
-                            QgsServerResponse &response );
+                            QgsServerResponse &response, bool sbJustLoaded );
 
 } // namespace QgsWmts

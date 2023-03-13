@@ -233,8 +233,9 @@ int QgsServer::sbPreloadProjects()
         if (mSbUnloadWatcher.isUnloaded(strLine))
           continue;
 
+        bool bSbJustLoaded = false;
         QgsMessageLog::logMessage(QStringLiteral("Preloading project '%1' ...").arg(strLine), QStringLiteral("Server"), Qgis::Warning);
-        const QgsProject* pProject = QgsConfigCache::instance()->project(strLine);
+        const QgsProject* pProject = QgsConfigCache::instance()->project(strLine, &bSbJustLoaded);
         if (pProject != NULL)
         {
           QgsMessageLog::logMessage(QStringLiteral("Preloading of project '%1' SUCCEEDED").arg(strLine), QStringLiteral("Server"), Qgis::Warning);
@@ -665,6 +666,8 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
     {
       try
       {
+        bool sbJustLoaded = false;
+
         const QgsServerParameters params = request.serverParameters();
         printRequestParameters( params.toMap(), logLevel );
 
@@ -699,7 +702,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
 
             // load the project if needed and not empty
             // Note that  QgsConfigCache::project( ... ) call QgsProject::setInstance(...)
-            project = QgsConfigCache::instance()->project( configFilePath, sServerInterface->serverSettings() );
+            project = QgsConfigCache::instance()->project( configFilePath, &sbJustLoaded, sServerInterface->serverSettings() );
           }
         }
 
@@ -769,7 +772,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
             service = sServiceRegistry->getService(serviceString.toLower(), versionString);
           if ( service )
           {
-            service->executeRequest( request, responseDecorator, project );
+            service->executeRequest( request, responseDecorator, project, sbJustLoaded );
           }
           else
           {

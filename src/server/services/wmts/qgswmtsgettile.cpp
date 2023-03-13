@@ -29,7 +29,7 @@ namespace QgsWmts
 
   void writeGetTile( QgsServerInterface *serverIface, const QgsProject *project,
                      const QString &version, const QgsServerRequest &request,
-                     QgsServerResponse &response )
+                     QgsServerResponse &response, bool sbJustLoaded )
   {
     Q_UNUSED( version )
     const QgsWmtsParameters params( QUrlQuery( request.url() ) );
@@ -122,7 +122,7 @@ namespace QgsWmts
     const QgsServerRequest wmsRequest( "?" + query.query( QUrl::FullyDecoded ) );
 
     QgsService *service = serverIface->serviceRegistry()->getService( wmsParams.service(), wmsParams.version() );
-    service->executeRequest( wmsRequest, response, project );
+    service->executeRequest( wmsRequest, response, project, sbJustLoaded );
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
     if ( cacheManager )
     {

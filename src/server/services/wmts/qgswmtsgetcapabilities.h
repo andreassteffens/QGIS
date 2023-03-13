@@ -54,7 +54,7 @@ namespace QgsWmts
    */
   void writeGetCapabilities( QgsServerInterface *serverIface, const QgsProject *project,
                              const QString &version, const QgsServerRequest &request,
-                             QgsServerResponse &response );
+                             QgsServerResponse &response, bool sbJustLoaded );
 
 } // namespace QgsWcs
 

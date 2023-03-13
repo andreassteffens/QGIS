@@ -73,6 +73,7 @@ namespace QgsWms
                              const QgsProject *project,
                              const QgsWmsRequest &request,
                              QgsServerResponse &response,
+                             bool sbJustLoaded,
                              bool projectSettings = false );
 
   /**

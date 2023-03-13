@@ -120,12 +120,16 @@ void QgsConfigCache::sbPurge()
   }
 }
 
-const QgsProject *QgsConfigCache::project( const QString &path, const QgsServerSettings *settings )
+const QgsProject *QgsConfigCache::project( const QString &path, bool* pSbJustLoaded, const QgsServerSettings *settings )
 {
+  *pSbJustLoaded = false;
+
   QString strLoadingPath = sbGetStandardizedPath(path);
-  
+
   if ( !mProjectCache[ strLoadingPath ] )
   {
+    *pSbJustLoaded = true;
+
     // disable the project style database -- this incurs unwanted cost and is not required
     std::unique_ptr<QgsProject> prj( new QgsProject( nullptr, Qgis::ProjectCapabilities() ) );
 

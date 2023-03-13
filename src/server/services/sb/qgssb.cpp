@@ -49,8 +49,8 @@ namespace QgsSb
 				, mServerIface(serverIface)
 			{}
 
-			void executeRequest(const QgsServerRequest &request, QgsServerResponse &response,
-				const QgsProject *project) override
+			void executeRequest( const QgsServerRequest &request, QgsServerResponse &response,
+				const QgsProject *project, bool sbJustLoaded ) override
 			{
 				QgsServerRequest::Parameters params = request.parameters();
 				QString versionString = params.value("VERSION");

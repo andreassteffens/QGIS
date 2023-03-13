@@ -98,6 +98,7 @@ namespace QgsWms
                              const QgsProject *project,
                              const QgsWmsRequest &request,
                              QgsServerResponse &response,
+                             bool sbJustLoaded,
                              bool projectSettings )
   {
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
@@ -123,12 +124,12 @@ namespace QgsWms
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
     QgsServerCacheManager *cacheManager = serverIface->cacheManager();
-    if ( cacheManager && cacheManager->getCachedDocument( &doc, project, request, accessControl ) )
+    if ( !sbJustLoaded && cacheManager && cacheManager->getCachedDocument( &doc, project, request, accessControl ) )
     {
       capabilitiesDocument = &doc;
     }
 #endif
-    if ( !capabilitiesDocument && cache ) //capabilities xml not in cache plugins
+    if ( !sbJustLoaded && !capabilitiesDocument && cache ) //capabilities xml not in cache plugins
     {
       capabilitiesDocument = capabilitiesCache->searchCapabilitiesDocument( configFilePath, cacheKey );
     }

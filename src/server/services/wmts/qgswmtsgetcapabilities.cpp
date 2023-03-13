@@ -39,7 +39,7 @@ namespace QgsWmts
    * Output WMTS  GetCapabilities response
    */
   void writeGetCapabilities( QgsServerInterface *serverIface, const QgsProject *project, const QString &version,
-                             const QgsServerRequest &request, QgsServerResponse &response )
+                             const QgsServerRequest &request, QgsServerResponse &response, bool sbJustLoaded )
   {
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
     QgsAccessControl *accessControl = serverIface->accessControls();
@@ -49,7 +49,7 @@ namespace QgsWmts
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
     QgsServerCacheManager *cacheManager = serverIface->cacheManager();
-    if ( cacheManager && cacheManager->getCachedDocument( &doc, project, request, accessControl ) )
+    if ( !sbJustLoaded && cacheManager && cacheManager->getCachedDocument( &doc, project, request, accessControl ) )
     {
       capabilitiesDocument = &doc;
     }

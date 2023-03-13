@@ -116,7 +116,7 @@ class SERVER_EXPORT QgsConfigCache : public QObject
      * \returns the project or NULLPTR if an error happened
      * \since QGIS 3.0
      */
-    const QgsProject *project( const QString &path, const QgsServerSettings *settings = nullptr );
+    const QgsProject *project( const QString &path, bool* pSbJustLoaded, const QgsServerSettings *settings = nullptr );
 
     /**
      * Returns the name of the current strategy

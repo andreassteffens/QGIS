@@ -51,7 +51,7 @@ Constructor
 
     virtual void executeRequest( const QgsServerRequest &request,
                                  QgsServerResponse &response,
-                                 const QgsProject *project ) = 0;
+                                 const QgsProject *project, bool sbJustLoaded ) = 0;
 %Docstring
 Execute the requests and set result in :py:class:`QgsServerRequest`
 %End
