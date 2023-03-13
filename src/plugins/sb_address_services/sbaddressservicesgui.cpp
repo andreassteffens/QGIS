@@ -1470,9 +1470,7 @@ bool sbAddressServicesGui::processOsmSearchReply(const QString& strReply)
         {
           QJsonArray jsonBounds = jsonObject["boundingbox"].toArray();
           if (jsonBounds.count() == 4)
-          {
             rcBounds.set(jsonBounds[3].toString().toDouble(), jsonBounds[1].toString().toDouble(), jsonBounds[2].toString().toDouble(), jsonBounds[0].toString().toDouble());
-          }
         }
       }
 
@@ -1544,6 +1542,13 @@ bool sbAddressServicesGui::processPhotonSearchReply(const QString& strReply)
           if (!jsonObject["properties"].isNull())
           {
             QJsonObject jsonProperties = jsonObject["properties"].toObject();
+
+            if(!jsonProperties["extent"].isNull())
+            {
+              QJsonArray jsonExtent = jsonProperties["extent"].toArray();
+              if(jsonExtent.count() == 4)
+                rcBounds.set(jsonExtent[0].toDouble(), jsonExtent[3].toDouble(), jsonExtent[2].toDouble(), jsonExtent[1].toDouble());
+            }
 
             if (!jsonProperties["name"].isNull())
               strDisplayName = jsonProperties["name"].toString();
