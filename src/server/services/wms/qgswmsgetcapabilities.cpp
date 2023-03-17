@@ -45,6 +45,7 @@
 #include "qgsprojectviewsettings.h"
 #include "qgswmsprovider.h"
 #include "qgsmaplayerserverproperties.h"
+#include "sbjoinedtoggleutils.h"
 
 
 namespace QgsWms
@@ -1428,6 +1429,8 @@ namespace QgsWms
             if (!varSnappable.isNull())
               bSnappable = varSnappable.toBool();
             layerElem.setAttribute(QStringLiteral("sbSnappable"), bSnappable ? QStringLiteral("1") : QStringLiteral("0"));
+
+
           }
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
@@ -2565,6 +2568,22 @@ namespace QgsWms
       }
       layerElem.appendChild(attributesElem);
 
+      QList< sbJoinedToggleLayerSettings > listSettings = sbJoinedToggleUtils::getJoinedToggleLayers(currentLayer);
+      if (!listSettings.isEmpty())
+      {
+        QDomElement joinedToggleLayersElem = doc.createElement(QStringLiteral("sbJoinedToggleLayers"));
+        for (int iLayer = 0; iLayer < listSettings.length(); iLayer++)
+        {
+          QDomElement layerElem = doc.createElement(QStringLiteral("sbJoinedToggleLayer"));
+          layerElem.setAttribute("layerId", listSettings[iLayer].layerId);
+          layerElem.setAttribute("activateWithReference", listSettings[iLayer].activateWithReference ? "true" : "false");
+          layerElem.setAttribute("deactivateWithReference", listSettings[iLayer].deactivateWithReference ? "true" : "false");
+          layerElem.setAttribute("invertBehavior", listSettings[iLayer].invertBehavior ? "true" : "false");
+          joinedToggleLayersElem.appendChild(layerElem);
+        }
+        layerElem.appendChild(joinedToggleLayersElem);
+      }
+      
       switch ( currentLayer->type() )
       {
         case QgsMapLayerType::VectorLayer:
