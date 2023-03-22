@@ -34,6 +34,7 @@ QgsFeatureRequest::QgsFeatureRequest()
   mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
   mSbRenderMinPixelSizeSourceFiltering = false;
   mSbRenderMinPixelSizeDebug = false;
+  mSbPassThroughQgisFilterExpression = false;
 }
 
 QgsFeatureRequest::~QgsFeatureRequest() = default;
@@ -50,6 +51,7 @@ QgsFeatureRequest::QgsFeatureRequest( QgsFeatureId fid )
   mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
   mSbRenderMinPixelSizeSourceFiltering = false;
   mSbRenderMinPixelSizeDebug = false;
+  mSbPassThroughQgisFilterExpression = false;
 }
 
 QgsFeatureRequest::QgsFeatureRequest( const QgsFeatureIds &fids )
@@ -64,6 +66,7 @@ QgsFeatureRequest::QgsFeatureRequest( const QgsFeatureIds &fids )
   mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
   mSbRenderMinPixelSizeSourceFiltering = false;
   mSbRenderMinPixelSizeDebug = false;
+  mSbPassThroughQgisFilterExpression = false;
 }
 
 QgsFeatureRequest::QgsFeatureRequest( const QgsRectangle &rect )
@@ -78,6 +81,7 @@ QgsFeatureRequest::QgsFeatureRequest( const QgsRectangle &rect )
   mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
   mSbRenderMinPixelSizeSourceFiltering = false;
   mSbRenderMinPixelSizeDebug = false;
+  mSbPassThroughQgisFilterExpression = false;
 }
 
 QgsFeatureRequest::QgsFeatureRequest( const QgsExpression &expr, const QgsExpressionContext &context )
@@ -93,6 +97,7 @@ QgsFeatureRequest::QgsFeatureRequest( const QgsExpression &expr, const QgsExpres
   mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
   mSbRenderMinPixelSizeSourceFiltering = false;
   mSbRenderMinPixelSizeDebug = false;
+  mSbPassThroughQgisFilterExpression = false;
 }
 
 QgsFeatureRequest::QgsFeatureRequest( const QgsFeatureRequest &rh )
@@ -144,6 +149,7 @@ QgsFeatureRequest &QgsFeatureRequest::operator=( const QgsFeatureRequest &rh )
   mSbRenderMinPixelSizeSourceFiltering = rh.mSbRenderMinPixelSizeSourceFiltering;
   mSbRenderMinPixelSizeDebug = rh.mSbRenderMinPixelSizeDebug;
   mSbQuerySubstitutions = rh.mSbQuerySubstitutions;
+  mSbPassThroughQgisFilterExpression = rh.mSbPassThroughQgisFilterExpression;
   return *this;
 }
 
@@ -363,6 +369,16 @@ QgsFeatureRequest &QgsFeatureRequest::setTransformErrorCallback( const std::func
 {
   mTransformErrorCallback = callback;
   return *this;
+}
+
+void QgsFeatureRequest::sbSetPassThroughQgisFilterExpression(bool bPassThrough)
+{
+  mSbPassThroughQgisFilterExpression = bPassThrough;
+}
+
+bool QgsFeatureRequest::sbGetPassThroughQgisFilterExpression() const
+{
+  return mSbPassThroughQgisFilterExpression;
 }
 
 void QgsFeatureRequest::sbSetRenderMinPixelSizeFilter(double dRenderMinPixelSize, int iRenderMinPixelSizeMaxScale, double dScaleFactor, double dMapUnitsPerPixel, double dCurrentScale, QgsWkbTypes::GeometryType geometryType, bool bRenderMinPixelSizeSourceFiltering, bool bRenderMinPixelSizeDebug)

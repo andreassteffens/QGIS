@@ -98,16 +98,18 @@ namespace QgsWfs
     return nullptr;
   }
 
-  QgsFeatureRequest parseFilterElement( const QString &typeName, QDomElement &filterElem, QgsProject *project )
+  QgsFeatureRequest parseFilterElement( const QString &typeName, QDomElement &filterElem, const QgsWfsParameters &wfsParameters, const QgsProject *project )
   {
     // Get the server feature ids in filter element
     QStringList collectedServerFids;
-    return parseFilterElement( typeName, filterElem, collectedServerFids, project );
+    return parseFilterElement( typeName, filterElem, collectedServerFids, wfsParameters, project );
   }
 
-  QgsFeatureRequest parseFilterElement( const QString &typeName, QDomElement &filterElem, QStringList &serverFids, const QgsProject *project, const QgsMapLayer *layer )
+  QgsFeatureRequest parseFilterElement( const QString &typeName, QDomElement &filterElem, QStringList &serverFids, const QgsWfsParameters &wfsParameters, const QgsProject *project, const QgsMapLayer *layer )
   {
     QgsFeatureRequest request;
+
+    request.sbSetPassThroughQgisFilterExpression(wfsParameters.sbPassThroughQgisFilterExpression());
 
     QDomNodeList fidNodes = filterElem.elementsByTagName( QStringLiteral( "FeatureId" ) );
     QDomNodeList goidNodes = filterElem.elementsByTagName( QStringLiteral( "GmlObjectId" ) );
@@ -243,7 +245,7 @@ namespace QgsWfs
 
       // Parse the filter element with the cloned BBOX
       QStringList collectedServerFids;
-      QgsFeatureRequest bboxRequest = parseFilterElement( typeName, bboxFilterElement, collectedServerFids, project );
+      QgsFeatureRequest bboxRequest = parseFilterElement( typeName, bboxFilterElement, collectedServerFids, wfsParameters, project );
 
       // Update request based on BBOX
       if ( request.filterRect().isEmpty() )
@@ -256,7 +258,7 @@ namespace QgsWfs
       }
 
       // Parse the filter element with the cloned And child
-      QgsFeatureRequest childRequest = parseFilterElement( typeName, childFilterElement, collectedServerFids, project );
+      QgsFeatureRequest childRequest = parseFilterElement( typeName, childFilterElement, collectedServerFids, wfsParameters, project );
 
       // Update server feature ids
       if ( !collectedServerFids.isEmpty() )
@@ -293,6 +295,7 @@ namespace QgsWfs
         return request;
       }
     }
+
     return request;
   }
 

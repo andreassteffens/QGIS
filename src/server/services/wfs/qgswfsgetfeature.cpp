@@ -38,6 +38,7 @@
 #include "qgswkbtypes.h"
 #include "qgsrendercontext.h"
 #include "qgsrenderer.h"
+#include "qgsmessagelog.h"
 
 #include "qgswfsgetfeature.h"
 
@@ -532,6 +533,7 @@ namespace QgsWfs
           {
             continue;
           }
+
           if(renderer || mWfsParameters.sbWithMapTip())
             renderContext.expressionContext().setFeature(feature);
 
@@ -940,7 +942,7 @@ namespace QgsWfs
 
         QDomElement filterElem = filter.firstChildElement();
         QStringList serverFids;
-        query.featureRequest = parseFilterElement( query.typeName, filterElem, serverFids, project );
+        query.featureRequest = parseFilterElement( query.typeName, filterElem, serverFids, mWfsParameters, project );
         query.serverFids = serverFids;
 
         if ( filterIt != filterList.constEnd() )
@@ -1099,7 +1101,7 @@ namespace QgsWfs
         }
         else if ( queryChildElem.tagName() == QLatin1String( "Filter" ) )
         {
-          featureRequest = parseFilterElement( typeName, queryChildElem, serverFids, project );
+          featureRequest = parseFilterElement( typeName, queryChildElem, serverFids, mWfsParameters, project );
         }
         else if ( queryChildElem.tagName() == QLatin1String( "SortBy" ) )
         {

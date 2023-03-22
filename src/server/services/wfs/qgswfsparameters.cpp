@@ -174,29 +174,34 @@ namespace QgsWfs
     const QgsWfsParameter pExpFilter = QgsWfsParameter( QgsWfsParameter::EXP_FILTER );
     save( pExpFilter );
 
-	const QgsWfsParameter pSbRules = QgsWfsParameter(QgsWfsParameter::SBRULES);
-	save(pSbRules);
+    const QgsWfsParameter pSbRules = QgsWfsParameter(QgsWfsParameter::SBRULES);
+    save(pSbRules);
 
     const QgsWfsParameter pGeometryName = QgsWfsParameter( QgsWfsParameter::GEOMETRYNAME );
     save( pGeometryName );
 
-	const QgsWfsParameter pSbJsonNoTransform = QgsWfsParameter(QgsWfsParameter::SBJSONNOTRANSFORM,
-															   QVariant::Bool,
-															   QVariant(false));
-	save(pSbJsonNoTransform);
+    const QgsWfsParameter pSbJsonNoTransform = QgsWfsParameter(QgsWfsParameter::SBJSONNOTRANSFORM,
+                                               QVariant::Bool,
+                                               QVariant(false));
+    save(pSbJsonNoTransform);
 
-	const QgsWfsParameter pSbAllowEmptyPropertyList = QgsWfsParameter(QgsWfsParameter::SBALLOWEMPTYPROPERTYLIST,
-																QVariant::Bool,
-																QVariant(false));
-	save(pSbAllowEmptyPropertyList);
+    const QgsWfsParameter pSbAllowEmptyPropertyList = QgsWfsParameter(QgsWfsParameter::SBALLOWEMPTYPROPERTYLIST,
+                                                      QVariant::Bool,
+                                                      QVariant(false));
+    save(pSbAllowEmptyPropertyList);
 
-	const QgsWfsParameter pSbOutputType = QgsWfsParameter(QgsWfsParameter::SBGEOMETRYOUTPUT);
-	save(pSbOutputType);
+    const QgsWfsParameter pSbOutputType = QgsWfsParameter(QgsWfsParameter::SBGEOMETRYOUTPUT);
+    save(pSbOutputType);
 
-	const QgsWfsParameter pSbWithMapTip = QgsWfsParameter(QgsWfsParameter::SBWITHMAPTIP,
-		QVariant::Bool,
-		QVariant(false));
-	save(pSbWithMapTip);
+    const QgsWfsParameter pSbWithMapTip = QgsWfsParameter(QgsWfsParameter::SBWITHMAPTIP,
+                                          QVariant::Bool,
+                                          QVariant(false));
+    save(pSbWithMapTip);
+
+    const QgsWfsParameter pSbPassThroughQgisFilterExpression = QgsWfsParameter(QgsWfsParameter::SBPASSTHROUGHQGISFILTEREXPRESSION,
+                                                               QVariant::Bool,
+                                                               QVariant(false));
+    save(pSbPassThroughQgisFilterExpression);
   }
 
   QgsWfsParameters::QgsWfsParameters( const QgsServerParameters &parameters )
@@ -458,6 +463,11 @@ namespace QgsWfs
   bool QgsWfsParameters::sbWithMapTip() const
   {
 	  return mWfsParameters[QgsWfsParameter::SBWITHMAPTIP].toBool();
+  }
+
+  bool QgsWfsParameters::sbPassThroughQgisFilterExpression() const
+  {
+    return mWfsParameters[QgsWfsParameter::SBPASSTHROUGHQGISFILTEREXPRESSION].toBool();
   }
 
   QgsProjectVersion QgsWfsParameters::versionAsNumber() const

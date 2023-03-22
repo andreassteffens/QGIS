@@ -95,19 +95,19 @@ namespace QgsWfs
   /**
    * Transform Update element to transactionUpdate
    */
-  transactionUpdate parseUpdateActionElement( QDomElement &actionElem, const QgsProject *project );
+  transactionUpdate parseUpdateActionElement( QDomElement &actionElem, const QgsProject *project, const QgsWfsParameters &wfsParameters );
 
   /**
    * Transform Delete element to transactionDelete
    */
-  transactionDelete parseDeleteActionElement( QDomElement &actionElem, const QgsProject *project );
+  transactionDelete parseDeleteActionElement( QDomElement &actionElem, const QgsProject *project, const QgsWfsParameters &wfsParameters );
 
   /**
    * Transform RequestBody root element to getFeatureRequest
    */
-  transactionRequest parseTransactionRequestBody( QDomElement &docElem, const QgsProject *project );
+  transactionRequest parseTransactionRequestBody( QDomElement &docElem, const QgsProject *project, const QgsWfsParameters &wfsParameters );
 
-  transactionRequest parseTransactionParameters( QgsServerRequest::Parameters parameters, const QgsProject *project );
+  transactionRequest parseTransactionParameters( QgsServerRequest::Parameters parameters, const QgsProject *project, const QgsWfsParameters &wfsParameters );
 
   /**
    * Transform GML feature nodes to features
@@ -124,14 +124,14 @@ namespace QgsWfs
    */
   void writeTransaction( QgsServerInterface *serverIface, const QgsProject *project,
                          const QString &version, const QgsServerRequest &request,
-                         QgsServerResponse &response );
+                         QgsServerResponse &response, const QgsWfsParameters &wfsParameters );
 
 
   /**
    * Create a wfs transaction document
    */
   QDomDocument createTransactionDocument( QgsServerInterface *serverIface, const QgsProject *project,
-                                          const QString &version, const QgsServerRequest &request );
+                                          const QString &version, const QgsServerRequest &request, const QgsWfsParameters &wfsParameters );
 
 } // namespace QgsWfs
 

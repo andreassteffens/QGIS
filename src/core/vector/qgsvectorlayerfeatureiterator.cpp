@@ -1208,9 +1208,6 @@ void QgsVectorLayerFeatureIterator::FetchJoinInfo::addJoinedAttributesDirect( Qg
   }
 }
 
-
-
-
 bool QgsVectorLayerFeatureIterator::nextFeatureFid( QgsFeature &f )
 {
   const QgsFeatureId featureId = mRequest.filterFid();

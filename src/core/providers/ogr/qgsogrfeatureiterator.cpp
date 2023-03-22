@@ -249,20 +249,35 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
 
   if ( request.filterType() == QgsFeatureRequest::FilterExpression )
   {
-    QgsSqlExpressionCompiler *compiler = nullptr;
-    if ( source->mDriverName == QLatin1String( "SQLite" ) || source->mDriverName == QLatin1String( "GPKG" ) )
+    QString whereClause;
+    QgsSqlExpressionCompiler::Result result;
+
+    if ( request.sbGetPassThroughQgisFilterExpression() )
     {
-      compiler = new QgsSQLiteExpressionCompiler( source->mFields, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
+      whereClause = request.filterExpression()->dump();
+      result = QgsSqlExpressionCompiler::Complete;
     }
     else
     {
-      compiler = new QgsOgrExpressionCompiler( source, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
-    }
+      QgsSqlExpressionCompiler* compiler = nullptr;
+      if ( source->mDriverName == QLatin1String( "SQLite" ) || source->mDriverName == QLatin1String( "GPKG" ) )
+      {
+        compiler = new QgsSQLiteExpressionCompiler( source->mFields, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
+      }
+      else
+      {
+        compiler = new QgsOgrExpressionCompiler( source, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
+      }
 
-    QgsSqlExpressionCompiler::Result result = compiler->compile( request.filterExpression() );
+      result = compiler->compile( request.filterExpression() );
+      if ( result == QgsSqlExpressionCompiler::Complete || result == QgsSqlExpressionCompiler::Partial )
+        whereClause = compiler->result();
+
+      delete compiler;
+    }
+    
     if ( result == QgsSqlExpressionCompiler::Complete || result == QgsSqlExpressionCompiler::Partial )
     {
-      QString whereClause = compiler->result();
       if ( !mSource->mSubsetString.isEmpty() && mOgrLayer == mOgrLayerOri )
       {
         if (strMinPixelSizeExpression.isEmpty())
@@ -305,8 +320,6 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
           QgsMessageLog::logMessage(QStringLiteral("([a]tapa) Error setting min pixel size filter: %1").arg(strMinPixelSizeExpression), QStringLiteral(""), Qgis::Critical);
       }
     }
-
-    delete compiler;
   }
   else if ( mSource->mSubsetString.isEmpty() && mAllowResetReading )
   {
