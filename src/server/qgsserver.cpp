@@ -765,9 +765,9 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
           }
 
           // Lookup for service
-          QgsService *service = sServiceRegistry->getService(serviceString, versionString);
+          QgsService *service = sServiceRegistry->getService(serviceString, versionString, true);
           if (service == NULL)
-            service = sServiceRegistry->getService(serviceString.toUpper(), versionString);
+            service = sServiceRegistry->getService(serviceString.toUpper(), versionString, true);
           if (service == NULL)
             service = sServiceRegistry->getService(serviceString.toLower(), versionString);
           if ( service )

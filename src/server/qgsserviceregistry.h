@@ -65,7 +65,7 @@ class SERVER_EXPORT QgsServiceRegistry
      *
      * If the version is not provided the higher version of the service is returned
      */
-    QgsService *getService( const QString &name, const QString &version = QString() );
+    QgsService *getService( const QString &name, const QString &version = QString(), bool dontWarn = false );
 
     /**
      * Register a service by its name and version

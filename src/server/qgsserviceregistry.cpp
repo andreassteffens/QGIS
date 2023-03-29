@@ -83,7 +83,7 @@ QgsServiceRegistry::~QgsServiceRegistry()
   cleanUp();
 }
 
-QgsService *QgsServiceRegistry::getService( const QString &name, const QString &version )
+QgsService *QgsServiceRegistry::getService( const QString &name, const QString &version, bool dontWarn )
 {
   QgsService *service = nullptr;
   QString key;
@@ -107,7 +107,8 @@ QgsService *QgsServiceRegistry::getService( const QString &name, const QString &
   }
   else
   {
-    QgsMessageLog::logMessage( QString( "Service %1 is not registered" ).arg( name ), QStringLiteral( "Server" ), Qgis::MessageLevel::Warning );
+    if (!dontWarn) 
+      QgsMessageLog::logMessage( QString( "Service %1 is not registered" ).arg( name ), QStringLiteral( "Server" ), Qgis::MessageLevel::Warning );
   }
   return service;
 }
