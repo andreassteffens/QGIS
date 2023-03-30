@@ -20,6 +20,9 @@
 #include "qgsfeaturerequest.h"
 #include "qgsvectordataprovider.h"
 #include "qgsexpression.h"
+#include "qgsmessagelog.h"
+#include <qstringbuilder.h>
+
 
 QString QgsServerFeatureId::getServerFid( const QgsFeature &feature, const QgsAttributeList &pkAttributes )
 {
@@ -51,6 +54,38 @@ QgsFeatureRequest QgsServerFeatureId::updateFeatureRequestFromServerFids( QgsFea
     return featureRequest;
   }
 
+  if ( serverFids.count() > 0 )
+  {
+    if ( sbGetPkExpressionSize( serverFids.at(0), provider ) == 1 )
+    {
+      const QgsFields& fields = provider->fields();
+      QString pkFieldName = fields[pkAttributes.at(0)].name();
+      QVariant::Type pkFieldType = fields[pkAttributes.at(0)].type();
+      QStringList pkValues = serverFids.at(0).split(pkSeparator());
+
+      QString fullExpression = QgsExpression::quotedColumnRef(pkFieldName) + " IN (";
+
+      if ( serverFids.count() > 100 )
+        fullExpression.reserve( serverFids.count() * 32 );
+
+      int i = 0;
+      for (const QString& serverFid : serverFids)
+      {
+        if ( i > 0 )
+          fullExpression.append( "," );
+
+        fullExpression.append( QgsExpression::quotedValue( serverFid, pkFieldType) );
+
+        i++;
+      }
+
+      fullExpression += ")";
+
+      featureRequest.combineFilterExpression(fullExpression);
+      return featureRequest;
+    }
+  }
+
   QStringList expList;
   for ( const QString &serverFid : serverFids )
   {
@@ -64,17 +99,22 @@ QgsFeatureRequest QgsServerFeatureId::updateFeatureRequestFromServerFids( QgsFea
   else
   {
     QString fullExpression;
-    for ( const QString &exp : std::as_const( expList ) )
+
+    if (expList.count() > 100)
+      fullExpression.reserve(expList.count() * 32);
+    
+    for (const QString& exp : std::as_const(expList))
     {
-      if ( !fullExpression.isEmpty() )
+      if (!fullExpression.isEmpty())
       {
-        fullExpression.append( QStringLiteral( " OR " ) );
+        fullExpression.append(QStringLiteral(" OR "));
       }
-      fullExpression.append( QStringLiteral( "( " ) );
-      fullExpression.append( exp );
-      fullExpression.append( QStringLiteral( " )" ) );
+      fullExpression.append(QStringLiteral("( "));
+      fullExpression.append(exp);
+      fullExpression.append(QStringLiteral(" )"));
     }
-    featureRequest.combineFilterExpression( fullExpression );
+
+    featureRequest.combineFilterExpression(fullExpression);
   }
 
   return featureRequest;
@@ -111,4 +151,21 @@ QString QgsServerFeatureId::getExpressionFromServerFid( const QString &serverFid
 QString QgsServerFeatureId::pkSeparator()
 {
   return QStringLiteral( "@@" );
+}
+
+int QgsServerFeatureId::sbGetPkExpressionSize( const QString& serverFid, const QgsVectorDataProvider* provider )
+{
+  const QgsAttributeList& pkAttributes = provider->pkAttributeIndexes();
+
+  if (pkAttributes.isEmpty())
+  {
+    return 0;
+  }
+
+  const QgsFields& fields = provider->fields();
+
+  QString expressionString;
+  QStringList pkValues = serverFid.split(pkSeparator());
+  int pkExprSize = std::min(pkAttributes.size(), pkValues.size());
+  return pkExprSize;
 }

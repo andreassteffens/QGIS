@@ -81,6 +81,8 @@ namespace QgsServerFeatureId
    */
   SERVER_EXPORT QString pkSeparator();
 
+  int sbGetPkExpressionSize( const QString& serverFid, const QgsVectorDataProvider* provider );
+
 };
 
 #endif
