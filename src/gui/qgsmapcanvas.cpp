@@ -1210,7 +1210,8 @@ void QgsMapCanvas::showContextMenu( QgsMapMouseEvent *event )
 
   emit contextMenuAboutToShow( &menu, event );
 
-  menu.exec( event->globalPos() );
+  if ( !menu.isEmpty() ) // menu can be empty after populateContextMenu() and contextMenuAboutToShow()
+    menu.exec( event->globalPos() );
 }
 
 void QgsMapCanvas::notifyRendererErrors( const QgsMapRendererJob::Errors &errors )

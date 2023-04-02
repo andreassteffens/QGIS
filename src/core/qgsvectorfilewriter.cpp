@@ -1442,13 +1442,13 @@ class QgsVectorFileWriterMetadataContainer
                              ) );
 
       datasetOptions.insert( QStringLiteral( "FORMAT" ), new QgsVectorFileWriter::SetOption(
-                               QObject::tr( "If not specified, GML2 will be used." ),
+                               QObject::tr( "GML version to use." ),
                                QStringList()
+                               << QStringLiteral( "GML2" )
                                << QStringLiteral( "GML3" )
                                << QStringLiteral( "GML3Deegree" )
                                << QStringLiteral( "GML3.2" ),
-                               QString(), // Default value
-                               true // Allow None
+                               QStringLiteral( "GML3.2" ) // Default value
                              ) );
 
       datasetOptions.insert( QStringLiteral( "GML3_LONGSRS" ), new QgsVectorFileWriter::BoolOption(
@@ -2702,14 +2702,17 @@ gdal::ogr_feature_unique_ptr QgsVectorFileWriter::createFeature( const QgsFeatur
         }
         else
         {
-          OGR_F_SetFieldDateTime( poFeature.get(), ogrField,
-                                  attrValue.toDateTime().date().year(),
-                                  attrValue.toDateTime().date().month(),
-                                  attrValue.toDateTime().date().day(),
-                                  attrValue.toDateTime().time().hour(),
-                                  attrValue.toDateTime().time().minute(),
-                                  attrValue.toDateTime().time().second(),
-                                  0 );
+          const QDateTime dt = attrValue.toDateTime();
+          const QDate date = dt.date();
+          const QTime time = dt.time();
+          OGR_F_SetFieldDateTimeEx( poFeature.get(), ogrField,
+                                    date.year(),
+                                    date.month(),
+                                    date.day(),
+                                    time.hour(),
+                                    time.minute(),
+                                    static_cast<float>( time.second() + static_cast< double >( time.msec() ) / 1000 ),
+                                    QgsOgrUtils::OGRTZFlagFromQt( dt ) );
         }
         break;
       case QVariant::Time:
@@ -2719,12 +2722,13 @@ gdal::ogr_feature_unique_ptr QgsVectorFileWriter::createFeature( const QgsFeatur
         }
         else
         {
-          OGR_F_SetFieldDateTime( poFeature.get(), ogrField,
-                                  0, 0, 0,
-                                  attrValue.toTime().hour(),
-                                  attrValue.toTime().minute(),
-                                  attrValue.toTime().second(),
-                                  0 );
+          const QTime time = attrValue.toTime();
+          OGR_F_SetFieldDateTimeEx( poFeature.get(), ogrField,
+                                    0, 0, 0,
+                                    time.hour(),
+                                    time.minute(),
+                                    static_cast<float>( time.second() + static_cast< double >( time.msec() ) / 1000 ),
+                                    0 );
         }
         break;
 
