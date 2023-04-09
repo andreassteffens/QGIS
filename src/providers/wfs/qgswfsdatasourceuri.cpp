@@ -228,6 +228,7 @@ QUrl QgsWFSDataSourceURI::requestUrl( const QString &request, const Method &meth
 {
   QUrl url;
   QUrlQuery urlQuery;
+
   switch ( method )
   {
     case Post:
@@ -474,7 +475,18 @@ void QgsWFSDataSourceURI::setGetEndpoints( const QgsStringMap &map )
   mGetEndpoints = map;
 }
 
+QgsStringMap QgsWFSDataSourceURI::getGetEndpoints() const
+{
+  return mGetEndpoints;
+}
+
 void QgsWFSDataSourceURI::setPostEndpoints( const QgsStringMap &map )
 {
   mPostEndpoints = map;
 }
+
+QgsStringMap QgsWFSDataSourceURI::getPostEndpoints() const
+{
+  return mPostEndpoints;
+}
+

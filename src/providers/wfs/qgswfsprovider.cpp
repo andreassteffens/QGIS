@@ -795,6 +795,9 @@ bool QgsWFSProvider::setLayerPropertiesListFromDescribeFeature( QDomDocument &de
     {
       layerProperties.mNamespaceURI = mShared->mCaps.getNamespaceForTypename( typeName );
       layerProperties.mNamespacePrefix = QgsWFSUtils::nameSpacePrefix( typeName );
+
+      if ( !layerProperties.mNamespacePrefix.isEmpty() && layerProperties.mNamespacePrefix.compare("ucgml", Qt::CaseInsensitive) == 0 )
+        layerProperties.mNamespacePrefix = QString();
     }
 
     mShared->mLayerPropertiesList << layerProperties;
