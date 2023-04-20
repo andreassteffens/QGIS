@@ -149,6 +149,25 @@ QgsWFSDataSourceURI::QgsWFSDataSourceURI( const QString &uri )
   }
 }
 
+QgsWFSDataSourceURI::QgsWFSDataSourceURI( const QgsWFSDataSourceURI& other )
+  : mURI( other.mURI )
+  , mAuth( other.mAuth )
+  , mGetEndpoints( other.mGetEndpoints )
+  , mPostEndpoints( other.mPostEndpoints )
+  , mDeprecatedURI( other.mDeprecatedURI )
+{
+}
+
+QgsWFSDataSourceURI& QgsWFSDataSourceURI::operator=( const QgsWFSDataSourceURI &other )
+{
+  mURI = other.mURI;
+  mAuth = other.mAuth;
+  mGetEndpoints = other.mGetEndpoints;
+  mPostEndpoints = other.mPostEndpoints;
+  mDeprecatedURI = other.mDeprecatedURI;
+  return *this;
+}
+
 QSet<QString> QgsWFSDataSourceURI::unknownParamKeys() const
 {
   static const QSet<QString> knownKeys
@@ -325,26 +344,26 @@ QString QgsWFSDataSourceURI::typeName() const
   return mURI.param( QgsWFSConstants::URI_PARAM_TYPENAME );
 }
 
-void QgsWFSDataSourceURI::sbSetFallbackGeometryType(const QString& type)
+void QgsWFSDataSourceURI::sbSetFallbackGeometryType( const QString& type )
 {
-  mURI.removeParam(QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE);
-  mURI.setParam(QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE, type);
+  mURI.removeParam( QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE );
+  mURI.setParam( QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE, type );
 }
 
 QString QgsWFSDataSourceURI::sbFallbackGeometryType() const
 {
-  return mURI.param(QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE);
+  return mURI.param( QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE );
 }
 
-void QgsWFSDataSourceURI::sbSetFallbackGeometryName(const QString& name)
+void QgsWFSDataSourceURI::sbSetFallbackGeometryName( const QString& name )
 {
-  mURI.removeParam(QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_NAME);
-  mURI.setParam(QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_NAME, name);
+  mURI.removeParam( QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_NAME );
+  mURI.setParam( QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_NAME, name );
 }
 
 QString QgsWFSDataSourceURI::sbFallbackGeometryName() const
 {
-  return mURI.param(QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_NAME);
+  return mURI.param( QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_NAME );
 }
 
 void QgsWFSDataSourceURI::setSRSName( const QString &crsString )
@@ -475,18 +494,8 @@ void QgsWFSDataSourceURI::setGetEndpoints( const QgsStringMap &map )
   mGetEndpoints = map;
 }
 
-QgsStringMap QgsWFSDataSourceURI::getGetEndpoints() const
-{
-  return mGetEndpoints;
-}
-
 void QgsWFSDataSourceURI::setPostEndpoints( const QgsStringMap &map )
 {
   mPostEndpoints = map;
-}
-
-QgsStringMap QgsWFSDataSourceURI::getPostEndpoints() const
-{
-  return mPostEndpoints;
 }
 
