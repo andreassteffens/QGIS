@@ -445,7 +445,11 @@ bool QgsWcsProvider::parseUri( const QString &uriString )
 
   mTime = uri.param( QStringLiteral( "time" ) );
 
-  mBBOX = uri.param( QStringLiteral( "bbox" ) );
+  const QStringList bboxParts = uri.param( QStringLiteral( "bbox" ) ).split( "," );
+  if ( bboxParts.length() == 4 )
+  {
+    mBBOX = QgsRectangle( bboxParts[0].toDouble(), bboxParts[1].toDouble(), bboxParts[2].toDouble(), bboxParts[3].toDouble() );
+  }
 
   setFormat( uri.param( QStringLiteral( "format" ) ) );
 
@@ -706,8 +710,16 @@ void QgsWcsProvider::getCache( int bandNo, QgsRectangle  const &viewExtent, int 
     extent = QgsRectangle( viewExtent.xMinimum() + xRes / 2., viewExtent.yMinimum() + yRes / 2., viewExtent.xMaximum() - xRes / 2., viewExtent.yMaximum() - yRes / 2. );
   }
 
+  if ( changeXY )
+  {
+    extent = QgsRectangle( extent.yMinimum(), extent.xMinimum(), extent.yMaximum(), extent.xMaximum() );
+  }
+  if ( !mBBOX.isEmpty() )
+  {
+    extent = extent.intersect( mBBOX );
+  }
   // Bounding box in WCS format (Warning: does not work with scientific notation)
-  QString bbox = QString( changeXY ? "%2,%1,%4,%3" : "%1,%2,%3,%4" )
+  QString bbox = QString( "%1,%2,%3,%4" )
                  .arg( qgsDoubleToString( extent.xMinimum() ),
                        qgsDoubleToString( extent.yMinimum() ),
                        qgsDoubleToString( extent.xMaximum() ),
@@ -736,7 +748,7 @@ void QgsWcsProvider::getCache( int bandNo, QgsRectangle  const &viewExtent, int 
       setQueryItem( url, QStringLiteral( "TIME" ), mTime );
     }
 
-    setQueryItem( url, QStringLiteral( "BBOX" ), !mBBOX.isEmpty() ? mBBOX : bbox );
+    setQueryItem( url, QStringLiteral( "BBOX" ), bbox );
 
     setQueryItem( url, QStringLiteral( "CRS" ), crs ); // request BBOX CRS
     setQueryItem( url, QStringLiteral( "RESPONSE_CRS" ), crs ); // response CRS
@@ -756,7 +768,7 @@ void QgsWcsProvider::getCache( int bandNo, QgsRectangle  const &viewExtent, int 
       setQueryItem( url, QStringLiteral( "TIMESEQUENCE" ), mTime );
     }
 
-    setQueryItem( url, QStringLiteral( "BOUNDINGBOX" ), !mBBOX.isEmpty() ? mBBOX : bbox );
+    setQueryItem( url, QStringLiteral( "BOUNDINGBOX" ), bbox );
 
 
     //  Example:
