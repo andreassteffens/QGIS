@@ -164,7 +164,7 @@ namespace QgsWms
     const QSize size( static_cast<int>( minSize.width() * dpmm ), static_cast<int>( minSize.height() * dpmm ) );
     if ( !mContext.isValidWidthHeight( size.width(), size.height() ) )
     {
-      throw QgsServerException( QStringLiteral( "Legend image is too large" ) );
+      throw QgsServerException( QStringLiteral( "Legend image is too large: %1 | %2 | %3" ).arg( QString::number( size.width() ) ).arg( QString::number( size.height() ) ).arg( QString::number(dpmm) ) );
     }
     image.reset( createImage( size ) );
 
@@ -202,7 +202,7 @@ namespace QgsWms
     //test if legend image is larger than max width/height
     if ( !mContext.isValidWidthHeight( size.width(), size.height() ) )
     {
-      throw QgsServerException( QStringLiteral( "Legend image is too large" ) );
+      throw QgsServerException( QStringLiteral( "Legend image is too large: %1 | %2 | %3 | %4" ).arg( QString::number( size.width() ) ).arg( QString::number( size.height() ) ).arg( mWmsParameters.widthAsInt() ).arg( mWmsParameters.heightAsInt() ) );
     }
     std::unique_ptr<QImage> image( createImage( size ) );
 
