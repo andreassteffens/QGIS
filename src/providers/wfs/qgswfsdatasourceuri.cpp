@@ -194,9 +194,8 @@ QSet<QString> QgsWFSDataSourceURI::unknownParamKeys() const
     QgsWFSConstants::URI_PARAM_WFST_1_1_PREFER_COORDINATES,
     QgsWFSConstants::URI_PARAM_SKIP_INITIAL_GET_FEATURE,
     QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE,
-    QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_NAME
-    QgsWFSConstants::URI_PARAM_SKIP_INITIAL_GET_FEATURE,
-    QgsWFSConstants::URI_PARAM_SQL,
+    QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_NAME,
+    QgsWFSConstants::URI_PARAM_SQL
   };
 
   QSet<QString> l_unknownParamKeys;
