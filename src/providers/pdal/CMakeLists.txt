@@ -136,6 +136,9 @@ set_target_properties(untwine PROPERTIES
 target_link_libraries (untwine
   ${PDAL_LIBRARIES}
   Threads::Threads
+  ws2_32.lib
+  wldap32.lib
+  crypt32.lib
 )
 target_include_directories(untwine PRIVATE ${UNTWINE_INCLUDE_DIRS})
 
