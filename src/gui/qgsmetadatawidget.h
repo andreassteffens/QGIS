@@ -213,6 +213,8 @@ class GUI_EXPORT QgsMetadataWidget : public QWidget, private Ui::QgsMetadataWidg
     void removeSelectedLink();
     void addHistory();
     void removeSelectedHistory();
+    void sbKeywordsCellChanged( int row, int column );
+    void sbContraintsItemChanged( QStandardItem* item );
 
   private:
 

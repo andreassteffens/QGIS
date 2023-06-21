@@ -106,6 +106,8 @@ QgsMetadataWidget::QgsMetadataWidget( QWidget *parent, QgsMapLayer *layer )
   connect( btnNewCategory, &QPushButton::clicked, this, &QgsMetadataWidget::addNewCategory );
   connect( btnAddDefaultCategory, &QPushButton::clicked, this, &QgsMetadataWidget::addDefaultCategories );
   connect( btnRemoveCategory, &QPushButton::clicked, this, &QgsMetadataWidget::removeSelectedCategories );
+  connect( tabKeywords, &QTableWidget::cellChanged, this, &QgsMetadataWidget::sbKeywordsCellChanged );
+  connect( mConstraintsModel, &QStandardItemModel::itemChanged, this, &QgsMetadataWidget::sbContraintsItemChanged );
 
   fillComboBox();
   if ( !mLayer )
@@ -542,8 +544,8 @@ void QgsMetadataWidget::setUiFromMetadata()
     mRightsModel->setStringList( layerMetadata->rights() );
 
     // Constraints
-	while (mConstraintsModel->rowCount() > 0)
-		mConstraintsModel->removeRow(0);
+    while ( mConstraintsModel->rowCount() > 0 )
+      mConstraintsModel->removeRow(0);
 
     const QList<QgsLayerMetadata::Constraint> &constraints = layerMetadata->constraints();
     for ( const QgsLayerMetadata::Constraint &constraint : constraints )
@@ -1105,6 +1107,52 @@ void QgsMetadataWidget::removeSelectedCategories()
 
   mDefaultCategoriesModel->setStringList( defaultList );
   mDefaultCategoriesModel->sort( 0 );
+}
+
+void QgsMetadataWidget::sbKeywordsCellChanged(int row, int column)
+{
+  if ( column != 0 )
+    return;
+
+  QString strText = tabKeywords->item( row, 0 )->text();
+  if ( strText.isEmpty() )
+    return;
+
+  if ( strText.contains("sb:", Qt::CaseInsensitive) )
+  {
+    strText = strText.trimmed();
+    QStringList listParts = strText.split( "sb:", Qt::SkipEmptyParts, Qt::CaseInsensitive );
+
+    if ( strText.startsWith( "sb:", Qt::CaseInsensitive ) && listParts.count() == 1 )
+    {
+      strText = "sb:" + listParts[0].toUpper();
+      if( strText.compare( tabKeywords->item( row, 0 )->text() ) != 0 )
+        tabKeywords->item( row, 0 )->setText( strText );
+    }
+  }
+}
+
+void QgsMetadataWidget::sbContraintsItemChanged( QStandardItem* item )
+{
+  if ( item->column() != 0 )
+    return;
+
+  QString strText = item->text();
+  if ( strText.isEmpty() )
+    return;
+
+  if ( strText.contains("sb:", Qt::CaseInsensitive) )
+  {
+    strText = strText.trimmed();
+    QStringList listParts = strText.split( "sb:", Qt::SkipEmptyParts, Qt::CaseInsensitive );
+
+    if ( strText.startsWith( "sb:", Qt::CaseInsensitive ) && listParts.count() == 1 )
+    {
+      strText = "sb:" + listParts[0].toUpper();
+      if( strText.compare( item->text() ) != 0 )
+        item->setText( strText );
+    }
+  }
 }
 
 ///@cond PRIVATE
