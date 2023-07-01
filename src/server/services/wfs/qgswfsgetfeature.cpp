@@ -214,6 +214,8 @@ namespace QgsWfs
     ( void )serverIface;
 #endif
 
+    QString firstTypeName;
+
     // features counters
     long sentFeatures = 0;
     long iteratedFeatures = 0;
@@ -224,6 +226,9 @@ namespace QgsWfs
     {
       getFeatureQuery &query = *qIt;
       QString typeName = query.typeName;
+
+      if ( mWfsParameters.sbStopAfterFirstResultLayer() && !firstTypeName.isEmpty() && firstTypeName.compare( typeName ) != 0 )
+        continue;
 
       QgsMapLayer *layer = mapLayerMap[typeName];
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
@@ -571,6 +576,9 @@ namespace QgsWfs
 
       if (renderer)
         renderer->stopRender(renderContext);
+
+      if ( sentFeatures > 0 && firstTypeName.isEmpty() )
+        firstTypeName = typeName;
     }
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
@@ -599,7 +607,6 @@ namespace QgsWfs
 
       endGetFeature( response, aRequest.outputFormat );
     }
-
   }
 
   getFeatureRequest parseGetFeatureParameters( const QgsProject *project )

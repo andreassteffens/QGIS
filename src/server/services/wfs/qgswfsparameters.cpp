@@ -202,6 +202,11 @@ namespace QgsWfs
                                                                QVariant::Bool,
                                                                QVariant(false));
     save(pSbPassThroughQgisFilterExpression);
+
+    const QgsWfsParameter pSbStopAfterFirstResultLayer = QgsWfsParameter(QgsWfsParameter::SBSTOPAFTERFIRSTRESULTLAYER,
+      QVariant::Bool,
+      QVariant(false));
+    save(pSbStopAfterFirstResultLayer);
   }
 
   QgsWfsParameters::QgsWfsParameters( const QgsServerParameters &parameters )
@@ -468,6 +473,11 @@ namespace QgsWfs
   bool QgsWfsParameters::sbPassThroughQgisFilterExpression() const
   {
     return mWfsParameters[QgsWfsParameter::SBPASSTHROUGHQGISFILTEREXPRESSION].toBool();
+  }
+
+  bool QgsWfsParameters::sbStopAfterFirstResultLayer() const
+  {
+    return mWfsParameters[QgsWfsParameter::SBSTOPAFTERFIRSTRESULTLAYER].toBool();
   }
 
   QgsProjectVersion QgsWfsParameters::versionAsNumber() const

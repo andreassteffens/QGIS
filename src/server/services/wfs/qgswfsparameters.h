@@ -65,7 +65,8 @@ namespace QgsWfs
         SBALLOWEMPTYPROPERTYLIST,
         SBRULES,
         SBWITHMAPTIP,
-        SBPASSTHROUGHQGISFILTEREXPRESSION
+        SBPASSTHROUGHQGISFILTEREXPRESSION,
+        SBSTOPAFTERFIRSTRESULTLAYER
       };
       Q_ENUM( Name )
 
@@ -309,6 +310,7 @@ namespace QgsWfs
       bool sbAllowEmptyPropertyList() const;
       bool sbWithMapTip() const;
       bool sbPassThroughQgisFilterExpression() const;
+      bool sbStopAfterFirstResultLayer() const;
 
       QMultiMap<QString, QgsWfsParametersRules> sbLayerRules(const QStringList &layers) const;
 
