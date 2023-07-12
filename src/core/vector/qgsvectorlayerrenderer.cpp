@@ -92,7 +92,7 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
   
   mSbRenderSelectionOnly = layer->sbRenderSelectionOnly();
   
-  bool bRenderMinPixelSizeFilter;
+  bool bRenderMinPixelSizeFilter = false;
   mSbRenderMinPixelSize = -1;
   mSbRenderMinPixelSizeMaxScale = -1;
   mSbRenderMinPixelSizeDebug = false;

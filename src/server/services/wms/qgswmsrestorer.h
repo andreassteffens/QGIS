@@ -103,7 +103,7 @@ namespace QgsWms
 	  *
 	  *
 	  */
-	  void sbUpdateScaleBasedVisibility(QgsWmsRenderContext &context, double dScale) { mLayerRestorer.sbUpdateScaleBasedVisibility(context, dScale); }
+	  void sbUpdateScaleBasedVisibility( QgsWmsRenderContext &context, double dScale ) { mLayerRestorer.sbUpdateScaleBasedVisibility (context, dScale ); }
 
       /**
        * Default destructor.
