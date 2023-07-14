@@ -327,40 +327,40 @@ QRectF QgsSimpleMarkerSymbolLayerBase::bounds( QPointF point, QgsSymbolRenderCon
                                     scaledSize ) );
 }
 
-double QgsSimpleMarkerSymbolLayerBase::sbPainterSize(QgsSymbolRenderContext &context)
+double QgsSimpleMarkerSymbolLayerBase::sbPainterSize( QgsSymbolRenderContext &context )
 {
   QPainter *p = context.renderContext().painter();
-  if (!p)
+  if ( !p )
   {
     return 0;
   }
 
   bool hasDataDefinedSize = false;
-  double scaledSize = calculateSize(context, hasDataDefinedSize);
+  double scaledSize = calculateSize( context, hasDataDefinedSize );
 
   bool hasDataDefinedRotation = false;
   QPointF offset;
   double angle = 0;
-  calculateOffsetAndRotation(context, scaledSize, hasDataDefinedRotation, offset, angle);
+  calculateOffsetAndRotation( context, scaledSize, hasDataDefinedRotation, offset, angle );
 
   //data defined shape?
   bool createdNewPath = false;
   bool ok = true;
   Qgis::MarkerShape symbol = mShape;
-  if (mDataDefinedProperties.isActive(QgsSymbolLayer::PropertyName))
+  if ( mDataDefinedProperties.isActive( QgsSymbolLayer::PropertyName ) )
   {
-    context.setOriginalValueVariable(encodeShape(symbol));
-    QVariant exprVal = mDataDefinedProperties.value(QgsSymbolLayer::PropertyName, context.renderContext().expressionContext());
-    if (exprVal.isValid())
+    context.setOriginalValueVariable( encodeShape( symbol ) );
+    QVariant exprVal = mDataDefinedProperties.value( QgsSymbolLayer::PropertyName, context.renderContext().expressionContext() );
+    if ( exprVal.isValid() )
     {
-      Qgis::MarkerShape decoded = decodeShape(exprVal.toString(), &ok);
-      if (ok)
+      Qgis::MarkerShape decoded = decodeShape( exprVal.toString(), &ok );
+      if ( ok )
       {
         symbol = decoded;
 
-        if (!prepareMarkerShape(symbol)) // drawing as a polygon
+        if ( !prepareMarkerShape( symbol ) ) // drawing as a polygon
         {
-          prepareMarkerPath(symbol); // drawing as a painter path
+          prepareMarkerPath( symbol ); // drawing as a painter path
         }
         createdNewPath = true;
       }
@@ -374,13 +374,13 @@ double QgsSimpleMarkerSymbolLayerBase::sbPainterSize(QgsSymbolRenderContext &con
   double dRet = 0;
 
   // resize if necessary
-  if (hasDataDefinedSize || createdNewPath)
+  if ( hasDataDefinedSize || createdNewPath )
   {
-    double s = context.renderContext().convertToPainterUnits(scaledSize, mSizeUnit, mSizeMapUnitScale);
+    double s = context.renderContext().convertToPainterUnits( scaledSize, mSizeUnit, mSizeMapUnitScale );
     dRet = s / 2.0;
-  } 
-  else 
-    dRet = context.renderContext().convertToPainterUnits(scaledSize, mSizeUnit, mSizeMapUnitScale);
+  }
+  else
+    dRet = context.renderContext().convertToPainterUnits( scaledSize, mSizeUnit, mSizeMapUnitScale );
 
   return dRet;
 }

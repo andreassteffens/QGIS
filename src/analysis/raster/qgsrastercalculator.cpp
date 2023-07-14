@@ -504,12 +504,12 @@ QgsRasterCalculator::Result QgsRasterCalculator::processCalculationGPU( std::uni
 
     // Create the program
     QString programTemplate( R"CL(
-    // Inputs:
+                             // Inputs:
     ##INPUT_DESC##
-    // Expression: ##EXPRESSION_ORIGINAL##
-    __kernel void rasterCalculator( ##INPUT##
-                              __global float *resultLine
-                            )
+                             // Expression: ##EXPRESSION_ORIGINAL##
+                             __kernel void rasterCalculator( ##INPUT##
+                                 __global float *resultLine
+                                                           )
     {
       // Get the index of the current element
       const int i = get_global_id(0);
@@ -520,7 +520,7 @@ QgsRasterCalculator::Result QgsRasterCalculator::processCalculationGPU( std::uni
       else
         resultLine[i] = ##EXPRESSION##;
     }
-    )CL" );
+                           )CL" );
 
     QStringList inputDesc;
     QStringList inputNoDataCheck;

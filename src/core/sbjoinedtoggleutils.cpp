@@ -5,7 +5,7 @@
     copyright            : (C) 2023 by Andreas Steffens
     email                : a dot steffens at gds dash team dot de
  ***************************************************************************/
- 
+
 #include "sbjoinedtoggleutils.h"
 #include "qgsproject.h"
 #include "qgsmaplayer.h"
@@ -15,7 +15,7 @@
 #define JOINED_TOGGLE_DEACTIVATE_BY_REFERENCE_KEY "sb:JOINED_TOGGLE_DEACTIVATE_BY_REFERENCE"
 #define JOINED_TOGGLE_INVERT_BEHAVIOR_KEY "sb:JOINED_TOGGLE_INVERT_BEHAVIOR"
 
-void sbJoinedToggleUtils::addJoinedToggleLayer( QgsMapLayer* pReferencedLayer, QgsMapLayer* pJoinedLayer, bool bActivateWithReference, bool bDeactivateWithReference, bool bInvertBehavior )
+void sbJoinedToggleUtils::addJoinedToggleLayer( QgsMapLayer *pReferencedLayer, QgsMapLayer *pJoinedLayer, bool bActivateWithReference, bool bDeactivateWithReference, bool bInvertBehavior )
 {
   sanitizeJoinedToggleLayers( pReferencedLayer->project() );
 
@@ -50,26 +50,26 @@ void sbJoinedToggleUtils::addJoinedToggleLayer( QgsMapLayer* pReferencedLayer, Q
   pReferencedLayer->setCustomProperty( JOINED_TOGGLE_DEACTIVATE_BY_REFERENCE_KEY, varMapInvert );
 }
 
-void sbJoinedToggleUtils::removeJoinedToggleLayer( QgsMapLayer* pJoinedLayer )
+void sbJoinedToggleUtils::removeJoinedToggleLayer( QgsMapLayer *pJoinedLayer )
 {
-  QgsProject* pProject = pJoinedLayer->project();
+  QgsProject *pProject = pJoinedLayer->project();
 
-  QMap< QString, QgsMapLayer* > mapLayers = pProject->mapLayers();
-  for ( QMap< QString, QgsMapLayer* >::const_iterator iter = mapLayers.constBegin(); iter != mapLayers.constEnd(); iter++ )
+  QMap< QString, QgsMapLayer * > mapLayers = pProject->mapLayers();
+  for ( QMap< QString, QgsMapLayer * >::const_iterator iter = mapLayers.constBegin(); iter != mapLayers.constEnd(); iter++ )
     removeJoinedToggleLayer( iter.value(), pJoinedLayer );
 
   sanitizeJoinedToggleLayers( pJoinedLayer->project() );
 }
 
-void sbJoinedToggleUtils::removeJoinedToggleLayer( QgsMapLayer* pReferencedLayer, QgsMapLayer* pJoinedLayer )
+void sbJoinedToggleUtils::removeJoinedToggleLayer( QgsMapLayer *pReferencedLayer, QgsMapLayer *pJoinedLayer )
 {
   removeJoinedToggleLayer( pReferencedLayer, pJoinedLayer->id() );
 }
 
-void sbJoinedToggleUtils::removeJoinedToggleLayer( QgsMapLayer* pReferencedLayer, QString strJoinedLayerId )
+void sbJoinedToggleUtils::removeJoinedToggleLayer( QgsMapLayer *pReferencedLayer, QString strJoinedLayerId )
 {
   QVariant varLayers = pReferencedLayer->customProperty( JOINED_TOGGLE_LAYERS_KEY );
-  if( varLayers.isValid() && varLayers.type() == QVariant::Type::Map )
+  if ( varLayers.isValid() && varLayers.type() == QVariant::Type::Map )
   {
     QVariantMap varMapLayers = varLayers.toMap();
     if ( varMapLayers.contains( strJoinedLayerId ) )
@@ -94,7 +94,7 @@ void sbJoinedToggleUtils::removeJoinedToggleLayer( QgsMapLayer* pReferencedLayer
   if ( varDeactivate.isValid() && varDeactivate.type() == QVariant::Type::Map )
   {
     QVariantMap varMapDeactivate = varDeactivate.toMap();
-    if (varMapDeactivate.contains( strJoinedLayerId ) )
+    if ( varMapDeactivate.contains( strJoinedLayerId ) )
     {
       varMapDeactivate.remove( strJoinedLayerId );
       pReferencedLayer->setCustomProperty( JOINED_TOGGLE_DEACTIVATE_BY_REFERENCE_KEY, varMapDeactivate );
@@ -105,7 +105,7 @@ void sbJoinedToggleUtils::removeJoinedToggleLayer( QgsMapLayer* pReferencedLayer
   if ( varInvert.isValid() && varInvert.type() == QVariant::Type::Map )
   {
     QVariantMap varMapInvert = varInvert.toMap();
-    if (varMapInvert.contains( strJoinedLayerId ) )
+    if ( varMapInvert.contains( strJoinedLayerId ) )
     {
       varMapInvert.remove( strJoinedLayerId );
       pReferencedLayer->setCustomProperty( JOINED_TOGGLE_DEACTIVATE_BY_REFERENCE_KEY, varMapInvert );
@@ -113,7 +113,7 @@ void sbJoinedToggleUtils::removeJoinedToggleLayer( QgsMapLayer* pReferencedLayer
   }
 }
 
-QList< sbJoinedToggleLayerSettings > sbJoinedToggleUtils::getJoinedToggleLayers( QgsMapLayer* pReferencedLayer )
+QList< sbJoinedToggleLayerSettings > sbJoinedToggleUtils::getJoinedToggleLayers( QgsMapLayer *pReferencedLayer )
 {
   QList< sbJoinedToggleLayerSettings > listSettings;
 
@@ -121,7 +121,7 @@ QList< sbJoinedToggleLayerSettings > sbJoinedToggleUtils::getJoinedToggleLayers(
   if ( varLayers.isValid() && varLayers.type() == QVariant::Type::Map )
   {
     QVariantMap varMapLayers = varLayers.toMap();
-    for( QVariantMap::const_iterator iter = varMapLayers.constBegin(); iter != varMapLayers.constEnd(); iter++ )
+    for ( QVariantMap::const_iterator iter = varMapLayers.constBegin(); iter != varMapLayers.constEnd(); iter++ )
     {
       sbJoinedToggleLayerSettings settings;
 
@@ -132,21 +132,21 @@ QList< sbJoinedToggleLayerSettings > sbJoinedToggleUtils::getJoinedToggleLayers(
       if ( varActivate.isValid() && varActivate.type() == QVariant::Type::Map )
       {
         QVariantMap varMapActivate = varActivate.toMap();
-        settings.activateWithReference = varMapActivate.value( settings.layerId, QVariant(false) ).toBool();
+        settings.activateWithReference = varMapActivate.value( settings.layerId, QVariant( false ) ).toBool();
       }
 
       QVariant varDeactivate = pReferencedLayer->customProperty( JOINED_TOGGLE_DEACTIVATE_BY_REFERENCE_KEY );
       if ( varDeactivate.isValid() && varDeactivate.type() == QVariant::Type::Map )
       {
         QVariantMap varMapDeactivate = varDeactivate.toMap();
-        settings.deactivateWithReference = varMapDeactivate.value( settings.layerId, QVariant(false) ).toBool();
+        settings.deactivateWithReference = varMapDeactivate.value( settings.layerId, QVariant( false ) ).toBool();
       }
 
       QVariant varInvert = pReferencedLayer->customProperty( JOINED_TOGGLE_INVERT_BEHAVIOR_KEY );
       if ( varInvert.isValid() && varInvert.type() == QVariant::Type::Map )
       {
         QVariantMap varMapInvert = varInvert.toMap();
-        settings.invertBehavior = varMapInvert.value( settings.layerId, QVariant(false) ).toBool();
+        settings.invertBehavior = varMapInvert.value( settings.layerId, QVariant( false ) ).toBool();
       }
 
       listSettings.append( settings );
@@ -156,12 +156,12 @@ QList< sbJoinedToggleLayerSettings > sbJoinedToggleUtils::getJoinedToggleLayers(
   return listSettings;
 }
 
-sbJoinedToggleLayerSettings sbJoinedToggleUtils::getReferencedLayer( QgsMapLayer* pLayer )
+sbJoinedToggleLayerSettings sbJoinedToggleUtils::getReferencedLayer( QgsMapLayer *pLayer )
 {
   sbJoinedToggleLayerSettings settings;
 
-  QMap< QString, QgsMapLayer* > mapLayers = pLayer->project()->mapLayers();
-  for ( QMap< QString, QgsMapLayer* >::const_iterator iter = mapLayers.constBegin(); iter != mapLayers.constEnd(); iter++ )
+  QMap< QString, QgsMapLayer * > mapLayers = pLayer->project()->mapLayers();
+  for ( QMap< QString, QgsMapLayer * >::const_iterator iter = mapLayers.constBegin(); iter != mapLayers.constEnd(); iter++ )
   {
     QList< sbJoinedToggleLayerSettings > listSettings = getJoinedToggleLayers( iter.value() );
     for ( QList< sbJoinedToggleLayerSettings >::const_iterator iterSettings = listSettings.constBegin(); iterSettings != listSettings.constEnd(); iterSettings++ )
@@ -174,10 +174,10 @@ sbJoinedToggleLayerSettings sbJoinedToggleUtils::getReferencedLayer( QgsMapLayer
   return settings;
 }
 
-void sbJoinedToggleUtils::sanitizeJoinedToggleLayers( QgsProject* pProject )
+void sbJoinedToggleUtils::sanitizeJoinedToggleLayers( QgsProject *pProject )
 {
-  QMap< QString, QgsMapLayer* > mapLayers = pProject->mapLayers();
-  for ( QMap< QString, QgsMapLayer* >::const_iterator iter = mapLayers.constBegin(); iter != mapLayers.constEnd(); iter++ )
+  QMap< QString, QgsMapLayer * > mapLayers = pProject->mapLayers();
+  for ( QMap< QString, QgsMapLayer * >::const_iterator iter = mapLayers.constBegin(); iter != mapLayers.constEnd(); iter++ )
   {
     QList< sbJoinedToggleLayerSettings > listSettings = getJoinedToggleLayers( iter.value() );
     for ( QList< sbJoinedToggleLayerSettings >::const_iterator iterSettings = listSettings.constBegin(); iterSettings != listSettings.constEnd(); iterSettings++ )

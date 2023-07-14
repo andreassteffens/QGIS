@@ -76,21 +76,21 @@ QgsServiceRegistry *QgsServer::sServiceRegistry = nullptr;
 
 Q_GLOBAL_STATIC( QgsServerSettings, sSettings );
 
-QgsServer::QgsServer(const QString& strTenant)
+QgsServer::QgsServer( const QString &strTenant )
 {
   mSbTenant = strTenant;
 
   // QgsApplication must exist
-  if (qobject_cast<QgsApplication *>(qApp) == nullptr)
+  if ( qobject_cast<QgsApplication *>( qApp ) == nullptr )
   {
-    qFatal("A QgsApplication must exist before a QgsServer instance can be created.");
+    qFatal( "A QgsApplication must exist before a QgsServer instance can be created." );
     abort();
   }
-  init(strTenant);
-  
-  QString strUnloadConfig = QDir(sSettings()->cacheDirectory()).filePath("unload_" + strTenant);
-  mSbUnloadWatcher.setWatchedPath(strUnloadConfig);
-  mSbUnloadWatcher.setTimeout(sSettings()->sbUnloadWatcherInterval());
+  init( strTenant );
+
+  QString strUnloadConfig = QDir( sSettings()->cacheDirectory() ).filePath( "unload_" + strTenant );
+  mSbUnloadWatcher.setWatchedPath( strUnloadConfig );
+  mSbUnloadWatcher.setTimeout( sSettings()->sbUnloadWatcherInterval() );
   mSbUnloadWatcher.start();
 }
 
@@ -102,19 +102,19 @@ QgsServer::QgsServer()
     qFatal( "A QgsApplication must exist before a QgsServer instance can be created." );
     abort();
   }
-  init("");
+  init( "" );
 }
 
 QgsServer::~QgsServer()
 {
   mSbUnloadWatcher.exit();
-  if (!mSbUnloadWatcher.wait(3000))
+  if ( !mSbUnloadWatcher.wait( 3000 ) )
     mSbUnloadWatcher.terminate();
 }
 
 QString &QgsServer::serverName()
 {
-  static QString *name = new QString(QStringLiteral("qgis_server"));
+  static QString *name = new QString( QStringLiteral( "qgis_server" ) );
   return *name;
 }
 
@@ -196,13 +196,13 @@ QString QgsServer::configPath( const QString &defaultConfigPath, const QString &
     }
     else
     {
-      cfPath = sbGetDecryptedProjectPath(configPath);
+      cfPath = sbGetDecryptedProjectPath( configPath );
     }
   }
   return cfPath;
 }
 
-const QString& QgsServer::sbTenant()
+const QString &QgsServer::sbTenant()
 {
   return mSbTenant;
 }
@@ -213,63 +213,63 @@ int QgsServer::sbPreloadProjects()
 
   QString strTenant = sbTenant();
 
-  if (strTenant.isEmpty())
+  if ( strTenant.isEmpty() )
     strTenant = "default";
 
-  QString strPreloadConfig = QDir(sSettings->cacheDirectory()).filePath("preload_" + strTenant);
-  QgsMessageLog::logMessage(QStringLiteral("Attempting to preload projects from '%1' ...").arg(strPreloadConfig), QStringLiteral("Server"), Qgis::Info);
-  if (QFile::exists(strPreloadConfig))
+  QString strPreloadConfig = QDir( sSettings->cacheDirectory() ).filePath( "preload_" + strTenant );
+  QgsMessageLog::logMessage( QStringLiteral( "Attempting to preload projects from '%1' ..." ).arg( strPreloadConfig ), QStringLiteral( "Server" ), Qgis::Info );
+  if ( QFile::exists( strPreloadConfig ) )
   {
-    QFile fileConfig(strPreloadConfig);
-    if (!fileConfig.open(QIODevice::ReadOnly | QIODevice::Text))
+    QFile fileConfig( strPreloadConfig );
+    if ( !fileConfig.open( QIODevice::ReadOnly | QIODevice::Text ) )
       return iRet;
 
-    QTextStream streamIn(&fileConfig);
+    QTextStream streamIn( &fileConfig );
     QString strLine;
-    while (streamIn.readLineInto(&strLine))
+    while ( streamIn.readLineInto( &strLine ) )
     {
       try
       {
-        if (mSbUnloadWatcher.isUnloaded(strLine))
+        if ( mSbUnloadWatcher.isUnloaded( strLine ) )
           continue;
 
         bool bSbJustLoaded = false;
-        QgsMessageLog::logMessage(QStringLiteral("Preloading project '%1' ...").arg(strLine), QStringLiteral("Server"), Qgis::Warning);
-        const QgsProject* pProject = QgsConfigCache::instance()->project(strLine, &bSbJustLoaded);
-        if (pProject != NULL)
+        QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' ..." ).arg( strLine ), QStringLiteral( "Server" ), Qgis::Warning );
+        const QgsProject *pProject = QgsConfigCache::instance()->project( strLine, &bSbJustLoaded );
+        if ( pProject != NULL )
         {
-          QgsMessageLog::logMessage(QStringLiteral("Preloading of project '%1' SUCCEEDED").arg(strLine), QStringLiteral("Server"), Qgis::Warning);
+          QgsMessageLog::logMessage( QStringLiteral( "Preloading of project '%1' SUCCEEDED" ).arg( strLine ), QStringLiteral( "Server" ), Qgis::Warning );
           iRet++;
         }
         else
         {
-          QgsMessageLog::logMessage(QStringLiteral("Preloading of project '%1' FAILED").arg(strLine), QStringLiteral("Server"), Qgis::Warning);
+          QgsMessageLog::logMessage( QStringLiteral( "Preloading of project '%1' FAILED" ).arg( strLine ), QStringLiteral( "Server" ), Qgis::Warning );
           iRet--;
         }
       }
-      catch (QgsServerException &ex)
+      catch ( QgsServerException &ex )
       {
-        QgsMessageLog::logMessage(QStringLiteral("Preloading project '%1' failed: %2").arg(strLine).arg(QString(ex.what())), QStringLiteral("Server"), Qgis::Critical);
+        QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' failed: %2" ).arg( strLine ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
         throw ex;
       }
-      catch (QgsException &ex)
+      catch ( QgsException &ex )
       {
-        QgsMessageLog::logMessage(QStringLiteral("Preloading project '%1' failed: %2").arg(strLine).arg(QString(ex.what())), QStringLiteral("Server"), Qgis::Critical);
+        QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' failed: %2" ).arg( strLine ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
         throw ex;
       }
-      catch (std::runtime_error &ex)
+      catch ( std::runtime_error &ex )
       {
-        QgsMessageLog::logMessage(QStringLiteral("Preloading project '%1' failed: %2").arg(strLine).arg(QString(ex.what())), QStringLiteral("Server"), Qgis::Critical);
+        QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' failed: %2" ).arg( strLine ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
         throw ex;
       }
-      catch (std::exception &ex)
+      catch ( std::exception &ex )
       {
-        QgsMessageLog::logMessage(QStringLiteral("Preloading project '%1' failed %2").arg(strLine).arg(QString(ex.what())), QStringLiteral("Server"), Qgis::Critical);
+        QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' failed %2" ).arg( strLine ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
         throw ex;
       }
-      catch (...)
+      catch ( ... )
       {
-        QgsMessageLog::logMessage(QStringLiteral("Preloading project '%1' failed").arg(strLine), QStringLiteral("Server"), Qgis::Critical);
+        QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' failed" ).arg( strLine ), QStringLiteral( "Server" ), Qgis::Critical );
       }
     }
   }
@@ -277,16 +277,16 @@ int QgsServer::sbPreloadProjects()
   return iRet;
 }
 
-QString QgsServer::sbGetDecryptedProjectPath(QString strPath)
+QString QgsServer::sbGetDecryptedProjectPath( QString strPath )
 {
   QString strDecryptedPath = strPath;
 
-  bool bClearName = strPath.contains(".qgs", Qt::CaseInsensitive) || strPath.contains(".qgz", Qt::CaseInsensitive);
-  if (!bClearName)
+  bool bClearName = strPath.contains( ".qgs", Qt::CaseInsensitive ) || strPath.contains( ".qgz", Qt::CaseInsensitive );
+  if ( !bClearName )
   {
-    strDecryptedPath = sCrypto.sbDecryptFromBase64String(strPath);
+    strDecryptedPath = sCrypto.sbDecryptFromBase64String( strPath );
 
-    if (!QFileInfo(strDecryptedPath).exists())
+    if ( !QFileInfo( strDecryptedPath ).exists() )
       strDecryptedPath = strPath;
   }
 
@@ -313,7 +313,7 @@ void QgsServer::initLocale()
   QLocale::setDefault( currentLocale );
 }
 
-bool QgsServer::init(const QString& strTenant)
+bool QgsServer::init( const QString &strTenant )
 {
   if ( sInitialized )
   {
@@ -455,57 +455,57 @@ bool QgsServer::init(const QString& strTenant)
   QgsMessageLog::logMessage( "Auth DB PATH: " + QgsApplication::qgisAuthDatabaseFilePath(), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
   QgsMessageLog::logMessage( "SVG PATHS: " + QgsApplication::svgPaths().join( QDir::listSeparator() ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
 
-  QString qstrConfigValue = getenv("GDAL_HTTP_TIMEOUT");
-  if (!qstrConfigValue.isEmpty())
-    CPLSetConfigOption("GDAL_HTTP_TIMEOUT", qstrConfigValue.toStdString().c_str());
+  QString qstrConfigValue = getenv( "GDAL_HTTP_TIMEOUT" );
+  if ( !qstrConfigValue.isEmpty() )
+    CPLSetConfigOption( "GDAL_HTTP_TIMEOUT", qstrConfigValue.toStdString().c_str() );
 
-  qstrConfigValue = getenv("GDAL_HTTP_UNSAFESSL");
-  if (!qstrConfigValue.isEmpty())
-    CPLSetConfigOption("GDAL_HTTP_UNSAFESSL", qstrConfigValue.toStdString().c_str());
+  qstrConfigValue = getenv( "GDAL_HTTP_UNSAFESSL" );
+  if ( !qstrConfigValue.isEmpty() )
+    CPLSetConfigOption( "GDAL_HTTP_UNSAFESSL", qstrConfigValue.toStdString().c_str() );
 
-  qstrConfigValue = getenv("VSI_CACHE");
-  if (!qstrConfigValue.isEmpty())
-    CPLSetConfigOption("VSI_CACHE", qstrConfigValue.toStdString().c_str());
+  qstrConfigValue = getenv( "VSI_CACHE" );
+  if ( !qstrConfigValue.isEmpty() )
+    CPLSetConfigOption( "VSI_CACHE", qstrConfigValue.toStdString().c_str() );
 
-  qstrConfigValue = getenv("VSI_CACHE_SIZE");
-  if (!qstrConfigValue.isEmpty())
-    CPLSetConfigOption("VSI_CACHE_SIZE", qstrConfigValue.toStdString().c_str());
+  qstrConfigValue = getenv( "VSI_CACHE_SIZE" );
+  if ( !qstrConfigValue.isEmpty() )
+    CPLSetConfigOption( "VSI_CACHE_SIZE", qstrConfigValue.toStdString().c_str() );
 
-  qstrConfigValue = getenv("GDAL_CACHEMAX");
-  if (!qstrConfigValue.isEmpty())
-    CPLSetConfigOption("GDAL_CACHEMAX", qstrConfigValue.toStdString().c_str());
+  qstrConfigValue = getenv( "GDAL_CACHEMAX" );
+  if ( !qstrConfigValue.isEmpty() )
+    CPLSetConfigOption( "GDAL_CACHEMAX", qstrConfigValue.toStdString().c_str() );
 
-  qstrConfigValue = getenv("GDAL_SWATH_SIZE");
-  if (!qstrConfigValue.isEmpty())
-    CPLSetConfigOption("GDAL_SWATH_SIZE", qstrConfigValue.toStdString().c_str());
+  qstrConfigValue = getenv( "GDAL_SWATH_SIZE" );
+  if ( !qstrConfigValue.isEmpty() )
+    CPLSetConfigOption( "GDAL_SWATH_SIZE", qstrConfigValue.toStdString().c_str() );
 
-  qstrConfigValue = getenv("GDAL_FILENAME_IS_UTF8");
-  if (!qstrConfigValue.isEmpty())
-    CPLSetConfigOption("GDAL_FILENAME_IS_UTF8", qstrConfigValue.toStdString().c_str());
+  qstrConfigValue = getenv( "GDAL_FILENAME_IS_UTF8" );
+  if ( !qstrConfigValue.isEmpty() )
+    CPLSetConfigOption( "GDAL_FILENAME_IS_UTF8", qstrConfigValue.toStdString().c_str() );
 
-  qstrConfigValue = getenv("OGR_SQLITE_PRAGMA");
-  if (!qstrConfigValue.isEmpty())
-    CPLSetConfigOption("OGR_SQLITE_PRAGMA", qstrConfigValue.toStdString().c_str());
+  qstrConfigValue = getenv( "OGR_SQLITE_PRAGMA" );
+  if ( !qstrConfigValue.isEmpty() )
+    CPLSetConfigOption( "OGR_SQLITE_PRAGMA", qstrConfigValue.toStdString().c_str() );
 
-  qstrConfigValue = getenv("OGR_SQLITE_JOURNAL");
-  if (!qstrConfigValue.isEmpty())
-    CPLSetConfigOption("OGR_SQLITE_JOURNAL", qstrConfigValue.toStdString().c_str());
+  qstrConfigValue = getenv( "OGR_SQLITE_JOURNAL" );
+  if ( !qstrConfigValue.isEmpty() )
+    CPLSetConfigOption( "OGR_SQLITE_JOURNAL", qstrConfigValue.toStdString().c_str() );
 
-  qstrConfigValue = getenv("OGR_SQLITE_SYNCHRONOUS");
-  if (!qstrConfigValue.isEmpty())
-    CPLSetConfigOption("OGR_SQLITE_SYNCHRONOUS", qstrConfigValue.toStdString().c_str());
+  qstrConfigValue = getenv( "OGR_SQLITE_SYNCHRONOUS" );
+  if ( !qstrConfigValue.isEmpty() )
+    CPLSetConfigOption( "OGR_SQLITE_SYNCHRONOUS", qstrConfigValue.toStdString().c_str() );
 
-  qstrConfigValue = getenv("CPL_DEBUG");
-  if (!qstrConfigValue.isEmpty())
-    CPLSetConfigOption("CPL_DEBUG", qstrConfigValue.toStdString().c_str());
+  qstrConfigValue = getenv( "CPL_DEBUG" );
+  if ( !qstrConfigValue.isEmpty() )
+    CPLSetConfigOption( "CPL_DEBUG", qstrConfigValue.toStdString().c_str() );
 
-  qstrConfigValue = getenv("CPL_LOG_ERRORS");
-  if (!qstrConfigValue.isEmpty())
-    CPLSetConfigOption("CPL_LOG_ERRORS", qstrConfigValue.toStdString().c_str());
+  qstrConfigValue = getenv( "CPL_LOG_ERRORS" );
+  if ( !qstrConfigValue.isEmpty() )
+    CPLSetConfigOption( "CPL_LOG_ERRORS", qstrConfigValue.toStdString().c_str() );
 
-  qstrConfigValue = getenv("CPL_LOG");
-  if (!qstrConfigValue.isEmpty())
-    CPLSetConfigOption("CPL_LOG", qstrConfigValue.toStdString().c_str());
+  qstrConfigValue = getenv( "CPL_LOG" );
+  if ( !qstrConfigValue.isEmpty() )
+    CPLSetConfigOption( "CPL_LOG", qstrConfigValue.toStdString().c_str() );
 
   QgsApplication::createDatabase(); //init qgis.db (e.g. necessary for user crs)
 
@@ -520,7 +520,7 @@ bool QgsServer::init(const QString& strTenant)
   if ( projectFileInfo.exists() )
   {
     defaultConfigFilePath = projectFileInfo.absoluteFilePath();
-    QgsMessageLog::logMessage( QStringLiteral("Using default project file: %1").arg(defaultConfigFilePath), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
+    QgsMessageLog::logMessage( QStringLiteral( "Using default project file: %1" ).arg( defaultConfigFilePath ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
   }
   else
   {
@@ -537,34 +537,34 @@ bool QgsServer::init(const QString& strTenant)
   sCapabilitiesCache = new QgsCapabilitiesCache();
 
   // Initialize config cache
-  QgsConfigCache::initialize(sSettings);
+  QgsConfigCache::initialize( sSettings );
 
   QgsFontUtils::loadStandardTestFonts( QStringList() << QStringLiteral( "Roman" ) << QStringLiteral( "Bold" ) );
 
-  QgsMessageLog::logMessage("([a]tapa) This service has been modified by the great and powerful Ender. Go ahead and enjoy!", QStringLiteral("Server"), Qgis::Info);
+  QgsMessageLog::logMessage( "([a]tapa) This service has been modified by the great and powerful Ender. Go ahead and enjoy!", QStringLiteral( "Server" ), Qgis::Info );
 
   QString strFontPath = sSettings->fontsDirectory();
-  if (!strFontPath.isEmpty())
+  if ( !strFontPath.isEmpty() )
   {
-    QgsMessageLog::logMessage("([a]tapa) Font directory: " + strFontPath, QStringLiteral("Server"), Qgis::Info);
+    QgsMessageLog::logMessage( "([a]tapa) Font directory: " + strFontPath, QStringLiteral( "Server" ), Qgis::Info );
 
-    int iLoaded = QgsFontUtils::loadLocalResourceFonts(strFontPath);
+    int iLoaded = QgsFontUtils::loadLocalResourceFonts( strFontPath );
 
-    QgsMessageLog::logMessage("([a]tapa) Loaded additional fonts: " + QString::number(iLoaded), QStringLiteral("Server"), Qgis::Info);
+    QgsMessageLog::logMessage( "([a]tapa) Loaded additional fonts: " + QString::number( iLoaded ), QStringLiteral( "Server" ), Qgis::Info );
   }
 
   sServiceRegistry = new QgsServiceRegistry();
 
   sServerInterface = new QgsServerInterfaceImpl( sCapabilitiesCache, sServiceRegistry, sSettings(), strTenant );
-  sCrypto.setKey(Q_UINT64_C(0x0c2ad4a4acb9f023));
+  sCrypto.setKey( Q_UINT64_C( 0x0c2ad4a4acb9f023 ) );
 
-  if (!sSettings->cacheDirectory().isEmpty() && sSettings->sbUseCache())
+  if ( !sSettings->cacheDirectory().isEmpty() && sSettings->sbUseCache() )
   {
-    QString strCacheDirectory = QDir(sSettings->cacheDirectory()).filePath("sb");
-    QgsMessageLog::logMessage(QStringLiteral("([a]tapa) Initializing server cache in directory: %1").arg(strCacheDirectory), QStringLiteral("Server"), Qgis::Info);
+    QString strCacheDirectory = QDir( sSettings->cacheDirectory() ).filePath( "sb" );
+    QgsMessageLog::logMessage( QStringLiteral( "([a]tapa) Initializing server cache in directory: %1" ).arg( strCacheDirectory ), QStringLiteral( "Server" ), Qgis::Info );
 
-    sSbServerCacheFilter = new sbServerCacheFilter(sServerInterface, strCacheDirectory);
-    sServerInterface->registerServerCache(sSbServerCacheFilter, 1);
+    sSbServerCacheFilter = new sbServerCacheFilter( sServerInterface, strCacheDirectory );
+    sServerInterface->registerServerCache( sSbServerCacheFilter, 1 );
   }
 
   // Load service module
@@ -627,7 +627,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
     }
     catch ( QgsMapServiceException &e )
     {
-      QgsMessageLog::logMessage( QStringLiteral("Parse input exception: %1").arg(e.message()), QStringLiteral( "Server" ), Qgis::MessageLevel::Critical );
+      QgsMessageLog::logMessage( QStringLiteral( "Parse input exception: %1" ).arg( e.message() ), QStringLiteral( "Server" ), Qgis::MessageLevel::Critical );
       requestHandler.setServiceException( e );
     }
 
@@ -676,29 +676,29 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
         {
           const QString configFilePath = configPath( *sConfigFilePath, params.map() );
 
-          if (configFilePath.isEmpty())
+          if ( configFilePath.isEmpty() )
           {
             bool bError = true;
 
             QString serviceString = params.service();
-            if (!serviceString.isEmpty() && serviceString.compare("sb", Qt::CaseInsensitive) == 0)
+            if ( !serviceString.isEmpty() && serviceString.compare( "sb", Qt::CaseInsensitive ) == 0 )
             {
               QString requestString = params.request();
-              if (!requestString.isEmpty() && 
-                 (requestString.compare("GetServerInfo", Qt::CaseInsensitive) == 0 || 
-                 requestString.compare("GetServerProcessId", Qt::CaseInsensitive) == 0 || 
-                 requestString.compare("SetPreloadProjects", Qt::CaseInsensitive) == 0 ||
-                 requestString.compare("SetUnloadProjects", Qt::CaseInsensitive) == 0))
+              if ( !requestString.isEmpty() &&
+                   ( requestString.compare( "GetServerInfo", Qt::CaseInsensitive ) == 0 ||
+                     requestString.compare( "GetServerProcessId", Qt::CaseInsensitive ) == 0 ||
+                     requestString.compare( "SetPreloadProjects", Qt::CaseInsensitive ) == 0 ||
+                     requestString.compare( "SetUnloadProjects", Qt::CaseInsensitive ) == 0 ) )
                 bError = false;
             }
 
-            if(bError)
-              throw QgsServerException(QStringLiteral("Project file path is empty!"));
+            if ( bError )
+              throw QgsServerException( QStringLiteral( "Project file path is empty!" ) );
           }
           else
           {
-            if(mSbUnloadWatcher.isUnloaded(configFilePath))
-              throw QgsServerException(QStringLiteral("Project has been marked unloaded!"));
+            if ( mSbUnloadWatcher.isUnloaded( configFilePath ) )
+              throw QgsServerException( QStringLiteral( "Project has been marked unloaded!" ) );
 
             // load the project if needed and not empty
             // Note that  QgsConfigCache::project( ... ) call QgsProject::setInstance(...)
@@ -736,7 +736,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
           //Service parameter
           QString serviceString = params.service();
 
-          if (!serviceString.isEmpty() && serviceString.compare("sb", Qt::CaseInsensitive) == 0)
+          if ( !serviceString.isEmpty() && serviceString.compare( "sb", Qt::CaseInsensitive ) == 0 )
           {
             // empty project doesn't matter at this point
           }
@@ -745,14 +745,14 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
             throw QgsServerException( QStringLiteral( "Project file error. For OWS services: please provide a SERVICE and a MAP parameter pointing to a valid QGIS project file" ) );
           }
 
-          if (serviceString.isEmpty())
+          if ( serviceString.isEmpty() )
           {
             // SERVICE not mandatory for WMS 1.3.0 GetMap & GetFeatureInfo
             QString requestString = params.request();
             requestString = requestString.toLower();
-            if (requestString == QLatin1String("getmap") || requestString == QLatin1String("getfeatureinfo"))
+            if ( requestString == QLatin1String( "getmap" ) || requestString == QLatin1String( "getfeatureinfo" ) )
             {
-              serviceString = QStringLiteral("WMS");
+              serviceString = QStringLiteral( "WMS" );
             }
           }
 
@@ -765,11 +765,11 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
           }
 
           // Lookup for service
-          QgsService *service = sServiceRegistry->getService(serviceString, versionString, true);
-          if (service == NULL)
-            service = sServiceRegistry->getService(serviceString.toUpper(), versionString, true);
-          if (service == NULL)
-            service = sServiceRegistry->getService(serviceString.toLower(), versionString);
+          QgsService *service = sServiceRegistry->getService( serviceString, versionString, true );
+          if ( service == NULL )
+            service = sServiceRegistry->getService( serviceString.toUpper(), versionString, true );
+          if ( service == NULL )
+            service = sServiceRegistry->getService( serviceString.toLower(), versionString );
           if ( service )
           {
             service->executeRequest( request, responseDecorator, project, sbJustLoaded );
@@ -778,7 +778,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
           {
             QStringList listServices = sServiceRegistry->sbGetRegisteredServices();
             throw QgsOgcServiceException( QStringLiteral( "Service configuration error" ),
-                                          QStringLiteral( "Service unknown or unsupported. Current supported services: %1, or use a WFS3 (OGC API Features) endpoint" ).arg(listServices.join(',')));
+                                          QStringLiteral( "Service unknown or unsupported. Current supported services: %1, or use a WFS3 (OGC API Features) endpoint" ).arg( listServices.join( ',' ) ) );
           }
         }
       }
@@ -791,26 +791,26 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
       catch ( QgsException &ex )
       {
         // Internal server error
-        QgsMessageLog::logMessage(QStringLiteral("QgsException: %1 | %2").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
-        response.sendError(500, QString(ex.what()));
+        QgsMessageLog::logMessage( QStringLiteral( "QgsException: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+        response.sendError( 500, QString( ex.what() ) );
       }
-      catch (std::runtime_error &ex)
+      catch ( std::runtime_error &ex )
       {
         // Internal server error
-        QgsMessageLog::logMessage(QStringLiteral("RuntimeError: %1 | %2").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
-        response.sendError(500, QString(ex.what()));
+        QgsMessageLog::logMessage( QStringLiteral( "RuntimeError: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+        response.sendError( 500, QString( ex.what() ) );
       }
-      catch (std::exception &ex)
+      catch ( std::exception &ex )
       {
         // Internal server error
-        QgsMessageLog::logMessage(QStringLiteral("Exception: %1 | %2").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
-        response.sendError(500, QString(ex.what()));
+        QgsMessageLog::logMessage( QStringLiteral( "Exception: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+        response.sendError( 500, QString( ex.what() ) );
       }
-      catch (...)
+      catch ( ... )
       {
         // Internal server error
-        QgsMessageLog::logMessage(QStringLiteral("Unknown exception: %1").arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
-        response.sendError(500, QStringLiteral("Unknown exception"));
+        QgsMessageLog::logMessage( QStringLiteral( "Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+        response.sendError( 500, QStringLiteral( "Unknown exception" ) );
       }
     }
 
@@ -834,7 +834,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
 
   if ( logLevel == Qgis::MessageLevel::Info )
   {
-    QgsMessageLog::logMessage( QStringLiteral("Request finished in %1").arg(QString::number( QgsApplication::profiler()->profileTime( QStringLiteral( "handleRequest" ), QStringLiteral( "server" ) ) * 1000.0 ) + " ms"), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
+    QgsMessageLog::logMessage( QStringLiteral( "Request finished in %1" ).arg( QString::number( QgsApplication::profiler()->profileTime( QStringLiteral( "handleRequest" ), QStringLiteral( "server" ) ) * 1000.0 ) + " ms" ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
     if ( sSettings->logProfile() )
     {
       std::function <void( const QModelIndex &, int )> profileFormatter;

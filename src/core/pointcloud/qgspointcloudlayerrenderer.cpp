@@ -483,10 +483,10 @@ int QgsPointCloudLayerRenderer::renderNodesSorted( const QVector<IndexedPointClo
     sortedByteArray.append( allByteArrays.mid( pair.first * recordSize, recordSize ) );
 
   std::unique_ptr<QgsPointCloudBlock> bigBlock { new QgsPointCloudBlock( pointCount,
-        blockAttributes,
-        sortedByteArray,
-        blockScale,
-        blockOffset ) };
+      blockAttributes,
+      sortedByteArray,
+      blockScale,
+      blockOffset ) };
 
   QgsVector3D contextScale = context.scale();
   QgsVector3D contextOffset = context.offset();

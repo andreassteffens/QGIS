@@ -796,7 +796,7 @@ bool QgsWFSProvider::setLayerPropertiesListFromDescribeFeature( QDomDocument &de
       layerProperties.mNamespaceURI = mShared->mCaps.getNamespaceForTypename( typeName );
       layerProperties.mNamespacePrefix = QgsWFSUtils::nameSpacePrefix( typeName );
 
-      if ( !layerProperties.mNamespacePrefix.isEmpty() && layerProperties.mNamespacePrefix.compare("ucgml", Qt::CaseInsensitive) == 0 )
+      if ( !layerProperties.mNamespacePrefix.isEmpty() && layerProperties.mNamespacePrefix.compare( "ucgml", Qt::CaseInsensitive ) == 0 )
         layerProperties.mNamespacePrefix = QString();
     }
 
@@ -1710,29 +1710,29 @@ bool QgsWFSProvider::readAttributesFromSchema( QDomDocument &schemaDoc,
     const QRegularExpression gmlPT( QStringLiteral( "gml:(.*)PropertyType" ) );
     const QRegularExpression gmlRefProperty( QStringLiteral( "gml:(.*)Property" ) );
 
-    if ( ! foundGeometryAttribute && ( type.indexOf(QRegularExpression( "(.*):CompositePolygonGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0
-                                    || type.indexOf(QRegularExpression( "(.*):BoundaryGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0
-                                    || type.indexOf(QRegularExpression( "(.*):RasterGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0
-                                    || type.indexOf(QRegularExpression( "(.*):PolygonGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0 ) )
+    if ( ! foundGeometryAttribute && ( type.indexOf( QRegularExpression( "(.*):CompositePolygonGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0
+                                       || type.indexOf( QRegularExpression( "(.*):BoundaryGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0
+                                       || type.indexOf( QRegularExpression( "(.*):RasterGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0
+                                       || type.indexOf( QRegularExpression( "(.*):PolygonGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0 ) )
     {
       foundGeometryAttribute = true;
       geometryAttribute = name;
       geomType = QgsWkbTypes::Polygon;
     }
-    else if ( ! foundGeometryAttribute && ( type.indexOf(QRegularExpression( "(.*):OrientedPointGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0
-                                         || type.indexOf(QRegularExpression( "(.*):TextPointGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0 ) )
+    else if ( ! foundGeometryAttribute && ( type.indexOf( QRegularExpression( "(.*):OrientedPointGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0
+                                            || type.indexOf( QRegularExpression( "(.*):TextPointGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0 ) )
     {
       foundGeometryAttribute = true;
       geometryAttribute = name;
       geomType = QgsWkbTypes::Point;
     }
-    else if ( ! foundGeometryAttribute && type.indexOf(QRegularExpression( "(.*):PolylineGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0 )
+    else if ( ! foundGeometryAttribute && type.indexOf( QRegularExpression( "(.*):PolylineGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0 )
     {
       foundGeometryAttribute = true;
       geometryAttribute = name;
       geomType = QgsWkbTypes::LineString;
     }
-    else if ( ! foundGeometryAttribute && type.indexOf(QRegularExpression( "(.*):CompositePolylineGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0)
+    else if ( ! foundGeometryAttribute && type.indexOf( QRegularExpression( "(.*):CompositePolylineGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0 )
     {
       foundGeometryAttribute = true;
       geometryAttribute = name;
@@ -1813,10 +1813,10 @@ bool QgsWFSProvider::readAttributesFromSchema( QDomDocument &schemaDoc,
   {
     geomType = QgsWkbTypes::NoGeometry;
 
-    if (!mShared->mURI.sbFallbackGeometryName().isEmpty() && !mShared->mURI.sbFallbackGeometryType().isEmpty())
+    if ( !mShared->mURI.sbFallbackGeometryName().isEmpty() && !mShared->mURI.sbFallbackGeometryType().isEmpty() )
     {
-      QgsWkbTypes::Type fallbackType = QgsWkbTypes::parseType(mShared->mURI.sbFallbackGeometryType());
-      if (fallbackType != QgsWkbTypes::Type::Unknown)
+      QgsWkbTypes::Type fallbackType = QgsWkbTypes::parseType( mShared->mURI.sbFallbackGeometryType() );
+      if ( fallbackType != QgsWkbTypes::Type::Unknown )
       {
         geometryAttribute = mShared->mURI.sbFallbackGeometryName();
         geomType = fallbackType;

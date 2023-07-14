@@ -148,9 +148,9 @@ class CORE_EXPORT QgsJsonExporter
      */
     QgsCoordinateReferenceSystem sourceCrs() const;
 
-	void sbSetDestinationCrs( const QgsCoordinateReferenceSystem &crs ) SIP_SKIP;
-	
-	QgsCoordinateReferenceSystem sbDestinationCrs() const SIP_SKIP;
+    void sbSetDestinationCrs( const QgsCoordinateReferenceSystem &crs ) SIP_SKIP;
+
+    QgsCoordinateReferenceSystem sbDestinationCrs() const SIP_SKIP;
 
     /**
      * Sets whether geometries should be transformed in EPSG 4326 (default
@@ -223,8 +223,8 @@ class CORE_EXPORT QgsJsonExporter
      * \see exportFeatures()
      */
     ordered_json exportFeatureToJsonObject( const QgsFeature &feature,
-                                    const QVariantMap &extraProperties = QVariantMap(),
-                                    const QVariant &id = QVariant() ) const SIP_SKIP;
+                                            const QVariantMap &extraProperties = QVariantMap(),
+                                            const QVariant &id = QVariant() ) const SIP_SKIP;
 
 
     /**
@@ -275,7 +275,7 @@ class CORE_EXPORT QgsJsonExporter
 
     QgsCoordinateTransform mTransform;
 
-	QgsCoordinateReferenceSystem mSbDestCrs;
+    QgsCoordinateReferenceSystem mSbDestCrs;
 
     bool mAttributeDisplayName = false;
 

@@ -57,12 +57,12 @@ class SERVER_EXPORT QgsServer : public QObject
      * Creates the server instance
      */
 
-	QgsServer();
-    QgsServer(const QString& strTenant);
-	~QgsServer();
+    QgsServer();
+    QgsServer( const QString &strTenant );
+    ~QgsServer();
 
-	
-	const QString& sbTenant() SIP_SKIP; 
+
+    const QString &sbTenant() SIP_SKIP;
 
     /**
      * Set environment variable
@@ -90,7 +90,7 @@ class SERVER_EXPORT QgsServer : public QObject
     //! Returns a pointer to the server interface
     QgsServerInterfaceImpl SIP_PYALTERNATIVETYPE( QgsServerInterface ) *serverInterface() { return sServerInterface; }
 
-	int sbPreloadProjects();
+    int sbPreloadProjects();
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
 
@@ -107,8 +107,8 @@ class SERVER_EXPORT QgsServer : public QObject
     QgsServer &operator=( const QgsServer & );
 #endif
 
-	//! Server initialization
-    static bool init(const QString& strTenant);
+    //! Server initialization
+    static bool init( const QString &strTenant );
 
     /**
      * Returns the configuration file path.
@@ -139,7 +139,7 @@ class SERVER_EXPORT QgsServer : public QObject
     //! Create and return a request handler instance
     static QgsRequestHandler *createRequestHandler( const QgsServerRequest &request, QgsServerResponse &response );
 
-	  static QString sbGetDecryptedProjectPath(QString strPath);
+    static QString sbGetDecryptedProjectPath( QString strPath );
 
     // Return the server name
     static QString &serverName();
@@ -148,19 +148,19 @@ class SERVER_EXPORT QgsServer : public QObject
     static QString *sConfigFilePath;
     static QgsCapabilitiesCache *sCapabilitiesCache;
     static QgsServerInterfaceImpl *sServerInterface;
-	  static sbServerCacheFilter *sSbServerCacheFilter;
+    static sbServerCacheFilter *sSbServerCacheFilter;
     //! Initialization must run once for all servers
     static bool sInitialized;
 
     //! service registry
     static QgsServiceRegistry *sServiceRegistry;
 
-	  QString mSbTenant;
-	  sbUnloadProjectFileWatcher mSbUnloadWatcher;
+    QString mSbTenant;
+    sbUnloadProjectFileWatcher mSbUnloadWatcher;
 
     //! Initialize locale
     static void initLocale();
 
-	  static SimpleCrypt sCrypto;
+    static SimpleCrypt sCrypto;
 };
 #endif // QGSSERVER_H

@@ -45,11 +45,11 @@ class QgsLayerRestorer
      */
     QgsLayerRestorer( const QgsWmsRenderContext &context );
 
-	/**
-	 *
-	 *
-	 */
-	void sbUpdateScaleBasedVisibility(QgsWmsRenderContext &context, double dScale);
+    /**
+     *
+     *
+     */
+    void sbUpdateScaleBasedVisibility( QgsWmsRenderContext &context, double dScale );
 
     /**
      * Destructor.
@@ -68,14 +68,14 @@ class QgsLayerRestorer
       QString mFilter;
       QgsFeatureIds mSelectedFeatureIds;
 
-	  bool mSetLegendItemStates;
-	  QMultiMap<QString, bool> mLegendItemStates;
+      bool mSetLegendItemStates;
+      QMultiMap<QString, bool> mLegendItemStates;
 
-	  bool mSetLabelVisibility;
-	  bool mLabelVisibility;
+      bool mSetLabelVisibility;
+      bool mLabelVisibility;
 
-	  bool mSetScaleBasedVisibility;
-	  bool mScaleBasedVisibility;
+      bool mSetScaleBasedVisibility;
+      bool mScaleBasedVisibility;
     };
 
     QMap<QgsMapLayer *, QgsLayerSettings> mLayerSettings;
@@ -99,11 +99,11 @@ namespace QgsWms
        */
       QgsWmsRestorer( const QgsWmsRenderContext &context );
 
-	  /**
-	  *
-	  *
-	  */
-	  void sbUpdateScaleBasedVisibility( QgsWmsRenderContext &context, double dScale ) { mLayerRestorer.sbUpdateScaleBasedVisibility (context, dScale ); }
+      /**
+      *
+      *
+      */
+      void sbUpdateScaleBasedVisibility( QgsWmsRenderContext &context, double dScale ) { mLayerRestorer.sbUpdateScaleBasedVisibility( context, dScale ); }
 
       /**
        * Default destructor.

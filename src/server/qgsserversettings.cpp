@@ -206,7 +206,7 @@ void QgsServerSettings::initSettings()
                                            QStringLiteral( "/unload_watcher/interval" ),
                                            QVariant::Int,
                                            QVariant( 8000 ),
-	                                         QVariant()
+                                           QVariant()
                                          };
   mSettings[sUnloadWatcherInterval.envVar] = sUnloadWatcherInterval;
 
@@ -216,7 +216,7 @@ void QgsServerSettings::initSettings()
                               QStringLiteral( "Specify the fonts directory" ),
                               QStringLiteral( "/fonts/directory" ),
                               QVariant::String,
-                              QVariant(""),
+                              QVariant( "" ),
                               QVariant()
                             };
   mSettings[sFontsDir.envVar] = sFontsDir;
@@ -234,13 +234,13 @@ void QgsServerSettings::initSettings()
 
   // handling FORWARDED-FOR header
   const Setting sIgnoreForwardedForHeader = { QgsServerSettingsEnv::QGIS_SERVER_IGNORE_FORWARDED_FOR_HEADER,
-                                QgsServerSettingsEnv::DEFAULT_VALUE,
-                                QStringLiteral( "Ignore FORWARDED-FOR header when building service URLs" ),
-                                QString(),
-                                QVariant::Bool,
-                                QVariant(false),
-                                QVariant()
-  };
+                                              QgsServerSettingsEnv::DEFAULT_VALUE,
+                                              QStringLiteral( "Ignore FORWARDED-FOR header when building service URLs" ),
+                                              QString(),
+                                              QVariant::Bool,
+                                              QVariant( false ),
+                                              QVariant()
+                                            };
   mSettings[sIgnoreForwardedForHeader.envVar] = sIgnoreForwardedForHeader;
 
   // max height
@@ -570,21 +570,21 @@ void QgsServerSettings::logSummary() const
 
 QStringList QgsServerSettings::getSettings() const
 {
-	QStringList qstrlstSettings;
+  QStringList qstrlstSettings;
 
-	const QMetaEnum metaEnumSrc(QMetaEnum::fromType<QgsServerSettingsEnv::Source>());
-	const QMetaEnum metaEnumEnv(QMetaEnum::fromType<QgsServerSettingsEnv::EnvVar>());
+  const QMetaEnum metaEnumSrc( QMetaEnum::fromType<QgsServerSettingsEnv::Source>() );
+  const QMetaEnum metaEnumEnv( QMetaEnum::fromType<QgsServerSettingsEnv::EnvVar>() );
 
-	for (Setting s : mSettings)
-	{
-		const QString src = metaEnumSrc.valueToKey(s.src);
-		const QString var = metaEnumEnv.valueToKey(s.envVar);
+  for ( Setting s : mSettings )
+  {
+    const QString src = metaEnumSrc.valueToKey( s.src );
+    const QString var = metaEnumEnv.valueToKey( s.envVar );
 
-		const QString msg = var + "=" + value(s.envVar).toString();
-		qstrlstSettings.append(msg);
-	}
+    const QString msg = var + "=" + value( s.envVar ).toString();
+    qstrlstSettings.append( msg );
+  }
 
-	return qstrlstSettings;
+  return qstrlstSettings;
 }
 
 // getter
@@ -605,22 +605,22 @@ int QgsServerSettings::maxThreads() const
 
 int QgsServerSettings::sbUnloadWatcherInterval() const
 {
-	return value(QgsServerSettingsEnv::QGIS_SERVER_SB_UNLOAD_WATCHER_INTERVAL).toInt();
+  return value( QgsServerSettingsEnv::QGIS_SERVER_SB_UNLOAD_WATCHER_INTERVAL ).toInt();
 }
 
 QString QgsServerSettings::fontsDirectory() const
 {
-	return value(QgsServerSettingsEnv::QGIS_SERVER_FONTS_DIRECTORY).toString();
+  return value( QgsServerSettingsEnv::QGIS_SERVER_FONTS_DIRECTORY ).toString();
 }
 
 bool QgsServerSettings::sbUseCache() const
 {
-	return value(QgsServerSettingsEnv::QGIS_SERVER_USE_SB_CACHE).toBool();
+  return value( QgsServerSettingsEnv::QGIS_SERVER_USE_SB_CACHE ).toBool();
 }
 
 bool QgsServerSettings::sbIgnoreForwardedForHeader() const
 {
-  return value(QgsServerSettingsEnv::QGIS_SERVER_IGNORE_FORWARDED_FOR_HEADER).toBool();
+  return value( QgsServerSettingsEnv::QGIS_SERVER_IGNORE_FORWARDED_FOR_HEADER ).toBool();
 }
 
 QString QgsServerSettings::logFile() const

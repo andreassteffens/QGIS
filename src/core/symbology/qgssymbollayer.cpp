@@ -718,7 +718,7 @@ QgsMapUnitScale QgsMarkerSymbolLayer::mapUnitScale() const
   return QgsMapUnitScale();
 }
 
-double QgsMarkerSymbolLayer::sbPainterSize(QgsSymbolRenderContext &context) const
+double QgsMarkerSymbolLayer::sbPainterSize( QgsSymbolRenderContext &context ) const
 {
   return 24;
 }

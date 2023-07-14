@@ -109,17 +109,17 @@ void TestQgsHtmlWidgetWrapper::testExpressionNewLine()
 {
   QgsHtmlWidgetWrapper *htmlWrapper = new QgsHtmlWidgetWrapper( nullptr, nullptr, nullptr );
   const QString html { QStringLiteral( R"html(First line<br>
-Second line)html" ) };
-  htmlWrapper->setHtmlCode( html );
+                                       Second line)html" ) };
+                       htmlWrapper->setHtmlCode( html );
 
-  QgsWebView *webView = qobject_cast<QgsWebView *>( htmlWrapper->widget() );
-  Q_ASSERT( webView );
-  Q_ASSERT( ! htmlWrapper->needsGeometry() );
-  QCOMPARE( webView->page()->mainFrame()->toPlainText(), R"(First line
+                       QgsWebView *webView = qobject_cast<QgsWebView *>( htmlWrapper->widget() );
+                       Q_ASSERT( webView );
+                       Q_ASSERT( ! htmlWrapper->needsGeometry() );
+                       QCOMPARE( webView->page()->mainFrame()->toPlainText(), R"(First line
 Second line)" );
-}
+                     }
 
 #endif
 
-QGSTEST_MAIN( TestQgsHtmlWidgetWrapper )
+  QGSTEST_MAIN( TestQgsHtmlWidgetWrapper )
 #include "testqgshtmlwidgetwrapper.moc"

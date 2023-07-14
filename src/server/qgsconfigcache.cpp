@@ -22,7 +22,6 @@
 #include "qgsserverprojectutils.h"
 #include "qgsserverexception.h"
 #include "qgsstorebadlayerinfo.h"
-#include "qgsserverprojectutils.h"
 
 #include "sbutils.h"
 
@@ -105,26 +104,26 @@ QStringList QgsConfigCache::sbLoadedProjects()
   QStringList listProjects;
 
   QList<QString> listPaths = mProjectCache.keys();
-  for (int i = 0; i < listPaths.count(); i++)
-    listProjects.append(listPaths[i]);
+  for ( int i = 0; i < listPaths.count(); i++ )
+    listProjects.append( listPaths[i] );
 
   return listProjects;
 }
 
 void QgsConfigCache::sbPurge()
 {
-  while (!mProjectCache.isEmpty())
+  while ( !mProjectCache.isEmpty() )
   {
     QString strKey = *mProjectCache.keys().begin();
-    removeChangedEntry(strKey);
+    removeChangedEntry( strKey );
   }
 }
 
-const QgsProject *QgsConfigCache::project( const QString &path, bool* pSbJustLoaded, const QgsServerSettings *settings )
+const QgsProject *QgsConfigCache::project( const QString &path, bool *pSbJustLoaded, const QgsServerSettings *settings )
 {
   *pSbJustLoaded = false;
 
-  QString strLoadingPath = sbGetStandardizedPath(path);
+  QString strLoadingPath = sbGetStandardizedPath( path );
 
   if ( !mProjectCache[ strLoadingPath ] )
   {
@@ -139,17 +138,17 @@ const QgsProject *QgsConfigCache::project( const QString &path, bool* pSbJustLoa
     QgsStoreBadLayerInfo *badLayerHandler = new QgsStoreBadLayerInfo();
     prj->setBadLayerHandler( badLayerHandler );
 
-    QObject::connect(prj.get(), &QgsProject::readProject, this, &QgsConfigCache::loadProjectCanvas);
-    QObject::connect(prj.get(), &QgsProject::oldProjectVersionWarning, this, &QgsConfigCache::logOldProjectVersionWarning);
-    QObject::connect(prj.get(), &QgsProject::loadingLayerMessageReceived, this, &QgsConfigCache::logLoadingLayerMessage);
-    QObject::connect(prj.get(), &QgsProject::cleared, this, &QgsConfigCache::logProjectCleared);
+    QObject::connect( prj.get(), &QgsProject::readProject, this, &QgsConfigCache::loadProjectCanvas );
+    QObject::connect( prj.get(), &QgsProject::oldProjectVersionWarning, this, &QgsConfigCache::logOldProjectVersionWarning );
+    QObject::connect( prj.get(), &QgsProject::loadingLayerMessageReceived, this, &QgsConfigCache::logLoadingLayerMessage );
+    QObject::connect( prj.get(), &QgsProject::cleared, this, &QgsConfigCache::logProjectCleared );
 
     mSbLoadingPath = strLoadingPath;
 
-    if (!mSbProjectWarnings.contains(mSbLoadingPath))
+    if ( !mSbProjectWarnings.contains( mSbLoadingPath ) )
     {
-      std::unique_ptr<QStringList> list(new QStringList());
-      mSbProjectWarnings.insert(mSbLoadingPath, list.release());
+      std::unique_ptr<QStringList> list( new QStringList() );
+      mSbProjectWarnings.insert( mSbLoadingPath, list.release() );
     }
 
     // Always skip original styles storage
@@ -227,54 +226,54 @@ const QgsProject *QgsConfigCache::project( const QString &path, bool* pSbJustLoa
   return entry ? entry->second.get() : nullptr;
 }
 
-QStringList *QgsConfigCache::sbProjectWarnings(const QString &path)
+QStringList *QgsConfigCache::sbProjectWarnings( const QString &path )
 {
-  QString strPath = sbGetStandardizedPath(path);
+  QString strPath = sbGetStandardizedPath( path );
 
-  if (mSbProjectWarnings[strPath])
+  if ( mSbProjectWarnings[strPath] )
     return mSbProjectWarnings[strPath];
 
   return NULL;
 }
 
-QgsMapSettings *QgsConfigCache::sbMapSettings(const QString &path)
+QgsMapSettings *QgsConfigCache::sbMapSettings( const QString &path )
 {
-  QString strPath = sbGetStandardizedPath(path);
+  QString strPath = sbGetStandardizedPath( path );
 
-  if (mSbMapSettingsCache.contains(strPath))
+  if ( mSbMapSettingsCache.contains( strPath ) )
     return mSbMapSettingsCache[strPath];
 
   return NULL;
 }
 
-void QgsConfigCache::logOldProjectVersionWarning(const QString &warning)
+void QgsConfigCache::logOldProjectVersionWarning( const QString &warning )
 {
-  if (mSbLoadingPath.isEmpty())
+  if ( mSbLoadingPath.isEmpty() )
     return;
 
-  if (!mSbProjectWarnings.contains(mSbLoadingPath))
+  if ( !mSbProjectWarnings.contains( mSbLoadingPath ) )
     return;
 
-  mSbProjectWarnings[mSbLoadingPath]->append("(WARNING) " + warning);
+  mSbProjectWarnings[mSbLoadingPath]->append( "(WARNING) " + warning );
 }
 
 void QgsConfigCache::logProjectCleared()
 {
-  QgsMessageLog::logMessage(QStringLiteral("([a]tapa) Project has been cleared!"), QStringLiteral("Server"), Qgis::Info);
+  QgsMessageLog::logMessage( QStringLiteral( "([a]tapa) Project has been cleared!" ), QStringLiteral( "Server" ), Qgis::Info );
 }
 
-void QgsConfigCache::logLoadingLayerMessage(const QString &t1, const QList<QgsReadWriteContext::ReadWriteMessage> &listMessages)
+void QgsConfigCache::logLoadingLayerMessage( const QString &t1, const QList<QgsReadWriteContext::ReadWriteMessage> &listMessages )
 {
-  if (mSbLoadingPath.isEmpty())
+  if ( mSbLoadingPath.isEmpty() )
     return;
 
-  if (!mSbProjectWarnings.contains(mSbLoadingPath))
+  if ( !mSbProjectWarnings.contains( mSbLoadingPath ) )
     return;
 
-  for (int i = 0; i < listMessages.size(); i++)
+  for ( int i = 0; i < listMessages.size(); i++ )
   {
     QString strLevel = "NOLEVEL";
-    switch (listMessages[i].level())
+    switch ( listMessages[i].level() )
     {
       case Qgis::Warning:
         strLevel = "WARNING";
@@ -294,34 +293,34 @@ void QgsConfigCache::logLoadingLayerMessage(const QString &t1, const QList<QgsRe
     }
 
     QString qstrMessage = "[Layer '" + t1 + "'] (" + strLevel + ") " + listMessages[i].message();
-    mSbProjectWarnings[mSbLoadingPath]->append(qstrMessage);
+    mSbProjectWarnings[mSbLoadingPath]->append( qstrMessage );
   }
 }
 
-void QgsConfigCache::loadProjectCanvas(const QDomDocument &doc)
+void QgsConfigCache::loadProjectCanvas( const QDomDocument &doc )
 {
-  if (mSbLoadingPath.isEmpty())
+  if ( mSbLoadingPath.isEmpty() )
     return;
 
-  QDomNodeList nodes = doc.elementsByTagName(QStringLiteral("mapcanvas"));
-  if (nodes.count())
+  QDomNodeList nodes = doc.elementsByTagName( QStringLiteral( "mapcanvas" ) );
+  if ( nodes.count() )
   {
     // Search the specific MapCanvas node using the name
-    for (int i = 0; i < nodes.size(); ++i)
+    for ( int i = 0; i < nodes.size(); ++i )
     {
-      QDomElement elementNode = nodes.at(i).toElement();
+      QDomElement elementNode = nodes.at( i ).toElement();
 
-      if (elementNode.hasAttribute(QStringLiteral("name")) && elementNode.attribute(QStringLiteral("name")) == "theMapCanvas")
+      if ( elementNode.hasAttribute( QStringLiteral( "name" ) ) && elementNode.attribute( QStringLiteral( "name" ) ) == "theMapCanvas" )
       {
-        QDomNode node = nodes.at(i);
+        QDomNode node = nodes.at( i );
 
         QgsMapSettings *settings = new QgsMapSettings();
-        settings->readXml(node);
+        settings->readXml( node );
 
-        if(mSbMapSettingsCache.contains(mSbLoadingPath))
-          mSbMapSettingsCache.remove(mSbLoadingPath);
+        if ( mSbMapSettingsCache.contains( mSbLoadingPath ) )
+          mSbMapSettingsCache.remove( mSbLoadingPath );
 
-        mSbMapSettingsCache.insert(mSbLoadingPath, settings);
+        mSbMapSettingsCache.insert( mSbLoadingPath, settings );
 
         break;
       }
@@ -345,7 +344,7 @@ QDomDocument *QgsConfigCache::xmlDocument( const QString &filePath )
     return nullptr;
   }
 
-  QString strPath = sbGetStandardizedPath(filePath);
+  QString strPath = sbGetStandardizedPath( filePath );
 
   // first get cache
   QDomDocument *xmlDoc = mXmlDocumentCache.object( strPath );
@@ -379,18 +378,18 @@ void QgsConfigCache::cacheProject( const QString &path, QgsProject *project )
 
 bool QgsConfigCache::removeEntry( const QString &path )
 {
-  QString strPath = sbGetStandardizedPath(path);
+  QString strPath = sbGetStandardizedPath( path );
 
   bool bRes = mProjectCache.remove( strPath );
 
   //xml document must be removed last, as other config cache destructors may require it
   mXmlDocumentCache.remove( strPath );
 
-  mSbMapSettingsCache.remove(strPath);
-  mSbProjectWarnings.remove(strPath);
+  mSbMapSettingsCache.remove( strPath );
+  mSbProjectWarnings.remove( strPath );
 
   mStrategy->entryRemoved( strPath );
-  
+
   return bRes;
 }
 

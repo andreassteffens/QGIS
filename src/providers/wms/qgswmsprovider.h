@@ -244,7 +244,7 @@ class QgsWmsProvider final: public QgsRasterDataProvider
 
     bool isValid() const override;
 
-    bool getMinMaxScale(double &dMin, double &dMax);
+    bool getMinMaxScale( double &dMin, double &dMax );
 
 #if 0
 
@@ -445,7 +445,7 @@ class QgsWmsProvider final: public QgsRasterDataProvider
     void setSRSQueryItem( QUrlQuery &url );
 
     bool ignoreExtents() const override;
-	
+
     QString mServiceMetadataURL;
 
   private:

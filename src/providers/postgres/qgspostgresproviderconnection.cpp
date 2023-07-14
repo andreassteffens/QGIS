@@ -528,21 +528,21 @@ bool QgsPostgresProviderConnection::spatialIndexExists( const QString &schema, c
   checkCapability( Capability::SpatialIndexExists );
 
   const QList<QVariantList> res = executeSql( QStringLiteral( R"""(SELECT COUNT(*)
-                                                              FROM pg_class t, pg_class i, pg_namespace ns, pg_index ix, pg_attribute a
-                                                              WHERE
-                                                                  t.oid=ix.indrelid
-                                                                  AND t.relnamespace=ns.oid
-                                                                  AND i.oid=ix.indexrelid
-                                                                  AND a.attrelid=t.oid
-                                                                  AND a.attnum=ANY(ix.indkey)
-                                                                  AND t.relkind IN ('r', 'm')
-                                                                  AND ns.nspname=%1
-                                                                  AND t.relname=%2
-                                                                  AND a.attname=%3;
-                                                              )""" ).arg(
-                                    QgsPostgresConn::quotedValue( schema ),
-                                    QgsPostgresConn::quotedValue( name ),
-                                    QgsPostgresConn::quotedValue( geometryColumn ) ) );
+                                  FROM pg_class t, pg_class i, pg_namespace ns, pg_index ix, pg_attribute a
+                                  WHERE
+                                  t.oid=ix.indrelid
+                                        AND t.relnamespace=ns.oid
+                                            AND i.oid=ix.indexrelid
+                                                AND a.attrelid=t.oid
+                                                    AND a.attnum=ANY(ix.indkey)
+                                                        AND t.relkind IN ('r', 'm')
+                                                        AND ns.nspname=%1
+                                                            AND t.relname=%2
+                                                                AND a.attname=%3;
+                                                            )""" ).arg(
+                                  QgsPostgresConn::quotedValue( schema ),
+                                  QgsPostgresConn::quotedValue( name ),
+                                  QgsPostgresConn::quotedValue( geometryColumn ) ) );
   return !res.isEmpty() && !res.at( 0 ).isEmpty() && res.at( 0 ).at( 0 ).toBool();
 }
 
@@ -551,29 +551,29 @@ void QgsPostgresProviderConnection::deleteSpatialIndex( const QString &schema, c
   checkCapability( Capability::DeleteSpatialIndex );
 
   const QList<QVariantList> res = executeSql( QStringLiteral( R"""(SELECT i.relname
-                                                                FROM pg_class t, pg_class i, pg_namespace ns, pg_index ix, pg_attribute a
-                                                                WHERE
-                                                                    t.oid=ix.indrelid
-                                                                    AND t.relnamespace=ns.oid
-                                                                    AND i.oid=ix.indexrelid
-                                                                    AND a.attrelid=t.oid
-                                                                    AND a.attnum=ANY(ix.indkey)
-                                                                    AND t.relkind='r'
-                                                                    AND ns.nspname=%1
-                                                                    AND t.relname=%2
+                                  FROM pg_class t, pg_class i, pg_namespace ns, pg_index ix, pg_attribute a
+                                  WHERE
+                                  t.oid=ix.indrelid
+                                        AND t.relnamespace=ns.oid
+                                            AND i.oid=ix.indexrelid
+                                                AND a.attrelid=t.oid
+                                                    AND a.attnum=ANY(ix.indkey)
+                                                        AND t.relkind='r'
+                                                            AND ns.nspname=%1
+                                                                AND t.relname=%2
                                                                     AND a.attname=%3;
-                                                                )""" ).arg(
-                                    QgsPostgresConn::quotedValue( schema ),
-                                    QgsPostgresConn::quotedValue( name ),
-                                    QgsPostgresConn::quotedValue( geometryColumn ) ) );
+                                                            )""" ).arg(
+                                  QgsPostgresConn::quotedValue( schema ),
+                                  QgsPostgresConn::quotedValue( name ),
+                                  QgsPostgresConn::quotedValue( geometryColumn ) ) );
   if ( res.isEmpty() )
     throw QgsProviderConnectionException( QObject::tr( "No spatial index exists for %1.%2" ).arg( schema, name ) );
 
-  const QString indexName = res.at( 0 ).at( 0 ).toString();
+    const QString indexName = res.at( 0 ).at( 0 ).toString();
 
-  executeSqlPrivate( QStringLiteral( "DROP INDEX %1.%2" ).arg( QgsPostgresConn::quotedIdentifier( schema ),
-                     QgsPostgresConn::quotedIdentifier( indexName ) ), false );
-}
+    executeSqlPrivate( QStringLiteral( "DROP INDEX %1.%2" ).arg( QgsPostgresConn::quotedIdentifier( schema ),
+                       QgsPostgresConn::quotedIdentifier( indexName ) ), false );
+  }
 
 QList<QgsPostgresProviderConnection::TableProperty> QgsPostgresProviderConnection::tables( const QString &schema, const TableFlags &flags ) const
 {
@@ -666,15 +666,15 @@ QList<QgsPostgresProviderConnection::TableProperty> QgsPostgresProviderConnectio
             try
             {
               const QList<QVariantList> pks = executeSqlPrivate( QStringLiteral( R"(
-              WITH pkrelid AS (
-              SELECT indexrelid AS idxri FROM pg_index WHERE indrelid='%1.%2'::regclass AND (indisprimary OR indisunique)
-                ORDER BY CASE WHEN indisprimary THEN 1 ELSE 2 END LIMIT 1)
-              SELECT attname FROM pg_index,pg_attribute, pkrelid
-              WHERE indexrelid=pkrelid.idxri AND indrelid=attrelid AND pg_attribute.attnum=any(pg_index.indkey);
-             )" ).arg( QgsPostgresConn::quotedIdentifier( pr.schemaName ),
-                                                  QgsPostgresConn::quotedIdentifier( pr.tableName ) ), false );
+                                              WITH pkrelid AS (
+                                                SELECT indexrelid AS idxri FROM pg_index WHERE indrelid='%1.%2'::regclass AND (indisprimary OR indisunique)
+                                                    ORDER BY CASE WHEN indisprimary THEN 1 ELSE 2 END LIMIT 1)
+                                              SELECT attname FROM pg_index,pg_attribute, pkrelid
+                                              WHERE indexrelid=pkrelid.idxri AND indrelid=attrelid AND pg_attribute.attnum=any(pg_index.indkey);
+                                                                               )" ).arg( QgsPostgresConn::quotedIdentifier( pr.schemaName ),
+                                              QgsPostgresConn::quotedIdentifier( pr.tableName ) ), false );
               QStringList pkNames;
-              for ( const QVariantList &pk : std::as_const( pks ) )
+            for ( const QVariantList &pk : std::as_const( pks ) )
               {
                 pkNames.push_back( pk.first().toString() );
               }

@@ -168,7 +168,7 @@ bool QgsServerCacheManager::setCachedImage( const QByteArray *img, const QgsProj
   {
     if ( scIterator.value()->setCachedImage( img, project, request, key ) )
     {
-        return true;
+      return true;
     }
   }
   return false;
@@ -203,9 +203,23 @@ bool QgsServerCacheManager::deleteCachedImages( const QgsProject *project ) cons
   return false;
 }
 
+QString QgsServerCacheManager::sbGetProjectCacheId( const QgsProject *project ) const
+{
+  QgsServerCacheFilterMap::const_iterator scIterator;
+  for ( scIterator = mPluginsServerCaches->constBegin(); scIterator != mPluginsServerCaches->constEnd(); ++scIterator )
+  {
+    QString id = scIterator.value()->sbGetProjectCacheId( project );
+    if ( !id.isEmpty() )
+    {
+      return id;
+    }
+  }
+  return "";
+}
+
 void QgsServerCacheManager::registerServerCache( QgsServerCacheFilter *serverCache, int priority )
 {
-    mPluginsServerCaches->insert( priority, serverCache );
+  mPluginsServerCaches->insert( priority, serverCache );
 }
 
 QString QgsServerCacheManager::getCacheKey( bool &cache, QgsAccessControl *accessControl, const QgsServerRequest &request ) const

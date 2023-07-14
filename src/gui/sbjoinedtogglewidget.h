@@ -44,7 +44,7 @@ class GUI_EXPORT sbJoinedToggleWidget : public QWidget, private Ui::sbJoinedTogg
   signals:
 
   private slots:
-    
+
   private:
     QgsMapLayer *mpLayer = nullptr;
 };

@@ -173,82 +173,82 @@ QgsCodeEditorOptionsWidget::QgsCodeEditorOptionsWidget( QWidget *parent )
   } );
 
   mPythonPreview->setText( R"""(def simple_function(x,y,z):
-    """
-    Function docstring
-    """
-    return [1, 1.2, "val", 'a string', {'a': True, 'b': False}]
+                           """
+                           Function docstring
+                           """
+                           return [1, 1.2, "val", 'a string', {'a': True, 'b': False}]
 
-@my_decorator
-def somefunc(param1: str='', param2=0):
-    '''A docstring'''
-    if param1 > param2: # interesting
-        print('Gre\'ater'.lower())
-    return (param2 - param1 + 1 + 0b10l) or None
+                                  @my_decorator
+                                  def somefunc(param1: str='', param2=0):
+                                  '''A docstring'''
+                                  if param1 > param2: # interesting
+                                  print('Gre\'ater'.lower())
+                                  return (param2 - param1 + 1 + 0b10l) or None
 
-class SomeClass:
-    """
-    My class docstring
-    """
-    pass
-)""" );
+                                         class SomeClass:
+                                         """
+                                         My class docstring
+                                         """
+                                         pass
+                         )""" );
 
-  mExpressionPreview->setText( R"""(aggregate(layer:='rail_stations',
-    aggregate:='collect', -- a comment
-    expression:=centroid($geometry), /* a comment */
-    filter:="region_name" = attribute(@parent,'name') + 55
-)
-)""");
+    mExpressionPreview->setText( R"""(aggregate(layer:='rail_stations',
+                                 aggregate:='collect', -- a comment
+                                 expression:=centroid($geometry), /* a comment */
+                                 filter:="region_name" = attribute(@parent,'name') + 55
+                               )
+    )""");
 
-  mSQLPreview->setText( R"""(CREATE TABLE "my_table" (
-    "pk" serial NOT NULL PRIMARY KEY,
-    "a_field" integer,
-    "another_field" varchar(255)
-);
+    mSQLPreview->setText( R"""(CREATE TABLE "my_table" (
+                          "pk" serial NOT NULL PRIMARY KEY,
+                          "a_field" integer,
+                          "another_field" varchar(255)
+                        );
 
--- Retrieve values
-SELECT count(*) FROM "my_table" WHERE "a_field" > 'a value';
-)""");
+    -- Retrieve values
+    SELECT count(*) FROM "my_table" WHERE "a_field" > 'a value';
+    )""");
 
-  mHtmlPreview->setText(R"""(<html>
-  <head>
-    <title>QGIS</title>
-  </head>
-  <body>
-    <h1>QGIS Rocks!</h1>
-    <img src="qgis.png" style="width: 100px" />
-    <!--Sample comment-->
-    <p>Sample paragraph</p>
-  </body>
-</html>
-)""");
+    mHtmlPreview->setText(R"""(<html>
+                          <head>
+                          <title>QGIS</title>
+                          </head>
+                          <body>
+                          <h1>QGIS Rocks!</h1>
+                          <img src="qgis.png" style="width: 100px" />
+                                   <!--Sample comment-->
+                                   <p>Sample paragraph</p>
+                                   </body>
+                                   </html>
+                         )""");
 
-  mCssPreview->setText( R"""(@import url(print.css);
+    mCssPreview->setText( R"""(@import url(print.css);
 
-@font-face {
- font-family: DroidSans; /* A comment */
- src: url('DroidSans.ttf');
-}
+                          @font-face {
+                          font-family: DroidSans; /* A comment */
+                      src: url('DroidSans.ttf');
+                        }
 
 p.style_name:lang(en) {
- color: #F0F0F0;
- background: #600;
-}
+  color: #F0F0F0;
+  background: #600;
+  }
 
 ul > li, a:hover {
- line-height: 11px;
- text-decoration: underline;
-}
-
-@media print {
-  a[href^=http]::after {
-    content: attr(href)
+    line-height: 11px;
+text-decoration: underline;
   }
-}
-)""" );
+
+  @media print {
+    a[href^=http]::after {
+      content: attr(href)
+    }
+  }
+                      )""" );
 
   mJsPreview->setText( R"""(// my sample JavaScript function
 
-window.onAction(function update() {
+  window.onAction(function update() {
     /* Do some work */
     var prevPos = closure.pos;
 
@@ -258,9 +258,9 @@ window.onAction(function update() {
     element.title= "another string";
 
     if (prevPos.x > 100) {
-        element.x += max(100*2, 100);
+      element.x += max(100*2, 100);
     }
-});)""" );
+  });)""" );
 
   mListLanguage->setCurrentRow( 0 );
   mPreviewStackedWidget->setCurrentIndex( 0 );

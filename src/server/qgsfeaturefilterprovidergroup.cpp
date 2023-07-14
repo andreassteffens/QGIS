@@ -21,7 +21,7 @@
 void QgsFeatureFilterProviderGroup::filterFeatures( const QgsVectorLayer *layer, QgsFeatureRequest &filterFeatures ) const
 {
   QStringList substitutions;
-  substitutions.append(filterFeatures.sbQuerySubstitutions());
+  substitutions.append( filterFeatures.sbQuerySubstitutions() );
 
   for ( const QgsFeatureFilterProvider *provider : mProviders )
   {
@@ -32,10 +32,10 @@ void QgsFeatureFilterProviderGroup::filterFeatures( const QgsVectorLayer *layer,
       filterFeatures.combineFilterExpression( lFilterExpression->dump() );
     }
 
-    substitutions.append(temp.sbQuerySubstitutions());
+    substitutions.append( temp.sbQuerySubstitutions() );
   }
 
-  filterFeatures.sbSetQuerySubstitutions(substitutions);
+  filterFeatures.sbSetQuerySubstitutions( substitutions );
 }
 
 QStringList QgsFeatureFilterProviderGroup::layerAttributes( const QgsVectorLayer *layer, const QStringList &attributes ) const

@@ -43,10 +43,10 @@ QList<QgsLayerMetadataProviderResult> QgsPostgresProviderMetadataUtils::searchLa
     if ( ! searchString.isEmpty() )
     {
       where.push_back( QStringLiteral( R"SQL((
-      abstract ILIKE %1 OR
-      identifier ILIKE %1 OR
-      REGEXP_REPLACE(UPPER(array_to_string((xpath('//keyword', qmd))::varchar[], ' ')),'</?KEYWORD>', '', 'g') ILIKE %1
-      ))SQL" ).arg( QgsPostgresConn::quotedValue( QString( searchString ).prepend( QChar( '%' ) ).append( QChar( '%' ) ) ) ) );
+                                       abstract ILIKE %1 OR
+                                       identifier ILIKE %1 OR
+                                       REGEXP_REPLACE(UPPER(array_to_string((xpath('//keyword', qmd))::varchar[], ' ')),'</?KEYWORD>', '', 'g') ILIKE %1
+                                     ))SQL" ).arg( QgsPostgresConn::quotedValue( QString( searchString ).prepend( QChar( '%' ) ).append( QChar( '%' ) ) ) ) );
     }
 
     if ( ! geographicExtent.isEmpty() )
@@ -55,26 +55,26 @@ QList<QgsLayerMetadataProviderResult> QgsPostgresProviderMetadataUtils::searchLa
     }
 
     const QString listQuery = QStringLiteral( R"SQL(
-            SELECT
-               f_table_catalog
-              ,f_table_schema
-              ,f_table_name
-              ,f_geometry_column
-              ,identifier
-              ,title
-              ,abstract
-              ,geometry_type
-              ,ST_AsText( extent )
-              ,crs
-              ,layer_type
-              ,qmd
-              ,owner
-              ,update_time
-           FROM %1.qgis_layer_metadata
-             %2
-           )SQL" ).arg( QgsPostgresConn::quotedIdentifier( schemaName ), where.isEmpty() ? QString() : ( QStringLiteral( " WHERE %1 " ).arg( where.join( QLatin1String( " AND " ) ) ) ) );
+                              SELECT
+                              f_table_catalog
+                              ,f_table_schema
+                              ,f_table_name
+                              ,f_geometry_column
+                              ,identifier
+                              ,title
+                              ,abstract
+                              ,geometry_type
+                              ,ST_AsText( extent )
+                              ,crs
+                              ,layer_type
+                              ,qmd
+                              ,owner
+                              ,update_time
+                              FROM %1.qgis_layer_metadata
+                              %2
+                                            )SQL" ).arg( QgsPostgresConn::quotedIdentifier( schemaName ), where.isEmpty() ? QString() : ( QStringLiteral( " WHERE %1 " ).arg( where.join( QLatin1String( " AND " ) ) ) ) );
 
-    res = conn->LoggedPQexec( "QgsPostgresProviderMetadata", listQuery );
+                              res = conn->LoggedPQexec( "QgsPostgresProviderMetadata", listQuery );
 
     if ( res.PQresultStatus() != PGRES_TUPLES_OK )
     {
@@ -178,28 +178,28 @@ bool QgsPostgresProviderMetadataUtils::saveLayerMetadata( const QgsMapLayerType 
   {
     QgsPostgresResult res( conn->LoggedPQexec( QStringLiteral( "QgsPostgresProviderMetadataUtils" ),
                            QStringLiteral( R"SQL(
-            CREATE TABLE %1.qgis_layer_metadata (
-              id SERIAL PRIMARY KEY
-              ,f_table_catalog VARCHAR NOT NULL
-              ,f_table_schema VARCHAR NOT NULL
-              ,f_table_name VARCHAR NOT NULL
-              ,f_geometry_column VARCHAR
-              ,identifier TEXT NOT NULL
-              ,title TEXT NOT NULL
-              ,abstract TEXT
-              ,geometry_type VARCHAR
-              ,extent GEOMETRY(POLYGON, 4326)
-              ,crs VARCHAR
-              ,layer_type VARCHAR NOT NULL
-              ,qmd XML NOT NULL
-              ,owner VARCHAR(63) DEFAULT CURRENT_USER
-              ,update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-              UNIQUE (f_table_catalog, f_table_schema, f_table_name, f_geometry_column, geometry_type, crs, layer_type)
-            )
-          )SQL" ).arg( QgsPostgresConn::quotedIdentifier( schemaName ) ) ) );
-    if ( res.PQresultStatus() != PGRES_COMMAND_OK )
-    {
-      errorMessage = QObject::tr( "Unable to save layer metadata. It's not possible to create the destination table on the database. Maybe this is due to table permissions (user=%1). Please contact your database admin" ).arg( dsUri.username() );
+                                           CREATE TABLE %1.qgis_layer_metadata (
+                                               id SERIAL PRIMARY KEY
+                                               ,f_table_catalog VARCHAR NOT NULL
+                                               ,f_table_schema VARCHAR NOT NULL
+                                               ,f_table_name VARCHAR NOT NULL
+                                               ,f_geometry_column VARCHAR
+                                               ,identifier TEXT NOT NULL
+                                               ,title TEXT NOT NULL
+                                               ,abstract TEXT
+                                               ,geometry_type VARCHAR
+                                               ,extent GEOMETRY(POLYGON, 4326)
+                                               ,crs VARCHAR
+                                               ,layer_type VARCHAR NOT NULL
+                                               ,qmd XML NOT NULL
+                                               ,owner VARCHAR(63) DEFAULT CURRENT_USER
+                                               ,update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                               UNIQUE (f_table_catalog, f_table_schema, f_table_name, f_geometry_column, geometry_type, crs, layer_type)
+                                           )
+                                         )SQL" ).arg( QgsPostgresConn::quotedIdentifier( schemaName ) ) ) );
+                           if ( res.PQresultStatus() != PGRES_COMMAND_OK )
+  {
+    errorMessage = QObject::tr( "Unable to save layer metadata. It's not possible to create the destination table on the database. Maybe this is due to table permissions (user=%1). Please contact your database admin" ).arg( dsUri.username() );
       conn->unref();
       return false;
     }
@@ -246,21 +246,21 @@ bool QgsPostgresProviderMetadataUtils::saveLayerMetadata( const QgsMapLayerType 
   // two values are both replaced in the final .arg call of the string construction.
 
   QString upsertSql = QStringLiteral( R"SQL(
-            INSERT INTO %1.qgis_layer_metadata(
-               f_table_catalog
-              ,f_table_schema
-              ,f_table_name
-              ,f_geometry_column
-              ,identifier
-              ,title
-              ,abstract
-              ,geometry_type
-              ,extent
-              ,crs
-              ,layer_type
-              ,qmd) VALUES (
-               %2,%3,%4,%5,%6,%7,%8,%9,ST_GeomFromText(%10, 4326),%11,%12,XMLPARSE(DOCUMENT %13))
-             )SQL" )
+                                      INSERT INTO %1.qgis_layer_metadata(
+                                        f_table_catalog
+                                        ,f_table_schema
+                                        ,f_table_name
+                                        ,f_geometry_column
+                                        ,identifier
+                                        ,title
+                                        ,abstract
+                                        ,geometry_type
+                                        ,extent
+                                        ,crs
+                                        ,layer_type
+                                        ,qmd) VALUES (
+                                        %2,%3,%4,%5,%6,%7,%8,%9,ST_GeomFromText(%10, 4326),%11,%12,XMLPARSE(DOCUMENT %13))
+                                    )SQL" )
                       .arg( QgsPostgresConn::quotedIdentifier( schemaName ) )
                       .arg( QgsPostgresConn::quotedValue( dsUri.database() ) )
                       .arg( QgsPostgresConn::quotedValue( dsUri.schema() ) )
@@ -277,16 +277,16 @@ bool QgsPostgresProviderMetadataUtils::saveLayerMetadata( const QgsMapLayerType 
                       .arg( QgsPostgresConn::quotedValue( metadataXml ) );
 
   QString checkQuery = QStringLiteral( R"SQL(
-            SELECT
-              id
-           FROM %1.qgis_layer_metadata
-             WHERE
-                f_table_catalog=%2
-                AND f_table_schema=%3
-                AND f_table_name=%4
-                AND f_geometry_column %5
-                AND layer_type = %7
-           )SQL" )
+                                       SELECT
+                                       id
+                                       FROM %1.qgis_layer_metadata
+                                       WHERE
+                                       f_table_catalog=%2
+                                           AND f_table_schema=%3
+                                               AND f_table_name=%4
+                                                   AND f_geometry_column %5
+                                                   AND layer_type = %7
+                                     )SQL" )
                        .arg( QgsPostgresConn::quotedIdentifier( schemaName ) )
                        .arg( QgsPostgresConn::quotedValue( dsUri.database() ) )
                        .arg( QgsPostgresConn::quotedValue( dsUri.schema() ) )
@@ -301,18 +301,18 @@ bool QgsPostgresProviderMetadataUtils::saveLayerMetadata( const QgsMapLayerType 
   {
     const qulonglong id { res.PQgetvalue( 0, 0 ).toULongLong() };
     upsertSql = QStringLiteral( R"SQL(
-                UPDATE %1.qgis_layer_metadata
-                  SET
-                  owner=CURRENT_USER
-                  ,title=%3
-                  ,abstract=%4
-                  ,geometry_type=%5
-                  ,extent=ST_GeomFromText(%6, 4326)
-                  ,crs=%7
-                  ,qmd=XMLPARSE(DOCUMENT %8)
-                    WHERE
-                        id = %2
-                 )SQL" )
+                                UPDATE %1.qgis_layer_metadata
+                                SET
+                                owner=CURRENT_USER
+                                      ,title=%3
+                                ,abstract=%4
+                                ,geometry_type=%5
+                                ,extent=ST_GeomFromText(%6, 4326)
+                                ,crs=%7
+                                ,qmd=XMLPARSE(DOCUMENT %8)
+                                WHERE
+                                id = %2
+                              )SQL" )
                 .arg( QgsPostgresConn::quotedIdentifier( schemaName ) )
                 .arg( id )
                 .arg( QgsPostgresConn::quotedValue( metadata.title() ) )

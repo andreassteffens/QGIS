@@ -221,15 +221,15 @@ QgsPostgresProvider::QgsPostgresProvider( QString const &uri, const ProviderOpti
     const QString schemaName = res.PQgetvalue( 0, 0 );
     // TODO: also filter CRS?
     const QString selectQuery = QStringLiteral( R"SQL(
-            SELECT
-              qmd
-           FROM %4.qgis_layer_metadata
-             WHERE
-                f_table_schema=%1
-                AND f_table_name=%2
-                AND f_geometry_column %3
-                AND layer_type='vector'
-           )SQL" )
+                                SELECT
+                                qmd
+                                FROM %4.qgis_layer_metadata
+                                WHERE
+                                f_table_schema=%1
+                                    AND f_table_name=%2
+                                        AND f_geometry_column %3
+                                        AND layer_type='vector'
+                                              )SQL" )
                                 .arg( QgsPostgresConn::quotedValue( mUri.schema() ) )
                                 .arg( QgsPostgresConn::quotedValue( mUri.table() ) )
                                 .arg( mUri.geometryColumn().isEmpty() ? QStringLiteral( "IS NULL" ) : QStringLiteral( "=%1" ).arg( QgsPostgresConn::quotedValue( mUri.geometryColumn() ) ) )

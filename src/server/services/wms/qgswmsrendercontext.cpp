@@ -130,9 +130,9 @@ QgsWmsParametersLayer QgsWmsRenderContext::parameters( const QgsMapLayer &layer 
   return parameters;
 }
 
-void QgsWmsRenderContext::sbAddRenderSelectionOnlyLayer(QString strLayer)
+void QgsWmsRenderContext::sbAddRenderSelectionOnlyLayer( QString strLayer )
 {
-  mParameters.sbAddRenderSelectionOnlyLayer(strLayer);
+  mParameters.sbAddRenderSelectionOnlyLayer( strLayer );
 }
 
 int QgsWmsRenderContext::imageQuality() const

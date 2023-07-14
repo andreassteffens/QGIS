@@ -17,12 +17,13 @@
 
 namespace QgsSb
 {
+
   /**
    * Output GetEncryptedPath response
    */
   void writeGetEncryptedPath( QgsServerInterface *serverIface, const QgsProject *project,
-                             const QString &version, const QgsServerRequest &request,
-                             QgsServerResponse &response, const QString &path);
+                              const QString &version, const QgsServerRequest &request,
+                              QgsServerResponse &response, const QString &path );
 
 
 } // namespace QgsSb

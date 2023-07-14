@@ -35,7 +35,7 @@ sbElevationServicesMapTool::sbElevationServicesMapTool( QgsMapCanvas *thepCanvas
 
 void sbElevationServicesMapTool::canvasMoveEvent( QgsMapMouseEvent *thepEvent )
 {
-  Q_UNUSED(thepEvent);
+  Q_UNUSED( thepEvent );
 }
 
 void sbElevationServicesMapTool::canvasPressEvent( QgsMapMouseEvent *thepEvent )
@@ -46,7 +46,7 @@ void sbElevationServicesMapTool::canvasPressEvent( QgsMapMouseEvent *thepEvent )
 void sbElevationServicesMapTool::canvasReleaseEvent( QgsMapMouseEvent *thepEvent )
 {
   QgsPointXY myOriginalPoint = mCanvas->getCoordinateTransform()->toMapCoordinates( thepEvent->x(), thepEvent->y() );
-  
+
   emit mouseClicked( myOriginalPoint );
 }
 

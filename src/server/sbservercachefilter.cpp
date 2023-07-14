@@ -23,208 +23,213 @@
 #include <QDomDocument>
 #include <qcryptographichash.h>
 
-sbServerCacheFilter::sbServerCacheFilter( const QgsServerInterface *serverInterface, const QString &strDirectory) : QgsServerCacheFilter(serverInterface)
+sbServerCacheFilter::sbServerCacheFilter( const QgsServerInterface *serverInterface, const QString &strDirectory ) : QgsServerCacheFilter( serverInterface )
 {
-	m_bInitialized = false;
-	
-	m_strDirectory = strDirectory;
+  m_bInitialized = false;
 
-	if (!QDir(m_strDirectory).exists())
-		QDir().mkdir(m_strDirectory);
+  m_strDirectory = strDirectory;
 
-	m_bInitialized = QDir(m_strDirectory).exists();
+  if ( !QDir( m_strDirectory ).exists() )
+    QDir().mkdir( m_strDirectory );
+
+  m_bInitialized = QDir( m_strDirectory ).exists();
 }
 
 sbServerCacheFilter::~sbServerCacheFilter()
 {
-	// nothing to be done here for now
+  // nothing to be done here for now
 }
 
-QString sbServerCacheFilter::initializeProjectDirectory(const QgsProject *project) const
+QString sbServerCacheFilter::initializeProjectDirectory( const QgsProject *project ) const
 {
-	QString strEncrypted = QString(QCryptographicHash::hash((project->absoluteFilePath().toLower().toUtf8()), QCryptographicHash::Md5).toHex());
+  QString strEncrypted = sbGetProjectCacheId( project );
 
-	QString strProjectDirectory = QDir(m_strDirectory).filePath(strEncrypted);
-	if (!QDir(strProjectDirectory).exists())
-		QDir().mkdir(strProjectDirectory);
+  QString strProjectDirectory = QDir( m_strDirectory ).filePath( strEncrypted );
+  if ( !QDir( strProjectDirectory ).exists() )
+    QDir().mkdir( strProjectDirectory );
 
-	QString strDocumentDirectory = QDir(strProjectDirectory).filePath("documents");
-	if (!QDir(strDocumentDirectory).exists())
-		QDir().mkdir(strDocumentDirectory);
+  QString strDocumentDirectory = QDir( strProjectDirectory ).filePath( "documents" );
+  if ( !QDir( strDocumentDirectory ).exists() )
+    QDir().mkdir( strDocumentDirectory );
 
-	QString strImageDirectory = QDir(strProjectDirectory).filePath("images");
-	if (!QDir(strImageDirectory).exists())
-		QDir().mkdir(strImageDirectory);
+  QString strImageDirectory = QDir( strProjectDirectory ).filePath( "images" );
+  if ( !QDir( strImageDirectory ).exists() )
+    QDir().mkdir( strImageDirectory );
 
-	return strProjectDirectory;
+  return strProjectDirectory;
 }
 
-QString sbServerCacheFilter::getCacheKey(const QgsServerRequest &request) const
+QString sbServerCacheFilter::getCacheKey( const QgsServerRequest &request ) const
 {
-	QString strKey = "";
-	
-	QMap<QString, QString> mapParams = request.parameters();
-	
-	QList<QString> listKeys = mapParams.keys();
-	std::sort(listKeys.begin(), listKeys.end());
+  QString strKey = "";
 
-	QList<QString>::const_iterator iter;
-	for (iter = listKeys.constBegin(); iter != listKeys.constEnd(); iter++)
-		strKey += "&" + *iter + "=" + mapParams[*iter];
+  QMap<QString, QString> mapParams = request.parameters();
 
-	strKey = QString(QCryptographicHash::hash((strKey.toLower().toUtf8()), QCryptographicHash::Md5).toHex());
+  QList<QString> listKeys = mapParams.keys();
+  std::sort( listKeys.begin(), listKeys.end() );
 
-	return strKey;
+  QList<QString>::const_iterator iter;
+  for ( iter = listKeys.constBegin(); iter != listKeys.constEnd(); iter++ )
+    strKey += "&" + *iter + "=" + mapParams[*iter];
+
+  strKey = QString( QCryptographicHash::hash( ( strKey.toLower().toUtf8() ), QCryptographicHash::Md5 ).toHex() );
+
+  return strKey;
 }
 
 QByteArray sbServerCacheFilter::getCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
 {
-	if (!m_bInitialized)
-		return QByteArray();
-  
-	QString strProjectDirectory = initializeProjectDirectory(project);
-	QString strCacheKey = getCacheKey(request);
-	QString strDocumentFilename = QDir(QDir(strProjectDirectory).filePath("documents")).filePath(strCacheKey);
+  if ( !m_bInitialized )
+    return QByteArray();
 
-	QByteArray arrDocument;
-	QFile file(strDocumentFilename);
-	if (file.open(QIODevice::ReadOnly | QIODevice::Text))
-	{
-		QTextStream stream(&file);
-		stream.autoDetectUnicode();
-		QString strFile = stream.readAll();
-		arrDocument = strFile.toUtf8();
-		
-		file.close();
-	}
+  QString strProjectDirectory = initializeProjectDirectory( project );
+  QString strCacheKey = getCacheKey( request );
+  QString strDocumentFilename = QDir( QDir( strProjectDirectory ).filePath( "documents" ) ).filePath( strCacheKey );
 
-	return arrDocument;
+  QByteArray arrDocument;
+  QFile file( strDocumentFilename );
+  if ( file.open( QIODevice::ReadOnly | QIODevice::Text ) )
+  {
+    QTextStream stream( &file );
+    stream.autoDetectUnicode();
+    QString strFile = stream.readAll();
+    arrDocument = strFile.toUtf8();
+
+    file.close();
+  }
+
+  return arrDocument;
 }
 
 bool sbServerCacheFilter::setCachedDocument( const QDomDocument *doc, const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
 {
-	if (!m_bInitialized)
-		return false;
-	
-	QString strProjectDirectory = initializeProjectDirectory(project);
-	QString strCacheKey = getCacheKey(request);
-	QString strDocumentFilename = QDir(QDir(strProjectDirectory).filePath("documents")).filePath(strCacheKey);
+  if ( !m_bInitialized )
+    return false;
 
-	QFile file(strDocumentFilename);
-	if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
-	{
-		QTextStream stream(&file);
-		stream << doc->toString();
+  QString strProjectDirectory = initializeProjectDirectory( project );
+  QString strCacheKey = getCacheKey( request );
+  QString strDocumentFilename = QDir( QDir( strProjectDirectory ).filePath( "documents" ) ).filePath( strCacheKey );
 
-		file.close();
-	}
+  QFile file( strDocumentFilename );
+  if ( file.open( QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate ) )
+  {
+    QTextStream stream( &file );
+    stream << doc->toString();
 
-	return true;
+    file.close();
+  }
+
+  return true;
 }
 
 bool sbServerCacheFilter::deleteCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
 {
-	if (!m_bInitialized)
-		return false;
-  
-	QString strProjectDirectory = initializeProjectDirectory(project);
-	QString strCacheKey = getCacheKey(request);
-	QString strDocumentFilename = QDir(QDir(strProjectDirectory).filePath("documents")).filePath(strCacheKey);
+  if ( !m_bInitialized )
+    return false;
 
-	QFile file(strDocumentFilename);
-	if (file.exists())
-		file.remove();
+  QString strProjectDirectory = initializeProjectDirectory( project );
+  QString strCacheKey = getCacheKey( request );
+  QString strDocumentFilename = QDir( QDir( strProjectDirectory ).filePath( "documents" ) ).filePath( strCacheKey );
 
-	return true;
+  QFile file( strDocumentFilename );
+  if ( file.exists() )
+    file.remove();
+
+  return true;
 }
 
 bool sbServerCacheFilter::deleteCachedDocuments( const QgsProject *project ) const
 {
-	if (!m_bInitialized)
-		return false;
+  if ( !m_bInitialized )
+    return false;
 
-	QString strProjectDirectory = initializeProjectDirectory(project);
-	QString strDocumentDirectory = QDir(strProjectDirectory).filePath("documents");
-	
-	QDir dirDocuments(strDocumentDirectory);
-	if (dirDocuments.exists())
-	{
-		if (dirDocuments.removeRecursively())
-			QDir().mkdir(strDocumentDirectory);
-	}
-  
-	return true;
+  QString strProjectDirectory = initializeProjectDirectory( project );
+  QString strDocumentDirectory = QDir( strProjectDirectory ).filePath( "documents" );
+
+  QDir dirDocuments( strDocumentDirectory );
+  if ( dirDocuments.exists() )
+  {
+    if ( dirDocuments.removeRecursively() )
+      QDir().mkdir( strDocumentDirectory );
+  }
+
+  return true;
 }
 
 QByteArray sbServerCacheFilter::getCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
 {
-	if (!m_bInitialized)
-		return false;
+  if ( !m_bInitialized )
+    return false;
 
-	QString strProjectDirectory = initializeProjectDirectory(project);
-	QString strCacheKey = getCacheKey(request);
-	QString strImageFilename = QDir(QDir(strProjectDirectory).filePath("images")).filePath(strCacheKey);
+  QString strProjectDirectory = initializeProjectDirectory( project );
+  QString strCacheKey = getCacheKey( request );
+  QString strImageFilename = QDir( QDir( strProjectDirectory ).filePath( "images" ) ).filePath( strCacheKey );
 
-	QByteArray arrImage;
-	QFile file(strImageFilename);
-	if (file.open(QIODevice::ReadOnly))
-	{
-		arrImage = file.readAll();
-		file.close();
-	}
+  QByteArray arrImage;
+  QFile file( strImageFilename );
+  if ( file.open( QIODevice::ReadOnly ) )
+  {
+    arrImage = file.readAll();
+    file.close();
+  }
 
-	return arrImage;
+  return arrImage;
 }
 
 bool sbServerCacheFilter::setCachedImage( const QByteArray *img, const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
 {
-	if (!m_bInitialized)
-		return false;
- 
-	QString strProjectDirectory = initializeProjectDirectory(project);
-	QString strCacheKey = getCacheKey(request);
-	QString strImageFilename = QDir(QDir(strProjectDirectory).filePath("images")).filePath(strCacheKey);
+  if ( !m_bInitialized )
+    return false;
 
-	QFile file(strImageFilename);
-	if (file.open(QIODevice::WriteOnly | QIODevice::Truncate))
-	{
-		file.write(*img);
-		file.close();
-	}
+  QString strProjectDirectory = initializeProjectDirectory( project );
+  QString strCacheKey = getCacheKey( request );
+  QString strImageFilename = QDir( QDir( strProjectDirectory ).filePath( "images" ) ).filePath( strCacheKey );
 
-	return true;
+  QFile file( strImageFilename );
+  if ( file.open( QIODevice::WriteOnly | QIODevice::Truncate ) )
+  {
+    file.write( *img );
+    file.close();
+  }
+
+  return true;
 }
 
 bool sbServerCacheFilter::deleteCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
 {
-	if (!m_bInitialized)
-		return false;
-  
-	QString strProjectDirectory = initializeProjectDirectory(project);
-	QString strCacheKey = getCacheKey(request);
-	QString strImageFilename = QDir(QDir(strProjectDirectory).filePath("images")).filePath(strCacheKey);
-	
-	QFile file(strImageFilename);
-	if (file.exists())
-		file.remove();
+  if ( !m_bInitialized )
+    return false;
 
-	return true;
+  QString strProjectDirectory = initializeProjectDirectory( project );
+  QString strCacheKey = getCacheKey( request );
+  QString strImageFilename = QDir( QDir( strProjectDirectory ).filePath( "images" ) ).filePath( strCacheKey );
+
+  QFile file( strImageFilename );
+  if ( file.exists() )
+    file.remove();
+
+  return true;
 }
 
 bool sbServerCacheFilter::deleteCachedImages( const QgsProject *project ) const
 {
-	if (!m_bInitialized)
-		return false;
-  
-	QString strProjectDirectory = initializeProjectDirectory(project);
-	QString strImageDirectory = QDir(strProjectDirectory).filePath("images");
-	
-	QDir dirImages(strImageDirectory);
-	if (dirImages.exists())
-	{
-		if (dirImages.removeRecursively())
-			QDir().mkdir(strImageDirectory);
-	}
-  
-	return true;
+  if ( !m_bInitialized )
+    return false;
+
+  QString strProjectDirectory = initializeProjectDirectory( project );
+  QString strImageDirectory = QDir( strProjectDirectory ).filePath( "images" );
+
+  QDir dirImages( strImageDirectory );
+  if ( dirImages.exists() )
+  {
+    if ( dirImages.removeRecursively() )
+      QDir().mkdir( strImageDirectory );
+  }
+
+  return true;
+}
+
+QString sbServerCacheFilter::sbGetProjectCacheId( const QgsProject *project ) const
+{
+  return QString( QCryptographicHash::hash( ( project->absoluteFilePath().toLower().toUtf8() ), QCryptographicHash::Md5 ).toHex() );
 }

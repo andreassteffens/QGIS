@@ -200,7 +200,7 @@ class SERVER_EXPORT QgsServerParameter : public QgsServerParameterDefinition
       REQUEST,
       MAP,
       FILE_NAME,
-	  SBPOSTFORMAT
+      SBPOSTFORMAT
     };
     Q_ENUM( Name )
 
@@ -340,13 +340,13 @@ class SERVER_EXPORT QgsServerParameters
      */
     virtual QString version() const;
 
-	/**
-	* Returns the format indicator for POST data
-	* \returns POST format
-	*/
-	QString sbPostFormat() const;
+    /**
+    * Returns the format indicator for POST data
+    * \returns POST format
+    */
+    QString sbPostFormat() const;
 
-	virtual bool sbSetParameter(const QString &name, const QString &value);
+    virtual bool sbSetParameter( const QString &name, const QString &value );
 
   protected:
 

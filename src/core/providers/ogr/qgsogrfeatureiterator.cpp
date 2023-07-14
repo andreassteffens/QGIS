@@ -223,10 +223,10 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
 
 
   QString strMinPixelSizeExpression;
-  if (request.sbHasRenderMinPixelSizeFilter())
+  if ( request.sbHasRenderMinPixelSizeFilter() )
   {
-    QString strGeometryColumn = OGR_L_GetGeometryColumn(mOgrLayer);
-    if (!strGeometryColumn.isEmpty())
+    QString strGeometryColumn = OGR_L_GetGeometryColumn( mOgrLayer );
+    if ( !strGeometryColumn.isEmpty() )
     {
       double dRenderMinPixelSize;
       bool bRenderMinPixelSizeDebug;
@@ -235,14 +235,14 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
       double dMapUnitsPerPixel;
       double dCurrentScale;
       QgsWkbTypes::GeometryType geometryType;
-      request.sbGetRenderMinPixelSizeFilterValue(&dRenderMinPixelSize, &iRenderMinPixelSizeMaxScale, &dScaleFactor, &dMapUnitsPerPixel, &dCurrentScale, &geometryType, &bRenderMinPixelSizeDebug);
+      request.sbGetRenderMinPixelSizeFilterValue( &dRenderMinPixelSize, &iRenderMinPixelSizeMaxScale, &dScaleFactor, &dMapUnitsPerPixel, &dCurrentScale, &geometryType, &bRenderMinPixelSizeDebug );
 
-      if (geometryType == QgsWkbTypes::GeometryType::LineGeometry || geometryType == QgsWkbTypes::GeometryType::PolygonGeometry)
+      if ( geometryType == QgsWkbTypes::GeometryType::LineGeometry || geometryType == QgsWkbTypes::GeometryType::PolygonGeometry )
       {
-        strMinPixelSizeExpression = "(((ST_MaxX(" + strGeometryColumn + ") - ST_MinX(" + strGeometryColumn + ")) * " + QString::number(dScaleFactor / dMapUnitsPerPixel) + ") > " + QString::number(dRenderMinPixelSize) + ") OR (((ST_MaxY(" + strGeometryColumn + ") - ST_MinY(" + strGeometryColumn + ")) * " + QString::number(dScaleFactor / dMapUnitsPerPixel) + ") > " + QString::number(dRenderMinPixelSize) + ")";
+        strMinPixelSizeExpression = "(((ST_MaxX(" + strGeometryColumn + ") - ST_MinX(" + strGeometryColumn + ")) * " + QString::number( dScaleFactor / dMapUnitsPerPixel ) + ") > " + QString::number( dRenderMinPixelSize ) + ") OR (((ST_MaxY(" + strGeometryColumn + ") - ST_MinY(" + strGeometryColumn + ")) * " + QString::number( dScaleFactor / dMapUnitsPerPixel ) + ") > " + QString::number( dRenderMinPixelSize ) + ")";
 
-        if (bRenderMinPixelSizeDebug)
-          QgsMessageLog::logMessage(QStringLiteral("Setting render min pixel size filter on layer %1: %2").arg(mSource->mDataSource).arg(strMinPixelSizeExpression), QStringLiteral(""), Qgis::Critical);
+        if ( bRenderMinPixelSizeDebug )
+          QgsMessageLog::logMessage( QStringLiteral( "Setting render min pixel size filter on layer %1: %2" ).arg( mSource->mDataSource ).arg( strMinPixelSizeExpression ), QStringLiteral( "" ), Qgis::Critical );
       }
     }
   }
@@ -259,7 +259,7 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
     }
     else
     {
-      QgsSqlExpressionCompiler* compiler = nullptr;
+      QgsSqlExpressionCompiler *compiler = nullptr;
       if ( source->mDriverName == QLatin1String( "SQLite" ) || source->mDriverName == QLatin1String( "GPKG" ) )
       {
         compiler = new QgsSQLiteExpressionCompiler( source->mFields, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
@@ -275,23 +275,23 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
 
       delete compiler;
     }
-    
+
     if ( result == QgsSqlExpressionCompiler::Complete || result == QgsSqlExpressionCompiler::Partial )
     {
       if ( !mSource->mSubsetString.isEmpty() && mOgrLayer == mOgrLayerOri )
       {
-        if (strMinPixelSizeExpression.isEmpty())
+        if ( strMinPixelSizeExpression.isEmpty() )
         {
-          whereClause = QStringLiteral("(") + mSource->mSubsetString +
-                        QStringLiteral(") AND (") + whereClause +
-                        QStringLiteral(")");
+          whereClause = QStringLiteral( "(" ) + mSource->mSubsetString +
+                        QStringLiteral( ") AND (" ) + whereClause +
+                        QStringLiteral( ")" );
         }
         else
         {
-          whereClause = QStringLiteral("(") + mSource->mSubsetString +
-                        QStringLiteral(") AND (") + whereClause +
-                        QStringLiteral(") AND (") + strMinPixelSizeExpression + 
-                        QStringLiteral(")");
+          whereClause = QStringLiteral( "(" ) + mSource->mSubsetString +
+                        QStringLiteral( ") AND (" ) + whereClause +
+                        QStringLiteral( ") AND (" ) + strMinPixelSizeExpression +
+                        QStringLiteral( ")" );
         }
       }
 
@@ -316,8 +316,8 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
         OGR_L_SetAttributeFilter( mOgrLayer, nullptr );
       else
       {
-        if ( OGR_L_SetAttributeFilter(mOgrLayer, mSource->mEncoding->fromUnicode(strMinPixelSizeExpression).constData()) != OGRERR_NONE )
-          QgsMessageLog::logMessage(QStringLiteral("([a]tapa) Error setting min pixel size filter: %1").arg(strMinPixelSizeExpression), QStringLiteral(""), Qgis::Critical);
+        if ( OGR_L_SetAttributeFilter( mOgrLayer, mSource->mEncoding->fromUnicode( strMinPixelSizeExpression ).constData() ) != OGRERR_NONE )
+          QgsMessageLog::logMessage( QStringLiteral( "([a]tapa) Error setting min pixel size filter: %1" ).arg( strMinPixelSizeExpression ), QStringLiteral( "" ), Qgis::Critical );
       }
     }
   }
@@ -327,8 +327,8 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
       OGR_L_SetAttributeFilter( mOgrLayer, nullptr );
     else
     {
-      if (OGR_L_SetAttributeFilter(mOgrLayer, mSource->mEncoding->fromUnicode(strMinPixelSizeExpression).constData()) != OGRERR_NONE)
-        QgsMessageLog::logMessage(QStringLiteral("([a]tapa) Error setting min pixel size filter: %1").arg(strMinPixelSizeExpression), QStringLiteral(""), Qgis::Critical);
+      if ( OGR_L_SetAttributeFilter( mOgrLayer, mSource->mEncoding->fromUnicode( strMinPixelSizeExpression ).constData() ) != OGRERR_NONE )
+        QgsMessageLog::logMessage( QStringLiteral( "([a]tapa) Error setting min pixel size filter: %1" ).arg( strMinPixelSizeExpression ), QStringLiteral( "" ), Qgis::Critical );
     }
   }
 

@@ -35,7 +35,7 @@ sbAddressServicesMapTool::sbAddressServicesMapTool( QgsMapCanvas *thepCanvas ) :
 
 void sbAddressServicesMapTool::canvasMoveEvent( QgsMapMouseEvent *thepEvent )
 {
-  Q_UNUSED(thepEvent);
+  Q_UNUSED( thepEvent );
 }
 
 void sbAddressServicesMapTool::canvasPressEvent( QgsMapMouseEvent *thepEvent )

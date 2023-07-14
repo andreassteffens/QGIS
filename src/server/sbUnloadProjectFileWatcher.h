@@ -31,27 +31,27 @@ email                : a dot steffens at gds dash team dot de
 
 class sbUnloadProjectFileWatcher : public QThread
 {
-	Q_OBJECT
+    Q_OBJECT
 
-	private:
-		QString						m_strUnloadFilename;
-		QMultiMap<QString, QString>	m_mapUnloadProjectFiles;
-		int							m_iTimeout;
-		QMutex						m_mutexProjectFiles;
+  private:
+    QString           m_strUnloadFilename;
+    QMultiMap<QString, QString> m_mapUnloadProjectFiles;
+    int             m_iTimeout;
+    QMutex            m_mutexProjectFiles;
 
-		void readUnloadProjects();
-		void clearUnloadProjects();
+    void readUnloadProjects();
+    void clearUnloadProjects();
 
-	public:
-		sbUnloadProjectFileWatcher();
-		~sbUnloadProjectFileWatcher();
+  public:
+    sbUnloadProjectFileWatcher();
+    ~sbUnloadProjectFileWatcher();
 
-		void setTimeout(int iTimeout);
-		void setWatchedPath(QString strUnloadFilename);
+    void setTimeout( int iTimeout );
+    void setWatchedPath( QString strUnloadFilename );
 
-		bool isUnloaded(QString strProjectFilename);
+    bool isUnloaded( QString strProjectFilename );
 
-		void run() override;
+    void run() override;
 };
 
 

@@ -23,7 +23,7 @@
 #include <qstringlist.h>
 
 //! Constructor
-QgsServerInterfaceImpl::QgsServerInterfaceImpl( QgsCapabilitiesCache *capCache, QgsServiceRegistry *srvRegistry, QgsServerSettings *settings, const QString& strTenant )
+QgsServerInterfaceImpl::QgsServerInterfaceImpl( QgsCapabilitiesCache *capCache, QgsServiceRegistry *srvRegistry, QgsServerSettings *settings, const QString &strTenant )
   : mCapabilitiesCache( capCache )
   , mServiceRegistry( srvRegistry )
   , mServerSettings( settings )
@@ -120,7 +120,7 @@ QgsServiceRegistry *QgsServerInterfaceImpl::serviceRegistry()
 
 QgsServerSettings *QgsServerInterfaceImpl::serverSettings()
 {
-	
+
   return mServerSettings;
 }
 
@@ -131,10 +131,10 @@ void QgsServerInterfaceImpl::reloadSettings()
 
 QStringList QgsServerInterfaceImpl::sbLoadedProjects()
 {
-	return QgsConfigCache::instance()->sbLoadedProjects();
+  return QgsConfigCache::instance()->sbLoadedProjects();
 }
 
-const QString& QgsServerInterfaceImpl::sbTenant()
+const QString &QgsServerInterfaceImpl::sbTenant()
 {
-	return mSbTenant;
+  return mSbTenant;
 }

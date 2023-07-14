@@ -1186,31 +1186,31 @@ bool QgsWcsProvider::calculateExtent() const
 
   if ( !mSbAvoidFullExtentRequest )
   {
-    getCache(1, mCoverageExtent, 10, 10);
-    if (mCachedGdalDataset)
+    getCache( 1, mCoverageExtent, 10, 10 );
+    if ( mCachedGdalDataset )
     {
-      const QgsRectangle cacheExtent = QgsGdalProviderBase::extent(mCachedGdalDataset.get());
-      QgsDebugMsg("mCoverageExtent = " + mCoverageExtent.toString());
-      QgsDebugMsg("cacheExtent = " + cacheExtent.toString());
+      const QgsRectangle cacheExtent = QgsGdalProviderBase::extent( mCachedGdalDataset.get() );
+      QgsDebugMsg( "mCoverageExtent = " + mCoverageExtent.toString() );
+      QgsDebugMsg( "cacheExtent = " + cacheExtent.toString() );
       QgsCoordinateReferenceSystem cacheCrs;
-      if (!cacheCrs.createFromWkt(GDALGetProjectionRef(mCachedGdalDataset.get())) &&
-        !cacheCrs.createFromWkt(GDALGetGCPProjection(mCachedGdalDataset.get())))
+      if ( !cacheCrs.createFromWkt( GDALGetProjectionRef( mCachedGdalDataset.get() ) ) &&
+           !cacheCrs.createFromWkt( GDALGetGCPProjection( mCachedGdalDataset.get() ) ) )
       {
-        QgsDebugMsg(QStringLiteral("Cached does not have CRS"));
+        QgsDebugMsg( QStringLiteral( "Cached does not have CRS" ) );
       }
-      QgsDebugMsg("Cache CRS: " + cacheCrs.userFriendlyIdentifier());
+      QgsDebugMsg( "Cache CRS: " + cacheCrs.userFriendlyIdentifier() );
 
       // We can only verify extent if CRS is set
       // If dataset comes rotated, GDAL probably cuts latitude extend, disable
       // extent check for rotated, TODO: verify
-      if (cacheCrs.isValid() && !mFixRotate)
+      if ( cacheCrs.isValid() && !mFixRotate )
       {
-        if (!qgsDoubleNearSig(cacheExtent.xMinimum(), mCoverageExtent.xMinimum(), 10) ||
-          !qgsDoubleNearSig(cacheExtent.yMinimum(), mCoverageExtent.yMinimum(), 10) ||
-          !qgsDoubleNearSig(cacheExtent.xMaximum(), mCoverageExtent.xMaximum(), 10) ||
-          !qgsDoubleNearSig(cacheExtent.yMaximum(), mCoverageExtent.yMaximum(), 10))
+        if ( !qgsDoubleNearSig( cacheExtent.xMinimum(), mCoverageExtent.xMinimum(), 10 ) ||
+             !qgsDoubleNearSig( cacheExtent.yMinimum(), mCoverageExtent.yMinimum(), 10 ) ||
+             !qgsDoubleNearSig( cacheExtent.xMaximum(), mCoverageExtent.xMaximum(), 10 ) ||
+             !qgsDoubleNearSig( cacheExtent.yMaximum(), mCoverageExtent.yMaximum(), 10 ) )
         {
-          QgsDebugMsg(QStringLiteral("cacheExtent and mCoverageExtent differ, mCoverageExtent cut to cacheExtent"));
+          QgsDebugMsg( QStringLiteral( "cacheExtent and mCoverageExtent differ, mCoverageExtent cut to cacheExtent" ) );
           mCoverageExtent = cacheExtent;
         }
       }
@@ -1227,8 +1227,8 @@ bool QgsWcsProvider::calculateExtent() const
       // Unfortunately even if we get over this 10x10 check, QGIS also requests
       // 32x32 thumbnail where it is waiting for another timeout
 
-      QgsDebugMsg(QStringLiteral("Cannot get cache to verify extent"));
-      QgsMessageLog::logMessage(tr("Cannot verify coverage full extent: %1").arg(mCachedError.message()), tr("WCS"));
+      QgsDebugMsg( QStringLiteral( "Cannot get cache to verify extent" ) );
+      QgsMessageLog::logMessage( tr( "Cannot verify coverage full extent: %1" ).arg( mCachedError.message() ), tr( "WCS" ) );
     }
   }
 

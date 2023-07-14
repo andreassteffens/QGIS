@@ -610,7 +610,7 @@ namespace QgsWms
       /**
        *
        */
-      void sbAddRenderSelectionOnlyLayer(QString& strLayer);
+      void sbAddRenderSelectionOnlyLayer( QString &strLayer );
 
       /**
        * Returns FI_POLYGON_TOLERANCE parameter or an empty string if not
@@ -1425,7 +1425,7 @@ namespace QgsWms
 
       QMultiMap<QString, QgsWmsParametersRules> sbAllLayerRules() const;
       QMultiMap<QString, bool> sbAllLayerLabels() const;
-      QStringList sbLayerQuerySubstitutions(const QString &layer) const;
+      QStringList sbLayerQuerySubstitutions( const QString &layer ) const;
 
     private:
       static bool isExternalLayer( const QString &name );
@@ -1442,8 +1442,8 @@ namespace QgsWms
       QgsWmsParametersExternalLayer externalLayerParameter( const QString &name ) const;
 
       QMultiMap<QString, QgsWmsParametersFilter> layerFilters( const QStringList &layers ) const;
-      QMultiMap<QString, QgsWmsParametersRules> sbLayerRules(const QStringList &layers) const;
-      QMultiMap<QString, bool> sbLayerLabels(const QStringList &layers) const;
+      QMultiMap<QString, QgsWmsParametersRules> sbLayerRules( const QStringList &layers ) const;
+      QMultiMap<QString, bool> sbLayerLabels( const QStringList &layers ) const;
 
       QMultiMap<QgsWmsParameter::Name, QgsWmsParameter> mWmsParameters;
       QMap<QString, QMap<QString, QString> > mExternalWMSParameters;

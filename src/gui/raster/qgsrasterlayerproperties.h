@@ -234,7 +234,7 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsOptionsDialogBase, private
 
     QgsRasterRendererWidget *mRendererWidget = nullptr;
     QgsMetadataWidget *mMetadataWidget = nullptr;
-    sbJoinedToggleWidget* mSbJoinedToggleWidget = nullptr;
+    sbJoinedToggleWidget *mSbJoinedToggleWidget = nullptr;
 
     QgsRasterTransparencyWidget *mRasterTransparencyWidget = nullptr;
 

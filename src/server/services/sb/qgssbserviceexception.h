@@ -31,10 +31,11 @@ namespace QgsSb
    * \brief Exception class for WMS service exceptions.
    *
    * The most important codes are:
-   *  * "InvalidFormat"
-   *  * "Invalid CRS"
-   *  * "LayerNotDefined" / "StyleNotDefined"
-   *  * "OperationNotSupported"
+   *
+   * - "InvalidFormat"
+   * - "Invalid CRS"
+   * - "LayerNotDefined" / "StyleNotDefined"
+   * - "OperationNotSupported"
    */
   class QgsServiceException : public QgsOgcServiceException
   {

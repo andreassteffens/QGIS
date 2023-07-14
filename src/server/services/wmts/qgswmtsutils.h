@@ -111,7 +111,7 @@ namespace QgsWmts
 
     QgsRectangle wgs84BoundingRect;
 
-	QMap<QString, QgsRectangle> sbCrsBoundingRects;
+    QMap<QString, QgsRectangle> sbCrsBoundingRects;
 
     QStringList formats;
 

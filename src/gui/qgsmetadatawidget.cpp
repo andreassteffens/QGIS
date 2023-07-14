@@ -545,7 +545,7 @@ void QgsMetadataWidget::setUiFromMetadata()
 
     // Constraints
     while ( mConstraintsModel->rowCount() > 0 )
-      mConstraintsModel->removeRow(0);
+      mConstraintsModel->removeRow( 0 );
 
     const QList<QgsLayerMetadata::Constraint> &constraints = layerMetadata->constraints();
     for ( const QgsLayerMetadata::Constraint &constraint : constraints )
@@ -1109,7 +1109,7 @@ void QgsMetadataWidget::removeSelectedCategories()
   mDefaultCategoriesModel->sort( 0 );
 }
 
-void QgsMetadataWidget::sbKeywordsCellChanged(int row, int column)
+void QgsMetadataWidget::sbKeywordsCellChanged( int row, int column )
 {
   if ( column != 0 )
     return;
@@ -1118,7 +1118,7 @@ void QgsMetadataWidget::sbKeywordsCellChanged(int row, int column)
   if ( strText.isEmpty() )
     return;
 
-  if ( strText.contains("sb:", Qt::CaseInsensitive) )
+  if ( strText.contains( "sb:", Qt::CaseInsensitive ) )
   {
     strText = strText.trimmed();
     QStringList listParts = strText.split( "sb:", Qt::SkipEmptyParts, Qt::CaseInsensitive );
@@ -1126,13 +1126,13 @@ void QgsMetadataWidget::sbKeywordsCellChanged(int row, int column)
     if ( strText.startsWith( "sb:", Qt::CaseInsensitive ) && listParts.count() == 1 )
     {
       strText = "sb:" + listParts[0].toUpper();
-      if( strText.compare( tabKeywords->item( row, 0 )->text() ) != 0 )
+      if ( strText.compare( tabKeywords->item( row, 0 )->text() ) != 0 )
         tabKeywords->item( row, 0 )->setText( strText );
     }
   }
 }
 
-void QgsMetadataWidget::sbContraintsItemChanged( QStandardItem* item )
+void QgsMetadataWidget::sbContraintsItemChanged( QStandardItem *item )
 {
   if ( item->column() != 0 )
     return;
@@ -1141,7 +1141,7 @@ void QgsMetadataWidget::sbContraintsItemChanged( QStandardItem* item )
   if ( strText.isEmpty() )
     return;
 
-  if ( strText.contains("sb:", Qt::CaseInsensitive) )
+  if ( strText.contains( "sb:", Qt::CaseInsensitive ) )
   {
     strText = strText.trimmed();
     QStringList listParts = strText.split( "sb:", Qt::SkipEmptyParts, Qt::CaseInsensitive );
@@ -1149,7 +1149,7 @@ void QgsMetadataWidget::sbContraintsItemChanged( QStandardItem* item )
     if ( strText.startsWith( "sb:", Qt::CaseInsensitive ) && listParts.count() == 1 )
     {
       strText = "sb:" + listParts[0].toUpper();
-      if( strText.compare( item->text() ) != 0 )
+      if ( strText.compare( item->text() ) != 0 )
         item->setText( strText );
     }
   }

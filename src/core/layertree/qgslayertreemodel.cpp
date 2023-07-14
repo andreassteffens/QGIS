@@ -760,10 +760,10 @@ void QgsLayerTreeModel::nodeVisibilityChanged( QgsLayerTreeNode *node )
   const QModelIndex index = node2index( node );
   emit dataChanged( index, index );
 
-  if (node->nodeType() == QgsLayerTreeNode::NodeType::NodeLayer)
+  if ( node->nodeType() == QgsLayerTreeNode::NodeType::NodeLayer )
   {
-    QgsLayerTreeLayer* layerNode = (QgsLayerTreeLayer*)node;
-    QgsMapLayer* layer = layerNode->layer();
+    QgsLayerTreeLayer *layerNode = ( QgsLayerTreeLayer * )node;
+    QgsMapLayer *layer = layerNode->layer();
 
     bool bEnteredCascading = mSbJoinedToggleCascadedLayers.isEmpty();
     if ( bEnteredCascading )
@@ -779,10 +779,10 @@ void QgsLayerTreeModel::nodeVisibilityChanged( QgsLayerTreeNode *node )
     QList<sbJoinedToggleLayerSettings> listSettings = sbJoinedToggleUtils::getJoinedToggleLayers( layer );
     for ( QList<sbJoinedToggleLayerSettings>::const_iterator iter = listSettings.constBegin(); iter != listSettings.constEnd(); iter++ )
     {
-      if ( mSbJoinedToggleCascadedLayers.contains(iter->layerId) )
+      if ( mSbJoinedToggleCascadedLayers.contains( iter->layerId ) )
         continue;
 
-      QgsLayerTreeLayer* layerJoined = mRootNode->findLayer(iter->layerId);
+      QgsLayerTreeLayer *layerJoined = mRootNode->findLayer( iter->layerId );
       if ( layerJoined == NULL )
         continue;
 
@@ -795,7 +795,7 @@ void QgsLayerTreeModel::nodeVisibilityChanged( QgsLayerTreeNode *node )
       {
         if ( iter->deactivateWithReference )
           layerJoined->setItemVisibilityChecked( iter->invertBehavior );
-      } 
+      }
     }
 
     if ( bEnteredCascading )

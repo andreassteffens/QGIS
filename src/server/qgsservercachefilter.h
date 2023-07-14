@@ -52,7 +52,7 @@ class SERVER_EXPORT QgsServerCacheFilter
     QgsServerCacheFilter( const QgsServerInterface *serverInterface );
 
     virtual ~QgsServerCacheFilter() = default;
-	
+
     /**
      * Returns cached document (or 0 if document not in cache) like capabilities
      * \param project the project used to generate the document to provide path
@@ -123,6 +123,7 @@ class SERVER_EXPORT QgsServerCacheFilter
      */
     virtual bool deleteCachedImages( const QgsProject *project ) const;
 
+    QString sbGetProjectCacheId( const QgsProject *project ) const;
 };
 
 //! The registry definition

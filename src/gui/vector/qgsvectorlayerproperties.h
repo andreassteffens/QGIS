@@ -243,7 +243,7 @@ class GUI_EXPORT QgsVectorLayerProperties : public QgsOptionsDialogBase, private
     void showHelp();
 
     QgsMetadataWidget *mMetadataWidget = nullptr;
-    sbJoinedToggleWidget* mSbJoinedToggleWidget = nullptr;
+    sbJoinedToggleWidget *mSbJoinedToggleWidget = nullptr;
 
     QAction *mAuxiliaryLayerActionNew = nullptr;
     QAction *mAuxiliaryLayerActionClear = nullptr;

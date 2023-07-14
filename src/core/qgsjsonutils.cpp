@@ -43,8 +43,9 @@ QgsJsonExporter::QgsJsonExporter( QgsVectorLayer *vectorLayer, int precision )
     mCrs = vectorLayer->crs();
     mTransform.setSourceCrs( mCrs );
   }
-  mSbDestCrs = QgsCoordinateReferenceSystem(QStringLiteral("EPSG:4326"));
-  mTransform.setDestinationCrs( mSbDestCrs );}
+  mSbDestCrs = QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) );
+  mTransform.setDestinationCrs( mSbDestCrs );
+}
 
 void QgsJsonExporter::setVectorLayer( QgsVectorLayer *vectorLayer )
 {
@@ -72,15 +73,15 @@ QgsCoordinateReferenceSystem QgsJsonExporter::sourceCrs() const
   return mCrs;
 }
 
-void QgsJsonExporter::sbSetDestinationCrs(const QgsCoordinateReferenceSystem &crs)
+void QgsJsonExporter::sbSetDestinationCrs( const QgsCoordinateReferenceSystem &crs )
 {
-	mSbDestCrs = crs;
-	mTransform.setDestinationCrs(mSbDestCrs);
+  mSbDestCrs = crs;
+  mTransform.setDestinationCrs( mSbDestCrs );
 }
 
 QgsCoordinateReferenceSystem QgsJsonExporter::sbDestinationCrs() const
 {
-	return mSbDestCrs;
+  return mSbDestCrs;
 }
 
 QString QgsJsonExporter::exportFeature( const QgsFeature &feature, const QVariantMap &extraProperties,
@@ -168,59 +169,59 @@ ordered_json QgsJsonExporter::exportFeatureToJsonObject( const QgsFeature &featu
                           << QStringLiteral( "ValueRelation" )
                           << QStringLiteral( "ValueMap" );
 
-	  if(!mAttributeIndexes.isEmpty())
-	  {
-		  for(int i = 0; i < mAttributeIndexes.count(); i++)
-		  {
-			  int iIndex = mAttributeIndexes[i];
-			  if (mExcludedAttributeIndexes.contains(iIndex))
-				  continue;
+      if ( !mAttributeIndexes.isEmpty() )
+      {
+        for ( int i = 0; i < mAttributeIndexes.count(); i++ )
+        {
+          int iIndex = mAttributeIndexes[i];
+          if ( mExcludedAttributeIndexes.contains( iIndex ) )
+            continue;
 
-			  QVariant val = feature.attributes().at(iIndex);
+          QVariant val = feature.attributes().at( iIndex );
 
-			  if (mLayer)
-			  {
-				  const QgsEditorWidgetSetup setup = fields.at(iIndex).editorWidgetSetup();
-				  const QgsFieldFormatter *fieldFormatter = QgsApplication::fieldFormatterRegistry()->fieldFormatter(setup.type());
-				  if (formattersAllowList.contains(fieldFormatter->id()))
-					  val = fieldFormatter->representValue(mLayer.data(), iIndex, setup.config(), QVariant(), val);
-			  }
+          if ( mLayer )
+          {
+            const QgsEditorWidgetSetup setup = fields.at( iIndex ).editorWidgetSetup();
+            const QgsFieldFormatter *fieldFormatter = QgsApplication::fieldFormatterRegistry()->fieldFormatter( setup.type() );
+            if ( formattersAllowList.contains( fieldFormatter->id() ) )
+              val = fieldFormatter->representValue( mLayer.data(), iIndex, setup.config(), QVariant(), val );
+          }
 
-			  QString name = fields.at(iIndex).name();
-			  if (mAttributeDisplayName)
-			  {
-				  name = mLayer->attributeDisplayName(iIndex);
-			  }
-			  properties[name.toStdString()] = QgsJsonUtils::jsonFromVariant(val);
-			  attributeCounter++;
-		  }
-	  }
-	  else
-	  {
-		  for (int i = 0; i < fields.count(); ++i)
-		  {
-			  if ((!mAttributeIndexes.isEmpty() && !mAttributeIndexes.contains(i)) || mExcludedAttributeIndexes.contains(i))
-				  continue;
+          QString name = fields.at( iIndex ).name();
+          if ( mAttributeDisplayName )
+          {
+            name = mLayer->attributeDisplayName( iIndex );
+          }
+          properties[name.toStdString()] = QgsJsonUtils::jsonFromVariant( val );
+          attributeCounter++;
+        }
+      }
+      else
+      {
+        for ( int i = 0; i < fields.count(); ++i )
+        {
+          if ( ( !mAttributeIndexes.isEmpty() && !mAttributeIndexes.contains( i ) ) || mExcludedAttributeIndexes.contains( i ) )
+            continue;
 
-			  QVariant val = feature.attributes().at(i);
+          QVariant val = feature.attributes().at( i );
 
-			  if (mLayer)
-			  {
-				  const QgsEditorWidgetSetup setup = fields.at(i).editorWidgetSetup();
-				  const QgsFieldFormatter *fieldFormatter = QgsApplication::fieldFormatterRegistry()->fieldFormatter(setup.type());
-				  if (formattersAllowList.contains(fieldFormatter->id()))
-					  val = fieldFormatter->representValue(mLayer.data(), i, setup.config(), QVariant(), val);
-			  }
+          if ( mLayer )
+          {
+            const QgsEditorWidgetSetup setup = fields.at( i ).editorWidgetSetup();
+            const QgsFieldFormatter *fieldFormatter = QgsApplication::fieldFormatterRegistry()->fieldFormatter( setup.type() );
+            if ( formattersAllowList.contains( fieldFormatter->id() ) )
+              val = fieldFormatter->representValue( mLayer.data(), i, setup.config(), QVariant(), val );
+          }
 
-			  QString name = fields.at(i).name();
-			  if (mAttributeDisplayName)
-			  {
-				  name = mLayer->attributeDisplayName(i);
-			  }
-			  properties[name.toStdString()] = QgsJsonUtils::jsonFromVariant(val);
-			  attributeCounter++;
-		  }
-	  }
+          QString name = fields.at( i ).name();
+          if ( mAttributeDisplayName )
+          {
+            name = mLayer->attributeDisplayName( i );
+          }
+          properties[name.toStdString()] = QgsJsonUtils::jsonFromVariant( val );
+          attributeCounter++;
+        }
+      }
     }
 
     if ( !extraProperties.isEmpty() )

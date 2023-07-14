@@ -54,7 +54,7 @@ QgsPoint QgsSnapIndex::SegmentSnapItem::getSnapPoint( const QgsPoint &p ) const
 
 bool QgsSnapIndex::SegmentSnapItem::getIntersection( const QgsPoint &p1, const QgsPoint &p2, QgsPoint &inter ) const
 {
-  const QgsPoint &q1 = idxFrom->point(), & q2 = idxTo->point();
+  const QgsPoint &q1 = idxFrom->point(), &q2 = idxTo->point();
   QgsVector v( p2.x() - p1.x(), p2.y() - p1.y() );
   QgsVector w( q2.x() - q1.x(), q2.y() - q1.y() );
   const double vl = v.length();

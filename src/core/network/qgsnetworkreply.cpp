@@ -90,24 +90,24 @@ QString QgsNetworkReplyContent::extractFileNameFromContentDispositionHeader( con
 {
   const thread_local QRegularExpression rx( QStringLiteral( R"""(filename[^;\n]*=\s*(UTF-\d['"]*)?((['"]).*?[.]$\2|[^;\n]*)?)""" ), QRegularExpression::PatternOption::CaseInsensitiveOption );
 
-  QRegularExpressionMatchIterator i = rx.globalMatch( header, 0 );
-  QString res;
-  // we want the last match here, as that will have the UTF filename when present
-  while ( i.hasNext() )
+      QRegularExpressionMatchIterator i = rx.globalMatch( header, 0 );
+      QString res;
+      // we want the last match here, as that will have the UTF filename when present
+      while ( i.hasNext() )
   {
     const QRegularExpressionMatch match = i.next();
     res = match.captured( 2 );
   }
 
   if ( res.startsWith( '"' ) )
-  {
-    res = res.mid( 1 );
+{
+  res = res.mid( 1 );
     if ( res.endsWith( '"' ) )
       res.chop( 1 );
   }
   if ( !res.isEmpty() )
-  {
-    res = QUrl::fromPercentEncoding( res.toUtf8() );
+{
+  res = QUrl::fromPercentEncoding( res.toUtf8() );
   }
 
   return res;

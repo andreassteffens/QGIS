@@ -29,36 +29,36 @@
 namespace QgsSb
 {
   void writeGetLayerMetadata( QgsServerInterface *serverIface, const QgsProject *project,
-                             const QString &version, const QgsServerRequest &request,
-                             QgsServerResponse &response, const QString &layerName )
+                              const QString &version, const QgsServerRequest &request,
+                              QgsServerResponse &response, const QString &layerName )
   {
-	  Q_UNUSED(version);
+    Q_UNUSED( version );
 
-	  QString qstrMetadata;
+    QString qstrMetadata;
 
-	  // Use layer ids
-	  bool useLayerIds = QgsServerProjectUtils::wmsUseLayerIds(*project);
+    // Use layer ids
+    bool useLayerIds = QgsServerProjectUtils::wmsUseLayerIds( *project );
 
-	  Q_FOREACH(QgsMapLayer *layer, project->mapLayers())
-	  {
-		  QString name = layer->name();
-		  if (useLayerIds)
-			  name = layer->id();
-		  else if (!layer->shortName().isEmpty())
-			  name = layer->shortName();
+    Q_FOREACH ( QgsMapLayer *layer, project->mapLayers() )
+    {
+      QString name = layer->name();
+      if ( useLayerIds )
+        name = layer->id();
+      else if ( !layer->shortName().isEmpty() )
+        name = layer->shortName();
 
-		  if (layerName != name)
-			  continue;
+      if ( layerName != name )
+        continue;
 
-		  qstrMetadata = layer->htmlMetadata();
+      qstrMetadata = layer->htmlMetadata();
 
-		  break;
-	  }
+      break;
+    }
 
-	  if(qstrMetadata.isEmpty()) 
-		  throw QgsServerException(QStringLiteral("Layer not found"));
+    if ( qstrMetadata.isEmpty() )
+      throw QgsServerException( QStringLiteral( "Layer not found" ) );
 
-	  response.setHeader(QStringLiteral("Content-Type"), QStringLiteral("text/html; charset=utf-8"));
-	  response.write(qstrMetadata);
+    response.setHeader( QStringLiteral( "Content-Type" ), QStringLiteral( "text/html; charset=utf-8" ) );
+    response.write( qstrMetadata );
   }
 } // namespace QgsSb

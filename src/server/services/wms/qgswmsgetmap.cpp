@@ -40,72 +40,77 @@ namespace QgsWms
                                  QStringLiteral( "Please add the value of the VERSION parameter" ), 501 );
     }
 
-    const QString strFormat = request.parameters().value(QStringLiteral("FORMAT"), QStringLiteral("PNG"));
+    const QString strFormat = request.parameters().value( QStringLiteral( "FORMAT" ), QStringLiteral( "PNG" ) );
     QString strContentType;
     QString strSaveFormat;
     QString strCacheMaxAge;
     bool bTiled = false;
 
-    QString strTiled = request.parameter("TILED");
-    if (!strTiled.isEmpty())
-      bTiled = strTiled.compare("TRUE", Qt::CaseInsensitive) == 0;
+    QString strTiled = request.parameter( "TILED" );
+    if ( !strTiled.isEmpty() )
+      bTiled = strTiled.compare( "TRUE", Qt::CaseInsensitive ) == 0;
 
     QgsAccessControl *accessControl = serverIface->accessControls();
     QgsServerCacheManager *cacheManager = serverIface->cacheManager();
-    if (bTiled && cacheManager)
+    if ( bTiled && cacheManager )
     {
-      QStringList qlistMetadata = project->metadata().keywords("sb:USE_WMS_TILED_CACHE");
-      if (qlistMetadata.count() > 0)
-        bTiled = qlistMetadata[0].compare("TRUE", Qt::CaseInsensitive) == 0;
+      QStringList qlistMetadata = project->metadata().keywords( "sb:USE_WMS_TILED_CACHE" );
+      if ( qlistMetadata.count() > 0 )
+        bTiled = qlistMetadata[0].compare( "TRUE", Qt::CaseInsensitive ) == 0;
       else
         bTiled = false;
 
-      if(bTiled)
+      if ( bTiled )
       {
-        qlistMetadata = project->metadata().keywords("sb:CACHE_MAX_AGE");
-        if (qlistMetadata.count() > 0)
+        qlistMetadata = project->metadata().keywords( "sb:CACHE_MAX_AGE" );
+        if ( qlistMetadata.count() > 0 )
           strCacheMaxAge = qlistMetadata[0];
 
-        QString strWidth = request.parameter("WIDTH");
+        QString strWidth = request.parameter( "WIDTH" );
         int iWidth = strWidth.toInt();
 
-        QString strHeight = request.parameter("HEIGHT");
+        QString strHeight = request.parameter( "HEIGHT" );
         int iHeight = strHeight.toInt();
 
         std::unique_ptr<QImage> image;
 
-        ImageOutputFormat fmt = parseImageFormat(strFormat);
-        switch (fmt)
+        ImageOutputFormat fmt = parseImageFormat( strFormat );
+        switch ( fmt )
         {
           case ImageOutputFormat::JPEG:
-            strContentType = QStringLiteral("image/jpeg");
-            strSaveFormat = QStringLiteral("JPEG");
-            image = std::make_unique<QImage>(iWidth, iHeight, QImage::Format_RGB32);
+            strContentType = QStringLiteral( "image/jpeg" );
+            strSaveFormat = QStringLiteral( "JPEG" );
+            image = std::make_unique<QImage>( iWidth, iHeight, QImage::Format_RGB32 );
             break;
           case ImageOutputFormat::PNG:
-            strContentType = QStringLiteral("image/png");
-            strSaveFormat = QStringLiteral("PNG");
-            image = std::make_unique<QImage>(iWidth, iHeight, QImage::Format_ARGB32_Premultiplied);
+            strContentType = QStringLiteral( "image/png" );
+            strSaveFormat = QStringLiteral( "PNG" );
+            image = std::make_unique<QImage>( iWidth, iHeight, QImage::Format_ARGB32_Premultiplied );
             break;
           default:
             bTiled = false;
             break;
         }
 
-        if (bTiled)
+        if ( bTiled )
         {
-          QByteArray content = cacheManager->getCachedImage(project, request, accessControl);
-          if (!content.isEmpty())
+          QByteArray content = cacheManager->getCachedImage( project, request, accessControl );
+
+          if ( !content.isEmpty() )
           {
-            if(image->loadFromData(content))
+            if ( image->loadFromData( content ) )
             {
-              response.setHeader(QStringLiteral("Content-Type"), strContentType);
-              image->save(response.io(), qPrintable(strSaveFormat));
+              response.setHeader( QStringLiteral( "Content-Type" ), strContentType );
+              image->save( response.io(), qPrintable( strSaveFormat ) );
 
-              if (!strCacheMaxAge.isEmpty())
-                response.setHeader(QStringLiteral("Cache-Control"), QStringLiteral("public, max-age=%1").arg(strCacheMaxAge));
+              if ( !strCacheMaxAge.isEmpty() )
+                response.setHeader( QStringLiteral( "Cache-Control" ), QStringLiteral( "public, max-age=%1" ).arg( strCacheMaxAge ) );
 
-              response.setHeader(QStringLiteral("X-QGIS-FROM-CACHE"), QStringLiteral("true"));
+              response.setHeader( QStringLiteral( "X-QGIS-FROM-CACHE" ), QStringLiteral( "true" ) );
+
+              QString cacheId = cacheManager->sbGetProjectCacheId( project );
+              if ( !cacheId.isEmpty() )
+                response.setHeader( QStringLiteral( "X-QGIS-CACHE-ID" ), cacheId );
 
               return;
             }
@@ -129,32 +134,36 @@ namespace QgsWms
 
     // rendering
 
-    PROFILER_START(writeGetMap_setup);
-    
+    PROFILER_START( writeGetMap_setup );
+
     QgsRenderer renderer( context );
     PROFILER_END();
 
-    PROFILER_START(writeGetMap_getMap);
+    PROFILER_START( writeGetMap_getMap );
     std::unique_ptr<QImage> result( renderer.getMap() );
     PROFILER_END();
 
     if ( result )
     {
-      PROFILER_START(writeGetMap_writeImage);
+      PROFILER_START( writeGetMap_writeImage );
       const QString format = request.parameters().value( QStringLiteral( "FORMAT" ), QStringLiteral( "PNG" ) );
       writeImage( response, *result, format, context.imageQuality() );
       PROFILER_END();
 
-      if (bTiled && cacheManager)
+      if ( bTiled && cacheManager )
       {
         QByteArray content = response.data();
-        if (!content.isEmpty())
-          cacheManager->setCachedImage(&content, project, request, accessControl);
+        if ( !content.isEmpty() )
+          cacheManager->setCachedImage( &content, project, request, accessControl );
 
-        if (!strCacheMaxAge.isEmpty())
-          response.setHeader(QStringLiteral("Cache-Control"), QStringLiteral("public, max-age=%1").arg(strCacheMaxAge));
+        if ( !strCacheMaxAge.isEmpty() )
+          response.setHeader( QStringLiteral( "Cache-Control" ), QStringLiteral( "public, max-age=%1" ).arg( strCacheMaxAge ) );
 
-        response.setHeader(QStringLiteral("X-QGIS-FROM-CACHE"), QStringLiteral("false"));
+        response.setHeader( QStringLiteral( "X-QGIS-FROM-CACHE" ), QStringLiteral( "false" ) );
+
+        QString cacheId = cacheManager->sbGetProjectCacheId( project );
+        if ( !cacheId.isEmpty() )
+          response.setHeader( QStringLiteral( "X-QGIS-CACHE-ID" ), cacheId );
       }
     }
     else

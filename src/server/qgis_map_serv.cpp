@@ -32,7 +32,7 @@
 #include <QString>
 
 #ifdef Q_OS_WIN
-  #include <eh.h>
+#include <eh.h>
 #endif
 
 int fcgi_accept()
@@ -47,32 +47,33 @@ int fcgi_accept()
 #endif
 }
 
-void Debug(QString &strMessage)
+void Debug( QString &strMessage )
 {
   return;
 
-  QFile file("d:\\qgis_server_debug.txt");
-  if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append))
+  QFile file( "d:\\qgis_server_debug.txt" );
+  if ( !file.open( QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append ) )
     return;
 
-  QTextStream out(&file);
+  QTextStream out( &file );
   out << strMessage;
 }
 
 #ifdef Q_OS_WIN
-void SETranslator(unsigned int u, struct _EXCEPTION_POINTERS *pExp) 
+void SETranslator( unsigned int u, struct _EXCEPTION_POINTERS *pExp )
 {
   std::string error = "SE Exception: ";
-  switch (u) {
+  switch ( u )
+  {
     case 0xC0000005:
       error += "Access Violation";
       break;
     default:
       char result[11];
-      sprintf_s(result, 11, "0x%08X", u);
+      sprintf_s( result, 11, "0x%08X", u );
       error += result;
   };
-  throw std::exception(error.c_str());
+  throw std::exception( error.c_str() );
 }
 #endif
 
@@ -104,24 +105,24 @@ int main( int argc, char *argv[] )
     qputenv( "QT_QPA_PLATFORM", "offscreen" );
     QgsMessageLog::logMessage( "DISPLAY not set, running in offscreen mode, all printing capabilities will not be available.", "Server", Qgis::MessageLevel::Info );
   }
-  
+
 #ifdef Q_OS_WIN
-  _set_se_translator(SETranslator);
+  _set_se_translator( SETranslator );
 #endif
-  
+
   // since version 3.0 QgsServer now needs a qApp so initialize QgsApplication
   const QgsApplication app( argc, argv, withDisplay, QString(), QStringLiteral( "server" ) );
-  
-  QgsMessageLog::logMessage(QStringLiteral("STARTING QGIS SERVER"), QStringLiteral("Server"), Qgis::Warning);
-  
+
+  QgsMessageLog::logMessage( QStringLiteral( "STARTING QGIS SERVER" ), QStringLiteral( "Server" ), Qgis::Warning );
+
   try
   {
     QString strTenant = "";
 
-    if (argc == 2)
+    if ( argc == 2 )
       strTenant = argv[1];
 
-    QgsServer server(strTenant);
+    QgsServer server( strTenant );
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
     server.initPython();
@@ -150,21 +151,21 @@ int main( int argc, char *argv[] )
       }
     }
   }
-  catch (QgsServerException &ex)
+  catch ( QgsServerException &ex )
   {
-    QgsMessageLog::logMessage(QStringLiteral("QgsServerException: %1").arg(ex.what()), QStringLiteral("Server"), Qgis::Critical);
+    QgsMessageLog::logMessage( QStringLiteral( "QgsServerException: %1" ).arg( ex.what() ), QStringLiteral( "Server" ), Qgis::Critical );
   }
-  catch (QgsException &ex)
+  catch ( QgsException &ex )
   {
     // Internal server error
-    QgsMessageLog::logMessage(QStringLiteral("QgsServerException: %1").arg(ex.what()), QStringLiteral("Server"), Qgis::Critical);
+    QgsMessageLog::logMessage( QStringLiteral( "QgsServerException: %1" ).arg( ex.what() ), QStringLiteral( "Server" ), Qgis::Critical );
   }
-  catch (...)
+  catch ( ... )
   {
-    QgsMessageLog::logMessage(QStringLiteral("Unknown exception"), QStringLiteral("Server"), Qgis::Critical);
+    QgsMessageLog::logMessage( QStringLiteral( "Unknown exception" ), QStringLiteral( "Server" ), Qgis::Critical );
   }
 
-  QgsMessageLog::logMessage(QStringLiteral("STOPPING QGIS SERVER"), QStringLiteral("Server"), Qgis::Warning);
+  QgsMessageLog::logMessage( QStringLiteral( "STOPPING QGIS SERVER" ), QStringLiteral( "Server" ), Qgis::Warning );
 
   QgsApplication::exitQgis();
 

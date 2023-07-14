@@ -19,7 +19,7 @@
 
 #include "sbutils.h"
 
-QString sbGetStandardizedPath(const QString &strPath)
+QString sbGetStandardizedPath( const QString &strPath )
 {
-	
+
 }

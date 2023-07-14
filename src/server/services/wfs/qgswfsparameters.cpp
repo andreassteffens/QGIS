@@ -174,39 +174,39 @@ namespace QgsWfs
     const QgsWfsParameter pExpFilter = QgsWfsParameter( QgsWfsParameter::EXP_FILTER );
     save( pExpFilter );
 
-    const QgsWfsParameter pSbRules = QgsWfsParameter(QgsWfsParameter::SBRULES);
-    save(pSbRules);
+    const QgsWfsParameter pSbRules = QgsWfsParameter( QgsWfsParameter::SBRULES );
+    save( pSbRules );
 
     const QgsWfsParameter pGeometryName = QgsWfsParameter( QgsWfsParameter::GEOMETRYNAME );
     save( pGeometryName );
 
-    const QgsWfsParameter pSbJsonNoTransform = QgsWfsParameter(QgsWfsParameter::SBJSONNOTRANSFORM,
-                                               QVariant::Bool,
-                                               QVariant(false));
-    save(pSbJsonNoTransform);
+    const QgsWfsParameter pSbJsonNoTransform = QgsWfsParameter( QgsWfsParameter::SBJSONNOTRANSFORM,
+        QVariant::Bool,
+        QVariant( false ) );
+    save( pSbJsonNoTransform );
 
-    const QgsWfsParameter pSbAllowEmptyPropertyList = QgsWfsParameter(QgsWfsParameter::SBALLOWEMPTYPROPERTYLIST,
-                                                      QVariant::Bool,
-                                                      QVariant(false));
-    save(pSbAllowEmptyPropertyList);
+    const QgsWfsParameter pSbAllowEmptyPropertyList = QgsWfsParameter( QgsWfsParameter::SBALLOWEMPTYPROPERTYLIST,
+        QVariant::Bool,
+        QVariant( false ) );
+    save( pSbAllowEmptyPropertyList );
 
-    const QgsWfsParameter pSbOutputType = QgsWfsParameter(QgsWfsParameter::SBGEOMETRYOUTPUT);
-    save(pSbOutputType);
+    const QgsWfsParameter pSbOutputType = QgsWfsParameter( QgsWfsParameter::SBGEOMETRYOUTPUT );
+    save( pSbOutputType );
 
-    const QgsWfsParameter pSbWithMapTip = QgsWfsParameter(QgsWfsParameter::SBWITHMAPTIP,
+    const QgsWfsParameter pSbWithMapTip = QgsWfsParameter( QgsWfsParameter::SBWITHMAPTIP,
                                           QVariant::Bool,
-                                          QVariant(false));
-    save(pSbWithMapTip);
+                                          QVariant( false ) );
+    save( pSbWithMapTip );
 
-    const QgsWfsParameter pSbPassThroughQgisFilterExpression = QgsWfsParameter(QgsWfsParameter::SBPASSTHROUGHQGISFILTEREXPRESSION,
-                                                               QVariant::Bool,
-                                                               QVariant(false));
-    save(pSbPassThroughQgisFilterExpression);
+    const QgsWfsParameter pSbPassThroughQgisFilterExpression = QgsWfsParameter( QgsWfsParameter::SBPASSTHROUGHQGISFILTEREXPRESSION,
+        QVariant::Bool,
+        QVariant( false ) );
+    save( pSbPassThroughQgisFilterExpression );
 
-    const QgsWfsParameter pSbStopAfterFirstResultLayer = QgsWfsParameter(QgsWfsParameter::SBSTOPAFTERFIRSTRESULTLAYER,
-      QVariant::Bool,
-      QVariant(false));
-    save(pSbStopAfterFirstResultLayer);
+    const QgsWfsParameter pSbStopAfterFirstResultLayer = QgsWfsParameter( QgsWfsParameter::SBSTOPAFTERFIRSTRESULTLAYER,
+        QVariant::Bool,
+        QVariant( false ) );
+    save( pSbStopAfterFirstResultLayer );
   }
 
   QgsWfsParameters::QgsWfsParameters( const QgsServerParameters &parameters )
@@ -293,7 +293,7 @@ namespace QgsWfs
       f = Format::GML2;
     else if ( fStr.compare( QLatin1String( "gml3" ), Qt::CaseInsensitive ) == 0 )
       f = Format::GML3;
-    else if ( fStr.compare( QLatin1String( "geojson" ), Qt::CaseInsensitive ) == 0 || fStr.compare(QLatin1String("json"), Qt::CaseInsensitive) == 0)
+    else if ( fStr.compare( QLatin1String( "geojson" ), Qt::CaseInsensitive ) == 0 || fStr.compare( QLatin1String( "json" ), Qt::CaseInsensitive ) == 0 )
       f = Format::GeoJSON;
 
     if ( f == Format::NONE &&
@@ -393,61 +393,61 @@ namespace QgsWfs
 
   QStringList QgsWfsParameters::sbRules() const
   {
-	  const QString strRules = mWfsParameters[QgsWfsParameter::SBRULES].toString();
-	  QStringList listLayerTerms = strRules.split(';');
+    const QString strRules = mWfsParameters[QgsWfsParameter::SBRULES].toString();
+    QStringList listLayerTerms = strRules.split( ';' );
 
-	  return listLayerTerms;
+    return listLayerTerms;
   }
 
-  QMultiMap<QString, QgsWfsParametersRules> QgsWfsParameters::sbLayerRules(const QStringList &layers) const
+  QMultiMap<QString, QgsWfsParametersRules> QgsWfsParameters::sbLayerRules( const QStringList &layers ) const
   {
-	  const QStringList listLayerTerms = sbRules();
-	  QMultiMap<QString, QgsWfsParametersRules> mapRules;
+    const QStringList listLayerTerms = sbRules();
+    QMultiMap<QString, QgsWfsParametersRules> mapRules;
 
-	  for (int iTerm = 0; iTerm < listLayerTerms.count(); iTerm++)
-	  {
-		  QString strTerm = listLayerTerms[iTerm];
-		  if (!strTerm.contains(':'))
-			  continue;
+    for ( int iTerm = 0; iTerm < listLayerTerms.count(); iTerm++ )
+    {
+      QString strTerm = listLayerTerms[iTerm];
+      if ( !strTerm.contains( ':' ) )
+        continue;
 
-		  QStringList listLayerParts = strTerm.split(':');
-		  if (listLayerParts.count() != 2)
-			  continue;
+      QStringList listLayerParts = strTerm.split( ':' );
+      if ( listLayerParts.count() != 2 )
+        continue;
 
-		  QString strLayer = listLayerParts[0];
-		  if (!layers.contains(strLayer))
-			  continue;
+      QString strLayer = listLayerParts[0];
+      if ( !layers.contains( strLayer ) )
+        continue;
 
-		  if (!mapRules.contains(strLayer))
-			  mapRules.insert(strLayer, QgsWfsParametersRules());
+      if ( !mapRules.contains( strLayer ) )
+        mapRules.insert( strLayer, QgsWfsParametersRules() );
 
-		  QMultiMap<QString, QgsWfsParametersRules>::iterator it = mapRules.find(strLayer);
+      QMultiMap<QString, QgsWfsParametersRules>::iterator it = mapRules.find( strLayer );
 
-		  int iActiveCount = 0;
+      int iActiveCount = 0;
 
-		  QStringList listLayerRuleTerms = listLayerParts[1].split(',');
-		  for (int iRule = 0; iRule < listLayerRuleTerms.count(); iRule++)
-		  {
-			  QString strRuleTerm = listLayerRuleTerms[iRule];
+      QStringList listLayerRuleTerms = listLayerParts[1].split( ',' );
+      for ( int iRule = 0; iRule < listLayerRuleTerms.count(); iRule++ )
+      {
+        QString strRuleTerm = listLayerRuleTerms[iRule];
 
-			  QStringList listRuleParts = strRuleTerm.split('=');
-			  if (listRuleParts.count() != 2)
-				  continue;
+        QStringList listRuleParts = strRuleTerm.split( '=' );
+        if ( listRuleParts.count() != 2 )
+          continue;
 
-			  QString strRule = listRuleParts[0];
-			  bool bState = listRuleParts[1].compare("true", Qt::CaseInsensitive) == 0;
+        QString strRule = listRuleParts[0];
+        bool bState = listRuleParts[1].compare( "true", Qt::CaseInsensitive ) == 0;
 
-			  it->mRules.append(QPair<QString, bool>(strRule, bState));
+        it->mRules.append( QPair<QString, bool>( strRule, bState ) );
 
-			  if (bState)
-				  iActiveCount++;
-		  }
+        if ( bState )
+          iActiveCount++;
+      }
 
-		  if (iActiveCount == listLayerRuleTerms.count())
-			  mapRules.erase(it);
-	  }
+      if ( iActiveCount == listLayerRuleTerms.count() )
+        mapRules.erase( it );
+    }
 
-	  return mapRules;
+    return mapRules;
   }
 
   QString QgsWfsParameters::geometryNameAsString() const
@@ -457,17 +457,17 @@ namespace QgsWfs
 
   bool QgsWfsParameters::sbJsonNoTransform() const
   {
-	  return mWfsParameters[QgsWfsParameter::SBJSONNOTRANSFORM].toBool();
+    return mWfsParameters[QgsWfsParameter::SBJSONNOTRANSFORM].toBool();
   }
 
   bool QgsWfsParameters::sbAllowEmptyPropertyList() const
   {
-	  return mWfsParameters[QgsWfsParameter::SBALLOWEMPTYPROPERTYLIST].toBool();
+    return mWfsParameters[QgsWfsParameter::SBALLOWEMPTYPROPERTYLIST].toBool();
   }
 
   bool QgsWfsParameters::sbWithMapTip() const
   {
-	  return mWfsParameters[QgsWfsParameter::SBWITHMAPTIP].toBool();
+    return mWfsParameters[QgsWfsParameter::SBWITHMAPTIP].toBool();
   }
 
   bool QgsWfsParameters::sbPassThroughQgisFilterExpression() const

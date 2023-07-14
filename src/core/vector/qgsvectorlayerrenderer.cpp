@@ -89,21 +89,21 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
   }
 
   mSelectedFeatureIds = layer->selectedFeatureIds();
-  
+
   mSbRenderSelectionOnly = layer->sbRenderSelectionOnly();
-  
+
   bool bRenderMinPixelSizeFilter = false;
   mSbRenderMinPixelSize = -1;
   mSbRenderMinPixelSizeMaxScale = -1;
   mSbRenderMinPixelSizeDebug = false;
-  mSbRenderMinPixelSizeSourceFiltering = layer->providerType().compare("ogr", Qt::CaseInsensitive) == 0;
+  mSbRenderMinPixelSizeSourceFiltering = layer->providerType().compare( "ogr", Qt::CaseInsensitive ) == 0;
 
-  sbMinPixelSizeFilterUtils::getFilterProperties(mLayer, &bRenderMinPixelSizeFilter, &mSbRenderMinPixelSize, &mSbRenderMinPixelSizeMaxScale, &mSbRenderMinPixelSizeDebug);
-  if (!bRenderMinPixelSizeFilter)
+  sbMinPixelSizeFilterUtils::getFilterProperties( mLayer, &bRenderMinPixelSizeFilter, &mSbRenderMinPixelSize, &mSbRenderMinPixelSizeMaxScale, &mSbRenderMinPixelSizeDebug );
+  if ( !bRenderMinPixelSizeFilter )
     mSbRenderMinPixelSize = mSbRenderMinPixelSizeMaxScale = -1;
 
-  if (mLayer->extent().isFinite() && !mLayer->extent().isNull())
-    mSbScaleFactor = context.coordinateTransform().scaleFactor(mLayer->extent());
+  if ( mLayer->extent().isFinite() && !mLayer->extent().isNull() )
+    mSbScaleFactor = context.coordinateTransform().scaleFactor( mLayer->extent() );
   else
     mSbScaleFactor = 1;
 
@@ -312,7 +312,7 @@ bool QgsVectorLayerRenderer::renderInternal( QgsFeatureRenderer *renderer )
                                      .setSubsetOfAttributes( mAttrNames, mFields )
                                      .setExpressionContext( context.expressionContext() );
 
-  featureRequest.sbSetRenderMinPixelSizeFilter(mSbRenderMinPixelSize, mSbRenderMinPixelSizeMaxScale, mSbScaleFactor, mSbMapUnitsPerPixel, renderContext()->rendererScale(), mGeometryType, mSbRenderMinPixelSizeSourceFiltering, mSbRenderMinPixelSizeDebug);
+  featureRequest.sbSetRenderMinPixelSizeFilter( mSbRenderMinPixelSize, mSbRenderMinPixelSizeMaxScale, mSbScaleFactor, mSbMapUnitsPerPixel, renderContext()->rendererScale(), mGeometryType, mSbRenderMinPixelSizeSourceFiltering, mSbRenderMinPixelSizeDebug );
 
   if ( renderer->orderByEnabled() )
   {
@@ -476,9 +476,9 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
       if ( !fet.hasGeometry() || fet.geometry().isEmpty() )
         continue; // skip features without geometry
 
-      if (mSbRenderSelectionOnly)
+      if ( mSbRenderSelectionOnly )
       {
-        if (!mSelectedFeatureIds.contains(fet.id()))
+        if ( !mSelectedFeatureIds.contains( fet.id() ) )
           continue;
       }
 
@@ -607,9 +607,9 @@ void QgsVectorLayerRenderer::drawRendererLevels( QgsFeatureRenderer *renderer, Q
     if ( !fet.hasGeometry() )
       continue; // skip features without geometry
 
-    if (mSbRenderSelectionOnly)
+    if ( mSbRenderSelectionOnly )
     {
-      if (!mSelectedFeatureIds.contains(fet.id()))
+      if ( !mSelectedFeatureIds.contains( fet.id() ) )
         continue;
     }
 

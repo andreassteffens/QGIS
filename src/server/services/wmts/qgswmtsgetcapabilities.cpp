@@ -394,8 +394,8 @@ namespace QgsWmts
 
           QgsRectangle rect;
           const QgsCoordinateReferenceSystem crs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( tms.ref );
-          
-          if (wmtsLayer.sbCrsBoundingRects.contains(crs.authid()))
+
+          if ( wmtsLayer.sbCrsBoundingRects.contains( crs.authid() ) )
             rect = wmtsLayer.sbCrsBoundingRects[crs.authid()];
           else
           {

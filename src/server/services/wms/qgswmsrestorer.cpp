@@ -24,7 +24,6 @@
 #include "qgsmaplayerstylemanager.h"
 #include "qgslegendsymbolitem.h"
 #include "qgsrenderer.h"
-#include "qgsmessagelog.h"
 #include "qgsreadwritecontext.h"
 #include "qgswmsrendercontext.h"
 
@@ -35,7 +34,7 @@ QgsLayerRestorer::QgsLayerRestorer( const QgsWmsRenderContext &context )
 
   for ( QgsMapLayer *layer : context.layers() )
   {
-    if (layer->name().isEmpty())
+    if ( layer->name().isEmpty() )
       continue;
 
     QgsLayerSettings settings;
@@ -49,7 +48,7 @@ QgsLayerRestorer::QgsLayerRestorer( const QgsWmsRenderContext &context )
 
     QgsMapLayerStyleManager *styleManager = layer->styleManager();
 
-    if (styleManager)
+    if ( styleManager )
       settings.mNamedStyle = styleManager->currentStyle();
 
     switch ( layer->type() )
@@ -67,28 +66,28 @@ QgsLayerRestorer::QgsLayerRestorer( const QgsWmsRenderContext &context )
           settings.mSetLegendItemStates = false;
           settings.mSetLabelVisibility = false;
 
-          QMultiMap<QString, QgsWmsParametersRules>::const_iterator iterRules = mapRules.find(context.layerNickname(*layer));
-          if (iterRules != mapRules.end())
+          QMultiMap<QString, QgsWmsParametersRules>::const_iterator iterRules = mapRules.find( context.layerNickname( *layer ) );
+          if ( iterRules != mapRules.end() )
           {
             QgsFeatureRenderer *renderer = vLayer->renderer();
-            if (renderer)
+            if ( renderer )
             {
               settings.mSetLegendItemStates = true;
 
-              for (const QgsLegendSymbolItem &legendItem : renderer->legendSymbolItems())
+              for ( const QgsLegendSymbolItem &legendItem : renderer->legendSymbolItems() )
               {
-                if (!legendItem.isCheckable())
+                if ( !legendItem.isCheckable() )
                   continue;
 
                 QString strRule = legendItem.ruleKey();
-                bool bState = renderer->legendSymbolItemChecked(strRule);
-                settings.mLegendItemStates.insert(strRule, bState);
+                bool bState = renderer->legendSymbolItemChecked( strRule );
+                settings.mLegendItemStates.insert( strRule, bState );
               }
             }
           }
 
-          QMultiMap<QString, bool>::const_iterator iterLabels = mapLabels.find(context.layerNickname(*layer));
-          if (iterLabels != mapLabels.end())
+          QMultiMap<QString, bool>::const_iterator iterLabels = mapLabels.find( context.layerNickname( *layer ) );
+          if ( iterLabels != mapLabels.end() )
           {
             settings.mSetLabelVisibility = true;
             settings.mLabelVisibility = vLayer->labelsEnabled();
@@ -120,41 +119,41 @@ QgsLayerRestorer::QgsLayerRestorer( const QgsWmsRenderContext &context )
   }
 }
 
-void QgsLayerRestorer::sbUpdateScaleBasedVisibility(QgsWmsRenderContext &context, double dScale)
+void QgsLayerRestorer::sbUpdateScaleBasedVisibility( QgsWmsRenderContext &context, double dScale )
 {
   QMultiMap<QString, QString> mapSelectionLayers;
-  if (context.parameters().sbAlwaysRenderSelection())
+  if ( context.parameters().sbAlwaysRenderSelection() )
   {
     QStringList listSelections = context.parameters().selections();
-    for (int iSelection = 0; iSelection < listSelections.count(); iSelection++)
+    for ( int iSelection = 0; iSelection < listSelections.count(); iSelection++ )
     {
-      QStringList listParts = listSelections[iSelection].split(':');
-      if (!mapSelectionLayers.contains(listParts[0]))
-        mapSelectionLayers.insert(listParts[0], listParts[0]);
+      QStringList listParts = listSelections[iSelection].split( ':' );
+      if ( !mapSelectionLayers.contains( listParts[0] ) )
+        mapSelectionLayers.insert( listParts[0], listParts[0] );
     }
   }
 
   QMap<QgsMapLayer *, QgsLayerSettings>::iterator iterSettings;
-  for (iterSettings = mLayerSettings.begin(); iterSettings != mLayerSettings.end(); iterSettings++)
+  for ( iterSettings = mLayerSettings.begin(); iterSettings != mLayerSettings.end(); iterSettings++ )
   {
-    QgsMapLayer* pLayer = iterSettings.key();
-    switch (pLayer->type())
+    QgsMapLayer *pLayer = iterSettings.key();
+    switch ( pLayer->type() )
     {
       case QgsMapLayerType::VectorLayer:
       {
-        QgsVectorLayer* pVectorLayer = qobject_cast<QgsVectorLayer *>(pLayer);
-        if (context.parameters().sbAlwaysRenderSelection() && pVectorLayer->hasScaleBasedVisibility() && dScale > -1)
+        QgsVectorLayer *pVectorLayer = qobject_cast<QgsVectorLayer *>( pLayer );
+        if ( context.parameters().sbAlwaysRenderSelection() && pVectorLayer->hasScaleBasedVisibility() && dScale > -1 )
         {
-          if (mapSelectionLayers.contains(pVectorLayer->shortName()))
+          if ( mapSelectionLayers.contains( pVectorLayer->shortName() ) )
           {
-            if (dScale > pVectorLayer->minimumScale() || dScale < pVectorLayer->maximumScale())
+            if ( dScale > pVectorLayer->minimumScale() || dScale < pVectorLayer->maximumScale() )
             {
               iterSettings->mScaleBasedVisibility = true;
               iterSettings->mSetScaleBasedVisibility = true;
 
-              pVectorLayer->setScaleBasedVisibility(false);
+              pVectorLayer->setScaleBasedVisibility( false );
 
-              context.sbAddRenderSelectionOnlyLayer(pVectorLayer->shortName());
+              context.sbAddRenderSelectionOnlyLayer( pVectorLayer->shortName() );
             }
           }
         }
@@ -168,28 +167,28 @@ QgsLayerRestorer::~QgsLayerRestorer()
 {
   for ( QgsMapLayer *layer : mLayerSettings.keys() )
   {
-    if (layer->name().isEmpty())
+    if ( layer->name().isEmpty() )
       continue;
 
     QgsLayerSettings settings = mLayerSettings[layer];
 
     QgsMapLayerStyleManager *styleManager = layer->styleManager();
-    if (styleManager)
+    if ( styleManager )
     {
-      styleManager->setCurrentStyle(settings.mNamedStyle);
+      styleManager->setCurrentStyle( settings.mNamedStyle );
 
       // if a SLD file has been loaded for rendering, we restore the previous style
-      const QString sldStyleName{ layer->customProperty("sldStyleName", "").toString() };
-      if (!sldStyleName.isEmpty())
+      const QString sldStyleName{ layer->customProperty( "sldStyleName", "" ).toString() };
+      if ( !sldStyleName.isEmpty() )
       {
-        styleManager->removeStyle(sldStyleName);
-        layer->removeCustomProperty("sldStyleName");
+        styleManager->removeStyle( sldStyleName );
+        layer->removeCustomProperty( "sldStyleName" );
       }
 
-      styleManager->setCurrentStyle( settings.mNamedStyle ); 
+      styleManager->setCurrentStyle( settings.mNamedStyle );
     }
 
-    layer->setName(mLayerSettings[layer].name);
+    layer->setName( mLayerSettings[layer].name );
 
     switch ( layer->type() )
     {
@@ -203,33 +202,33 @@ QgsLayerRestorer::~QgsLayerRestorer()
           vLayer->selectByIds( settings.mSelectedFeatureIds );
           vLayer->setSubsetString( settings.mFilter );
 
-          if (settings.mSetLegendItemStates)
+          if ( settings.mSetLegendItemStates )
           {
             QgsFeatureRenderer *renderer = vLayer->renderer();
-            if (renderer)
+            if ( renderer )
             {
-              for (const QgsLegendSymbolItem &legendItem : renderer->legendSymbolItems())
+              for ( const QgsLegendSymbolItem &legendItem : renderer->legendSymbolItems() )
               {
-                if (!legendItem.isCheckable())
+                if ( !legendItem.isCheckable() )
                   continue;
 
                 QString strRule = legendItem.ruleKey();
-                QMultiMap<QString, bool>::iterator it = settings.mLegendItemStates.find(strRule);
-                if (it != settings.mLegendItemStates.end())
+                QMultiMap<QString, bool>::iterator it = settings.mLegendItemStates.find( strRule );
+                if ( it != settings.mLegendItemStates.end() )
                 {
                   bool bState = it.value();
-                  if (bState != renderer->legendSymbolItemChecked(strRule))
-                    renderer->checkLegendSymbolItem(strRule, bState);
+                  if ( bState != renderer->legendSymbolItemChecked( strRule ) )
+                    renderer->checkLegendSymbolItem( strRule, bState );
                 }
               }
             }
           }
 
-          if (settings.mSetLabelVisibility)
-            vLayer->setLabelsEnabled(settings.mLabelVisibility);
+          if ( settings.mSetLabelVisibility )
+            vLayer->setLabelsEnabled( settings.mLabelVisibility );
 
-          if (settings.mSetScaleBasedVisibility)
-            vLayer->setScaleBasedVisibility(settings.mScaleBasedVisibility);
+          if ( settings.mSetScaleBasedVisibility )
+            vLayer->setScaleBasedVisibility( settings.mScaleBasedVisibility );
         }
         break;
       }

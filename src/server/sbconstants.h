@@ -7,7 +7,7 @@
   copyright            : (C) 2019 by Andreas Steffens
   email                : a dot steffens at gds dash team dot de
  ***************************************************************************/
-                           
+
 /***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *

@@ -188,8 +188,8 @@ QSizeF QgsLegendRenderer::paintAndDetermineSize( QgsRenderContext &context )
   //add title margin to size of title text
   titleSize.rwidth() += mSettings.boxSpace() * 2.0;
   double columnTop = mSettings.boxSpace();
-  if(titleSize.height() > 0)
-    columnTop += titleSize.height() + mSettings.style(QgsLegendStyle::Title).margin(QgsLegendStyle::Bottom);
+  if ( titleSize.height() > 0 )
+    columnTop += titleSize.height() + mSettings.style( QgsLegendStyle::Title ).margin( QgsLegendStyle::Bottom );
 
   noPainter.reset();
 
@@ -1000,25 +1000,25 @@ QSizeF QgsLegendRenderer::drawGroupTitle( QgsLayerTreeGroup *nodeGroup, QgsRende
   {
     y += mSettings.fontAscentMillimeters( groupFont );
 
-    if (!groupPart->isEmpty())
+    if ( !groupPart->isEmpty() )
     {
-      if (QPainter* destPainter = context.painter())
+      if ( QPainter *destPainter = context.painter() )
       {
         double x = columnContext.left + sideMargin;
-        if (mSettings.style(nodeLegendStyle(nodeGroup)).alignment() != Qt::AlignLeft)
+        if ( mSettings.style( nodeLegendStyle( nodeGroup ) ).alignment() != Qt::AlignLeft )
         {
-          const double labelWidth = mSettings.textWidthMillimeters(groupFont, *groupPart);
-          if (mSettings.style(nodeLegendStyle(nodeGroup)).alignment() == Qt::AlignRight)
+          const double labelWidth = mSettings.textWidthMillimeters( groupFont, *groupPart );
+          if ( mSettings.style( nodeLegendStyle( nodeGroup ) ).alignment() == Qt::AlignRight )
             x = columnContext.right - labelWidth - sideMargin;
-          else if (mSettings.style(nodeLegendStyle(nodeGroup)).alignment() == Qt::AlignHCenter)
-            x = columnContext.left + (columnContext.right - columnContext.left - labelWidth) / 2;
+          else if ( mSettings.style( nodeLegendStyle( nodeGroup ) ).alignment() == Qt::AlignHCenter )
+            x = columnContext.left + ( columnContext.right - columnContext.left - labelWidth ) / 2;
         }
-        mSettings.drawText(destPainter, x, y, *groupPart, groupFont);
+        mSettings.drawText( destPainter, x, y, *groupPart, groupFont );
       }
-      qreal width = mSettings.textWidthMillimeters(groupFont, *groupPart) + sideMargin * (mSettings.style(nodeLegendStyle(nodeGroup)).alignment() == Qt::AlignHCenter ? 2 : 1);
-      size.rwidth() = std::max(width, size.width());
+      qreal width = mSettings.textWidthMillimeters( groupFont, *groupPart ) + sideMargin * ( mSettings.style( nodeLegendStyle( nodeGroup ) ).alignment() == Qt::AlignHCenter ? 2 : 1 );
+      size.rwidth() = std::max( width, size.width() );
     }
-    
+
     if ( groupPart != ( lines.end() - 1 ) )
     {
       y += mSettings.lineSpacing();

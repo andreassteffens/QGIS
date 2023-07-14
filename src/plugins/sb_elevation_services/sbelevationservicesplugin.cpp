@@ -66,28 +66,28 @@ sbElevationServicesPlugin::sbElevationServicesPlugin( QgisInterface *qgisInterfa
 void sbElevationServicesPlugin::initGui()
 {
   //create the dock widget
-  mpDockWidget = new QgsDockWidget( tr(qPrintable(sName)), mpQgisIface->mainWindow() );
+  mpDockWidget = new QgsDockWidget( tr( qPrintable( sName ) ), mpQgisIface->mainWindow() );
   mpDockWidget->setObjectName( QStringLiteral( "sbElevationServices" ) );
   mpDockWidget->setAllowedAreas( Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea );
   mpQgisIface->addDockWidget( Qt::LeftDockWidgetArea, mpDockWidget );
 
   // Create the action for tool
-  mpQActionPointer = new QAction( QIcon(), tr(qPrintable(sName)), this );
+  mpQActionPointer = new QAction( QIcon(), tr( qPrintable( sName ) ), this );
   mpQActionPointer->setObjectName( QStringLiteral( "mpQActionPointer" ) );
-  mpQActionPointer->setIcon(QIcon(":/sbelevationservices/icons/sb_elevation_services.png"));
+  mpQActionPointer->setIcon( QIcon( ":/sbelevationservices/icons/sb_elevation_services.png" ) );
   mpQActionPointer->setCheckable( true );
   mpQActionPointer->setChecked( mpDockWidget->isVisible() );
-  mpQActionPointer->setWhatsThis( tr(qPrintable(sDescription)) );
-  
+  mpQActionPointer->setWhatsThis( tr( qPrintable( sDescription ) ) );
+
   connect( mpQActionPointer, &QAction::triggered, this, &sbElevationServicesPlugin::showOrHide );
   mpQgisIface->addPluginToVectorMenu( QString(), mpQActionPointer );
   mpQgisIface->addVectorToolBarIcon( mpQActionPointer );
 
-  sbElevationServicesGui *pGui = new sbElevationServicesGui(mpQgisIface);
-  mpDockWidget->setWidget(pGui);
-  
-  connect( mpDockWidget.data(), SIGNAL(visibilityChanged), mpQActionPointer, SLOT(setChecked) );
-  connect(mpDockWidget.data(), &QDockWidget::visibilityChanged, mpQActionPointer, &QAction::setChecked);
+  sbElevationServicesGui *pGui = new sbElevationServicesGui( mpQgisIface );
+  mpDockWidget->setWidget( pGui );
+
+  connect( mpDockWidget.data(), SIGNAL( visibilityChanged ), mpQActionPointer, SLOT( setChecked ) );
+  connect( mpDockWidget.data(), &QDockWidget::visibilityChanged, mpQActionPointer, &QAction::setChecked );
 }
 
 //method defined in interface
@@ -108,18 +108,18 @@ void sbElevationServicesPlugin::showOrHide()
 void sbElevationServicesPlugin::unload()
 {
   // remove the GUI
-  if (mpQgisIface)
+  if ( mpQgisIface )
   {
-    mpQgisIface->vectorMenu()->removeAction(mpQActionPointer);
-    mpQgisIface->removeVectorToolBarIcon(mpQActionPointer);
+    mpQgisIface->vectorMenu()->removeAction( mpQActionPointer );
+    mpQgisIface->removeVectorToolBarIcon( mpQActionPointer );
 
     mpQgisIface = nullptr;
   }
-  
-  if (mpDockWidget)
+
+  if ( mpDockWidget )
     delete mpDockWidget;
-  
-  if(mpQActionPointer)
+
+  if ( mpQActionPointer )
     delete mpQActionPointer;
 }
 

@@ -127,15 +127,15 @@ QgsPostgresRasterProvider::QgsPostgresRasterProvider( const QString &uri, const 
     const QString schemaName = res.PQgetvalue( 0, 0 );
     // TODO: also filter CRS?
     const QString selectQuery = QStringLiteral( R"SQL(
-            SELECT
-              qmd
-           FROM %4.qgis_layer_metadata
-             WHERE
-                f_table_schema=%1
-                AND f_table_name=%2
-                AND f_geometry_column %3
-                AND layer_type='raster'
-           )SQL" )
+                                SELECT
+                                qmd
+                                FROM %4.qgis_layer_metadata
+                                WHERE
+                                f_table_schema=%1
+                                    AND f_table_name=%2
+                                        AND f_geometry_column %3
+                                        AND layer_type='raster'
+                                              )SQL" )
                                 .arg( QgsPostgresConn::quotedValue( mUri.schema() ) )
                                 .arg( QgsPostgresConn::quotedValue( mUri.table() ) )
                                 .arg( mUri.geometryColumn().isEmpty() ? QStringLiteral( "IS NULL" ) : QStringLiteral( "=%1" ).arg( QgsPostgresConn::quotedValue( mUri.geometryColumn() ) ) )
@@ -1295,16 +1295,16 @@ bool QgsPostgresRasterProvider::init()
   //   0           1          3           3        4       5         6       7       8       9      10          11           12           13      14
   // encode | upperleftx | upperlefty | width | height | scalex | scaley | skewx | skewy | srid | numbands | pixeltype | nodatavalue | isoutdb | path
   const QString sql = QStringLiteral( R"(
-      WITH cte_filtered_raster AS ( SELECT %1 AS filtered_rast FROM %2 %3 ),
-           cte_rast AS ( SELECT ST_Union( cte_filtered_raster.filtered_rast ) AS united_raster FROM cte_filtered_raster ),
-           cte_bandno AS ( SELECT * FROM generate_series(1, ST_NumBands ( ( SELECT cte_rast.united_raster FROM cte_rast ) ) ) AS bandno ),
-           cte_band AS ( SELECT ST_Band( united_raster, bandno ) AS band FROM cte_rast, cte_bandno )
-                      SELECT ENCODE( ST_AsBinary( ST_Envelope( band ) ), 'hex'),
-                        (ST_Metadata( band  )).*,
-                        (ST_BandMetadata( band )).*
-                      FROM cte_band)" ).arg( quotedIdentifier( mRasterColumn ), tableToQuery, where );
+                                      WITH cte_filtered_raster AS ( SELECT %1 AS filtered_rast FROM %2 %3 ),
+                                      cte_rast AS ( SELECT ST_Union( cte_filtered_raster.filtered_rast ) AS united_raster FROM cte_filtered_raster ),
+                                      cte_bandno AS ( SELECT * FROM generate_series(1, ST_NumBands ( ( SELECT cte_rast.united_raster FROM cte_rast ) ) ) AS bandno ),
+                                      cte_band AS ( SELECT ST_Band( united_raster, bandno ) AS band FROM cte_rast, cte_bandno )
+                                      SELECT ENCODE( ST_AsBinary( ST_Envelope( band ) ), 'hex'),
+                                      (ST_Metadata( band  )).*,
+                                      (ST_BandMetadata( band )).*
+                                      FROM cte_band)" ).arg( quotedIdentifier( mRasterColumn ), tableToQuery, where );
 
-  QgsDebugMsgLevel( QStringLiteral( "Raster information sql: %1" ).arg( sql ), 4 );
+                      QgsDebugMsgLevel( QStringLiteral( "Raster information sql: %1" ).arg( sql ), 4 );
 
   QgsPostgresResult result( connectionRO()->PQexec( sql ) );
   if ( PGRES_TUPLES_OK == result.PQresultStatus() && result.PQntuples() > 0 )

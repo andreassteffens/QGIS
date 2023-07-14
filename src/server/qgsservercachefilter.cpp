@@ -87,3 +87,9 @@ bool QgsServerCacheFilter::deleteCachedImages( const QgsProject *project ) const
   Q_UNUSED( project )
   return false;
 }
+
+QString QgsServerCacheFilter::sbGetProjectCacheId( const QgsProject *project ) const
+{
+  Q_UNUSED( project )
+  return "";
+}

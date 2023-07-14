@@ -352,19 +352,19 @@ namespace QgsWms
       int iIndex = 0;
       for ( QgsLayerTreeModelLegendNode *node : model.layerLegendNodes( layer ) )
       {
-        QString strCmp = node->data(Qt::DisplayRole).toString();
+        QString strCmp = node->data( Qt::DisplayRole ).toString();
         if ( strCmp.compare( rule ) == 0 )
           return node;
 
-        strCmp = node->data(QgsLayerTreeModelLegendNode::LegendNodeRoles::RuleKeyRole).toString();
-        if ( strCmp.compare(rule) == 0 )
+        strCmp = node->data( QgsLayerTreeModelLegendNode::LegendNodeRoles::RuleKeyRole ).toString();
+        if ( strCmp.compare( rule ) == 0 )
           return node;
 
         bool bOk = false;
         int iRule = rule.toInt( &bOk );
         if ( bOk )
         {
-          if (iRule == iIndex)
+          if ( iRule == iIndex )
             return node;
         }
 

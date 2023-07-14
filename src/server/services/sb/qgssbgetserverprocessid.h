@@ -22,7 +22,7 @@ namespace QgsSb
    * Output GetServerProcessId response
    */
   void writeGetServerProcessId( QgsServerInterface *serverIface, const QString &version, const QgsServerRequest &request,
-                        QgsServerResponse &response );
+                                QgsServerResponse &response );
 
 } // namespace QgsWms
 
