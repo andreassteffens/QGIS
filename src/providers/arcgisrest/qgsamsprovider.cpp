@@ -147,10 +147,6 @@ void QgsAmsLegendFetcher::handleFinished()
 
     QgsSettings settings;
     QFont font = qApp->font();
-    int fontSize = settings.value( QStringLiteral( "/qgis/stylesheet/fontPointSize" ), font.pointSize() ).toInt();
-    font.setPointSize( fontSize );
-    QString fontFamily = settings.value( QStringLiteral( "/qgis/stylesheet/fontFamily" ), font.family() ).toString();
-    font.setFamily( fontFamily );
     QFontMetrics fm( font );
     int textWidth = 0;
     int textHeight = fm.ascent();
@@ -256,13 +252,21 @@ QgsAmsProvider::QgsAmsProvider( const QString &uri, const ProviderOptions &optio
   if ( mServiceInfo.contains( QStringLiteral( "maxImageHeight" ) ) )
     mMaxImageHeight = mServiceInfo.value( QStringLiteral( "maxImageHeight" ) ).toInt();
 
-  const QVariantList subLayersList = mLayerInfo.value( QStringLiteral( "subLayers" ) ).toList();
-  mSubLayers.reserve( subLayersList.size() );
-  for ( const QVariant &sublayer : subLayersList )
+  QVariantList layerList = mServiceInfo["layers"].toList();
+  std::function<void( int )> includeChildSublayers = [&]( int layerId )
   {
-    mSubLayers.append( sublayer.toMap()[QStringLiteral( "id" )].toString() );
-    mSubLayerVisibilities.append( true );
-  }
+    if ( layerId < layerList.size() )
+    {
+      QVariantList subLayersList = layerList[layerId].toMap()["subLayerIds"].toList();
+      for ( const QVariant &sublayer : subLayersList )
+      {
+        mSubLayers.append( sublayer.toString() );
+        mSubLayerVisibilities.append( true );
+        includeChildSublayers( sublayer.toInt() );
+      }
+    }
+  };
+  includeChildSublayers( mLayerInfo[ QStringLiteral( "id" ) ].toInt() );
 
   mTimestamp = QDateTime::currentDateTime();
   mValid = true;
@@ -826,7 +830,7 @@ QgsImageFetcher *QgsAmsProvider::getLegendGraphicFetcher( const QgsMapSettings *
   return fetcher;
 }
 
-QgsRasterIdentifyResult QgsAmsProvider::identify( const QgsPointXY &point, QgsRaster::IdentifyFormat format, const QgsRectangle &extent, int width, int height, int dpi )
+QgsRasterIdentifyResult QgsAmsProvider::identify( const QgsPointXY &point, Qgis::RasterIdentifyFormat format, const QgsRectangle &extent, int width, int height, int dpi )
 {
   // http://resources.arcgis.com/en/help/rest/apiref/identify.html
   QgsDataSourceUri dataSource( dataSourceUri() );
@@ -847,7 +851,7 @@ QgsRasterIdentifyResult QgsAmsProvider::identify( const QgsPointXY &point, QgsRa
 
   QMap<int, QVariant> entries;
 
-  if ( format == QgsRaster::IdentifyFormatText )
+  if ( format == Qgis::RasterIdentifyFormat::Text )
   {
     for ( const QVariant &result : queryResults )
     {
@@ -861,7 +865,7 @@ QgsRasterIdentifyResult QgsAmsProvider::identify( const QgsPointXY &point, QgsRa
       entries.insert( entries.size(), valueStr );
     }
   }
-  else if ( format == QgsRaster::IdentifyFormatFeature )
+  else if ( format == Qgis::RasterIdentifyFormat::Feature )
   {
     for ( const QVariant &result : queryResults )
     {
@@ -912,7 +916,7 @@ bool QgsAmsProvider::readBlock( int /*bandNo*/, const QgsRectangle &viewExtent, 
     if ( feedback )
       feedback->appendError( error );
 
-    QgsDebugMsg( error );
+    QgsDebugError( error );
     return false;
   }
   else
@@ -1308,9 +1312,9 @@ QString QgsAmsProviderMetadata::encodeUri( const QVariantMap &parts ) const
   return dsUri.uri( false );
 }
 
-QList<QgsMapLayerType> QgsAmsProviderMetadata::supportedLayerTypes() const
+QList<Qgis::LayerType> QgsAmsProviderMetadata::supportedLayerTypes() const
 {
-  return { QgsMapLayerType::RasterLayer };
+  return { Qgis::LayerType::Raster };
 }
 
 #ifndef HAVE_STATIC_PROVIDERS

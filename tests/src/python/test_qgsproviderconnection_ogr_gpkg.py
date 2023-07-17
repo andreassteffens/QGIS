@@ -18,18 +18,18 @@ from osgeo import gdal  # NOQA
 from qgis.PyQt.QtCore import QTemporaryDir, QVariant
 from qgis.core import (
     Qgis,
-    QgsWkbTypes,
     QgsAbstractDatabaseProviderConnection,
-    QgsProviderConnectionException,
-    QgsVectorLayer,
-    QgsRasterLayer,
-    QgsProviderRegistry,
-    QgsFields,
-    QgsCoordinateReferenceSystem,
-    QgsRangeFieldDomain,
-    QgsGlobFieldDomain,
     QgsCodedFieldDomain,
-    QgsCodedValue
+    QgsCodedValue,
+    QgsCoordinateReferenceSystem,
+    QgsFields,
+    QgsGlobFieldDomain,
+    QgsProviderConnectionException,
+    QgsProviderRegistry,
+    QgsRangeFieldDomain,
+    QgsRasterLayer,
+    QgsVectorLayer,
+    QgsWkbTypes,
 )
 from qgis.testing import unittest
 
@@ -70,6 +70,7 @@ class TestPyQgsProviderConnectionGpkg(unittest.TestCase, TestPyQgsProviderConnec
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super(TestPyQgsProviderConnectionGpkg, cls).setUpClass()
         TestPyQgsProviderConnectionBase.setUpClass()
         gpkg_original_path = f'{TEST_DATA_DIR}/qgis_server/test_project_wms_grouped_layers.gpkg'
         cls.temp_dir = QTemporaryDir()
@@ -105,7 +106,7 @@ class TestPyQgsProviderConnectionGpkg(unittest.TestCase, TestPyQgsProviderConnec
         conn.table('', 'osm')
         conn.table('', 'cdb_lines')
 
-        self.assertEqual(conn.tableUri('', 'osm'), "GPKG:%s:osm" % self.uri)
+        self.assertEqual(conn.tableUri('', 'osm'), f"GPKG:{self.uri}:osm")
         rl = QgsRasterLayer(conn.tableUri('', 'osm'), 'r', 'gdal')
         self.assertTrue(rl.isValid())
 

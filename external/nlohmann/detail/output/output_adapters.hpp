@@ -6,6 +6,7 @@
 #include <memory> // shared_ptr, make_shared
 #include <string> // basic_string
 #include <vector> // vector
+#include <nlohmann/detail/macro_scope.hpp>
 
 #ifndef JSON_NO_IO
     #include <ios>      // streamsize

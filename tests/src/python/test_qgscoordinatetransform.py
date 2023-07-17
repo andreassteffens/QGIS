@@ -11,11 +11,13 @@ __copyright__ = 'Copyright 2012, The QGIS Project'
 
 import qgis  # NOQA
 
-from qgis.core import (QgsRectangle,
-                       QgsCoordinateReferenceSystem,
-                       QgsCoordinateTransform,
-                       QgsCoordinateTransformContext,
-                       QgsProject)
+from qgis.core import (
+    QgsCoordinateReferenceSystem,
+    QgsCoordinateTransform,
+    QgsCoordinateTransformContext,
+    QgsProject,
+    QgsRectangle,
+)
 from qgis.testing import start_app, unittest
 
 start_app()

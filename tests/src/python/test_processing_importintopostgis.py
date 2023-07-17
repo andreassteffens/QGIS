@@ -13,10 +13,13 @@ from processing.core.Processing import Processing
 from processing.gui.AlgorithmExecutor import execute
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.analysis import QgsNativeAlgorithms
-from qgis.core import (QgsApplication, QgsVectorLayer,
-                       QgsProcessingContext,
-                       QgsProcessingFeedback, QgsSettings,
-                       )
+from qgis.core import (
+    QgsApplication,
+    QgsProcessingContext,
+    QgsProcessingFeedback,
+    QgsSettings,
+    QgsVectorLayer,
+)
 from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
@@ -37,6 +40,7 @@ class TestExportToPostGis(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(
             "QGIS_TestPyQgsExportToPostgis.com")
@@ -85,7 +89,7 @@ class TestExportToPostGis(unittest.TestCase):
         # Check that data have been imported correctly
         exported = QgsVectorLayer(unitTestDataPath() + '/points.shp', 'exported')
         self.assertTrue(exported.isValid())
-        imported = QgsVectorLayer("service='qgis_test' table=\"CamelCaseSchema\".\"%s\" (geom)" % table_name, 'imported', 'postgres')
+        imported = QgsVectorLayer(f"service='qgis_test' table=\"CamelCaseSchema\".\"{table_name}\" (geom)", 'imported', 'postgres')
         self.assertTrue(imported.isValid())
         imported_fields = [f.name() for f in imported.fields()]
         for f in exported.fields():

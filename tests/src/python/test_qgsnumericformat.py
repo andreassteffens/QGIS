@@ -11,18 +11,20 @@ __copyright__ = 'Copyright 2020, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsFallbackNumericFormat,
-                       QgsBasicNumericFormat,
-                       QgsNumericFormatContext,
-                       QgsBearingNumericFormat,
-                       QgsPercentageNumericFormat,
-                       QgsScientificNumericFormat,
-                       QgsCurrencyNumericFormat,
-                       QgsNumericFormatRegistry,
-                       QgsNumericFormat,
-                       QgsFractionNumericFormat,
-                       QgsGeographicCoordinateNumericFormat,
-                       QgsReadWriteContext)
+from qgis.core import (
+    QgsBasicNumericFormat,
+    QgsBearingNumericFormat,
+    QgsCurrencyNumericFormat,
+    QgsFallbackNumericFormat,
+    QgsFractionNumericFormat,
+    QgsGeographicCoordinateNumericFormat,
+    QgsNumericFormat,
+    QgsNumericFormatContext,
+    QgsNumericFormatRegistry,
+    QgsPercentageNumericFormat,
+    QgsReadWriteContext,
+    QgsScientificNumericFormat,
+)
 from qgis.testing import start_app, unittest
 
 start_app()

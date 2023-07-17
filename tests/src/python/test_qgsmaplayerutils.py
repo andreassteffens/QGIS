@@ -12,15 +12,15 @@ __copyright__ = 'Copyright 2021, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.core import (
-    QgsMapLayerUtils,
+    QgsAnnotationLayer,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransformContext,
-    QgsVectorLayer,
-    QgsRasterLayer,
-    QgsAnnotationLayer,
     QgsGroupLayer,
+    QgsMapLayerType,
+    QgsMapLayerUtils,
     QgsProject,
-    QgsMapLayerType
+    QgsRasterLayer,
+    QgsVectorLayer,
 )
 from qgis.testing import start_app, unittest
 

@@ -90,7 +90,7 @@ void QgsProjectServerValidator::browseLayerTree( QgsProject* project, QgsLayerTr
         else
           owsNames.append(QPair<QString, QString>(shortName, strPath));
 
-        if ( layer->type() == QgsMapLayerType::VectorLayer )
+        if ( layer->type() == Qgis::LayerType::Vector )
         {
           QgsVectorLayer *vl = static_cast<QgsVectorLayer *>( layer );
           if ( vl->dataProvider() && vl->dataProvider()->encoding() == QLatin1String( "System" ) )
@@ -206,7 +206,7 @@ bool QgsProjectServerValidator::validate( QgsProject *project, QList<QgsProjectS
   browseLayerTree( project, project->layerTreeRoot(), owsNames, encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages);
 
   QStringList duplicateNames, regExpMessages;
-  const QRegularExpression snRegExp = QgsApplication::shortNameRegularExpression();
+  const thread_local QRegularExpression snRegExp = QgsApplication::shortNameRegularExpression();
   const auto constOwsNames = owsNames;
   for (int i = 0; i < owsNames.count(); i++)
   {

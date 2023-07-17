@@ -13,19 +13,20 @@ import qgis  # NOQA
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsGraduatedSymbolRenderer,
-                       QgsRendererRange,
-                       QgsRendererRangeLabelFormat,
-                       QgsMarkerSymbol,
-                       QgsGradientColorRamp,
-                       QgsVectorLayer,
-                       QgsFeature,
-                       QgsGeometry,
-                       QgsPointXY,
-                       QgsReadWriteContext,
-                       QgsRenderContext
-                       )
-from qgis.testing import unittest, start_app
+from qgis.core import (
+    QgsFeature,
+    QgsGeometry,
+    QgsGradientColorRamp,
+    QgsGraduatedSymbolRenderer,
+    QgsMarkerSymbol,
+    QgsPointXY,
+    QgsReadWriteContext,
+    QgsRenderContext,
+    QgsRendererRange,
+    QgsRendererRangeLabelFormat,
+    QgsVectorLayer,
+)
+from qgis.testing import start_app, unittest
 
 start_app()
 
@@ -480,6 +481,21 @@ class TestQgsGraduatedSymbolRenderer(unittest.TestCase):
         self.assertTrue(renderer.filterNeedsGeometry())
         renderer.setClassAttribute("value - $area")
         self.assertTrue(renderer.filterNeedsGeometry())
+
+    def test_legend_keys(self):
+        renderer = QgsGraduatedSymbolRenderer()
+        renderer.setClassAttribute('field_name')
+
+        self.assertFalse(renderer.legendKeys())
+
+        symbol_a = createMarkerSymbol()
+        renderer.addClassRange(QgsRendererRange(1, 2, symbol_a, 'a'))
+        symbol_b = createMarkerSymbol()
+        renderer.addClassRange(QgsRendererRange(5, 6, symbol_b, 'b'))
+        symbol_c = createMarkerSymbol()
+        renderer.addClassRange(QgsRendererRange(15.5, 16.5, symbol_c, 'c', False))
+
+        self.assertEqual(renderer.legendKeys(), {'0', '1', '2'})
 
     def test_legend_key_to_expression(self):
         renderer = QgsGraduatedSymbolRenderer()

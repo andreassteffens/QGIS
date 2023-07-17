@@ -12,23 +12,25 @@ __copyright__ = 'Copyright 2015, The QGIS Project'
 import os
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import QDate, QTime, QDateTime, QVariant, QDir
-from qgis.core import (QgsSettings,
-                       QgsVectorLayer,
-                       QgsFeatureRequest,
-                       QgsFeature,
-                       QgsField,
-                       QgsFieldConstraints,
-                       QgsDataSourceUri,
-                       QgsWkbTypes,
-                       QgsGeometry,
-                       QgsPointXY,
-                       QgsRectangle,
-                       QgsProviderRegistry,
-                       NULL,
-                       QgsVectorLayerExporter,
-                       QgsCoordinateReferenceSystem,
-                       QgsDataProvider)
+from qgis.PyQt.QtCore import QDate, QDateTime, QDir, QTime, QVariant
+from qgis.core import (
+    NULL,
+    QgsCoordinateReferenceSystem,
+    QgsDataProvider,
+    QgsDataSourceUri,
+    QgsFeature,
+    QgsFeatureRequest,
+    QgsField,
+    QgsFieldConstraints,
+    QgsGeometry,
+    QgsPointXY,
+    QgsProviderRegistry,
+    QgsRectangle,
+    QgsSettings,
+    QgsVectorLayer,
+    QgsVectorLayerExporter,
+    QgsWkbTypes,
+)
 from qgis.testing import start_app, unittest
 
 from providertestbase import ProviderTestCase
@@ -43,6 +45,7 @@ class TestPyQgsMssqlProvider(unittest.TestCase, ProviderTestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super(TestPyQgsMssqlProvider, cls).setUpClass()
         # These are the connection details for the SQL Server instance running on Travis
         cls.dbconn = "service='testsqlserver' user=sa password='<YourStrong!Passw0rd>' "
         if 'QGIS_MSSQLTEST_DB' in os.environ:
@@ -67,11 +70,6 @@ class TestPyQgsMssqlProvider(unittest.TestCase, ProviderTestCase):
         # Use connections API
         md = QgsProviderRegistry.instance().providerMetadata('mssql')
         cls.conn_api = md.createConnection(cls.dbconn, {})
-
-    @classmethod
-    def tearDownClass(cls):
-        """Run after all tests"""
-        pass
 
     def setUp(self):
         for t in ['new_table', 'new_table_multipoint', 'new_table_multipolygon']:
@@ -428,7 +426,7 @@ class TestPyQgsMssqlProvider(unittest.TestCase, ProviderTestCase):
         self.assertTrue(errmsg)
 
         mFilePath = QDir.toNativeSeparators(
-            '{}/symbol_layer/{}.qml'.format(unitTestDataPath(), "singleSymbol"))
+            f"{unitTestDataPath()}/symbol_layer/singleSymbol.qml")
         status = vl.loadNamedStyle(mFilePath)
         self.assertTrue(status)
 

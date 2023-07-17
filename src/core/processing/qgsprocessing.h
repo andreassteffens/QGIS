@@ -20,6 +20,7 @@
 
 #include "qgis_core.h"
 #include "qgssettingsentryimpl.h"
+#include "qgssettingstree.h"
 #include <QString>
 
 //
@@ -55,7 +56,8 @@ class CORE_EXPORT QgsProcessing
       TypeMesh = 6, //!< Mesh layers \since QGIS 3.6
       TypePlugin = 7, //!< Plugin layers \since QGIS 3.22
       TypePointCloud = 8, //!< Point cloud layers \since QGIS 3.22
-      TypeAnnotation = 9 //!< Annotation layers \since QGIS 3.22
+      TypeAnnotation = 9, //!< Annotation layers \since QGIS 3.22
+      TypeVectorTile = 10 //!< Vector tile layers \since QGIS 3.32
     };
 
     //! Available Python output types
@@ -63,6 +65,17 @@ class CORE_EXPORT QgsProcessing
     {
       PythonQgsProcessingAlgorithmSubclass, //!< Full Python QgsProcessingAlgorithm subclass
     };
+
+    /**
+     * Layer options flags
+     *
+     * \since QGIS 3.32
+     */
+    enum class LayerOptionsFlag : int
+    {
+      SkipIndexGeneration = 1 << 0, //!< Do not generate index when creating a layer. Makes sense only for point cloud layers
+    };
+    Q_DECLARE_FLAGS( LayerOptionsFlags, LayerOptionsFlag )
 
     /**
      * Converts a source \a type to a string representation.
@@ -97,6 +110,8 @@ class CORE_EXPORT QgsProcessing
           return QStringLiteral( "TypePointCloud" );
         case QgsProcessing::TypeAnnotation:
           return QStringLiteral( "TypeAnnotation" );
+        case QgsProcessing::TypeVectorTile:
+          return QStringLiteral( "TypeVectorTile" );
       }
       return QString();
     }
@@ -109,14 +124,16 @@ class CORE_EXPORT QgsProcessing
     static const QString TEMPORARY_OUTPUT;
 
 #ifndef SIP_RUN
+    static inline QgsSettingsTreeNode *sTreeConfiguration = QgsSettingsTree::sTreeQgis->createChildNode( QStringLiteral( "configuration" ) );
+
     //! Settings entry prefer filename as layer name
-    static const inline QgsSettingsEntryBool settingsPreferFilenameAsLayerName = QgsSettingsEntryBool( QStringLiteral( "PREFER_FILENAME_AS_LAYER_NAME" ), QgsSettings::Prefix::PROCESSING_CONFIGURATION, true, QObject::tr( "Prefer filename as layer name" ) );
+    static const QgsSettingsEntryBool *settingsPreferFilenameAsLayerName;
     //! Settings entry temp path
-    static const inline QgsSettingsEntryString settingsTempPath = QgsSettingsEntryString( QStringLiteral( "TEMP_PATH2" ), QgsSettings::Prefix::PROCESSING_CONFIGURATION, QString() );
+    static const QgsSettingsEntryString *settingsTempPath;
     //! Settings entry default output vector layer ext
-    static const inline QgsSettingsEntryInteger settingsDefaultOutputVectorLayerExt = QgsSettingsEntryInteger( QStringLiteral( "DefaultOutputVectorLayerExt" ), QgsSettings::Prefix::PROCESSING_CONFIGURATION, -1 );
+    static const QgsSettingsEntryInteger *settingsDefaultOutputVectorLayerExt;
     //! Settings entry default output raster layer ext
-    static const inline QgsSettingsEntryInteger settingsDefaultOutputRasterLayerExt = QgsSettingsEntryInteger( QStringLiteral( "DefaultOutputRasterLayerExt" ), QgsSettings::Prefix::PROCESSING_CONFIGURATION, -1 );
+    static const QgsSettingsEntryInteger *settingsDefaultOutputRasterLayerExt;
 #endif
 };
 

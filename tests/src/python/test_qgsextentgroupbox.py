@@ -13,7 +13,14 @@ import os
 
 import qgis  # NOQA
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import QgsRectangle, QgsCoordinateReferenceSystem, QgsVectorLayer, QgsProject, QgsFeature, QgsGeometry
+from qgis.core import (
+    QgsCoordinateReferenceSystem,
+    QgsFeature,
+    QgsGeometry,
+    QgsProject,
+    QgsRectangle,
+    QgsVectorLayer,
+)
 from qgis.gui import QgsExtentGroupBox
 from qgis.testing import start_app, unittest
 

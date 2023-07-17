@@ -11,9 +11,7 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QDate
-from qgis.core import (QgsIntRange,
-                       QgsDoubleRange,
-                       QgsDateRange)
+from qgis.core import QgsDateRange, QgsDoubleRange, QgsIntRange
 from qgis.testing import unittest
 
 

@@ -9,9 +9,7 @@ __author__ = 'Nyall Dawson'
 __date__ = '25/08/2022'
 __copyright__ = 'Copyright 2022, The QGIS Project'
 
-from qgis.core import (
-    QgsProviderRegistry
-)
+from qgis.core import QgsProviderRegistry
 from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath

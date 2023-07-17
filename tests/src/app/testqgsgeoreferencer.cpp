@@ -61,7 +61,7 @@ TestQgsGeoreferencer::TestQgsGeoreferencer() = default;
 //runs before all tests
 void TestQgsGeoreferencer::initTestCase()
 {
-  qDebug() << "TestQgisAppClipboard::initTestCase()";
+  qDebug() << "TestQgsGeoreferencer::initTestCase()";
   // init QGIS's paths - true means that all path will be inited from prefix
   QgsApplication::init();
   QgsApplication::initQgis();
@@ -620,7 +620,7 @@ void TestQgsGeoreferencer::testUpdateResiduals()
                                        QgsPointXY( 787362.375, 3362323.125 ), QgsPointXY( -35, 42 ), QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ),
                                        true ) );
 
-  list.updateResiduals( &transform, QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ), QgsProject::instance()->transformContext(), QgsUnitTypes::RenderPixels );
+  list.updateResiduals( &transform, QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ), QgsProject::instance()->transformContext(), Qgis::RenderUnit::Pixels );
   QGSCOMPARENEAR( list.at( 0 )->residual().x(), 0, 0.00001 );
   QGSCOMPARENEAR( list.at( 0 )->residual().y(), -189.189, 0.1 );
   QGSCOMPARENEAR( list.at( 1 )->residual().x(), 105.7142, 0.1 );
@@ -629,7 +629,7 @@ void TestQgsGeoreferencer::testUpdateResiduals()
   QGSCOMPARENEAR( list.at( 2 )->residual().y(), 0, 0.00001 );
 
   // in map units
-  list.updateResiduals( &transform, QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ), QgsProject::instance()->transformContext(), QgsUnitTypes::RenderMapUnits );
+  list.updateResiduals( &transform, QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ), QgsProject::instance()->transformContext(), Qgis::RenderUnit::MapUnits );
   QGSCOMPARENEAR( list.at( 0 )->residual().x(), 0, 0.00001 );
   QGSCOMPARENEAR( list.at( 0 )->residual().y(), -34.999, 0.1 );
   QGSCOMPARENEAR( list.at( 1 )->residual().x(), -92.499, 0.1 );
@@ -638,7 +638,7 @@ void TestQgsGeoreferencer::testUpdateResiduals()
   QGSCOMPARENEAR( list.at( 2 )->residual().y(), 0, 0.00001 );
 
   // different target CRS
-  list.updateResiduals( &transform, QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:3857" ) ), QgsProject::instance()->transformContext(), QgsUnitTypes::RenderPixels );
+  list.updateResiduals( &transform, QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:3857" ) ), QgsProject::instance()->transformContext(), Qgis::RenderUnit::Pixels );
   QGSCOMPARENEAR( list.at( 0 )->residual().x(), 0, 0.00001 );
   QGSCOMPARENEAR( list.at( 0 )->residual().y(), -186.828, 0.1 );
   QGSCOMPARENEAR( list.at( 1 )->residual().x(), 105.7142, 0.1 );
@@ -651,7 +651,7 @@ void TestQgsGeoreferencer::testUpdateResiduals()
   projective.loadRaster( QStringLiteral( TEST_DATA_DIR ) + QStringLiteral( "/landsat.tif" ) );
   QVERIFY( projective.hasExistingGeoreference() );
 
-  list.updateResiduals( &projective, QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:3857" ) ), QgsProject::instance()->transformContext(), QgsUnitTypes::RenderPixels );
+  list.updateResiduals( &projective, QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:3857" ) ), QgsProject::instance()->transformContext(), Qgis::RenderUnit::Pixels );
   QGSCOMPARENEAR( list.at( 0 )->residual().x(), 0, 0.00001 );
   QGSCOMPARENEAR( list.at( 0 )->residual().y(), 0, 0.00001 );
   QGSCOMPARENEAR( list.at( 1 )->residual().x(), 0, 0.00001 );
@@ -678,7 +678,7 @@ void TestQgsGeoreferencer::testListModel()
   QgsGeorefTransform transform( QgsGcpTransformerInterface::TransformMethod::Linear );
   transform.loadRaster( QStringLiteral( TEST_DATA_DIR ) + QStringLiteral( "/landsat.tif" ) );
   QVERIFY( transform.hasExistingGeoreference() );
-  list.updateResiduals( &transform, QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ), QgsProject::instance()->transformContext(), QgsUnitTypes::RenderPixels );
+  list.updateResiduals( &transform, QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ), QgsProject::instance()->transformContext(), Qgis::RenderUnit::Pixels );
 
   QgsGCPListModel model;
   QCOMPARE( model.rowCount(), 0 );
@@ -846,7 +846,7 @@ void TestQgsGeoreferencer::testListModelCrs()
 void TestQgsGeoreferencer::testGdalCommands()
 {
   QgsGeoreferencerMainWindow window;
-  window.openLayer( QgsMapLayerType::RasterLayer, QStringLiteral( TEST_DATA_DIR ) + QStringLiteral( "/landsat.tif" ) );
+  window.openLayer( Qgis::LayerType::Raster, QStringLiteral( TEST_DATA_DIR ) + QStringLiteral( "/landsat.tif" ) );
 
   window.addPoint( QgsPointXY( 783414, 3350122 ), QgsPointXY( 783414.001234567, 3350122.002345678 ), QgsCoordinateReferenceSystem() );
   window.addPoint( QgsPointXY( 791344, 3349795 ), QgsPointXY( 791344, 33497952 ), QgsCoordinateReferenceSystem() );
@@ -865,13 +865,13 @@ void TestQgsGeoreferencer::testGdalCommands()
 
   window.mTargetCrs = QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) );
   command = window.generateGDALtranslateCommand();
-  QgsDebugMsg( command );
+  QgsDebugMsgLevel( command, 1 );
   QCOMPARE( command, QStringLiteral( "gdal_translate -of GTiff -co TFW=YES -gcp 30.73 14.055 783414.00123457 3350122.00234568 -gcp 169.853 19.792 791344 33497952 -gcp 24.818 52926.844 783077 334093 -gcp 166.169 167.055 791134 3341401 \"%1\" \"%2\"" ).arg(
               QStringLiteral( TEST_DATA_DIR ) + QStringLiteral( "/landsat.tif" ),
               QDir::tempPath() + QStringLiteral( "/landsat.tif" ) ) );
 
   command = window.generateGDALogr2ogrCommand();
-  QgsDebugMsg( command );
+  QgsDebugMsgLevel( command, 1 );
   QCOMPARE( command, QStringLiteral( "ogr2ogr -gcp 783414 3350122 783414.00123457 3350122.00234568 -gcp 791344 3349795 791344 33497952 -gcp 783077 334093 783077 334093 -gcp 791134 3341401 791134 3341401 -tps -t_srs EPSG:4326 \"\" \"%1\"" ).arg(
               QStringLiteral( TEST_DATA_DIR ) + QStringLiteral( "/landsat.tif" ) ) );
 }

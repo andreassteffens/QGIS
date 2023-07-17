@@ -17,7 +17,6 @@ email                : nyall dot dawson at gmail dot com
 #include "qgsogrprovidermetadata.h"
 #include "qgsogrprovider.h"
 #include "qgsgeopackagedataitems.h"
-#include "qgssettings.h"
 #include "qgsmessagelog.h"
 #include "qgsogrtransaction.h"
 #include "qgsogrlayermetadataprovider.h"
@@ -29,13 +28,10 @@ email                : nyall dot dawson at gmail dot com
 #include "qgsgeopackageproviderconnection.h"
 #include "qgsogrdbconnection.h"
 #include "qgsprovidersublayerdetails.h"
-#include "qgszipitem.h"
 #include "qgsproviderutils.h"
 #include "qgsgdalutils.h"
 #include "qgsproviderregistry.h"
 #include "qgsvectorfilewriter.h"
-#include "qgsvectorlayer.h"
-#include "qgsproject.h"
 
 #include <gdal.h>
 #include <QFileInfo>
@@ -58,7 +54,7 @@ QgsDataProvider *QgsOgrProviderMetadata::createProvider( const QString &uri, con
 
 Qgis::VectorExportResult QgsOgrProviderMetadata::createEmptyLayer( const QString &uri,
     const QgsFields &fields,
-    QgsWkbTypes::Type wkbType,
+    Qgis::WkbType wkbType,
     const QgsCoordinateReferenceSystem &srs,
     bool overwrite,
     QMap<int, int> &oldToNewAttrIdxMap,
@@ -148,7 +144,7 @@ QVariantMap QgsOgrProviderMetadata::decodeUri( const QString &uri ) const
 
   int layerId = -1;
 
-  const QRegularExpression authcfgRegex( " authcfg='([^']+)'" );
+  const thread_local QRegularExpression authcfgRegex( " authcfg='([^']+)'" );
   QRegularExpressionMatch match;
   if ( path.contains( authcfgRegex, &match ) )
   {
@@ -156,13 +152,13 @@ QVariantMap QgsOgrProviderMetadata::decodeUri( const QString &uri ) const
     authcfg = match.captured( 1 );
   }
 
-  QString vsiPrefix = qgsVsiPrefix( path );
+  QString vsiPrefix = QgsGdalUtils::vsiPrefixForPath( path );
   QString vsiSuffix;
   if ( path.startsWith( vsiPrefix, Qt::CaseInsensitive ) )
   {
     path = path.mid( vsiPrefix.count() );
 
-    const QRegularExpression vsiRegex( QStringLiteral( "(?:\\.zip|\\.tar|\\.gz|\\.tar\\.gz|\\.tgz)([^|]+)" ) );
+    const thread_local QRegularExpression vsiRegex( QStringLiteral( "(?:\\.zip|\\.tar|\\.gz|\\.tar\\.gz|\\.tgz)([^|]+)" ) );
     QRegularExpressionMatch match = vsiRegex.match( path );
     if ( match.hasMatch() )
     {
@@ -177,13 +173,12 @@ QVariantMap QgsOgrProviderMetadata::decodeUri( const QString &uri ) const
 
   if ( path.contains( '|' ) )
   {
-    const QRegularExpression geometryTypeRegex( QStringLiteral( "\\|geometrytype=([a-zA-Z0-9]*)" ), QRegularExpression::PatternOption::CaseInsensitiveOption );
-    const QRegularExpression uniqueGeometryTypeRegex( QStringLiteral( "\\|uniqueGeometryType=([a-z]*)" ), QRegularExpression::PatternOption::CaseInsensitiveOption );
-    const QRegularExpression layerNameRegex( QStringLiteral( "\\|layername=([^|]*)" ), QRegularExpression::PatternOption::CaseInsensitiveOption );
-    const QRegularExpression layerIdRegex( QStringLiteral( "\\|layerid=([^|]*)" ), QRegularExpression::PatternOption::CaseInsensitiveOption );
-    const QRegularExpression subsetRegex( QStringLiteral( "\\|subset=((?:.*[\r\n]*)*)\\Z" ) );
-    const QRegularExpression openOptionRegex( QStringLiteral( "\\|option:([^|]*)" ) );
-
+    const thread_local QRegularExpression geometryTypeRegex( QStringLiteral( "\\|geometrytype=([a-zA-Z0-9]*)" ), QRegularExpression::PatternOption::CaseInsensitiveOption );
+    const thread_local QRegularExpression uniqueGeometryTypeRegex( QStringLiteral( "\\|uniqueGeometryType=([a-z]*)" ), QRegularExpression::PatternOption::CaseInsensitiveOption );
+    const thread_local QRegularExpression layerNameRegex( QStringLiteral( "\\|layername=([^|]*)" ), QRegularExpression::PatternOption::CaseInsensitiveOption );
+    const thread_local QRegularExpression layerIdRegex( QStringLiteral( "\\|layerid=([^|]*)" ), QRegularExpression::PatternOption::CaseInsensitiveOption );
+    const thread_local QRegularExpression subsetRegex( QStringLiteral( "\\|subset=((?:.*[\r\n]*)*)\\Z" ) );
+    const thread_local QRegularExpression openOptionRegex( QStringLiteral( "\\|option:([^|]*)" ) );
 
     // we first try to split off the geometry type component, if that's present. That's a known quantity which
     // will never be more than a-z characters
@@ -317,6 +312,24 @@ QString QgsOgrProviderMetadata::encodeUri( const QVariantMap &parts ) const
   if ( !authcfg.isEmpty() )
     uri += QStringLiteral( " authcfg='%1'" ).arg( authcfg );
   return uri;
+}
+
+QString QgsOgrProviderMetadata::absoluteToRelativeUri( const QString &uri, const QgsReadWriteContext &context ) const
+{
+  QString src = uri;
+  QStringList theURIParts = src.split( '|' );
+  theURIParts[0] = context.pathResolver().writePath( theURIParts[0] );
+  src = theURIParts.join( QLatin1Char( '|' ) );
+  return src;
+}
+
+QString QgsOgrProviderMetadata::relativeToAbsoluteUri( const QString &uri, const QgsReadWriteContext &context ) const
+{
+  QString src = uri;
+  QStringList theURIParts = src.split( '|' );
+  theURIParts[0] = context.pathResolver().readPath( theURIParts[0] );
+  src = theURIParts.join( QLatin1Char( '|' ) );
+  return src;
 }
 
 QList<QgsDataItemProvider *> QgsOgrProviderMetadata::dataItemProviders() const
@@ -512,7 +525,7 @@ bool QgsOgrProviderMetadata::saveStyle(
       bool ok = OGR_L_SetFeature( hLayer, hFeature.get() ) == 0;
       if ( !ok )
       {
-        QgsDebugMsg( QStringLiteral( "Could not unset previous useAsDefault style" ) );
+        QgsDebugError( QStringLiteral( "Could not unset previous useAsDefault style" ) );
       }
     }
   }
@@ -674,6 +687,12 @@ bool LoadDataSourceLayerStylesAndLayer( const QString &uri,
 
 QString QgsOgrProviderMetadata::loadStyle( const QString &uri, QString &errCause )
 {
+  QString name;
+  return loadStoredStyle( uri, name, errCause );
+}
+
+QString QgsOgrProviderMetadata::loadStoredStyle( const QString &uri, QString &styleName, QString &errCause )
+{
   QgsOgrLayerUniquePtr layerStyles;
   QgsOgrLayerUniquePtr userLayer;
   if ( !LoadDataSourceLayerStylesAndLayer( uri, layerStyles, userLayer, errCause ) )
@@ -710,6 +729,8 @@ QString QgsOgrProviderMetadata::loadStyle( const QString &uri, QString &errCause
     {
       styleQML = QString::fromUtf8(
                    OGR_F_GetFieldAsString( hFeat.get(), OGR_FD_GetFieldIndex( hLayerDefn, "styleQML" ) ) );
+      styleName = QString::fromUtf8(
+                    OGR_F_GetFieldAsString( hFeat.get(), OGR_FD_GetFieldIndex( hLayerDefn, "styleName" ) ) );
       break;
     }
 
@@ -723,7 +744,8 @@ QString QgsOgrProviderMetadata::loadStyle( const QString &uri, QString &errCause
       moreRecentTimestamp = ts;
       styleQML = QString::fromUtf8(
                    OGR_F_GetFieldAsString( hFeat.get(), OGR_FD_GetFieldIndex( hLayerDefn, "styleQML" ) ) );
-
+      styleName = QString::fromUtf8(
+                    OGR_F_GetFieldAsString( hFeat.get(), OGR_FD_GetFieldIndex( hLayerDefn, "styleName" ) ) );
     }
   }
   OGR_L_ResetReading( hLayer );
@@ -796,6 +818,7 @@ int QgsOgrProviderMetadata::listStyles(
   QMap<int, QString> mapIdToDescription;
   QMap<qlonglong, QList<int> > mapTimestampToId;
   int numberOfRelatedStyles = 0;
+
   while ( true )
   {
     gdal::ogr_feature_unique_ptr hFeature( OGR_L_GetNextFeature( hLayer ) );
@@ -830,8 +853,8 @@ int QgsOgrProviderMetadata::listStyles(
       int  year, month, day, hour, minute, second, TZ;
       OGR_F_GetFieldAsDateTime( hFeature.get(), OGR_FD_GetFieldIndex( hLayerDefn, "update_time" ),
                                 &year, &month, &day, &hour, &minute, &second, &TZ );
-      qlonglong ts = second + minute * 60 + hour * 3600 + day * 24 * 3600 +
-                     static_cast<qlonglong>( month ) * 31 * 24 * 3600 + static_cast<qlonglong>( year ) * 12 * 31 * 24 * 3600;
+      const qlonglong ts = second + minute * 60 + hour * 3600 + day * 24 * 3600 +
+                           static_cast<qlonglong>( month ) * 31 * 24 * 3600 + static_cast<qlonglong>( year ) * 12 * 31 * 24 * 3600;
 
       listTimestamp.append( ts );
       mapIdToStyleName[fid] = styleName;
@@ -1117,17 +1140,18 @@ QIcon QgsOgrProviderMetadata::icon() const
   return QgsApplication::getThemeIcon( QStringLiteral( "mIconVector.svg" ) );
 }
 
-QString QgsOgrProviderMetadata::filters( FilterType type )
+QString QgsOgrProviderMetadata::filters( Qgis::FileFilterType type )
 {
   switch ( type )
   {
-    case QgsProviderMetadata::FilterType::FilterVector:
+    case Qgis::FileFilterType::Vector:
       return QgsOgrProviderUtils::fileVectorFilters();
 
-    case QgsProviderMetadata::FilterType::FilterRaster:
-    case QgsProviderMetadata::FilterType::FilterMesh:
-    case QgsProviderMetadata::FilterType::FilterMeshDataset:
-    case QgsProviderMetadata::FilterType::FilterPointCloud:
+    case Qgis::FileFilterType::Raster:
+    case Qgis::FileFilterType::Mesh:
+    case Qgis::FileFilterType::MeshDataset:
+    case Qgis::FileFilterType::PointCloud:
+    case Qgis::FileFilterType::VectorTile:
       return QString();
   }
   return QString();
@@ -1161,7 +1185,7 @@ QList<QgsProviderSublayerDetails> QgsOgrProviderMetadata::querySublayers( const 
   QVariantMap uriParts = decodeUri( uri );
 
   // Try to open using VSIFileHandler
-  QString vsiPrefix = QgsZipItem::vsiPrefix( uriParts.value( QStringLiteral( "path" ) ).toString() );
+  const QString vsiPrefix = QgsGdalUtils::vsiPrefixForPath( uriParts.value( QStringLiteral( "path" ) ).toString() );
   if ( !vsiPrefix.isEmpty() && uriParts.value( QStringLiteral( "vsiPrefix" ) ).toString().isEmpty() )
   {
     if ( !uri.startsWith( vsiPrefix ) )
@@ -1249,7 +1273,7 @@ QList<QgsProviderSublayerDetails> QgsOgrProviderMetadata::querySublayers( const 
       const QStringList wildcards = QgsOgrProviderUtils::wildcards();
       for ( const QString &wildcard : wildcards )
       {
-        const QRegularExpression rx( QRegularExpression::wildcardToRegularExpression( wildcard ), QRegularExpression::CaseInsensitiveOption );
+        const thread_local QRegularExpression rx( QRegularExpression::wildcardToRegularExpression( wildcard ), QRegularExpression::CaseInsensitiveOption );
         if ( rx.match( pathInfo.fileName() ).hasMatch() )
         {
           matches = true;
@@ -1277,13 +1301,13 @@ QList<QgsProviderSublayerDetails> QgsOgrProviderMetadata::querySublayers( const 
     if ( !QgsGdalUtils::pathIsCheapToOpen( path ) )
     {
       // if this is a VRT file make sure it is vector VRT
-      if ( suffix == QLatin1String( "vrt" ) && !QgsGdalUtils::vrtMatchesLayerType( path, QgsMapLayerType::VectorLayer ) )
+      if ( suffix == QLatin1String( "vrt" ) && !QgsGdalUtils::vrtMatchesLayerType( path, Qgis::LayerType::Vector ) )
       {
         return {};
       }
 
       QgsProviderSublayerDetails details;
-      details.setType( QgsMapLayerType::VectorLayer );
+      details.setType( Qgis::LayerType::Vector );
       details.setProviderKey( QStringLiteral( "ogr" ) );
       details.setUri( uri );
       details.setName( uriParts.value( QStringLiteral( "vsiSuffix" ) ).toString().isEmpty()
@@ -1305,7 +1329,7 @@ QList<QgsProviderSublayerDetails> QgsOgrProviderMetadata::querySublayers( const 
   if ( originalUriLayerIdWasSpecified )
     layerId = uriLayerId;
 
-  QgsWkbTypes::Type originalGeometryTypeFilter = QgsWkbTypes::Unknown;
+  Qgis::WkbType originalGeometryTypeFilter = Qgis::WkbType::Unknown;
   bool originalUriGeometryTypeWasSpecified = false;
   const QString originalGeometryTypeString = uriParts.value( QStringLiteral( "geometryType" ) ).toString();
   if ( !originalGeometryTypeString.isEmpty() )
@@ -1395,7 +1419,7 @@ QList<QgsProviderSublayerDetails> QgsOgrProviderMetadata::querySublayers( const 
   for ( int i = 0; i < res.count(); ++i )
   {
     QVariantMap parts = decodeUri( res.at( i ).uri() );
-    if ( originalUriGeometryTypeWasSpecified && res.at( i ).wkbType() == QgsWkbTypes::Unknown )
+    if ( originalUriGeometryTypeWasSpecified && res.at( i ).wkbType() == Qgis::WkbType::Unknown )
     {
       res[ i ].setWkbType( originalGeometryTypeFilter );
       parts.insert( QStringLiteral( "geometryType" ), originalGeometryTypeString );
@@ -1572,9 +1596,9 @@ QStringList QgsOgrProviderMetadata::sidecarFilesForUri( const QString &uri ) con
   return res;
 }
 
-QList<QgsMapLayerType> QgsOgrProviderMetadata::supportedLayerTypes() const
+QList<Qgis::LayerType> QgsOgrProviderMetadata::supportedLayerTypes() const
 {
-  return { QgsMapLayerType::VectorLayer };
+  return { Qgis::LayerType::Vector };
 }
 
 QMap<QString, QgsAbstractProviderConnection *> QgsOgrProviderMetadata::connections( bool cached )

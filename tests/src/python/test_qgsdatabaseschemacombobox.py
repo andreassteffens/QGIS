@@ -14,13 +14,11 @@ import os
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (
-    QgsProviderRegistry
-)
+from qgis.core import QgsProviderRegistry
 from qgis.gui import QgsDatabaseSchemaComboBox
 from qgis.testing import unittest
 
-from utilities import unitTestDataPath, start_app
+from utilities import start_app, unitTestDataPath
 
 start_app()
 
@@ -32,6 +30,7 @@ class TestQgsDatabaseSchemaComboBox(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
 
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(cls.__name__)

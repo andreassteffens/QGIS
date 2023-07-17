@@ -10,14 +10,14 @@ __date__ = '08/02/2021'
 __copyright__ = 'Copyright 2021, The QGIS Project'
 
 import qgis  # NOQA
-
-from qgis.PyQt.QtCore import QDateTime, QDate, QTime
+from qgis.PyQt.QtCore import QDate, QDateTime, QTime
 from qgis.PyQt.QtTest import QSignalSpy
-
-from qgis.core import (QgsVectorLayer,
-                       QgsFeature,
-                       QgsGeometry,
-                       NULL)
+from qgis.core import (
+    NULL,
+    QgsFeature,
+    QgsGeometry,
+    QgsVectorLayer,
+)
 from qgis.testing import start_app, unittest
 
 start_app()

@@ -13,32 +13,24 @@ import os
 from tempfile import TemporaryDirectory
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import (
-    QCoreApplication,
-    QEvent,
-    QSize,
-    QDir
-)
-from qgis.PyQt.QtGui import (
-    QPainter,
-    QColor
-)
+from qgis.PyQt.QtCore import QCoreApplication, QDir, QEvent, QSize
+from qgis.PyQt.QtGui import QColor, QPainter
 from qgis.core import (
-    QgsFeature,
-    QgsVectorLayer,
-    QgsRasterLayer,
-    QgsProject,
+    QgsColorEffect,
     QgsCoordinateTransformContext,
-    QgsGroupLayer,
-    QgsGeometry,
-    QgsPointXY,
-    QgsMapSettings,
-    QgsMultiRenderChecker,
+    QgsDrawSourceEffect,
     QgsDropShadowEffect,
     QgsEffectStack,
-    QgsDrawSourceEffect,
-    QgsColorEffect,
-    QgsImageOperation
+    QgsFeature,
+    QgsGeometry,
+    QgsGroupLayer,
+    QgsImageOperation,
+    QgsMapSettings,
+    QgsMultiRenderChecker,
+    QgsPointXY,
+    QgsProject,
+    QgsRasterLayer,
+    QgsVectorLayer,
 )
 from qgis.testing import start_app, unittest
 
@@ -53,13 +45,15 @@ class TestQgsGroupLayer(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         cls.report = "<h1>Python QgsGroupLayer Tests</h1>\n"
 
     @classmethod
     def tearDownClass(cls):
-        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        report_file_path = f"{QDir.tempPath()}/qgistest.html"
         with open(report_file_path, 'a') as report_file:
             report_file.write(cls.report)
+        super().tearDownClass()
 
     def test_children(self):
         options = QgsGroupLayer.LayerOptions(QgsCoordinateTransformContext())

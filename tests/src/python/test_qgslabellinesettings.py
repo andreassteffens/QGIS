@@ -12,16 +12,18 @@ __copyright__ = 'Copyright 2019, The QGIS Project'
 import os
 
 import qgis  # NOQA
-from qgis.core import (QgsProperty,
-                       QgsPropertyCollection,
-                       QgsPalLayerSettings,
-                       QgsLabelLineSettings,
-                       QgsExpressionContext,
-                       QgsExpressionContextScope,
-                       QgsUnitTypes,
-                       QgsMapUnitScale,
-                       QgsLabeling)
-from qgis.testing import unittest, start_app
+from qgis.core import (
+    QgsExpressionContext,
+    QgsExpressionContextScope,
+    QgsLabeling,
+    QgsLabelLineSettings,
+    QgsMapUnitScale,
+    QgsPalLayerSettings,
+    QgsProperty,
+    QgsPropertyCollection,
+    QgsUnitTypes,
+)
+from qgis.testing import start_app, unittest
 
 start_app()
 

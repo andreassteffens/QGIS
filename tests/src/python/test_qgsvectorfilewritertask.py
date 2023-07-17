@@ -15,12 +15,12 @@ import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication, QDir
 from qgis.core import (
     QgsApplication,
-    QgsVectorLayer,
     QgsFeature,
     QgsGeometry,
     QgsPointXY,
     QgsVectorFileWriter,
-    QgsVectorFileWriterTask
+    QgsVectorFileWriterTask,
+    QgsVectorLayer,
 )
 from qgis.testing import start_app, unittest
 

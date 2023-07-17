@@ -10,6 +10,7 @@ __date__ = '19.11.2018'
 __copyright__ = 'Copyright 2018, The QGIS Project'
 
 import qgis  # NOQA
+
 from qgis.core import Qgis
 from qgis.testing import unittest
 

@@ -11,10 +11,8 @@ __copyright__ = 'Copyright 2020, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QTemporaryDir
-from qgis.PyQt.QtGui import (QColor)
-from qgis.core import (QgsRasterRendererUtils,
-                       QgsColorRampShader
-                       )
+from qgis.PyQt.QtGui import QColor
+from qgis.core import QgsColorRampShader, QgsRasterRendererUtils
 from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath

@@ -16,11 +16,10 @@ import os
 
 from qgis.PyQt.QtSql import QSqlDatabase, QSqlQuery
 from qgis.core import (
-    QgsProviderRegistry,
-    QgsDataSourceUri,
     QgsAbstractDatabaseProviderConnection,
+    QgsDataSourceUri,
     QgsProviderConnectionException,
-
+    QgsProviderRegistry,
 )
 from qgis.testing import unittest
 
@@ -62,6 +61,7 @@ class TestPyQgsProviderConnectionOracle(unittest.TestCase, TestPyQgsProviderConn
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super(TestPyQgsProviderConnectionOracle, cls).setUpClass()
 
         TestPyQgsProviderConnectionBase.setUpClass()
 

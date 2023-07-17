@@ -4,7 +4,7 @@ QGIS unit tests
 # Building tests
 
 Make sure that you have enabled building of tests in CMake.
-`cmake -DENABLE_TESTS=ON ..`
+`cmake -D ENABLE_TESTS=ON ..`
 
 # Setting up the test environment
 
@@ -21,7 +21,7 @@ options.
 ## Postgres
 
 Make sure that you have enabled building of postgres test in CMake.
-`cmake -DENABLE_TESTS=ON -DENABLE_PGTEST=ON ..`
+`cmake -D ENABLE_TESTS=ON -D ENABLE_PGTEST=ON ..`
 
 To test the postgres provider you will need to setup a test database
 to which the postgres provider can connect.
@@ -107,6 +107,9 @@ A useful hunting tool is `git grep`, which could be used like this:
   tests/src/python/CMakeLists.txt: ADD_PYTHON_TEST(PyQgsAuthManagerPasswordPostgresTest test_authmanager_password_postgres.py)
   $ ctest -V -R PyQgsAuthManagerPasswordPostgresTest # use the CMakeLists.txt name
 ```
+
+You may also use `ctest -N` to get a list of test names according to
+ctest.
 
 If you get `Could not connect to any X display` errors it means that your build
 machine does not have an X server.  In that case you need to run the test under

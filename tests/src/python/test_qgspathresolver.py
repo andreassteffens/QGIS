@@ -15,10 +15,10 @@ import tempfile
 
 import qgis  # NOQA
 from qgis.core import (
+    QgsApplication,
     QgsPathResolver,
-    QgsVectorLayer,
     QgsProject,
-    QgsApplication
+    QgsVectorLayer,
 )
 from qgis.testing import start_app, unittest
 

@@ -10,22 +10,20 @@ __date__ = '03/07/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import (
-    QCoreApplication,
-    QEvent,
-    QRectF
-)
+from qgis.PyQt.QtCore import QCoreApplication, QEvent, QRectF
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsLayoutItemMap,
-                       QgsLayout,
-                       QgsProject,
-                       QgsPrintLayout,
-                       QgsLayoutItemMapItemClipPathSettings,
-                       QgsMapClippingRegion,
-                       QgsLayoutItemShape,
-                       QgsReadWriteContext,
-                       QgsRectangle)
+from qgis.core import (
+    QgsLayout,
+    QgsLayoutItemMap,
+    QgsLayoutItemMapItemClipPathSettings,
+    QgsLayoutItemShape,
+    QgsMapClippingRegion,
+    QgsPrintLayout,
+    QgsProject,
+    QgsReadWriteContext,
+    QgsRectangle,
+)
 from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath

@@ -14,10 +14,7 @@
  ***************************************************************************/
 
 #include "qgsprocessingoutputdestinationwidget.h"
-#include "qgsgui.h"
 #include "qgsprocessingparameters.h"
-#include "qgsproviderregistry.h"
-#include "qgsprovidermetadata.h"
 #include "qgsnewdatabasetablenamewidget.h"
 #include "qgssettings.h"
 #include "qgsfileutils.h"
@@ -391,6 +388,11 @@ void QgsProcessingLayerOutputDestinationWidget::selectFile()
     lastExtPath = QStringLiteral( "/Processing/LastPointCloudOutputExt" );
     lastExt = settings.value( lastExtPath, QStringLiteral( ".%1" ).arg( mParameter->defaultFileExtension() ) ).toString();
   }
+  else if ( mParameter->type() == QgsProcessingParameterVectorTileDestination::typeName() )
+  {
+    lastExtPath = QStringLiteral( "/Processing/LastVectorTileOutputExt" );
+    lastExt = settings.value( lastExtPath, QStringLiteral( ".%1" ).arg( mParameter->defaultFileExtension() ) ).toString();
+  }
 
   // get default filter
   const QStringList filters = fileFilter.split( QStringLiteral( ";;" ) );
@@ -533,7 +535,7 @@ void QgsProcessingLayerOutputDestinationWidget::appendToLayer()
 {
   if ( QgsPanelWidget *panel = QgsPanelWidget::findParentPanel( this ) )
   {
-    QgsDataSourceSelectWidget *widget = new QgsDataSourceSelectWidget( mBrowserModel, true, QgsMapLayerType::VectorLayer );
+    QgsDataSourceSelectWidget *widget = new QgsDataSourceSelectWidget( mBrowserModel, true, Qgis::LayerType::Vector );
     widget->setPanelTitle( tr( "Append \"%1\" to Layer" ).arg( mParameter->description() ) );
 
     panel->openPanel( widget );

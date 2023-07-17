@@ -175,6 +175,48 @@ Gets the precision of the field. Not all field types have a related precision.
 Returns the field comment
 %End
 
+    QMap< int, QVariant > metadata() const;
+%Docstring
+Returns the map of field metadata.
+
+Map keys should match values from the :py:class:`Qgis`.FieldMetadataProperty enum.
+
+.. seealso:: :py:func:`setMetadata`
+
+.. versionadded:: 3.32
+%End
+
+
+    QVariant metadata( int property ) const;
+%Docstring
+Returns a specific metadata ``property``.
+
+.. seealso:: :py:func:`setMetadata`
+
+.. versionadded:: 3.32
+%End
+
+    void setMetadata( const QMap< int, QVariant > metadata );
+%Docstring
+Sets the map of field ``metadata``.
+
+Map keys should match values from the :py:class:`Qgis`.FieldMetadataProperty enum.
+
+.. seealso:: :py:func:`metadata`
+
+.. versionadded:: 3.32
+%End
+
+
+    void setMetadata( int property, const QVariant &value );
+%Docstring
+Sets a metadata ``property`` to ``value``.
+
+.. seealso:: :py:func:`metadata`
+
+.. versionadded:: 3.32
+%End
+
     bool isNumeric() const;
 %Docstring
 Returns if this field is numeric. Any integer or floating point type
@@ -405,11 +447,32 @@ providers which support generated fields for instance.
 .. versionadded:: 3.18
 %End
 
+    Qgis::FieldDomainSplitPolicy splitPolicy() const;
+%Docstring
+Returns the field's split policy, which indicates how field values should
+be handled during a split operation.
+
+.. seealso:: :py:func:`setSplitPolicy`
+
+.. versionadded:: 3.30
+%End
+
+    void setSplitPolicy( Qgis::FieldDomainSplitPolicy policy );
+%Docstring
+Sets the field's split ``policy``, which indicates how field values should
+be handled during a split operation.
+
+.. seealso:: :py:func:`splitPolicy`
+
+.. versionadded:: 3.30
+%End
+
     SIP_PYOBJECT __repr__();
 %MethodCode
     QString str = QStringLiteral( "<QgsField: %1 (%2)>" ).arg( sipCpp->name() ).arg( sipCpp->typeName() );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
+
 
 }; // class QgsField
 

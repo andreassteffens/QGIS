@@ -14,33 +14,34 @@ __copyright__ = 'Copyright 2015, The QGIS Project'
 import os
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import Qt, QVariant, QSize, QLocale, QTemporaryDir
+from qgis.PyQt.QtCore import QLocale, QSize, Qt, QTemporaryDir, QVariant
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsCategorizedSymbolRenderer,
-                       QgsRendererCategory,
-                       QgsMarkerSymbol,
-                       QgsLineSymbol,
-                       QgsFillSymbol,
-                       QgsField,
-                       QgsFields,
-                       QgsFeature,
-                       QgsSymbol,
-                       QgsStyle,
-                       QgsVectorLayer,
-                       QgsEditorWidgetSetup,
-                       QgsReadWriteContext,
-                       QgsProject,
-                       QgsSimpleMarkerSymbolLayer,
-                       QgsSymbolLayer,
-                       QgsProperty,
-                       QgsMapSettings,
-                       QgsRectangle,
-                       QgsRenderContext,
-                       QgsEmbeddedSymbolRenderer,
-                       QgsGeometry
-                       )
-from qgis.testing import unittest, start_app
+from qgis.core import (
+    QgsCategorizedSymbolRenderer,
+    QgsEditorWidgetSetup,
+    QgsEmbeddedSymbolRenderer,
+    QgsFeature,
+    QgsField,
+    QgsFields,
+    QgsFillSymbol,
+    QgsGeometry,
+    QgsLineSymbol,
+    QgsMapSettings,
+    QgsMarkerSymbol,
+    QgsProject,
+    QgsProperty,
+    QgsReadWriteContext,
+    QgsRectangle,
+    QgsRenderContext,
+    QgsRendererCategory,
+    QgsSimpleMarkerSymbolLayer,
+    QgsStyle,
+    QgsSymbol,
+    QgsSymbolLayer,
+    QgsVectorLayer,
+)
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -410,6 +411,8 @@ class TestQgsCategorizedSymbolRenderer(unittest.TestCase):
         default_symbol = createMarkerSymbol()
         default_symbol.setColor(QColor(255, 255, 255))
         renderer.addCategory(QgsRendererCategory('', default_symbol, 'default'))
+
+        self.assertEqual(renderer.legendKeys(), {'0', '1', '2', '3', '4'})
 
         context = QgsRenderContext()
         context.setRendererScale(0)  # simulate counting

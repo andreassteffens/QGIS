@@ -130,7 +130,7 @@ bool QgsSpatiaLiteProvider::convertField( QgsField &field )
 
 Qgis::VectorExportResult QgsSpatiaLiteProvider::createEmptyLayer( const QString &uri,
     const QgsFields &fields,
-    QgsWkbTypes::Type wkbType,
+    Qgis::WkbType wkbType,
     const QgsCoordinateReferenceSystem &srs,
     bool overwrite,
     QMap<int, int> *oldToNewAttrIdxMap,
@@ -164,7 +164,7 @@ Qgis::VectorExportResult QgsSpatiaLiteProvider::createEmptyLayer( const QString 
     QgsSqliteHandle *handle = QgsSqliteHandle::openDb( sqlitePath );
     if ( !handle )
     {
-      QgsDebugMsg( QStringLiteral( "Connection to database failed. Import of layer aborted." ) );
+      QgsDebugError( QStringLiteral( "Connection to database failed. Import of layer aborted." ) );
       if ( errorMessage )
         *errorMessage = QObject::tr( "Connection to database failed" );
       return Qgis::VectorExportResult::ErrorConnectionFailed;
@@ -263,59 +263,59 @@ Qgis::VectorExportResult QgsSpatiaLiteProvider::createEmptyLayer( const QString 
 
       switch ( wkbType )
       {
-        case QgsWkbTypes::Point25D:
-        case QgsWkbTypes::PointZ:
+        case Qgis::WkbType::Point25D:
+        case Qgis::WkbType::PointZ:
           dim = 3;
           FALLTHROUGH
-        case QgsWkbTypes::Point:
+        case Qgis::WkbType::Point:
           geometryType = QStringLiteral( "POINT" );
           break;
 
-        case QgsWkbTypes::LineString25D:
-        case QgsWkbTypes::LineStringZ:
+        case Qgis::WkbType::LineString25D:
+        case Qgis::WkbType::LineStringZ:
           dim = 3;
           FALLTHROUGH
-        case QgsWkbTypes::LineString:
+        case Qgis::WkbType::LineString:
           geometryType = QStringLiteral( "LINESTRING" );
           break;
 
-        case QgsWkbTypes::Polygon25D:
-        case QgsWkbTypes::PolygonZ:
+        case Qgis::WkbType::Polygon25D:
+        case Qgis::WkbType::PolygonZ:
           dim = 3;
           FALLTHROUGH
-        case QgsWkbTypes::Polygon:
+        case Qgis::WkbType::Polygon:
           geometryType = QStringLiteral( "POLYGON" );
           break;
 
-        case QgsWkbTypes::MultiPoint25D:
-        case QgsWkbTypes::MultiPointZ:
+        case Qgis::WkbType::MultiPoint25D:
+        case Qgis::WkbType::MultiPointZ:
           dim = 3;
           FALLTHROUGH
-        case QgsWkbTypes::MultiPoint:
+        case Qgis::WkbType::MultiPoint:
           geometryType = QStringLiteral( "MULTIPOINT" );
           break;
 
-        case QgsWkbTypes::MultiLineString25D:
-        case QgsWkbTypes::MultiLineStringZ:
+        case Qgis::WkbType::MultiLineString25D:
+        case Qgis::WkbType::MultiLineStringZ:
           dim = 3;
           FALLTHROUGH
-        case QgsWkbTypes::MultiLineString:
+        case Qgis::WkbType::MultiLineString:
           geometryType = QStringLiteral( "MULTILINESTRING" );
           break;
 
-        case QgsWkbTypes::MultiPolygon25D:
-        case QgsWkbTypes::MultiPolygonZ:
+        case Qgis::WkbType::MultiPolygon25D:
+        case Qgis::WkbType::MultiPolygonZ:
           dim = 3;
           FALLTHROUGH
-        case QgsWkbTypes::MultiPolygon:
+        case Qgis::WkbType::MultiPolygon:
           geometryType = QStringLiteral( "MULTIPOLYGON" );
           break;
 
-        case QgsWkbTypes::Unknown:
+        case Qgis::WkbType::Unknown:
           geometryType = QStringLiteral( "GEOMETRY" );
           break;
 
-        case QgsWkbTypes::NoGeometry:
+        case Qgis::WkbType::NoGeometry:
         default:
           dim = 0;
           break;
@@ -347,10 +347,10 @@ Qgis::VectorExportResult QgsSpatiaLiteProvider::createEmptyLayer( const QString 
     }
     catch ( SLException &e )
     {
-      QgsDebugMsg( QStringLiteral( "creation of data source %1 failed. %2" )
-                   .arg( tableName,
-                         e.errorMessage() )
-                 );
+      QgsDebugError( QStringLiteral( "creation of data source %1 failed. %2" )
+                     .arg( tableName,
+                           e.errorMessage() )
+                   );
 
       if ( errorMessage )
         *errorMessage = QObject::tr( "creation of data source %1 failed. %2" )
@@ -379,7 +379,7 @@ Qgis::VectorExportResult QgsSpatiaLiteProvider::createEmptyLayer( const QString 
   QgsSpatiaLiteProvider *provider = new QgsSpatiaLiteProvider( dsUri.uri(), providerOptions );
   if ( !provider->isValid() )
   {
-    QgsDebugMsg( "The layer " + tableName + " just created is not valid or not supported by the provider." );
+    QgsDebugError( "The layer " + tableName + " just created is not valid or not supported by the provider." );
     if ( errorMessage )
       *errorMessage = QObject::tr( "loading of the layer %1 failed" )
                       .arg( tableName );
@@ -408,13 +408,13 @@ Qgis::VectorExportResult QgsSpatiaLiteProvider::createEmptyLayer( const QString 
 
       if ( fld.name() == geometryColumn )
       {
-        QgsDebugMsg( QStringLiteral( "Found a field with the same name of the geometry column. Skip it!" ) );
+        QgsDebugError( QStringLiteral( "Found a field with the same name of the geometry column. Skip it!" ) );
         continue;
       }
 
       if ( !( options && options->value( QStringLiteral( "skipConvertFields" ), false ).toBool() ) && !convertField( fld ) )
       {
-        QgsDebugMsg( "error creating field " + fld.name() + ": unsupported type" );
+        QgsDebugError( "error creating field " + fld.name() + ": unsupported type" );
         if ( errorMessage )
           *errorMessage = QObject::tr( "unsupported type for field %1" )
                           .arg( fld.name() );
@@ -440,7 +440,7 @@ Qgis::VectorExportResult QgsSpatiaLiteProvider::createEmptyLayer( const QString 
 
     if ( !provider->addAttributes( flist ) )
     {
-      QgsDebugMsg( QStringLiteral( "error creating fields " ) );
+      QgsDebugError( QStringLiteral( "error creating fields " ) );
       if ( errorMessage )
         *errorMessage = QObject::tr( "creation of fields failed" );
 
@@ -487,7 +487,7 @@ QgsSpatiaLiteProvider::QgsSpatiaLiteProvider( QString const &uri, const Provider
       int ret = exec_sql( mSqliteHandle, QStringLiteral( "PRAGMA %1" ).arg( pragma ), uri, errMsg );
       if ( ret != SQLITE_OK )
       {
-        QgsDebugMsg( QStringLiteral( "PRAGMA " ) + pragma + QString( " failed : %1" ).arg( errMsg ? errMsg : "" ) );
+        QgsDebugError( QStringLiteral( "PRAGMA " ) + pragma + QString( " failed : %1" ).arg( errMsg ? errMsg : "" ) );
       }
       sqlite3_free( errMsg );
     }
@@ -532,7 +532,7 @@ QgsSpatiaLiteProvider::QgsSpatiaLiteProvider( QString const &uri, const Provider
     // invalid metadata
     mNumberFeatures = 0;
 
-    QgsDebugMsg( QStringLiteral( "Invalid SpatiaLite layer" ) );
+    QgsDebugError( QStringLiteral( "Invalid SpatiaLite layer" ) );
     closeDb();
     return;
   }
@@ -559,7 +559,7 @@ QgsSpatiaLiteProvider::QgsSpatiaLiteProvider( QString const &uri, const Provider
     {
       // the table is not a geometry table
       mNumberFeatures = 0;
-      QgsDebugMsg( QStringLiteral( "Invalid SpatiaLite layer" ) );
+      QgsDebugError( QStringLiteral( "Invalid SpatiaLite layer" ) );
       closeDb();
       gaiaFreeVectorLayersList( list );
       return;
@@ -567,7 +567,7 @@ QgsSpatiaLiteProvider::QgsSpatiaLiteProvider( QString const &uri, const Provider
     if ( !getTableSummaryAbstractInterface( lyr ) )     // gets the extent and feature count
     {
       mNumberFeatures = 0;
-      QgsDebugMsg( QStringLiteral( "Invalid SpatiaLite layer" ) );
+      QgsDebugError( QStringLiteral( "Invalid SpatiaLite layer" ) );
       closeDb();
       gaiaFreeVectorLayersList( list );
       return;
@@ -583,14 +583,14 @@ QgsSpatiaLiteProvider::QgsSpatiaLiteProvider( QString const &uri, const Provider
     {
       // the table is not a geometry table
       mNumberFeatures = 0;
-      QgsDebugMsg( QStringLiteral( "Invalid SpatiaLite layer" ) );
+      QgsDebugError( QStringLiteral( "Invalid SpatiaLite layer" ) );
       closeDb();
       return;
     }
     if ( !getTableSummary() )     // gets the extent and feature count
     {
       mNumberFeatures = 0;
-      QgsDebugMsg( QStringLiteral( "Invalid SpatiaLite layer" ) );
+      QgsDebugError( QStringLiteral( "Invalid SpatiaLite layer" ) );
       closeDb();
       return;
     }
@@ -600,7 +600,7 @@ QgsSpatiaLiteProvider::QgsSpatiaLiteProvider( QString const &uri, const Provider
 
   if ( !mSqliteHandle )
   {
-    QgsDebugMsg( QStringLiteral( "Invalid SpatiaLite layer" ) );
+    QgsDebugError( QStringLiteral( "Invalid SpatiaLite layer" ) );
     return;
   }
 
@@ -944,7 +944,7 @@ void QgsSpatiaLiteProvider::fetchConstraints()
 
     QString sqlDef = QString::fromUtf8( results[ 1 ] );
     // extract definition
-    QRegularExpression re( QStringLiteral( R"raw(\((.+)\))raw" ), QRegularExpression::PatternOption::DotMatchesEverythingOption );
+    const thread_local QRegularExpression re( QStringLiteral( R"raw(\((.+)\))raw" ), QRegularExpression::PatternOption::DotMatchesEverythingOption );
     QRegularExpressionMatch match = re.match( sqlDef );
     if ( match.hasMatch() )
     {
@@ -1402,7 +1402,7 @@ QgsFeatureIterator QgsSpatiaLiteProvider::getFeatures( const QgsFeatureRequest &
 {
   if ( !mValid )
   {
-    QgsDebugMsg( QStringLiteral( "Read attempt on an invalid SpatiaLite data source" ) );
+    QgsDebugError( QStringLiteral( "Read attempt on an invalid SpatiaLite data source" ) );
     return QgsFeatureIterator();
   }
   return QgsFeatureIterator( new QgsSpatiaLiteFeatureIterator( new QgsSpatiaLiteFeatureSource( this ), true, request ) );
@@ -1410,7 +1410,7 @@ QgsFeatureIterator QgsSpatiaLiteProvider::getFeatures( const QgsFeatureRequest &
 
 
 int QgsSpatiaLiteProvider::computeSizeFromGeosWKB2D( const unsigned char *blob,
-    int size, QgsWkbTypes::Type type, int nDims,
+    int size, Qgis::WkbType type, int nDims,
     int little_endian, int endian_arch )
 {
   Q_UNUSED( size )
@@ -1431,7 +1431,7 @@ int QgsSpatiaLiteProvider::computeSizeFromGeosWKB2D( const unsigned char *blob,
     switch ( QgsWkbTypes::geometryType( type ) )
     {
       // compunting the required size
-      case QgsWkbTypes::PointGeometry:
+      case Qgis::GeometryType::Point:
         switch ( nDims )
         {
           case GAIA_XY_Z_M:
@@ -1446,7 +1446,7 @@ int QgsSpatiaLiteProvider::computeSizeFromGeosWKB2D( const unsigned char *blob,
             break;
         }
         break;
-      case QgsWkbTypes::LineGeometry:
+      case Qgis::GeometryType::Line:
         points = gaiaImport32( p_in, little_endian, endian_arch );
         gsize += 4;
         switch ( nDims )
@@ -1463,7 +1463,7 @@ int QgsSpatiaLiteProvider::computeSizeFromGeosWKB2D( const unsigned char *blob,
             break;
         }
         break;
-      case QgsWkbTypes::PolygonGeometry:
+      case Qgis::GeometryType::Polygon:
         rings = gaiaImport32( p_in, little_endian, endian_arch );
         p_in += 4;
         gsize += 4;
@@ -1489,8 +1489,8 @@ int QgsSpatiaLiteProvider::computeSizeFromGeosWKB2D( const unsigned char *blob,
         }
         break;
 
-      case QgsWkbTypes::UnknownGeometry:
-      case QgsWkbTypes::NullGeometry:
+      case Qgis::GeometryType::Unknown:
+      case Qgis::GeometryType::Null:
         break;
     }
   }
@@ -1596,7 +1596,7 @@ int QgsSpatiaLiteProvider::computeSizeFromMultiWKB2D( const unsigned char *p_in,
 }
 
 int QgsSpatiaLiteProvider::computeSizeFromGeosWKB3D( const unsigned char *blob,
-    int size, QgsWkbTypes::Type type, int nDims,
+    int size, Qgis::WkbType type, int nDims,
     int little_endian, int endian_arch )
 {
   Q_UNUSED( size )
@@ -1617,7 +1617,7 @@ int QgsSpatiaLiteProvider::computeSizeFromGeosWKB3D( const unsigned char *blob,
     switch ( QgsWkbTypes::geometryType( type ) )
     {
       // compunting the required size
-      case QgsWkbTypes::PointGeometry:
+      case Qgis::GeometryType::Point:
         switch ( nDims )
         {
           case GAIA_XY_Z_M:
@@ -1632,7 +1632,7 @@ int QgsSpatiaLiteProvider::computeSizeFromGeosWKB3D( const unsigned char *blob,
             break;
         }
         break;
-      case QgsWkbTypes::LineGeometry:
+      case Qgis::GeometryType::Line:
         points = gaiaImport32( p_in, little_endian, endian_arch );
         gsize += 4;
         switch ( nDims )
@@ -1649,7 +1649,7 @@ int QgsSpatiaLiteProvider::computeSizeFromGeosWKB3D( const unsigned char *blob,
             break;
         }
         break;
-      case QgsWkbTypes::PolygonGeometry:
+      case Qgis::GeometryType::Polygon:
         rings = gaiaImport32( p_in, little_endian, endian_arch );
         p_in += 4;
         gsize += 4;
@@ -1675,8 +1675,8 @@ int QgsSpatiaLiteProvider::computeSizeFromGeosWKB3D( const unsigned char *blob,
         }
         break;
 
-      case QgsWkbTypes::UnknownGeometry:
-      case QgsWkbTypes::NullGeometry:
+      case Qgis::GeometryType::Unknown:
+      case Qgis::GeometryType::Null:
         break;
     }
   }
@@ -1691,7 +1691,7 @@ int QgsSpatiaLiteProvider::computeSizeFromMultiWKB3D( const unsigned char *p_in,
 {
 // calculating the size required to store this WKB
   int entities;
-  QgsWkbTypes::Type type;
+  Qgis::WkbType type;
   int rings;
   int points;
   int ie;
@@ -1703,13 +1703,13 @@ int QgsSpatiaLiteProvider::computeSizeFromMultiWKB3D( const unsigned char *p_in,
   size += 4;
   for ( ie = 0; ie < entities; ie++ )
   {
-    type = static_cast< QgsWkbTypes::Type >( gaiaImport32( p_in + 1, little_endian, endian_arch ) );
+    type = static_cast< Qgis::WkbType >( gaiaImport32( p_in + 1, little_endian, endian_arch ) );
     p_in += 5;
     size += 5;
     switch ( QgsWkbTypes::geometryType( type ) )
     {
       // compunting the required size
-      case QgsWkbTypes::PointGeometry:
+      case Qgis::GeometryType::Point:
         switch ( nDims )
         {
           case GAIA_XY_Z_M:
@@ -1727,7 +1727,7 @@ int QgsSpatiaLiteProvider::computeSizeFromMultiWKB3D( const unsigned char *p_in,
             break;
         }
         break;
-      case QgsWkbTypes::LineGeometry:
+      case Qgis::GeometryType::Line:
         points = gaiaImport32( p_in, little_endian, endian_arch );
         p_in += 4;
         size += 4;
@@ -1748,7 +1748,7 @@ int QgsSpatiaLiteProvider::computeSizeFromMultiWKB3D( const unsigned char *p_in,
             break;
         }
         break;
-      case QgsWkbTypes::PolygonGeometry:
+      case Qgis::GeometryType::Polygon:
         rings = gaiaImport32( p_in, little_endian, endian_arch );
         p_in += 4;
         size += 4;
@@ -1776,8 +1776,8 @@ int QgsSpatiaLiteProvider::computeSizeFromMultiWKB3D( const unsigned char *p_in,
         }
         break;
 
-      case QgsWkbTypes::UnknownGeometry:
-      case QgsWkbTypes::NullGeometry:
+      case Qgis::GeometryType::Unknown:
+      case Qgis::GeometryType::Null:
         break;
     }
   }
@@ -1791,8 +1791,8 @@ void QgsSpatiaLiteProvider::convertFromGeosWKB( const unsigned char *blob,
     int *geom_size,
     int nDims )
 {
-// attempting to convert from 2D/3D GEOS own WKB
-  QgsWkbTypes::Type type;
+  // attempting to convert from 2D/3D GEOS own WKB
+  Qgis::WkbType type;
   int gDims;
   int gsize;
   int little_endian;
@@ -1806,10 +1806,10 @@ void QgsSpatiaLiteProvider::convertFromGeosWKB( const unsigned char *blob,
     little_endian = GAIA_LITTLE_ENDIAN;
   else
     little_endian = GAIA_BIG_ENDIAN;
-  type = static_cast< QgsWkbTypes::Type >( gaiaImport32( blob + 1, little_endian, endian_arch ) );
+  type = static_cast< Qgis::WkbType >( gaiaImport32( blob + 1, little_endian, endian_arch ) );
   if ( QgsWkbTypes::hasZ( type ) || QgsWkbTypes::hasM( type ) )
     gDims = 3;
-  else if ( type != QgsWkbTypes::Unknown )
+  else if ( type != Qgis::WkbType::Unknown )
     gDims = 2;
   else
     return;
@@ -2438,8 +2438,8 @@ void QgsSpatiaLiteProvider::convertFromGeosWKB3D( const unsigned char *blob,
 {
   Q_UNUSED( blob_size )
   Q_UNUSED( geom_size )
-// attempting to convert from 3D GEOS own WKB
-  QgsWkbTypes::Type type;
+  // attempting to convert from 3D GEOS own WKB
+  Qgis::WkbType type;
   int entities;
   int rings;
   int points;
@@ -2452,8 +2452,8 @@ void QgsSpatiaLiteProvider::convertFromGeosWKB3D( const unsigned char *blob,
 
 // building from GEOS 3D WKB
   *p_out++ = 0x01;  // little endian byte order
-  type = static_cast< QgsWkbTypes::Type >( gaiaImport32( blob + 1, little_endian, endian_arch ) );
-  if ( QgsWkbTypes::geometryType( type ) == QgsWkbTypes::PointGeometry )
+  type = static_cast< Qgis::WkbType >( gaiaImport32( blob + 1, little_endian, endian_arch ) );
+  if ( QgsWkbTypes::geometryType( type ) == Qgis::GeometryType::Point )
   {
     if ( QgsWkbTypes::isSingleType( type ) )
     {
@@ -2492,7 +2492,7 @@ void QgsSpatiaLiteProvider::convertFromGeosWKB3D( const unsigned char *blob,
       }
     }
   }
-  else if ( QgsWkbTypes::geometryType( type ) == QgsWkbTypes::LineGeometry )
+  else if ( QgsWkbTypes::geometryType( type ) == Qgis::GeometryType::Line )
   {
     if ( QgsWkbTypes::isSingleType( type ) )
     {
@@ -2531,7 +2531,7 @@ void QgsSpatiaLiteProvider::convertFromGeosWKB3D( const unsigned char *blob,
       }
     }
   }
-  else if ( QgsWkbTypes::geometryType( type ) == QgsWkbTypes::PolygonGeometry )
+  else if ( QgsWkbTypes::geometryType( type ) == Qgis::GeometryType::Polygon )
   {
     if ( QgsWkbTypes::isSingleType( type ) )
     {
@@ -2570,7 +2570,7 @@ void QgsSpatiaLiteProvider::convertFromGeosWKB3D( const unsigned char *blob,
       }
     }
   }
-  else if ( QgsWkbTypes::flatType( type ) == QgsWkbTypes::GeometryCollection )
+  else if ( QgsWkbTypes::flatType( type ) == Qgis::WkbType::GeometryCollection )
   {
     switch ( nDims )
     {
@@ -2595,7 +2595,7 @@ void QgsSpatiaLiteProvider::convertFromGeosWKB3D( const unsigned char *blob,
     switch ( QgsWkbTypes::geometryType( type ) )
     {
       // setting Geometry values
-      case QgsWkbTypes::PointGeometry:
+      case Qgis::GeometryType::Point:
         coord = gaiaImport64( p_in, little_endian, endian_arch );
         gaiaExport64( p_out, coord, 1, endian_arch );  // X
         p_in += sizeof( double );
@@ -2619,7 +2619,7 @@ void QgsSpatiaLiteProvider::convertFromGeosWKB3D( const unsigned char *blob,
           p_out += sizeof( double );
         }
         break;
-      case QgsWkbTypes::LineGeometry:
+      case Qgis::GeometryType::Line:
         points = gaiaImport32( p_in, little_endian, endian_arch );
         p_in += 4;
         gaiaExport32( p_out, points, 1, endian_arch );
@@ -2650,7 +2650,7 @@ void QgsSpatiaLiteProvider::convertFromGeosWKB3D( const unsigned char *blob,
           }
         }
         break;
-      case QgsWkbTypes::PolygonGeometry:
+      case Qgis::GeometryType::Polygon:
         rings = gaiaImport32( p_in, little_endian, endian_arch );
         p_in += 4;
         gaiaExport32( p_out, rings, 1, endian_arch );
@@ -2689,8 +2689,8 @@ void QgsSpatiaLiteProvider::convertFromGeosWKB3D( const unsigned char *blob,
         }
         break;
 
-      case QgsWkbTypes::UnknownGeometry:
-      case QgsWkbTypes::NullGeometry:
+      case Qgis::GeometryType::Unknown:
+      case Qgis::GeometryType::Null:
         break;
     }
   }
@@ -2698,7 +2698,7 @@ void QgsSpatiaLiteProvider::convertFromGeosWKB3D( const unsigned char *blob,
   {
     switch ( QgsWkbTypes::geometryType( type ) )
     {
-      case QgsWkbTypes::PointGeometry:
+      case Qgis::GeometryType::Point:
         entities = gaiaImport32( p_in, little_endian, endian_arch );
         p_in += 4;
         gaiaExport32( p_out, entities, 1, endian_arch );
@@ -2747,7 +2747,7 @@ void QgsSpatiaLiteProvider::convertFromGeosWKB3D( const unsigned char *blob,
           }
         }
         break;
-      case QgsWkbTypes::LineGeometry:
+      case Qgis::GeometryType::Line:
         entities = gaiaImport32( p_in, little_endian, endian_arch );
         p_in += 4;
         gaiaExport32( p_out, entities, 1, endian_arch );
@@ -2803,7 +2803,7 @@ void QgsSpatiaLiteProvider::convertFromGeosWKB3D( const unsigned char *blob,
           }
         }
         break;
-      case QgsWkbTypes::PolygonGeometry:
+      case Qgis::GeometryType::Polygon:
         entities = gaiaImport32( p_in, little_endian, endian_arch );
         p_in += 4;
         gaiaExport32( p_out, entities, 1, endian_arch );
@@ -2867,8 +2867,8 @@ void QgsSpatiaLiteProvider::convertFromGeosWKB3D( const unsigned char *blob,
         }
         break;
 
-      case QgsWkbTypes::UnknownGeometry:
-      case QgsWkbTypes::NullGeometry:
+      case Qgis::GeometryType::Unknown:
+      case Qgis::GeometryType::Null:
         break;
     }
   }
@@ -3003,67 +3003,67 @@ void QgsSpatiaLiteProvider::convertToGeosWKB( const unsigned char *blob,
   {
     // setting Geometry TYPE
     case GAIA_POINTZ:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::Point25D, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::Point25D ), 1, endian_arch );
       break;
     case GAIA_POINTM:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::PointM, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::PointM ), 1, endian_arch );
       break;
     case GAIA_POINTZM:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::PointZM, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::PointZM ), 1, endian_arch );
       break;
     case GAIA_LINESTRINGZ:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::LineString25D, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::LineString25D ), 1, endian_arch );
       break;
     case GAIA_LINESTRINGM:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::LineStringM, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::LineStringM ), 1, endian_arch );
       break;
     case GAIA_LINESTRINGZM:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::LineStringZM, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::LineStringZM ), 1, endian_arch );
       break;
     case GAIA_POLYGONZ:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::Polygon25D, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::Polygon25D ), 1, endian_arch );
       break;
     case GAIA_POLYGONM:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::PolygonM, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::PolygonM ), 1, endian_arch );
       break;
     case GAIA_POLYGONZM:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::PolygonZM, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::PolygonZM ), 1, endian_arch );
       break;
     case GAIA_MULTIPOINTZ:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::MultiPoint25D, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::MultiPoint25D ), 1, endian_arch );
       break;
     case GAIA_MULTIPOINTM:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::MultiPointM, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::MultiPointM ), 1, endian_arch );
       break;
     case GAIA_MULTIPOINTZM:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::MultiPointZM, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::MultiPointZM ), 1, endian_arch );
       break;
     case GAIA_MULTILINESTRINGZ:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::MultiLineString25D, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::MultiLineString25D ), 1, endian_arch );
       break;
     case GAIA_MULTILINESTRINGM:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::MultiLineStringM, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::MultiLineStringM ), 1, endian_arch );
       break;
     case GAIA_MULTILINESTRINGZM:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::MultiLineStringZM, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::MultiLineStringZM ), 1, endian_arch );
       break;
     case GAIA_MULTIPOLYGONZ:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::MultiPolygon25D, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::MultiPolygon25D ), 1, endian_arch );
       break;
     case GAIA_MULTIPOLYGONM:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::MultiPolygonM, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::MultiPolygonM ), 1, endian_arch );
       break;
     case GAIA_MULTIPOLYGONZM:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::MultiPolygonZM, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::MultiPolygonZM ), 1, endian_arch );
       break;
     case GAIA_GEOMETRYCOLLECTIONZ:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::GeometryCollectionZ, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::GeometryCollectionZ ), 1, endian_arch );
       break;
     case GAIA_GEOMETRYCOLLECTIONM:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::GeometryCollectionM, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::GeometryCollectionM ), 1, endian_arch );
       break;
     case GAIA_GEOMETRYCOLLECTIONZM:
-      gaiaExport32( wkbGeom + 1, QgsWkbTypes::GeometryCollectionZM, 1, endian_arch );
+      gaiaExport32( wkbGeom + 1, static_cast< quint32>( Qgis::WkbType::GeometryCollectionZM ), 1, endian_arch );
       break;
   }
   p_in = blob + 5;
@@ -3222,7 +3222,7 @@ void QgsSpatiaLiteProvider::convertToGeosWKB( const unsigned char *blob,
       {
         p_in += 5;
         *p_out++ = 0x01;
-        gaiaExport32( p_out, type == GAIA_MULTIPOINTZ ? QgsWkbTypes::Point25D : QgsWkbTypes::PointM, 1, endian_arch );
+        gaiaExport32( p_out, static_cast< quint32>( type == GAIA_MULTIPOINTZ ? Qgis::WkbType::Point25D : Qgis::WkbType::PointM ), 1, endian_arch );
         p_out += 4;
         coord = gaiaImport64( p_in, little_endian, endian_arch );
         gaiaExport64( p_out, coord, 1, endian_arch );  // X
@@ -3247,7 +3247,7 @@ void QgsSpatiaLiteProvider::convertToGeosWKB( const unsigned char *blob,
       {
         p_in += 5;
         *p_out++ = 0x01;
-        gaiaExport32( p_out, QgsWkbTypes::PointZM, 1, endian_arch );
+        gaiaExport32( p_out, static_cast< quint32>( Qgis::WkbType::PointZM ), 1, endian_arch );
         p_out += 4;
         coord = gaiaImport64( p_in, little_endian, endian_arch );
         gaiaExport64( p_out, coord, 1, endian_arch );  // X
@@ -3277,7 +3277,7 @@ void QgsSpatiaLiteProvider::convertToGeosWKB( const unsigned char *blob,
       {
         p_in += 5;
         *p_out++ = 0x01;
-        gaiaExport32( p_out, type == GAIA_MULTILINESTRINGZ ? QgsWkbTypes::LineString25D : QgsWkbTypes::LineStringM, 1, endian_arch );
+        gaiaExport32( p_out, static_cast< quint32>( type == GAIA_MULTILINESTRINGZ ? Qgis::WkbType::LineString25D : Qgis::WkbType::LineStringM ), 1, endian_arch );
         p_out += 4;
         points = gaiaImport32( p_in, little_endian, endian_arch );
         p_in += 4;
@@ -3309,7 +3309,7 @@ void QgsSpatiaLiteProvider::convertToGeosWKB( const unsigned char *blob,
       {
         p_in += 5;
         *p_out++ = 0x01;
-        gaiaExport32( p_out, QgsWkbTypes::LineStringZM, 1, endian_arch );
+        gaiaExport32( p_out, static_cast< quint32>( Qgis::WkbType::LineStringZM ), 1, endian_arch );
         p_out += 4;
         points = gaiaImport32( p_in, little_endian, endian_arch );
         p_in += 4;
@@ -3346,7 +3346,7 @@ void QgsSpatiaLiteProvider::convertToGeosWKB( const unsigned char *blob,
       {
         p_in += 5;
         *p_out++ = 0x01;
-        gaiaExport32( p_out, type == GAIA_MULTIPOLYGONZ ? QgsWkbTypes::Polygon25D : QgsWkbTypes::PolygonM, 1, endian_arch );
+        gaiaExport32( p_out, static_cast< quint32>( type == GAIA_MULTIPOLYGONZ ? Qgis::WkbType::Polygon25D : Qgis::WkbType::PolygonM ), 1, endian_arch );
         p_out += 4;
         rings = gaiaImport32( p_in, little_endian, endian_arch );
         p_in += 4;
@@ -3385,7 +3385,7 @@ void QgsSpatiaLiteProvider::convertToGeosWKB( const unsigned char *blob,
       {
         p_in += 5;
         *p_out++ = 0x01;
-        gaiaExport32( p_out, QgsWkbTypes::PolygonZM, 1, endian_arch );
+        gaiaExport32( p_out, static_cast< quint32>( Qgis::WkbType::PolygonZM ), 1, endian_arch );
         p_out += 4;
         rings = gaiaImport32( p_in, little_endian, endian_arch );
         p_in += 4;
@@ -3434,31 +3434,31 @@ void QgsSpatiaLiteProvider::convertToGeosWKB( const unsigned char *blob,
         switch ( type2 )
         {
           case GAIA_POINTZ:
-            gaiaExport32( p_out, QgsWkbTypes::Point25D, 1, endian_arch );
+            gaiaExport32( p_out, static_cast< quint32>( Qgis::WkbType::Point25D ), 1, endian_arch );
             break;
           case GAIA_POINTM:
-            gaiaExport32( p_out, QgsWkbTypes::PointM, 1, endian_arch );
+            gaiaExport32( p_out, static_cast< quint32>( Qgis::WkbType::PointM ), 1, endian_arch );
             break;
           case GAIA_POINTZM:
-            gaiaExport32( p_out, QgsWkbTypes::PointZM, 1, endian_arch );
+            gaiaExport32( p_out, static_cast< quint32>( Qgis::WkbType::PointZM ), 1, endian_arch );
             break;
           case GAIA_LINESTRINGZ:
-            gaiaExport32( p_out, QgsWkbTypes::LineString25D, 1, endian_arch );
+            gaiaExport32( p_out, static_cast< quint32>( Qgis::WkbType::LineString25D ), 1, endian_arch );
             break;
           case GAIA_LINESTRINGM:
-            gaiaExport32( p_out, QgsWkbTypes::LineStringM, 1, endian_arch );
+            gaiaExport32( p_out, static_cast< quint32>( Qgis::WkbType::LineStringM ), 1, endian_arch );
             break;
           case GAIA_LINESTRINGZM:
-            gaiaExport32( p_out, QgsWkbTypes::LineStringZM, 1, endian_arch );
+            gaiaExport32( p_out, static_cast< quint32>( Qgis::WkbType::LineStringZM ), 1, endian_arch );
             break;
           case GAIA_POLYGONZ:
-            gaiaExport32( p_out, QgsWkbTypes::Polygon25D, 1, endian_arch );
+            gaiaExport32( p_out, static_cast< quint32>( Qgis::WkbType::Polygon25D ), 1, endian_arch );
             break;
           case GAIA_POLYGONM:
-            gaiaExport32( p_out, QgsWkbTypes::PolygonM, 1, endian_arch );
+            gaiaExport32( p_out, static_cast< quint32>( Qgis::WkbType::PolygonM ), 1, endian_arch );
             break;
           case GAIA_POLYGONZM:
-            gaiaExport32( p_out, QgsWkbTypes::PolygonZM, 1, endian_arch );
+            gaiaExport32( p_out, static_cast< quint32>( Qgis::WkbType::PolygonZM ), 1, endian_arch );
             break;
         }
         p_out += 4;
@@ -3751,7 +3751,7 @@ size_t QgsSpatiaLiteProvider::layerCount() const
 /**
  * Returns the feature type
  */
-QgsWkbTypes::Type QgsSpatiaLiteProvider::wkbType() const
+Qgis::WkbType QgsSpatiaLiteProvider::wkbType() const
 {
   return mGeomType;
 }
@@ -4148,6 +4148,8 @@ bool QgsSpatiaLiteProvider::addFeatures( QgsFeatureList &flist, Flags flags )
   if ( flist.isEmpty() )
     return true;
 
+  const QString logUri = uri( ).uri( false );
+
   QgsAttributes attributevec = flist[0].attributes();
 
   const QString savepointId { QStringLiteral( "qgis_spatialite_internal_savepoint_%1" ).arg( ++ sSavepointId ) };
@@ -4329,7 +4331,7 @@ bool QgsSpatiaLiteProvider::addFeatures( QgsFeatureList &flist, Flags flags )
         ret = sqlite3_step( stmt );
 
         char *expandedSql = sqlite3_expanded_sql( stmt );
-        QgsDatabaseQueryLogWrapper logWrapper( QString( expandedSql ), uri( ).uri( false ), QStringLiteral( "spatialite" ), QStringLiteral( "QgsSpatiaLiteProvider" ), QStringLiteral( "addFeatures" ) );
+        QgsDatabaseQueryLogWrapper logWrapper( QString( expandedSql ), logUri, QStringLiteral( "spatialite" ), QStringLiteral( "QgsSpatiaLiteProvider" ), QStringLiteral( "addFeatures" ) );
         sqlite3_free( expandedSql );
 
         sqlite3_finalize( stmt );
@@ -4389,7 +4391,7 @@ bool QgsSpatiaLiteProvider::addFeatures( QgsFeatureList &flist, Flags flags )
 
 QString QgsSpatiaLiteProvider::createIndexName( QString tableName, QString field )
 {
-  QRegularExpression safeExp( QStringLiteral( "[^a-zA-Z0-9]" ) );
+  const thread_local QRegularExpression safeExp( QStringLiteral( "[^a-zA-Z0-9]" ) );
   tableName.replace( safeExp, QStringLiteral( "_" ) );
   field.replace( safeExp, QStringLiteral( "_" ) );
   return QStringLiteral( "%1_%2_idx" ).arg( tableName, field );
@@ -5261,25 +5263,25 @@ bool QgsSpatiaLiteProvider::getGeometryDetailsAbstractInterface( gaiaVectorLayer
   switch ( lyr->GeometryType )
   {
     case GAIA_VECTOR_POINT:
-      mGeomType = QgsWkbTypes::Point;
+      mGeomType = Qgis::WkbType::Point;
       break;
     case GAIA_VECTOR_LINESTRING:
-      mGeomType = QgsWkbTypes::LineString;
+      mGeomType = Qgis::WkbType::LineString;
       break;
     case GAIA_VECTOR_POLYGON:
-      mGeomType = QgsWkbTypes::Polygon;
+      mGeomType = Qgis::WkbType::Polygon;
       break;
     case GAIA_VECTOR_MULTIPOINT:
-      mGeomType = QgsWkbTypes::MultiPoint;
+      mGeomType = Qgis::WkbType::MultiPoint;
       break;
     case GAIA_VECTOR_MULTILINESTRING:
-      mGeomType = QgsWkbTypes::MultiLineString;
+      mGeomType = Qgis::WkbType::MultiLineString;
       break;
     case GAIA_VECTOR_MULTIPOLYGON:
-      mGeomType = QgsWkbTypes::MultiPolygon;
+      mGeomType = Qgis::WkbType::MultiPolygon;
       break;
     default:
-      mGeomType = QgsWkbTypes::Unknown;
+      mGeomType = Qgis::WkbType::Unknown;
       break;
   }
 
@@ -5357,7 +5359,7 @@ bool QgsSpatiaLiteProvider::getGeometryDetails()
   bool ret = false;
   if ( mGeometryColumn.isEmpty() )
   {
-    mGeomType = QgsWkbTypes::NoGeometry;
+    mGeomType = Qgis::WkbType::NoGeometry;
     return true;
   }
 
@@ -5417,27 +5419,27 @@ bool QgsSpatiaLiteProvider::getTableGeometryDetails()
 
       if ( fType == QLatin1String( "POINT" ) || fType == QLatin1String( "1" ) )
       {
-        mGeomType = QgsWkbTypes::Point;
+        mGeomType = Qgis::WkbType::Point;
       }
       else if ( fType == QLatin1String( "MULTIPOINT" ) || fType == QLatin1String( "4" ) )
       {
-        mGeomType = QgsWkbTypes::MultiPoint;
+        mGeomType = Qgis::WkbType::MultiPoint;
       }
       else if ( fType == QLatin1String( "LINESTRING" ) || fType == QLatin1String( "2" ) )
       {
-        mGeomType = QgsWkbTypes::LineString;
+        mGeomType = Qgis::WkbType::LineString;
       }
       else if ( fType == QLatin1String( "MULTILINESTRING" ) || fType == QLatin1String( "5" ) )
       {
-        mGeomType = QgsWkbTypes::MultiLineString;
+        mGeomType = Qgis::WkbType::MultiLineString;
       }
       else if ( fType == QLatin1String( "POLYGON" )  || fType == QLatin1String( "3" ) )
       {
-        mGeomType = QgsWkbTypes::Polygon;
+        mGeomType = Qgis::WkbType::Polygon;
       }
       else if ( fType == QLatin1String( "MULTIPOLYGON" )  || fType == QLatin1String( "6" ) )
       {
-        mGeomType = QgsWkbTypes::MultiPolygon;
+        mGeomType = Qgis::WkbType::MultiPolygon;
       }
 
       mSrid = xSrid.toInt();
@@ -5473,7 +5475,7 @@ bool QgsSpatiaLiteProvider::getTableGeometryDetails()
   }
   sqlite3_free_table( results );
 
-  if ( mGeomType == QgsWkbTypes::Unknown || mSrid < 0 )
+  if ( mGeomType == Qgis::WkbType::Unknown || mSrid < 0 )
   {
     handleError( sql, errMsg, QString() );
     return false;
@@ -5517,27 +5519,27 @@ bool QgsSpatiaLiteProvider::getViewGeometryDetails()
 
       if ( fType == QLatin1String( "POINT" ) )
       {
-        mGeomType = QgsWkbTypes::Point;
+        mGeomType = Qgis::WkbType::Point;
       }
       else if ( fType == QLatin1String( "MULTIPOINT" ) )
       {
-        mGeomType = QgsWkbTypes::MultiPoint;
+        mGeomType = Qgis::WkbType::MultiPoint;
       }
       else if ( fType == QLatin1String( "LINESTRING" ) )
       {
-        mGeomType = QgsWkbTypes::LineString;
+        mGeomType = Qgis::WkbType::LineString;
       }
       else if ( fType == QLatin1String( "MULTILINESTRING" ) )
       {
-        mGeomType = QgsWkbTypes::MultiLineString;
+        mGeomType = Qgis::WkbType::MultiLineString;
       }
       else if ( fType == QLatin1String( "POLYGON" ) )
       {
-        mGeomType = QgsWkbTypes::Polygon;
+        mGeomType = Qgis::WkbType::Polygon;
       }
       else if ( fType == QLatin1String( "MULTIPOLYGON" ) )
       {
-        mGeomType = QgsWkbTypes::MultiPolygon;
+        mGeomType = Qgis::WkbType::MultiPolygon;
       }
       mSrid = xSrid.toInt();
       if ( spatialIndex.toInt() == 1 )
@@ -5553,7 +5555,7 @@ bool QgsSpatiaLiteProvider::getViewGeometryDetails()
   }
   sqlite3_free_table( results );
 
-  if ( mGeomType == QgsWkbTypes::Unknown || mSrid < 0 )
+  if ( mGeomType == Qgis::WkbType::Unknown || mSrid < 0 )
   {
     handleError( sql, errMsg, QString() );
     return false;
@@ -5592,27 +5594,27 @@ bool QgsSpatiaLiteProvider::getVShapeGeometryDetails()
 
       if ( fType == QLatin1String( "POINT" ) )
       {
-        mGeomType = QgsWkbTypes::Point;
+        mGeomType = Qgis::WkbType::Point;
       }
       else if ( fType == QLatin1String( "MULTIPOINT" ) )
       {
-        mGeomType = QgsWkbTypes::MultiPoint;
+        mGeomType = Qgis::WkbType::MultiPoint;
       }
       else if ( fType == QLatin1String( "LINESTRING" ) )
       {
-        mGeomType = QgsWkbTypes::LineString;
+        mGeomType = Qgis::WkbType::LineString;
       }
       else if ( fType == QLatin1String( "MULTILINESTRING" ) )
       {
-        mGeomType = QgsWkbTypes::MultiLineString;
+        mGeomType = Qgis::WkbType::MultiLineString;
       }
       else if ( fType == QLatin1String( "POLYGON" ) )
       {
-        mGeomType = QgsWkbTypes::Polygon;
+        mGeomType = Qgis::WkbType::Polygon;
       }
       else if ( fType == QLatin1String( "MULTIPOLYGON" ) )
       {
-        mGeomType = QgsWkbTypes::MultiPolygon;
+        mGeomType = Qgis::WkbType::MultiPolygon;
       }
       mSrid = xSrid.toInt();
 
@@ -5620,7 +5622,7 @@ bool QgsSpatiaLiteProvider::getVShapeGeometryDetails()
   }
   sqlite3_free_table( results );
 
-  if ( mGeomType == QgsWkbTypes::Unknown || mSrid < 0 )
+  if ( mGeomType == Qgis::WkbType::Unknown || mSrid < 0 )
   {
     handleError( sql, errMsg, QString() );
     return false;
@@ -5713,32 +5715,32 @@ bool QgsSpatiaLiteProvider::getQueryGeometryDetails()
 
     if ( fType == QLatin1String( "POINT" ) )
     {
-      mGeomType = QgsWkbTypes::Point;
+      mGeomType = Qgis::WkbType::Point;
     }
     else if ( fType == QLatin1String( "MULTIPOINT" ) )
     {
-      mGeomType = QgsWkbTypes::MultiPoint;
+      mGeomType = Qgis::WkbType::MultiPoint;
     }
     else if ( fType == QLatin1String( "LINESTRING" ) )
     {
-      mGeomType = QgsWkbTypes::LineString;
+      mGeomType = Qgis::WkbType::LineString;
     }
     else if ( fType == QLatin1String( "MULTILINESTRING" ) )
     {
-      mGeomType = QgsWkbTypes::MultiLineString;
+      mGeomType = Qgis::WkbType::MultiLineString;
     }
     else if ( fType == QLatin1String( "POLYGON" ) )
     {
-      mGeomType = QgsWkbTypes::Polygon;
+      mGeomType = Qgis::WkbType::Polygon;
     }
     else if ( fType == QLatin1String( "MULTIPOLYGON" ) )
     {
-      mGeomType = QgsWkbTypes::MultiPolygon;
+      mGeomType = Qgis::WkbType::MultiPolygon;
     }
     mSrid = xSrid.toInt();
   }
 
-  if ( mGeomType == QgsWkbTypes::Unknown || mSrid < 0 )
+  if ( mGeomType == Qgis::WkbType::Unknown || mSrid < 0 )
   {
     handleError( sql, errMsg, QString() );
     return false;
@@ -5905,9 +5907,9 @@ QgsSpatiaLiteProvider *QgsSpatiaLiteProviderMetadata::createProvider(
   return new QgsSpatiaLiteProvider( uri, options, flags );
 }
 
-QList<QgsMapLayerType> QgsSpatiaLiteProviderMetadata::supportedLayerTypes() const
+QList<Qgis::LayerType> QgsSpatiaLiteProviderMetadata::supportedLayerTypes() const
 {
-  return { QgsMapLayerType::VectorLayer };
+  return { Qgis::LayerType::Vector };
 }
 
 QString QgsSpatiaLiteProviderMetadata::encodeUri( const QVariantMap &parts ) const
@@ -5921,21 +5923,35 @@ QString QgsSpatiaLiteProviderMetadata::encodeUri( const QVariantMap &parts ) con
   return dsUri.uri();
 }
 
+QString QgsSpatiaLiteProviderMetadata::absoluteToRelativeUri( const QString &src, const QgsReadWriteContext &context ) const
+{
+  QgsDataSourceUri uri( src );
+  QString database = context.pathResolver().writePath( uri.database() );
+  uri.setConnection( uri.host(), uri.port(), database, uri.username(), uri.password() );
+  return uri.uri();
+}
+
+QString QgsSpatiaLiteProviderMetadata::relativeToAbsoluteUri( const QString &src, const QgsReadWriteContext &context ) const
+{
+  QgsDataSourceUri uri( src );
+  uri.setDatabase( context.pathResolver().readPath( uri.database() ) );
+  return uri.uri();
+}
+
 QgsProviderMetadata::ProviderCapabilities QgsSpatiaLiteProviderMetadata::providerCapabilities() const
 {
   return FileBasedUris;
 }
 
 
-Qgis::VectorExportResult QgsSpatiaLiteProviderMetadata::createEmptyLayer(
-  const QString &uri,
-  const QgsFields &fields,
-  QgsWkbTypes::Type wkbType,
-  const QgsCoordinateReferenceSystem &srs,
-  bool overwrite,
-  QMap<int, int> &oldToNewAttrIdxMap,
-  QString &errorMessage,
-  const QMap<QString, QVariant> *options )
+Qgis::VectorExportResult QgsSpatiaLiteProviderMetadata::createEmptyLayer( const QString &uri,
+    const QgsFields &fields,
+    Qgis::WkbType wkbType,
+    const QgsCoordinateReferenceSystem &srs,
+    bool overwrite,
+    QMap<int, int> &oldToNewAttrIdxMap,
+    QString &errorMessage,
+    const QMap<QString, QVariant> *options )
 {
   return QgsSpatiaLiteProvider::createEmptyLayer(
            uri, fields, wkbType, srs, overwrite,
@@ -6137,7 +6153,7 @@ bool QgsSpatiaLiteProviderMetadata::saveStyle( const QString &uri, const QString
   QgsSqliteHandle *handle = QgsSqliteHandle::openDb( sqlitePath );
   if ( !handle )
   {
-    QgsDebugMsg( QStringLiteral( "Connection to database failed. Save style aborted." ) );
+    QgsDebugError( QStringLiteral( "Connection to database failed. Save style aborted." ) );
     errCause = QObject::tr( "Connection to database failed" );
     return false;
   }
@@ -6297,6 +6313,12 @@ bool QgsSpatiaLiteProviderMetadata::saveStyle( const QString &uri, const QString
 
 QString QgsSpatiaLiteProviderMetadata::loadStyle( const QString &uri, QString &errCause )
 {
+  QString styleName;
+  return loadStoredStyle( uri, styleName, errCause );
+}
+
+QString QgsSpatiaLiteProviderMetadata::loadStoredStyle( const QString &uri, QString &styleName, QString &errCause )
+{
   QgsDataSourceUri dsUri( uri );
   QString sqlitePath = dsUri.database();
   QgsDebugMsgLevel( "Database is: " + sqlitePath, 5 );
@@ -6305,7 +6327,7 @@ QString QgsSpatiaLiteProviderMetadata::loadStyle( const QString &uri, QString &e
   QgsSqliteHandle *handle = QgsSqliteHandle::openDb( sqlitePath );
   if ( !handle )
   {
-    QgsDebugMsg( QStringLiteral( "Connection to database failed. Save style aborted." ) );
+    QgsDebugError( QStringLiteral( "Connection to database failed. Save style aborted." ) );
     errCause = QObject::tr( "Connection to database failed" );
     return QString();
   }
@@ -6322,7 +6344,7 @@ QString QgsSpatiaLiteProviderMetadata::loadStyle( const QString &uri, QString &e
     geomColumnExpr = QStringLiteral( "=" ) + QgsSqliteUtils::quotedString( dsUri.geometryColumn() );
   }
 
-  QString selectQmlQuery = QString( "SELECT styleQML"
+  QString selectQmlQuery = QString( "SELECT styleName, styleQML"
                                     " FROM layer_styles"
                                     " WHERE f_table_schema %1"
                                     " AND f_table_name=%2"
@@ -6345,7 +6367,8 @@ QString QgsSpatiaLiteProviderMetadata::loadStyle( const QString &uri, QString &e
     return QString();
   }
 
-  QString style = ( rows == 1 ) ? QString::fromUtf8( results[( rows * columns ) + 0 ] ) : QString();
+  styleName = ( rows == 1 ) ? QString::fromUtf8( results[( rows * columns ) + 0 ] ) : QString();
+  QString style = ( rows == 1 ) ? QString::fromUtf8( results[( rows * columns ) + 1 ] ) : QString();
   sqlite3_free_table( results );
 
   QgsSqliteHandle::closeDb( handle );
@@ -6363,7 +6386,7 @@ int QgsSpatiaLiteProviderMetadata::listStyles( const QString &uri, QStringList &
   QgsSqliteHandle *handle = QgsSqliteHandle::openDb( sqlitePath );
   if ( !handle )
   {
-    QgsDebugMsg( QStringLiteral( "Connection to database failed. Save style aborted." ) );
+    QgsDebugError( QStringLiteral( "Connection to database failed. Save style aborted." ) );
     errCause = QObject::tr( "Connection to database failed" );
     return -1;
   }
@@ -6465,7 +6488,7 @@ QString QgsSpatiaLiteProviderMetadata::getStyleById( const QString &uri, const Q
   QgsSqliteHandle *handle = QgsSqliteHandle::openDb( sqlitePath );
   if ( !handle )
   {
-    QgsDebugMsg( QStringLiteral( "Connection to database failed. Save style aborted." ) );
+    QgsDebugError( QStringLiteral( "Connection to database failed. Save style aborted." ) );
     errCause = QObject::tr( "Connection to database failed" );
     return QString();
   }

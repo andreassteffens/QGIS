@@ -15,7 +15,7 @@ import tempfile
 
 import qgis  # NOQA
 from osgeo import ogr
-from plugins.db_manager.db_plugins import supportedDbTypes, createDbPlugin
+from plugins.db_manager.db_plugins import createDbPlugin, supportedDbTypes
 from plugins.db_manager.db_plugins.plugin import TableField
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import QgsDataSourceUri, QgsSettings
@@ -31,6 +31,7 @@ class TestPyQgsDBManagerSpatialite(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
 
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("TestPyQgsDBManagerSpatialite.com")
@@ -58,6 +59,7 @@ class TestPyQgsDBManagerSpatialite(unittest.TestCase):
 
         QgsSettings().clear()
         shutil.rmtree(cls.basetestpath, True)
+        super().tearDownClass()
 
     def testSupportedDbTypes(self):
         self.assertIn('spatialite', supportedDbTypes())

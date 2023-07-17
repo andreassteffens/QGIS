@@ -12,7 +12,7 @@ __copyright__ = 'Copyright 2018, The QGIS Project'
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.core import QgsSettings
-from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsGui
+from qgis.gui import QgsGui, QgsProcessingRecentAlgorithmLog
 from qgis.testing import start_app, unittest
 
 start_app()
@@ -23,6 +23,7 @@ class TestQgsProcessingRecentAlgorithmLog(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("QGIS_TestPyQgsNewGeoPackageLayerDialog.com")
         QCoreApplication.setApplicationName("QGIS_TestPyQgsNewGeoPackageLayerDialog")

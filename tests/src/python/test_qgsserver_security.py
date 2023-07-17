@@ -21,18 +21,21 @@ os.environ['QT_HASH_SEED'] = '1'
 
 import time
 import urllib.parse
+
 from shutil import copyfile
+
 from qgis.core import QgsApplication
 from qgis.server import QgsServer
 from qgis.testing import unittest
-from utilities import unitTestDataPath
 from test_qgsserver import QgsServerTestBase
+from utilities import unitTestDataPath
 
 
 class TestQgsServerSecurity(QgsServerTestBase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         cls.testdatapath = unitTestDataPath('qgis_server_security') + '/'
         cls.db = os.path.join(cls.testdatapath, 'db.sqlite')
         cls.db_clone = os.path.join(cls.testdatapath, 'db_clone.sqlite')
@@ -46,6 +49,8 @@ class TestQgsServerSecurity(QgsServerTestBase):
             os.remove(cls.db_clone)
         except OSError:
             pass
+
+        super().tearDownClass()
 
     def setUp(self):
         self.server = QgsServer()

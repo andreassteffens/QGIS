@@ -20,6 +20,8 @@
 #include <Qt3DRender/QRenderCapture>
 #include <QSplitter>
 
+#include "qgis_app.h"
+
 #include "qgsrange.h"
 #include "qgscameracontroller.h"
 #include "qgsrectangle.h"
@@ -43,7 +45,7 @@ class Qgs3DNavigationWidget;
 class QgsTemporalController;
 class QgsRubberBand;
 
-class Qgs3DMapCanvas : public QWidget
+class APP_EXPORT Qgs3DMapCanvas : public QWidget
 {
     Q_OBJECT
   public:
@@ -63,7 +65,7 @@ class Qgs3DMapCanvas : public QWidget
     QgsCameraController *cameraController();
 
     //! Resets camera position to the default: looking down at the origin of world coordinates
-    void resetView( bool resetExtent = false );
+    void resetView();
 
     //! Sets camera position to look down at the given point (in map coordinates) in given distance from plane with zero elevation
     void setViewFromTop( const QgsPointXY &center, float distance, float rotation = 0 );
@@ -149,7 +151,7 @@ class Qgs3DMapCanvas : public QWidget
 
   private slots:
     void updateTemporalRange( const QgsDateTimeRange &timeRange );
-    void onNavigationModeChanged( QgsCameraController::NavigationMode mode );
+    void onNavigationModeChanged( Qgis::NavigationMode mode );
 
   protected:
     void resizeEvent( QResizeEvent *ev ) override;

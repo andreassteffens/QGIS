@@ -20,6 +20,7 @@
 #include "qgsprocessingaggregatewidgets.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectordataprovider.h"
+#include "QItemSelectionModel"
 
 #include <QTableView>
 #include <QVBoxLayout>
@@ -145,6 +146,18 @@ bool QgsFieldMappingWidget::removeSelectedFields()
     }
   }
   return true;
+}
+
+void QgsFieldMappingWidget::invertSelection()
+{
+  for ( int i = 0; i < mTableView->model()->rowCount(); ++i )
+  {
+    for ( int j = 0; j < mTableView->model()->columnCount(); j++ )
+    {
+      QModelIndex index = mTableView->model()->index( i, j );
+      mTableView->selectionModel()->select( index, QItemSelectionModel::Toggle );
+    }
+  }
 }
 
 bool QgsFieldMappingWidget::moveSelectedFieldsUp()
@@ -312,7 +325,7 @@ QWidget *QgsFieldMappingTypeDelegate::createEditor( QWidget *parent, const QStyl
   const QList<QgsVectorDataProvider::NativeType> typeList = QgsFieldMappingModel::supportedDataTypes();
   for ( int i = 0; i < typeList.size(); i++ )
   {
-    editor->addItem( QgsFields::iconForFieldType( typeList[i].mType, typeList[i].mSubType ), typeList[i].mTypeDesc );
+    editor->addItem( QgsFields::iconForFieldType( typeList[i].mType, typeList[i].mSubType, typeList[i].mTypeName ), typeList[i].mTypeDesc );
     editor->setItemData( i, typeList[i].mTypeName, Qt::UserRole );
   }
 

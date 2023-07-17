@@ -984,7 +984,7 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer, public QgsAbstractProfileSo
     QgsMeshLayerElevationProperties *mElevationProperties = nullptr;
 
     //! Temporal unit used by the provider
-    QgsUnitTypes::TemporalUnit mTemporalUnit = QgsUnitTypes::TemporalHours;
+    Qgis::TemporalUnit mTemporalUnit = Qgis::TemporalUnit::Hours;
 
     int mStaticScalarDatasetIndex = 0;
     int mStaticVectorDatasetIndex = 0;
@@ -1004,10 +1004,11 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer, public QgsAbstractProfileSo
 
     void updateActiveDatasetGroups();
 
+    QgsMeshRendererSettings accordSymbologyWithGroupName( const QgsMeshRendererSettings &settings, const QMap<QString, int> &nameToIndex );
     void checkSymbologyConsistency();
 
     void setDataSourcePrivate( const QString &dataSource, const QString &baseName, const QString &provider,
-                               const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags ) override;
+                               const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags ) final;
 };
 
 #endif //QGSMESHLAYER_H

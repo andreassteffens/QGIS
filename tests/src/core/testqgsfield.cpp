@@ -12,6 +12,7 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+#include "qgsreferencedgeometry.h"
 #include "qgstest.h"
 
 #include <QObject>
@@ -89,6 +90,7 @@ void TestQgsField::create()
   QCOMPARE( field->precision(), 2 );
   QCOMPARE( field->comment(), QString( "comment" ) );
   QCOMPARE( field->isReadOnly(), false );
+  QCOMPARE( field->splitPolicy(), Qgis::FieldDomainSplitPolicy::Duplicate );
 }
 
 void TestQgsField::copy()
@@ -100,6 +102,8 @@ void TestQgsField::copy()
   constraints.setConstraintStrength( QgsFieldConstraints::ConstraintExpression, QgsFieldConstraints::ConstraintStrengthSoft );
   original.setConstraints( constraints );
   original.setReadOnly( true );
+  original.setSplitPolicy( Qgis::FieldDomainSplitPolicy::GeometryRatio );
+  original.setMetadata( {{ 1, QStringLiteral( "abc" )}, {2, 5 }} );
   QgsField copy( original );
   QVERIFY( copy == original );
 
@@ -117,6 +121,8 @@ void TestQgsField::assignment()
   constraints.setConstraintStrength( QgsFieldConstraints::ConstraintExpression, QgsFieldConstraints::ConstraintStrengthSoft );
   original.setConstraints( constraints );
   original.setReadOnly( true );
+  original.setSplitPolicy( Qgis::FieldDomainSplitPolicy::GeometryRatio );
+  original.setMetadata( {{ 1, QStringLiteral( "abc" )}, {2, 5 }} );
   QgsField copy;
   copy = original;
   QVERIFY( copy == original );
@@ -186,6 +192,22 @@ void TestQgsField::gettersSetters()
 
   field.setReadOnly( true );
   QCOMPARE( field.isReadOnly(), true );
+
+  field.setSplitPolicy( Qgis::FieldDomainSplitPolicy::GeometryRatio );
+  QCOMPARE( field.splitPolicy(), Qgis::FieldDomainSplitPolicy::GeometryRatio );
+
+  field.setMetadata( {{ static_cast< int >( Qgis::FieldMetadataProperty::GeometryCrs ), QStringLiteral( "abc" )}, {2, 5 }} );
+  QMap< int, QVariant> expected {{ static_cast< int >( Qgis::FieldMetadataProperty::GeometryCrs ), QStringLiteral( "abc" )}, {2, 5 }};
+  QCOMPARE( field.metadata(), expected );
+  QVERIFY( !field.metadata( Qgis::FieldMetadataProperty::GeometryWkbType ).isValid() );
+  QCOMPARE( field.metadata( Qgis::FieldMetadataProperty::GeometryCrs ).toString(), QStringLiteral( "abc" ) );
+  field.setMetadata( Qgis::FieldMetadataProperty::GeometryWkbType, QStringLiteral( "def" ) );
+  QCOMPARE( field.metadata( Qgis::FieldMetadataProperty::GeometryWkbType ).toString(), QStringLiteral( "def" ) );
+
+  expected = QMap< int, QVariant> {{ static_cast< int >( Qgis::FieldMetadataProperty::GeometryCrs ), QStringLiteral( "abc" )}, {2, 5 }
+    , {static_cast<int>( Qgis::FieldMetadataProperty::GeometryWkbType ), QStringLiteral( "def" ) }
+  };
+  QCOMPARE( field.metadata(), expected );
 }
 
 void TestQgsField::isNumeric()
@@ -321,6 +343,20 @@ void TestQgsField::equality()
   field1.setConstraints( constraints );
   QVERIFY( !( field1 == field2 ) );
   QVERIFY( field1 != field2 );
+  field2.setConstraints( constraints );
+
+  field1.setSplitPolicy( Qgis::FieldDomainSplitPolicy::GeometryRatio );
+  QVERIFY( !( field1 == field2 ) );
+  QVERIFY( field1 != field2 );
+  field2.setSplitPolicy( Qgis::FieldDomainSplitPolicy::GeometryRatio );
+  QVERIFY( field1 == field2 );
+
+  field1.setMetadata( {{ static_cast< int >( Qgis::FieldMetadataProperty::GeometryCrs ), QStringLiteral( "abc" )}, {2, 5 }} );
+  QVERIFY( !( field1 == field2 ) );
+  QVERIFY( field1 != field2 );
+  field2.setMetadata( {{ static_cast< int >( Qgis::FieldMetadataProperty::GeometryCrs ), QStringLiteral( "abc" )}, {2, 5 }} );
+  QVERIFY( field1 == field2 );
+  QVERIFY( !( field1 != field2 ) );
 
   QgsFieldConstraints constraints1;
   QgsFieldConstraints constraints2;
@@ -718,6 +754,14 @@ void TestQgsField::convertCompatible()
   QCOMPARE( stringVar.type(), QVariant::String );
   QCOMPARE( stringVar.toString(), QString( "lon" ) );
 
+  // Referenced geometries
+  const QgsField stringGeomRef( QStringLiteral( "string" ), QVariant::String, QStringLiteral( "string" ) );
+  QgsGeometry geom { QgsGeometry::fromWkt( "POINT( 1 1 )" ) };
+  QgsReferencedGeometry geomRef { geom, QgsCoordinateReferenceSystem() };
+  QVariant geomVar = QVariant::fromValue( geomRef );
+  QVERIFY( stringGeomRef.convertCompatible( geomVar, &error ) );
+  QCOMPARE( geomVar.type(), QVariant::String );
+  QCOMPARE( geomVar.toString().toUpper(), QString( "POINT (1 1)" ) );
 
   /////////////////////////////////////////////////////////
   // German locale tests
@@ -845,12 +889,14 @@ void TestQgsField::dataStream()
   original.setComment( QStringLiteral( "comment1" ) );
   original.setAlias( QStringLiteral( "alias" ) );
   original.setDefaultValueDefinition( QgsDefaultValue( QStringLiteral( "default" ) ) );
+  original.setSplitPolicy( Qgis::FieldDomainSplitPolicy::GeometryRatio );
   QgsFieldConstraints constraints;
   constraints.setConstraint( QgsFieldConstraints::ConstraintNotNull, QgsFieldConstraints::ConstraintOriginProvider );
   constraints.setConstraint( QgsFieldConstraints::ConstraintUnique, QgsFieldConstraints::ConstraintOriginLayer );
   constraints.setConstraintExpression( QStringLiteral( "constraint expression" ), QStringLiteral( "description" ) );
   constraints.setConstraintStrength( QgsFieldConstraints::ConstraintExpression, QgsFieldConstraints::ConstraintStrengthSoft );
   original.setConstraints( constraints );
+  original.setMetadata( {{ static_cast< int >( Qgis::FieldMetadataProperty::GeometryCrs ), QStringLiteral( "abc" )}, {2, 5 }} );
 
   QByteArray ba;
   QDataStream ds( &ba, QIODevice::ReadWrite );

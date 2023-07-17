@@ -17,27 +17,28 @@ from processing.core.Processing import Processing
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.gui.AlgorithmExecutor import execute_in_place_run
 from processing.tools import dataobjects
-from qgis.PyQt.QtCore import QCoreApplication, QVariant, QTemporaryDir
+from qgis.PyQt.QtCore import QCoreApplication, QTemporaryDir, QVariant
 from qgis.analysis import QgsNativeAlgorithms
 from qgis.core import (
-    QgsFeature,
-    QgsGeometry,
-    QgsSettings,
     QgsApplication,
-    QgsMemoryProviderUtils,
-    QgsWkbTypes,
+    QgsCoordinateReferenceSystem,
+    QgsFeature,
+    QgsFeatureRequest,
+    QgsFeatureSink,
     QgsField,
     QgsFields,
+    QgsGeometry,
+    QgsMemoryProviderUtils,
     QgsProcessingContext,
-    QgsProcessingFeedback,
-    QgsCoordinateReferenceSystem,
-    QgsProject,
     QgsProcessingException,
+    QgsProcessingFeedback,
+    QgsProject,
+    QgsProperty,
+    QgsSettings,
     QgsVectorLayer,
-    QgsFeatureSink,
-    QgsProperty
+    QgsVectorLayerUtils,
+    QgsWkbTypes,
 )
-from qgis.core import QgsVectorLayerUtils, QgsFeatureRequest
 from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
@@ -83,6 +84,8 @@ class TestQgsProcessingInPlace(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
+
         """Run before all tests"""
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(
@@ -131,7 +134,7 @@ class TestQgsProcessingInPlace(unittest.TestCase):
         wkb_type = getattr(QgsWkbTypes, layer_wkb_name)
         fields.append(QgsField('int_f', QVariant.Int))
         layer = QgsMemoryProviderUtils.createMemoryLayer(
-            '%s_layer' % layer_wkb_name, fields, wkb_type, QgsCoordinateReferenceSystem('EPSG:4326'))
+            f'{layer_wkb_name}_layer', fields, wkb_type, QgsCoordinateReferenceSystem('EPSG:4326'))
         self.assertTrue(layer.isValid())
         self.assertEqual(layer.wkbType(), wkb_type)
         return layer

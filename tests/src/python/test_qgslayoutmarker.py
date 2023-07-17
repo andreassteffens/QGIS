@@ -10,25 +10,25 @@ __date__ = '05/04/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import Qt, QRectF
+from qgis.PyQt.QtCore import QRectF, Qt
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsLayoutItemMarker,
-                       QgsLayoutItemRegistry,
-                       QgsLayout,
-                       QgsMarkerSymbol,
-                       QgsProject,
-                       QgsReadWriteContext,
-                       QgsLayoutPoint,
-                       QgsUnitTypes,
-                       QgsLayoutItemMap,
-                       QgsRectangle,
-                       QgsLayoutNorthArrowHandler,
-                       QgsCoordinateReferenceSystem)
-from qgis.testing import (start_app,
-                          unittest
-                          )
+from qgis.core import (
+    QgsCoordinateReferenceSystem,
+    QgsLayout,
+    QgsLayoutItemMap,
+    QgsLayoutItemMarker,
+    QgsLayoutItemRegistry,
+    QgsLayoutNorthArrowHandler,
+    QgsLayoutPoint,
+    QgsMarkerSymbol,
+    QgsProject,
+    QgsReadWriteContext,
+    QgsRectangle,
+    QgsUnitTypes,
+    QgsLayoutChecker
+)
+from qgis.testing import start_app, unittest
 
-from qgslayoutchecker import QgsLayoutChecker
 from test_qgslayoutitem import LayoutItemTestCase
 from utilities import unitTestDataPath
 
@@ -40,6 +40,7 @@ class TestQgsLayoutMarker(unittest.TestCase, LayoutItemTestCase):
 
     @classmethod
     def setUpClass(cls):
+        super(TestQgsLayoutMarker, cls).setUpClass()
         cls.item_class = QgsLayoutItemMarker
 
     def __init__(self, methodName):

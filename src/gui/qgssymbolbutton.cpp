@@ -149,13 +149,13 @@ void QgsSymbolButton::showSettingsDialog()
     switch ( mType )
     {
       case Qgis::SymbolType::Marker:
-        newSymbol = QgsSymbol::defaultSymbol( QgsWkbTypes::PointGeometry );
+        newSymbol = QgsSymbol::defaultSymbol( Qgis::GeometryType::Point );
         break;
       case Qgis::SymbolType::Line:
-        newSymbol = QgsSymbol::defaultSymbol( QgsWkbTypes::LineGeometry );
+        newSymbol = QgsSymbol::defaultSymbol( Qgis::GeometryType::Line );
         break;
       case Qgis::SymbolType::Fill:
-        newSymbol = QgsSymbol::defaultSymbol( QgsWkbTypes::PolygonGeometry );
+        newSymbol = QgsSymbol::defaultSymbol( Qgis::GeometryType::Polygon );
         break;
       case Qgis::SymbolType::Hybrid:
         break;
@@ -244,6 +244,16 @@ void QgsSymbolButton::setLayer( QgsVectorLayer *layer )
 void QgsSymbolButton::registerExpressionContextGenerator( QgsExpressionContextGenerator *generator )
 {
   mExpressionContextGenerator = generator;
+}
+
+void QgsSymbolButton::setDefaultSymbol( QgsSymbol *symbol )
+{
+  mDefaultSymbol.reset( symbol );
+}
+
+const QgsSymbol *QgsSymbolButton::defaultSymbol() const
+{
+  return mDefaultSymbol.get();
 }
 
 void QgsSymbolButton::setSymbol( QgsSymbol *symbol )
@@ -489,14 +499,15 @@ void QgsSymbolButton::prepareMenu()
   mMenu->addAction( copySymbolAction );
   connect( copySymbolAction, &QAction::triggered, this, &QgsSymbolButton::copySymbol );
 
+  const int iconSize = QgsGuiUtils::scaleIconSize( 16 );
+
   QAction *pasteSymbolAction = new QAction( tr( "Paste Symbol" ), this );
   //enable or disable paste action based on current clipboard contents. We always show the paste
   //action, even if it's disabled, to give hint to the user that pasting symbols is possible
   std::unique_ptr< QgsSymbol > tempSymbol( QgsSymbolLayerUtils::symbolFromMimeData( QApplication::clipboard()->mimeData() ) );
   if ( tempSymbol && tempSymbol->type() == mType )
   {
-    const int iconSize = QgsGuiUtils::scaleIconSize( 16 );
-    pasteSymbolAction->setIcon( QgsSymbolLayerUtils::symbolPreviewIcon( tempSymbol.get(), QSize( iconSize, iconSize ), 1 ) );
+    pasteSymbolAction->setIcon( QgsSymbolLayerUtils::symbolPreviewIcon( tempSymbol.get(), QSize( iconSize, iconSize ), 1, nullptr, QgsScreenProperties( screen() ) ) );
   }
   else
   {
@@ -511,6 +522,15 @@ void QgsSymbolButton::prepareMenu()
     nullAction->setEnabled( !isNull() );
     mMenu->addAction( nullAction );
     connect( nullAction, &QAction::triggered, this, &QgsSymbolButton::setToNull );
+  }
+
+  //show default symbol option if set
+  if ( mDefaultSymbol )
+  {
+    QAction *defaultSymbolAction = new QAction( tr( "Default Symbol" ), this );
+    defaultSymbolAction->setIcon( QgsSymbolLayerUtils::symbolPreviewIcon( mDefaultSymbol.get(), QSize( iconSize, iconSize ), 1, nullptr, QgsScreenProperties( screen() ) ) );
+    mMenu->addAction( defaultSymbolAction );
+    connect( defaultSymbolAction, &QAction::triggered, this, &QgsSymbolButton::setToDefaultSymbol );
   }
 
   if ( mSymbol )
@@ -683,7 +703,7 @@ void QgsSymbolButton::updatePreview( const QColor &color, QgsSymbol *tempSymbol 
     previewSymbol->setColor( color );
 
   //create an icon pixmap
-  const QIcon icon = QgsSymbolLayerUtils::symbolPreviewIcon( previewSymbol.get(), currentIconSize );
+  const QIcon icon = QgsSymbolLayerUtils::symbolPreviewIcon( previewSymbol.get(), currentIconSize, 0, nullptr, QgsScreenProperties( screen() ) );
   setIconSize( currentIconSize );
   setIcon( icon );
 
@@ -692,11 +712,11 @@ void QgsSymbolButton::updatePreview( const QColor &color, QgsSymbol *tempSymbol 
   const int width = static_cast< int >( Qgis::UI_SCALE_FACTOR * fontMetrics().horizontalAdvance( 'X' ) * 23 );
   const int height = static_cast< int >( width / 1.61803398875 ); // golden ratio
 
-  const QPixmap pm = QgsSymbolLayerUtils::symbolPreviewPixmap( previewSymbol.get(), QSize( width, height ), height / 20 );
+  const QPixmap pm = QgsSymbolLayerUtils::symbolPreviewPixmap( previewSymbol.get(), QSize( width, height ), height / 20, nullptr, false, nullptr, nullptr, QgsScreenProperties( screen() ) );
   QByteArray data;
   QBuffer buffer( &data );
   pm.save( &buffer, "PNG", 100 );
-  setToolTip( QStringLiteral( "<img src='data:image/png;base64, %3'>" ).arg( QString( data.toBase64() ) ) );
+  setToolTip( QStringLiteral( "<img src='data:image/png;base64, %3' width=\"%4\">" ).arg( QString( data.toBase64() ) ).arg( width ) );
 }
 
 bool QgsSymbolButton::colorFromMimeData( const QMimeData *mimeData, QColor &resultColor, bool &hasAlpha )
@@ -830,4 +850,14 @@ bool QgsSymbolButton::isNull() const
 void QgsSymbolButton::setToNull()
 {
   setSymbol( nullptr );
+}
+
+void QgsSymbolButton::setToDefaultSymbol()
+{
+  if ( !mDefaultSymbol )
+  {
+    return;
+  }
+
+  setSymbol( mDefaultSymbol->clone() );
 }

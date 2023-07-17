@@ -11,11 +11,8 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (QgsMapThemeCollection,
-                       QgsProject,
-                       QgsVectorLayer)
-from qgis.gui import (QgsLayerTreeMapCanvasBridge,
-                      QgsMapCanvas)
+from qgis.core import QgsMapThemeCollection, QgsProject, QgsVectorLayer
+from qgis.gui import QgsLayerTreeMapCanvasBridge, QgsMapCanvas
 from qgis.testing import start_app, unittest
 
 app = start_app()

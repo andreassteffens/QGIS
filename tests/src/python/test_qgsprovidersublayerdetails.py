@@ -13,12 +13,12 @@ import os
 
 import qgis  # NOQA
 from qgis.core import (
-    QgsMapLayerType,
-    QgsWkbTypes,
-    QgsProviderSublayerDetails,
     Qgis,
     QgsCoordinateTransformContext,
-    QgsVectorLayer
+    QgsMapLayerType,
+    QgsProviderSublayerDetails,
+    QgsVectorLayer,
+    QgsWkbTypes,
 )
 from qgis.testing import start_app, unittest
 

@@ -19,7 +19,12 @@ from osgeo import gdal
 from osgeo.gdalconst import GA_ReadOnly
 from qgis.PyQt.QtCore import QSize
 from qgis.core import QgsRenderChecker
-from qgis.server import QgsAccessControlFilter, QgsServerRequest, QgsBufferServerRequest, QgsBufferServerResponse
+from qgis.server import (
+    QgsAccessControlFilter,
+    QgsBufferServerRequest,
+    QgsBufferServerResponse,
+    QgsServerRequest,
+)
 
 from test_qgsserver import QgsServerTestBase
 from utilities import unitTestDataPath
@@ -271,4 +276,4 @@ class TestQgsServerAccessControl(QgsServerTestBase):
             )
             self.assertTrue(
                 str(response).find(f"<qgs:color>{color}</qgs:color>") != -1,
-                "Wrong color in result\n%s" % response)
+                f"Wrong color in result\n{response}")

@@ -17,14 +17,14 @@ __copyright__ = 'Copyright 2019, The QGIS Project'
 
 import os
 
-from PyQt5.QtCore import QVariant, QDate, QTime, QDateTime, QByteArray
+from PyQt5.QtCore import QByteArray, QDate, QDateTime, QTime, QVariant
 from qgis.core import (
     NULL,
     QgsCoordinateReferenceSystem,
     QgsDataProvider,
     QgsDataSourceUri,
-    QgsFeatureRequest,
     QgsFeature,
+    QgsFeatureRequest,
     QgsField,
     QgsFieldConstraints,
     QgsGeometry,
@@ -35,7 +35,8 @@ from qgis.core import (
     QgsVectorDataProvider,
     QgsVectorLayer,
     QgsVectorLayerExporter,
-    QgsWkbTypes)
+    QgsWkbTypes,
+)
 from qgis.testing import start_app, unittest
 
 from providertestbase import ProviderTestCase
@@ -55,6 +56,7 @@ class TestPyQgsHanaProvider(unittest.TestCase, ProviderTestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super(TestPyQgsHanaProvider, cls).setUpClass()
         cls.uri = 'driver=\'/usr/sap/hdbclient/libodbcHDB.so\' host=localhost port=30015 user=SYSTEM ' \
                   'password=mypassword sslEnabled=true sslValidateCertificate=False'
         if 'QGIS_HANA_TEST_DB' in os.environ:
@@ -79,6 +81,7 @@ class TestPyQgsHanaProvider(unittest.TestCase, ProviderTestCase):
 
         QgsHanaProviderUtils.cleanUp(cls.conn, cls.schemaName)
         cls.conn.close()
+        super(TestPyQgsHanaProvider, cls).tearDownClass()
 
     def createVectorLayer(self, conn_parameters, layer_name):
         layer = QgsHanaProviderUtils.createVectorLayer(self.uri + ' ' + conn_parameters, layer_name)

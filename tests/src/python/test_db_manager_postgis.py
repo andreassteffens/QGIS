@@ -18,15 +18,15 @@ import tempfile
 import time
 from shutil import rmtree
 
-from plugins.db_manager.db_plugins import supportedDbTypes, createDbPlugin
+from plugins.db_manager.db_plugins import createDbPlugin, supportedDbTypes
 from qgis.PyQt.QtCore import QCoreApplication, QFile
 from qgis.PyQt.QtNetwork import QSslCertificate
 from qgis.core import (
     QgsApplication,
     QgsAuthMethodConfig,
     QgsDataSourceUri,
-    QgsSettings,
     QgsProviderRegistry,
+    QgsSettings,
 )
 from qgis.testing import start_app, unittest
 
@@ -141,7 +141,7 @@ class TestPyQgsDBManagerPostgis(unittest.TestCase):
 
         cls.server = subprocess.Popen([os.path.join(QGIS_POSTGRES_EXECUTABLE_PATH, 'postgres'), '-D',
                                        cls.data_path, '-c',
-                                       "config_file=%s" % cls.pg_conf],
+                                       f"config_file={cls.pg_conf}"],
                                       env=os.environ,
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE)
@@ -160,7 +160,7 @@ class TestPyQgsDBManagerPostgis(unittest.TestCase):
         test_sql = os.path.join(unitTestDataPath('provider'), 'testdata_pg.sql')
         subprocess.check_call([os.path.join(QGIS_POSTGRES_EXECUTABLE_PATH, 'psql'), '-h', 'localhost', '-p', cls.port, '-f', test_sql, cls.dbname])
         # Create a role
-        subprocess.check_call([os.path.join(QGIS_POSTGRES_EXECUTABLE_PATH, 'psql'), '-h', 'localhost', '-p', cls.port, '-c', 'CREATE ROLE "%s" WITH SUPERUSER LOGIN' % cls.username, cls.dbname])
+        subprocess.check_call([os.path.join(QGIS_POSTGRES_EXECUTABLE_PATH, 'psql'), '-h', 'localhost', '-p', cls.port, '-c', f'CREATE ROLE "{cls.username}" WITH SUPERUSER LOGIN', cls.dbname])
 
     @classmethod
     def setUpProvider(cls, authId):
@@ -205,6 +205,7 @@ class TestPyQgsDBManagerPostgis(unittest.TestCase):
     def setUpClass(cls):
         """Run before all tests"""
         # start ans setup server
+        super().setUpClass()
         cls.setUpServer()
 
         # start a standalone qgis application
@@ -224,6 +225,7 @@ class TestPyQgsDBManagerPostgis(unittest.TestCase):
         rmtree(QGIS_AUTH_DB_DIR_PATH)
         rmtree(cls.tempfolder)
         QgsSettings().clear()
+        super().tearDownClass()
 
     ###########################################
 

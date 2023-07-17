@@ -36,6 +36,8 @@
 #include "qgslinesymbol.h"
 #include "qgsmarkersymbol.h"
 #include "qgslayout.h"
+#include "qgsunittypes.h"
+#include "qgslayoutrendercontext.h"
 
 #include <QVector2D>
 #include <math.h>
@@ -428,7 +430,7 @@ bool QgsLayoutItemMapGrid::readXml( const QDomElement &itemElem, const QDomDocum
     }
     mAnnotationFormat.setFont( font );
     mAnnotationFormat.setSize( font.pointSizeF() );
-    mAnnotationFormat.setSizeUnit( QgsUnitTypes::RenderPoints );
+    mAnnotationFormat.setSizeUnit( Qgis::RenderUnit::Points );
     mAnnotationFormat.setColor( QgsSymbolLayerUtils::decodeColor( itemElem.attribute( "annotationFontColor", "0,0,0,255" ) ) );
   }
 
@@ -1214,13 +1216,13 @@ void QgsLayoutItemMapGrid::drawCoordinateAnnotation( QgsRenderContext &context, 
     return;
 
   const QgsLayoutItemMapGrid::BorderSide frameBorder = annot.border;
-  double textWidth = QgsTextRenderer::textWidth( context, mAnnotationFormat, QStringList() << annotationString ) / context.convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters );
+  double textWidth = QgsTextRenderer::textWidth( context, mAnnotationFormat, QStringList() << annotationString ) / context.convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters );
   if ( extension )
     textWidth *= 1.1; // little bit of extra padding when we are calculating the bounding rect, to account for antialiasing
 
   //relevant for annotations is the height of digits
   const double textHeight = ( extension ? ( QgsTextRenderer::textHeight( context, mAnnotationFormat, QChar(), true ) )
-                              : ( QgsTextRenderer::textHeight( context, mAnnotationFormat, '0', false ) ) ) / context.convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters );
+                              : ( QgsTextRenderer::textHeight( context, mAnnotationFormat, '0', false ) ) ) / context.convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters );
 
   double xpos = annot.position.x();
   double ypos = annot.position.y();
@@ -1760,7 +1762,7 @@ int QgsLayoutItemMapGrid::xGridLinesCrsTransform( const QgsRectangle &bbox, cons
       catch ( QgsCsException &cse )
       {
         Q_UNUSED( cse )
-        QgsDebugMsg( QStringLiteral( "Caught CRS exception %1" ).arg( cse.what() ) );
+        QgsDebugError( QStringLiteral( "Caught CRS exception %1" ).arg( cse.what() ) );
       }
 
       currentX += step;
@@ -1839,7 +1841,7 @@ int QgsLayoutItemMapGrid::yGridLinesCrsTransform( const QgsRectangle &bbox, cons
       catch ( QgsCsException &cse )
       {
         Q_UNUSED( cse )
-        QgsDebugMsg( QStringLiteral( "Caught CRS exception %1" ).arg( cse.what() ) );
+        QgsDebugError( QStringLiteral( "Caught CRS exception %1" ).arg( cse.what() ) );
       }
 
       currentY += step;
@@ -1963,7 +1965,7 @@ void QgsLayoutItemMapGrid::refreshDataDefinedProperties()
       }
       else
       {
-        const double mapWidthMm = mLayout->renderContext().measurementConverter().convert( mMap->sizeWithUnits(), QgsUnitTypes::LayoutMillimeters ).width();
+        const double mapWidthMm = mLayout->renderContext().measurementConverter().convert( mMap->sizeWithUnits(), Qgis::LayoutUnit::Millimeters ).width();
         const double mapWidthMapUnits = mapWidth();
         const double minUnitsPerSeg = ( mMinimumIntervalWidth * mapWidthMapUnits ) / mapWidthMm;
         const double maxUnitsPerSeg = ( mMaximumIntervalWidth * mapWidthMapUnits ) / mapWidthMm;
@@ -2001,8 +2003,8 @@ double QgsLayoutItemMapGrid::mapWidth() const
   }
 
   const QgsRectangle mapExtent = mMap->extent();
-  const QgsUnitTypes::DistanceUnit distanceUnit = mCRS.isValid() ? mCRS.mapUnits() : mMap->crs().mapUnits();
-  if ( distanceUnit == QgsUnitTypes::DistanceUnknownUnit )
+  const Qgis::DistanceUnit distanceUnit = mCRS.isValid() ? mCRS.mapUnits() : mMap->crs().mapUnits();
+  if ( distanceUnit == Qgis::DistanceUnit::Unknown )
   {
     return mapExtent.width();
   }
@@ -2013,7 +2015,7 @@ double QgsLayoutItemMapGrid::mapWidth() const
     da.setSourceCrs( mMap->crs(), mLayout->project()->transformContext() );
     da.setEllipsoid( mLayout->project()->ellipsoid() );
 
-    const QgsUnitTypes::DistanceUnit units = da.lengthUnits();
+    const Qgis::DistanceUnit units = da.lengthUnits();
     double measure = da.measureLine( QgsPointXY( mapExtent.xMinimum(), mapExtent.yMinimum() ),
                                      QgsPointXY( mapExtent.xMaximum(), mapExtent.yMinimum() ) );
     measure /= QgsUnitTypes::fromUnitToUnitFactor( distanceUnit, units );
@@ -2114,12 +2116,12 @@ void QgsLayoutItemMapGrid::setAnnotationFont( const QFont &font )
   if ( font.pointSizeF() > 0 )
   {
     mAnnotationFormat.setSize( font.pointSizeF() );
-    mAnnotationFormat.setSizeUnit( QgsUnitTypes::RenderPoints );
+    mAnnotationFormat.setSizeUnit( Qgis::RenderUnit::Points );
   }
   else if ( font.pixelSize() > 0 )
   {
     mAnnotationFormat.setSize( font.pixelSize() );
-    mAnnotationFormat.setSizeUnit( QgsUnitTypes::RenderPixels );
+    mAnnotationFormat.setSizeUnit( Qgis::RenderUnit::Pixels );
   }
 }
 
@@ -2524,6 +2526,12 @@ QgsLayoutItemMapGrid::AnnotationDirection QgsLayoutItemMapGrid::annotationDirect
   return mLeftGridAnnotationDirection; // no warnings
 }
 
+void QgsLayoutItemMapGrid::setAnnotationExpression( const QString &expression )
+{
+  mGridAnnotationExpressionString = expression;
+  mGridAnnotationExpression.reset();
+}
+
 void QgsLayoutItemMapGrid::setFrameDivisions( const QgsLayoutItemMapGrid::DisplayMode divisions, const QgsLayoutItemMapGrid::BorderSide border )
 {
   switch ( border )
@@ -2613,7 +2621,7 @@ int QgsLayoutItemMapGrid::crsGridParams( QgsRectangle &crsRect, QgsCoordinateTra
   catch ( QgsCsException &cse )
   {
     Q_UNUSED( cse )
-    QgsDebugMsg( QStringLiteral( "Caught CRS exception %1" ).arg( cse.what() ) );
+    QgsDebugError( QStringLiteral( "Caught CRS exception %1" ).arg( cse.what() ) );
     return 1;
   }
   return 0;

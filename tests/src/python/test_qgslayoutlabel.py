@@ -10,14 +10,16 @@ __date__ = '23/10/2017'
 __copyright__ = 'Copyright 2017, The QGIS Project'
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import QFileInfo, QDate, QDateTime
+from qgis.PyQt.QtCore import QDate, QDateTime, QFileInfo
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (QgsVectorLayer,
-                       QgsPrintLayout,
-                       QgsLayoutItemLabel,
-                       QgsProject,
-                       QgsLayoutItemPage,
-                       QgsLayoutPoint)
+from qgis.core import (
+    QgsLayoutItemLabel,
+    QgsLayoutItemPage,
+    QgsLayoutPoint,
+    QgsPrintLayout,
+    QgsProject,
+    QgsVectorLayer,
+)
 from qgis.testing import start_app, unittest
 
 from test_qgslayoutitem import LayoutItemTestCase
@@ -30,6 +32,7 @@ class TestQgsLayoutItemLabel(unittest.TestCase, LayoutItemTestCase):
 
     @classmethod
     def setUpClass(cls):
+        super(TestQgsLayoutItemLabel, cls).setUpClass()
         cls.item_class = QgsLayoutItemLabel
 
     def testCase(self):

@@ -18,17 +18,20 @@ import sys
 
 import qgis  # NOQA
 from qgis.PyQt.QtCore import qDebug
-from qgis.core import (QgsLabelingEngineSettings,
-                       QgsPalLayerSettings,
-                       QgsSingleSymbolRenderer,
-                       QgsMarkerSymbol,
-                       QgsProperty,
-                       QgsVectorLayerSimpleLabeling,
-                       QgsLabelObstacleSettings,
-                       QgsLabeling)
+from qgis.core import (
+    Qgis,
+    QgsLabeling,
+    QgsLabelingEngineSettings,
+    QgsLabelObstacleSettings,
+    QgsMarkerSymbol,
+    QgsPalLayerSettings,
+    QgsProperty,
+    QgsSingleSymbolRenderer,
+    QgsVectorLayerSimpleLabeling,
+)
 
 from test_qgspallabeling_base import TestQgsPalLabeling, runSuite
-from utilities import getTempfilePath, renderMapToImage, mapSettingsString
+from utilities import getTempfilePath, mapSettingsString, renderMapToImage
 
 
 # noinspection PyPep8Naming
@@ -836,7 +839,7 @@ class TestPointPlacement(TestPlacementBase):
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
         self.lyr.placement = QgsPalLayerSettings.OverPoint
-        self.lyr.setPolygonPlacementFlags(QgsLabeling.AllowPlacementOutsideOfPolygon | QgsLabeling.AllowPlacementInsideOfPolygon)
+        self.lyr.setPolygonPlacementFlags(Qgis.LabelPolygonPlacementFlags(QgsLabeling.AllowPlacementOutsideOfPolygon | QgsLabeling.AllowPlacementInsideOfPolygon))
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -847,7 +850,7 @@ class TestPointPlacement(TestPlacementBase):
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
         self.lyr.placement = QgsPalLayerSettings.OverPoint
-        self.lyr.setPolygonPlacementFlags(QgsLabeling.AllowPlacementOutsideOfPolygon | QgsLabeling.AllowPlacementInsideOfPolygon)
+        self.lyr.setPolygonPlacementFlags(Qgis.LabelPolygonPlacementFlags(QgsLabeling.AllowPlacementOutsideOfPolygon | QgsLabeling.AllowPlacementInsideOfPolygon))
         f = self.lyr.format()
         f.setSize(8)
         self.lyr.setFormat(f)
@@ -861,7 +864,7 @@ class TestPointPlacement(TestPlacementBase):
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
         self.lyr.placement = QgsPalLayerSettings.OverPoint
-        self.lyr.setPolygonPlacementFlags(QgsLabeling.AllowPlacementOutsideOfPolygon)
+        self.lyr.setPolygonPlacementFlags(Qgis.LabelPolygonPlacementFlags(QgsLabeling.AllowPlacementOutsideOfPolygon))
         f = self.lyr.format()
         f.setSize(8)
         self.lyr.setFormat(f)

@@ -13,7 +13,11 @@ import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QColor
 from qgis.core import QgsSettings
-from qgis.gui import QgsCodeEditorColorScheme, QgsCodeEditorColorSchemeRegistry, QgsGui
+from qgis.gui import (
+    QgsCodeEditorColorScheme,
+    QgsCodeEditorColorSchemeRegistry,
+    QgsGui,
+)
 from qgis.testing import start_app, unittest
 
 start_app()
@@ -24,6 +28,7 @@ class TestQgsCodeEditorColorScheme(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("QGIS_TestPyQgsCodeEditorColorScheme.com")
         QCoreApplication.setApplicationName("QGIS_TestPyQgsCodeEditorColorScheme")

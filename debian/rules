@@ -41,7 +41,7 @@ endif
 
 QT_PLUGINS_DIR = lib/$(DEB_BUILD_MULTIARCH)/qt5/plugins
 
-ifneq ($(DISTRIBUTION),$(findstring $(DISTRIBUTION),"bullseye bookworm focal jammy kinetic lunar"))
+ifneq ($(DISTRIBUTION),$(findstring $(DISTRIBUTION),"bullseye bookworm jammy kinetic lunar"))
 	DISTRIBUTION := sid
 endif
 
@@ -106,7 +106,7 @@ ifneq ($(SHA),)
 	CMAKE_OPTS += -DSHA=$(SHA)
 endif
 
-ifneq (,$(findstring $(DISTRIBUTION),"focal jammy bullseye"))
+ifneq (,$(findstring $(DISTRIBUTION),"jammy bullseye"))
 	CMAKE_OPTS += -DWITH_PDAL=TRUE
 else
 	CMAKE_OPTS += -DWITH_PDAL=FALSE
@@ -195,6 +195,10 @@ CONTROL_EXPRESSIONS = $(DISTRIBUTION) grass$(GRASSVER)
 
 ifneq (,$(WITH_ORACLE))
 	CONTROL_EXPRESSIONS += oracle
+endif
+
+ifeq ($(shell pkg-config --exists pdal && dpkg --compare-versions $$(pkg-config --modversion pdal) ge 2.5 && echo 1 || echo 0),1)
+	CONTROL_EXPRESSIONS += pdal_wrench
 endif
 
 define gentemplate
@@ -327,7 +331,7 @@ override_dh_auto_install:
 	install -o root -g root -m 755 $(CURDIR)/debian/qgis.sh $(CURDIR)/debian/qgis/usr/bin/qgis
 	install -o root -g root -m 755 $(CURDIR)/debian/qgis.sh $(CURDIR)/debian/qgis/usr/bin/qgis_process
 
-ifeq (,$(findstring $(DISTRIBUTION),"focal bullseye"))
+ifeq (,$(findstring $(DISTRIBUTION),"bullseye"))
 	mkdir -p $(CURDIR)/debian/libqgis-dev
 	cd $(CURDIR)/debian/tmp && find . -name "*.sip" | tar --remove-files -cf - -T - | tar -C $(CURDIR)/debian/libqgis-dev -xf - --xform 's,\./usr/lib/python./dist-packages/qgis,usr/share/sip/qgis,'
 	find $(CURDIR)/debian/tmp/ -depth -empty -type d -delete
@@ -353,7 +357,7 @@ override_dh_installmime:
 override_dh_python3:
 	dh_python3
 	dh_python3 usr/share/qgis/grass/scripts
-ifneq (,$(findstring $(DISTRIBUTION),"bullseye focal"))
+ifneq (,$(findstring $(DISTRIBUTION),"bullseye"))
 	dh_sip3 -ppython3-qgis
 endif
 

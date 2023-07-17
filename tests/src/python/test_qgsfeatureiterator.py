@@ -13,16 +13,18 @@ import os
 
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QVariant
-from qgis.core import (QgsAuxiliaryStorage,
-                       QgsVectorLayer,
-                       QgsFeatureRequest,
-                       QgsFeature,
-                       QgsField,
-                       NULL,
-                       QgsProject,
-                       QgsPropertyDefinition,
-                       QgsVectorLayerJoinInfo,
-                       QgsGeometry)
+from qgis.core import (
+    NULL,
+    QgsAuxiliaryStorage,
+    QgsFeature,
+    QgsFeatureRequest,
+    QgsField,
+    QgsGeometry,
+    QgsProject,
+    QgsPropertyDefinition,
+    QgsVectorLayer,
+    QgsVectorLayerJoinInfo,
+)
 from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath

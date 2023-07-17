@@ -19,20 +19,20 @@ from stat import S_IREAD, S_IRGRP, S_IROTH, S_IWUSR
 from qgis.PyQt.QtCore import QTemporaryDir
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (
-    QgsPolygon,
-    QgsWkbTypes,
-    QgsRectangle,
-    QgsMapLayerType,
-    QgsProviderRegistry,
     QgsAbstractLayerMetadataProvider,
-    QgsLayerMetadataSearchResults,
-    QgsLayerMetadataProviderResult,
-    QgsMetadataSearchContext,
     QgsLayerMetadata,
+    QgsLayerMetadataProviderResult,
+    QgsLayerMetadataSearchResults,
+    QgsMapLayerType,
+    QgsMetadataSearchContext,
     QgsNotSupportedException,
+    QgsPolygon,
     QgsProviderConnectionException,
+    QgsProviderRegistry,
+    QgsRectangle,
+    QgsWkbTypes,
 )
-from qgis.testing import unittest, start_app
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 

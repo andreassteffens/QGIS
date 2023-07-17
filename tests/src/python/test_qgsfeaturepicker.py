@@ -15,13 +15,11 @@ from qgis.PyQt.QtWidgets import QComboBox
 from qgis.core import (
     QgsApplication,
     QgsFeature,
-    QgsVectorLayer,
+    QgsGeometry,
     QgsPointXY,
-    QgsGeometry
+    QgsVectorLayer,
 )
-from qgis.gui import (
-    QgsFeaturePickerWidget
-)
+from qgis.gui import QgsFeaturePickerWidget
 from qgis.testing import start_app, unittest
 
 start_app()

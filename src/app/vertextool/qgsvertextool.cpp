@@ -18,8 +18,6 @@
 #include "qgsadvanceddigitizingdockwidget.h"
 #include "qgscurve.h"
 #include "qgslinestring.h"
-#include "qgscircularstring.h"
-#include "qgscurvepolygon.h"
 #include "qgsgeometryutils.h"
 #include "qgsgeometryvalidator.h"
 #include "qgsguiutils.h"
@@ -42,6 +40,8 @@
 #include "qgsmapmouseevent.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgsmessagebar.h"
+#include "qgssettingsentryimpl.h"
+
 
 #include <QMenu>
 #include <QRubberBand>
@@ -80,7 +80,7 @@ static bool isEndpointAtVertexIndex( const QgsGeometry &geom, int vertexIndex )
   }
   else
   {
-    QgsDebugMsg( QStringLiteral( "is_endpoint_at_vertex_index: unexpected geometry type!" ) );
+    QgsDebugError( QStringLiteral( "is_endpoint_at_vertex_index: unexpected geometry type!" ) );
     return false;
   }
 }
@@ -109,7 +109,7 @@ int adjacentVertexIndexToEndpoint( const QgsGeometry &geom, int vertexIndex )
   }
   else
   {
-    QgsDebugMsg( QStringLiteral( "adjacent_vertex_index_to_endpoint: unexpected geometry type!" ) );
+    QgsDebugError( QStringLiteral( "adjacent_vertex_index_to_endpoint: unexpected geometry type!" ) );
   }
   return -1;
 }
@@ -180,7 +180,7 @@ class MatchCollectingFilter : public QgsPointLocator::MatchFilter
       // there may be multiple points at the same location, but we get only one
       // result... the locator API needs a new method verticesInRect()
       QgsGeometry matchGeom = vertextool->cachedGeometry( match.layer(), match.featureId() );
-      bool isPolygon = matchGeom.type() == QgsWkbTypes::PolygonGeometry;
+      bool isPolygon = matchGeom.type() == Qgis::GeometryType::Polygon;
       QgsVertexId polygonRingVid;
       QgsVertexId vid;
       QgsPoint pt;
@@ -278,7 +278,7 @@ QgsVertexTool::QgsVertexTool( QgsMapCanvas *canvas, QgsAdvancedDigitizingDockWid
   mEdgeCenterMarker->setPenWidth( QgsGuiUtils::scaleIconSize( 3 ) );
   mEdgeCenterMarker->setVisible( false );
 
-  mFeatureBand = createRubberBand( QgsWkbTypes::LineGeometry );
+  mFeatureBand = createRubberBand( Qgis::GeometryType::Line );
   mFeatureBand->setVisible( false );
 
   QColor color = digitizingStrokeColor();
@@ -325,7 +325,7 @@ QgsVertexTool::~QgsVertexTool()
 
 void QgsVertexTool::activate()
 {
-  if ( QgisApp::instance() && QgsVertexEditor::settingAutoPopupVertexEditorDock.value() )
+  if ( QgisApp::instance() && QgsVertexEditor::settingAutoPopupVertexEditorDock->value() )
   {
     showVertexEditor();  //#spellok
   }
@@ -390,7 +390,7 @@ void QgsVertexTool::addDragStraightBand( QgsVectorLayer *layer, QgsPointXY v0, Q
   }
 
   StraightBand b;
-  b.band = createRubberBand( QgsWkbTypes::LineGeometry, true );
+  b.band = createRubberBand( Qgis::GeometryType::Line, true );
   b.p0 = v0;
   b.p1 = v1;
   b.moving0 = moving0;
@@ -415,7 +415,7 @@ void QgsVertexTool::addDragCircularBand( QgsVectorLayer *layer, QgsPointXY v0, Q
   }
 
   CircularBand b;
-  b.band = createRubberBand( QgsWkbTypes::LineGeometry, true );
+  b.band = createRubberBand( Qgis::GeometryType::Line, true );
   b.p0 = v0;
   b.p1 = v1;
   b.p2 = v2;
@@ -871,12 +871,12 @@ QgsPointLocator::Match QgsVertexTool::snapToEditableLayer( QgsMapMouseEvent *e )
           layerSettings.setEnabled( vlayer == currentVlayer );
           layerSettings.setTolerance( tol );
           layerSettings.setTypeFlag( static_cast<Qgis::SnappingTypes>( Qgis::SnappingType::Vertex | Qgis::SnappingType::Segment ) );
-          layerSettings.setUnits( QgsTolerance::ProjectUnits );
+          layerSettings.setUnits( Qgis::MapToolUnit::Project );
         }
         else
         {
           layerSettings = QgsSnappingConfig::IndividualLayerSettings(
-                            vlayer == currentVlayer, static_cast<Qgis::SnappingTypes>( Qgis::SnappingType::Vertex | Qgis::SnappingType::Segment ), tol, QgsTolerance::ProjectUnits, 0.0, 0.0 );
+                            vlayer == currentVlayer, static_cast<Qgis::SnappingTypes>( Qgis::SnappingType::Vertex | Qgis::SnappingType::Segment ), tol, Qgis::MapToolUnit::Project, 0.0, 0.0 );
         }
 
         config.setIndividualLayerSettings( vlayer, layerSettings );
@@ -913,11 +913,11 @@ QgsPointLocator::Match QgsVertexTool::snapToEditableLayer( QgsMapMouseEvent *e )
         layerSettings.setEnabled( vlayer->isEditable() );
         layerSettings.setTolerance( tol );
         layerSettings.setTypeFlag( static_cast<Qgis::SnappingTypes>( Qgis::SnappingType::Vertex | Qgis::SnappingType::Segment ) );
-        layerSettings.setUnits( QgsTolerance::ProjectUnits );
+        layerSettings.setUnits( Qgis::MapToolUnit::Project );
       }
       else
       {
-        layerSettings = QgsSnappingConfig::IndividualLayerSettings( vlayer->isEditable(), static_cast<Qgis::SnappingTypes>( Qgis::SnappingType::Vertex | Qgis::SnappingType::Segment ), tol, QgsTolerance::ProjectUnits, 0.0, 0.0 );
+        layerSettings = QgsSnappingConfig::IndividualLayerSettings( vlayer->isEditable(), static_cast<Qgis::SnappingTypes>( Qgis::SnappingType::Vertex | Qgis::SnappingType::Segment ), tol, Qgis::MapToolUnit::Project, 0.0, 0.0 );
       }
       config.setIndividualLayerSettings( vlayer, layerSettings );
     }
@@ -969,7 +969,7 @@ QgsPointLocator::Match QgsVertexTool::snapToPolygonInterior( QgsMapMouseEvent *e
   // and selecting current layer is an easy way for the user to prioritize a layer
   if ( QgsVectorLayer *currentVlayer = currentVectorLayer() )
   {
-    if ( currentVlayer->isEditable() && currentVlayer->geometryType() == QgsWkbTypes::PolygonGeometry )
+    if ( currentVlayer->isEditable() && currentVlayer->geometryType() == Qgis::GeometryType::Polygon )
     {
       QgsPointLocator::MatchList matchList = snapUtils->locatorForLayer( currentVlayer )->pointInPolygon( mapPoint, true );
       if ( !matchList.isEmpty() )
@@ -989,7 +989,7 @@ QgsPointLocator::Match QgsVertexTool::snapToPolygonInterior( QgsMapMouseEvent *e
       if ( !vlayer )
         continue;
 
-      if ( vlayer->isEditable() && vlayer->geometryType() == QgsWkbTypes::PolygonGeometry )
+      if ( vlayer->isEditable() && vlayer->geometryType() == Qgis::GeometryType::Polygon )
       {
         QgsPointLocator::MatchList matchList = snapUtils->locatorForLayer( vlayer )->pointInPolygon( mapPoint, true );
         if ( !matchList.isEmpty() )
@@ -1021,7 +1021,7 @@ QList<QgsPointLocator::Match> QgsVertexTool::findEditableLayerMatches( const Qgs
   QgsSnappingUtils *snapUtils = canvas()->snappingUtils();
   QgsPointLocator *locator = snapUtils->locatorForLayer( layer );
 
-  if ( layer->geometryType() == QgsWkbTypes::PolygonGeometry )
+  if ( layer->geometryType() == Qgis::GeometryType::Polygon )
   {
     matchList << locator->pointInPolygon( mapPoint, true );
   }
@@ -1167,7 +1167,7 @@ bool QgsVertexTool::isMatchAtEndpoint( const QgsPointLocator::Match &match )
 {
   QgsGeometry geom = cachedGeometry( match.layer(), match.featureId() );
 
-  if ( geom.type() != QgsWkbTypes::LineGeometry )
+  if ( geom.type() != Qgis::GeometryType::Line )
     return false;
 
   return isEndpointAtVertexIndex( geom, match.vertexIndex() );
@@ -1530,7 +1530,7 @@ void QgsVertexTool::updateVertexEditor( QgsVectorLayer *layer, QgsFeatureId fid 
   updateLockedFeatureVertices();
 
   // make sure the vertex editor is alive and visible
-  if ( QgsVertexEditor::settingAutoPopupVertexEditorDock.value() )
+  if ( QgsVertexEditor::settingAutoPopupVertexEditorDock->value() )
     showVertexEditor();  //#spellok
 
   if ( QgsVertexEditor *editor = vertexEditor() )
@@ -1579,7 +1579,7 @@ void QgsVertexTool::cleanupVertexEditor()
   if ( QgsVertexEditor *editor = vertexEditor() )
   {
     cleanupLockedFeature();
-    if ( QgsVertexEditor::settingAutoPopupVertexEditorDock.value() )
+    if ( QgsVertexEditor::settingAutoPopupVertexEditorDock->value() )
     {
       editor->setUserVisible( false );
     }
@@ -1665,7 +1665,7 @@ void QgsVertexTool::deleteVertexEditorSelection()
   if ( !mLockedFeature->geometry()->isNull() )
   {
     int nextVertexToSelect = firstSelectedIndex;
-    if ( mLockedFeature->geometry()->type() == QgsWkbTypes::LineGeometry )
+    if ( mLockedFeature->geometry()->type() == Qgis::GeometryType::Line )
     {
       // for lines we don't wrap around vertex selection when deleting vertices from end of line
       nextVertexToSelect = std::min( nextVertexToSelect, mLockedFeature->geometry()->constGet()->nCoordinates() - 1 );
@@ -1996,7 +1996,7 @@ void QgsVertexTool::startDraggingAddVertex( const QgsPointLocator::Match &m )
     const auto editableLayers = editableVectorLayers();
     for ( QgsVectorLayer *vlayer : editableLayers )
     {
-      if ( vlayer->geometryType() != QgsWkbTypes::LineGeometry && vlayer->geometryType() != QgsWkbTypes::PolygonGeometry )
+      if ( vlayer->geometryType() != Qgis::GeometryType::Line && vlayer->geometryType() != Qgis::GeometryType::Polygon )
         continue;
 
       QgsPointXY pt1, pt2;
@@ -2131,7 +2131,7 @@ QgsPoint QgsVertexTool::matchToLayerPoint( const QgsVectorLayer *destLayer, cons
               }
               catch ( QgsCsException & )
               {
-                QgsDebugMsg( QStringLiteral( "transformation to layer coordinate failed" ) );
+                QgsDebugError( QStringLiteral( "transformation to layer coordinate failed" ) );
               }
             }
             return layerPoint;
@@ -2183,11 +2183,31 @@ void QgsVertexTool::moveVertex( const QgsPointXY &mapPoint, const QgsPointLocato
   QgsVertexId vid;
   if ( !geom.vertexIdFromVertexNr( dragVertexId, vid ) )
   {
-    QgsDebugMsg( QStringLiteral( "invalid vertex index" ) );
+    QgsDebugError( QStringLiteral( "invalid vertex index" ) );
     return;
   }
 
   QgsAbstractGeometry *geomTmp = geom.constGet()->clone();
+
+  // If moving point is not 3D but destination yes, check if it can be promoted
+  if ( layerPoint.is3D() && !geomTmp->is3D() && QgsWkbTypes::hasZ( dragLayer->wkbType() ) )
+  {
+    if ( !geomTmp->addZValue( defaultZValue() ) )
+    {
+      QgsDebugError( QStringLiteral( "add Z value to vertex failed!" ) );
+      return;
+    }
+  }
+
+  // If moving point has not M-value but destination yes, check if it can be promoted
+  if ( layerPoint.isMeasure() && !geomTmp->isMeasure() && QgsWkbTypes::hasM( dragLayer->wkbType() ) )
+  {
+    if ( !geomTmp->addMValue( defaultMValue() ) )
+    {
+      QgsDebugError( QStringLiteral( "add M value to vertex failed!" ) );
+      return;
+    }
+  }
 
   // add/move vertex
   if ( addingVertex )
@@ -2199,9 +2219,12 @@ void QgsVertexTool::moveVertex( const QgsPointXY &mapPoint, const QgsPointLocato
     if ( QgsWkbTypes::hasZ( dragLayer->wkbType() ) && !pt.is3D() )
       pt.addZValue( defaultZValue() );
 
+    if ( QgsWkbTypes::hasM( dragLayer->wkbType() ) && !pt.isMeasure() )
+      pt.addMValue( defaultMValue() );
+
     if ( !geomTmp->insertVertex( vid, pt ) )
     {
-      QgsDebugMsg( QStringLiteral( "append vertex failed!" ) );
+      QgsDebugError( QStringLiteral( "append vertex failed!" ) );
       return;
     }
   }
@@ -2209,7 +2232,7 @@ void QgsVertexTool::moveVertex( const QgsPointXY &mapPoint, const QgsPointLocato
   {
     if ( !geomTmp->moveVertex( vid, layerPoint ) )
     {
-      QgsDebugMsg( QStringLiteral( "move vertex failed!" ) );
+      QgsDebugError( QStringLiteral( "move vertex failed!" ) );
       return;
     }
   }
@@ -2245,7 +2268,7 @@ void QgsVertexTool::moveVertex( const QgsPointXY &mapPoint, const QgsPointLocato
         if ( ( ( mapPointMatch->hasEdge() || mapPointMatch->hasMiddleSegment() ) && mapPointMatch->layer() && layer->crs() == mapPointMatch->layer()->crs() )
              || ( mapPointMatch->hasVertex() && !mapPointMatch->layer() && layer->crs() == mCanvas->mapSettings().destinationCrs() ) ) // also add topological points when snapped on intersection
         {
-          if ( g.convertToType( QgsWkbTypes::PointGeometry, true ).contains( p ) )
+          if ( g.convertToType( Qgis::GeometryType::Point, true ).contains( p ) )
           {
             if ( !layerPoint.is3D() )
               layerPoint.addZValue( defaultZValue() );
@@ -2315,7 +2338,7 @@ void QgsVertexTool::addExtraVerticesToEdits( QgsVertexTool::VertexEdits &edits, 
 
     if ( !topoGeom.moveVertex( point.x(), point.y(), topo.vertexId ) )
     {
-      QgsDebugMsg( QStringLiteral( "[topo] move vertex failed!" ) );
+      QgsDebugError( QStringLiteral( "[topo] move vertex failed!" ) );
       continue;
     }
     edits[topo.layer][topo.fid] = topoGeom;
@@ -2349,7 +2372,7 @@ void QgsVertexTool::addExtraSegmentsToEdits( QgsVertexTool::VertexEdits &edits, 
 
     if ( !topoGeom.insertVertex( pt, topo.vertexId + 1 ) )
     {
-      QgsDebugMsg( QStringLiteral( "[topo] segment insert vertex failed!" ) );
+      QgsDebugError( QStringLiteral( "[topo] segment insert vertex failed!" ) );
       continue;
     }
     edits[topo.layer][topo.fid] = topoGeom;
@@ -2503,8 +2526,8 @@ void QgsVertexTool::deleteVertex()
     {
       QgsFeatureId fid = fIt.key();
       QList<int> &vertexIds = fIt.value();
-      if ( vertexIds.count() >= 2 && ( layer->geometryType() == QgsWkbTypes::PolygonGeometry ||
-                                       layer->geometryType() == QgsWkbTypes::LineGeometry ) )
+      if ( vertexIds.count() >= 2 && ( layer->geometryType() == Qgis::GeometryType::Polygon ||
+                                       layer->geometryType() == Qgis::GeometryType::Line ) )
       {
         std::sort( vertexIds.begin(), vertexIds.end(), std::greater<int>() );
         const QgsGeometry geom = cachedGeometry( layer, fid );
@@ -2521,7 +2544,7 @@ void QgsVertexTool::deleteVertex()
         // polygonal rings with less than 4 vertices get deleted automatically
         // linear parts with less than 2 vertices get deleted automatically
         // let's keep that number and don't remove vertices beyond that point
-        const int minAllowedVertices = geom.type() == QgsWkbTypes::PolygonGeometry ? 4 : 2;
+        const int minAllowedVertices = geom.type() == Qgis::GeometryType::Polygon ? 4 : 2;
         for ( int i = vertexIds.count() - 1; i >= 0 ; --i )
         {
           QgsVertexId vid;
@@ -2529,7 +2552,7 @@ void QgsVertexTool::deleteVertex()
           {
             // also don't try to delete the first vertex of a ring since we have already deleted the last
             if ( numberOfVertices.at( vid.part ).at( vid.ring ) < minAllowedVertices ||
-                 ( 0 == vid.vertex && geom.type() == QgsWkbTypes::PolygonGeometry ) )
+                 ( 0 == vid.vertex && geom.type() == Qgis::GeometryType::Polygon ) )
               vertexIds.removeOne( vertexIds.at( i ) );
             else
               --numberOfVertices[vid.part][vid.ring];
@@ -2563,7 +2586,7 @@ void QgsVertexTool::deleteVertex()
           res = layer->deleteVertex( fid, vertexId );
         if ( res != Qgis::VectorEditResult::EmptyGeometry && res != Qgis::VectorEditResult::Success )
         {
-          QgsDebugMsg( QStringLiteral( "failed to delete vertex %1 %2 %3!" ).arg( layer->name() ).arg( fid ).arg( vertexId ) );
+          QgsDebugError( QStringLiteral( "failed to delete vertex %1 %2 %3!" ).arg( layer->name() ).arg( fid ).arg( vertexId ) );
           success = false;
         }
       }
@@ -2801,7 +2824,7 @@ void QgsVertexTool::initSelectionRubberBand()
 {
   if ( !mSelectionRubberBand )
   {
-    mSelectionRubberBand = std::make_unique<QgsRubberBand>( mCanvas, QgsWkbTypes::PolygonGeometry );
+    mSelectionRubberBand = std::make_unique<QgsRubberBand>( mCanvas, Qgis::GeometryType::Polygon );
     QColor fillColor = QColor( 0, 120, 215, 63 );
     QColor strokeColor = QColor( 0, 102, 204, 100 );
     mSelectionRubberBand->setFillColor( fillColor );
@@ -2935,7 +2958,7 @@ void QgsVertexTool::GeometryValidation::start( QgsGeometry &geom, QgsVertexTool 
   tool = t;
   layer = l;
   Qgis::GeometryValidationEngine method = Qgis::GeometryValidationEngine::QgisInternal;
-  if ( QgsSettingsRegistryCore::settingsDigitizingValidateGeometries.value() == 2 )
+  if ( QgsSettingsRegistryCore::settingsDigitizingValidateGeometries->value() == 2 )
     method = Qgis::GeometryValidationEngine::Geos;
 
   validator = new QgsGeometryValidator( geom, nullptr, method );
@@ -2984,7 +3007,7 @@ void QgsVertexTool::GeometryValidation::cleanup()
 
 void QgsVertexTool::validateGeometry( QgsVectorLayer *layer, QgsFeatureId featureId )
 {
-  if ( QgsSettingsRegistryCore::settingsDigitizingValidateGeometries.value() == 0 )
+  if ( QgsSettingsRegistryCore::settingsDigitizingValidateGeometries->value() == 0 )
     return;
 
   QPair<QgsVectorLayer *, QgsFeatureId> id( layer, featureId );

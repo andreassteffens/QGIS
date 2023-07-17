@@ -82,6 +82,7 @@ class QgsPointCloudLayerChunkLoaderFactory : public QgsChunkLoaderFactory
     double mZValueOffset = 0;
     int mPointBudget = 1000000;
     bool mTriangulate = false;
+    QgsRectangle mExtent; //!< This should hold the map's extent in layer's crs
 };
 
 
@@ -134,6 +135,8 @@ class QgsPointCloudLayerChunkedEntity : public QgsChunkedEntity
   public:
     explicit QgsPointCloudLayerChunkedEntity( QgsPointCloudIndex *pc, const Qgs3DMapSettings &map, const QgsCoordinateTransform &coordinateTransform, QgsPointCloud3DSymbol *symbol, float maxScreenError, bool showBoundingBoxes,
         double zValueScale, double zValueOffset, int pointBudget );
+
+    QVector<QgsRayCastingUtils::RayHit> rayIntersection( const QgsRayCastingUtils::Ray3D &ray, const QgsRayCastingUtils::RayCastContext &context ) const override;
 
     ~QgsPointCloudLayerChunkedEntity();
 };

@@ -51,6 +51,7 @@ if(WITH_APIDOC)
       ${CMAKE_SOURCE_DIR}/doc
       ${CMAKE_SOURCE_DIR}/src/core
       ${CMAKE_SOURCE_DIR}/src/core/3d
+      ${CMAKE_SOURCE_DIR}/src/core/actions
       ${CMAKE_SOURCE_DIR}/src/core/annotations
       ${CMAKE_SOURCE_DIR}/src/core/auth
       ${CMAKE_SOURCE_DIR}/src/core/browser
@@ -64,8 +65,6 @@ if(WITH_APIDOC)
       ${CMAKE_SOURCE_DIR}/src/core/expression
       ${CMAKE_SOURCE_DIR}/src/core/externalstorage
       ${CMAKE_SOURCE_DIR}/src/core/fieldformatter
-      ${CMAKE_SOURCE_DIR}/src/core/geocms
-      ${CMAKE_SOURCE_DIR}/src/core/geocms/geonode
       ${CMAKE_SOURCE_DIR}/src/core/geocoding
       ${CMAKE_SOURCE_DIR}/src/core/geometry
       ${CMAKE_SOURCE_DIR}/src/core/gps
@@ -90,6 +89,7 @@ if(WITH_APIDOC)
       ${CMAKE_SOURCE_DIR}/src/core/providers/memory
       ${CMAKE_SOURCE_DIR}/src/core/raster
       ${CMAKE_SOURCE_DIR}/src/core/scalebar
+      ${CMAKE_SOURCE_DIR}/src/core/sensor
       ${CMAKE_SOURCE_DIR}/src/core/settings
       ${CMAKE_SOURCE_DIR}/src/core/symbology
       ${CMAKE_SOURCE_DIR}/src/core/textrenderer
@@ -97,6 +97,7 @@ if(WITH_APIDOC)
       ${CMAKE_SOURCE_DIR}/src/core/vector
       ${CMAKE_SOURCE_DIR}/src/core/vectortile
       ${CMAKE_SOURCE_DIR}/src/gui
+      ${CMAKE_SOURCE_DIR}/src/gui/actions
       ${CMAKE_SOURCE_DIR}/src/gui/annotations
       ${CMAKE_SOURCE_DIR}/src/gui/attributetable
       ${CMAKE_SOURCE_DIR}/src/gui/auth
@@ -121,6 +122,7 @@ if(WITH_APIDOC)
       ${CMAKE_SOURCE_DIR}/src/gui/processing
       ${CMAKE_SOURCE_DIR}/src/gui/processing/models
       ${CMAKE_SOURCE_DIR}/src/gui/raster
+      ${CMAKE_SOURCE_DIR}/src/gui/sensor
       ${CMAKE_SOURCE_DIR}/src/gui/settings
       ${CMAKE_SOURCE_DIR}/src/gui/symbology
       ${CMAKE_SOURCE_DIR}/src/gui/tableeditor

@@ -18,11 +18,10 @@
 #include "qgsoracleconnpool.h"
 #include "qgsoracleexpressioncompiler.h"
 #include "qgsoracletransaction.h"
-
+#include "qgsdbquerylog.h"
 #include "qgslogger.h"
 #include "qgsmessagelog.h"
 #include "qgsgeometry.h"
-#include "qgssettings.h"
 #include "qgsexception.h"
 #include "qgsgeometryengine.h"
 
@@ -197,7 +196,7 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource *sour
 
   }
 
-  if ( mSource->mRequestedGeomType != QgsWkbTypes::Unknown && mSource->mRequestedGeomType != mSource->mDetectedGeomType )
+  if ( mSource->mRequestedGeomType != Qgis::WkbType::Unknown && mSource->mRequestedGeomType != mSource->mDetectedGeomType )
   {
     if ( !whereClause.isEmpty() )
       whereClause += QLatin1String( " AND " );
@@ -517,7 +516,7 @@ bool QgsOracleFeatureIterator::openQuery( const QString &whereClause, const QVar
         break;
 
       case PktUnknown:
-        QgsDebugMsg( QStringLiteral( "Cannot query without primary key." ) );
+        QgsDebugError( QStringLiteral( "Cannot query without primary key." ) );
         return false;
     }
 

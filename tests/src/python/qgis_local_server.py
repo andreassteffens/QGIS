@@ -22,16 +22,16 @@ import urllib.parse
 import urllib.request
 
 from utilities import (
-    unitTestDataPath,
     getExecutablePath,
+    getTempfilePath,
     openInBrowserTab,
-    getTempfilePath
+    unitTestDataPath,
 )
 
 # allow import error to be raised if qgis is not on sys.path
 try:
     # noinspection PyUnresolvedReferences
-    from qgis.core import QgsRectangle, QgsCoordinateReferenceSystem
+    from qgis.core import QgsCoordinateReferenceSystem, QgsRectangle
 except ImportError as e:
     raise ImportError(str(e) + '\n\nPlace path to pyqgis modules on sys.path,'
                                ' or assign to PYTHONPATH')

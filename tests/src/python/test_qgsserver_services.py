@@ -26,10 +26,12 @@ __copyright__ = '(C) 2016, David Marteau'
 """
 from qgis.PyQt.QtCore import QBuffer, QIODevice, QTextStream
 from qgis.core import QgsApplication
-from qgis.server import (QgsServiceRegistry,
-                         QgsService,
-                         QgsServerRequest,
-                         QgsServerResponse)
+from qgis.server import (
+    QgsServerRequest,
+    QgsServerResponse,
+    QgsService,
+    QgsServiceRegistry,
+)
 from qgis.testing import unittest
 
 
@@ -93,11 +95,13 @@ class TestServices(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         cls.app = QgsApplication([], False)
 
     @classmethod
     def tearDownClass(cls):
         cls.app.exitQgis()
+        super().tearDownClass()
 
     def test_register(self):
 

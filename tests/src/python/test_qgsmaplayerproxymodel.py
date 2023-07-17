@@ -12,13 +12,12 @@ __copyright__ = 'Copyright 2018, The QGIS Project'
 import qgis  # NOQA
 
 from qgis.core import (
-    QgsVectorLayer,
-    QgsMeshLayer,
     QgsAnnotationLayer,
+    QgsMapLayerProxyModel,
+    QgsMeshLayer,
     QgsProject,
-    QgsMapLayerProxyModel
+    QgsVectorLayer,
 )
-
 from qgis.testing import start_app, unittest
 
 start_app()

@@ -14,10 +14,10 @@ import os
 import qgis  # NOQA
 from qgis.core import (
     Qgis,
-    QgsVectorLayer,
+    QgsDataSourceUri,
     QgsProject,
     QgsTransaction,
-    QgsDataSourceUri
+    QgsVectorLayer,
 )
 from qgis.testing import start_app, unittest
 
@@ -32,6 +32,7 @@ class TestQgsPostgresTransaction(unittest.TestCase):
         Setup the involved layers and relations for a n:m relation
         :return:
         """
+        super().setUpClass()
         cls.dbconn = 'service=qgis_test'
         if 'QGIS_PGTEST_DB' in os.environ:
             cls.dbconn = os.environ['QGIS_PGTEST_DB']

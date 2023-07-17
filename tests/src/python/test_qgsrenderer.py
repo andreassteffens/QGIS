@@ -11,13 +11,14 @@ __copyright__ = 'Copyright 2016, The QGIS Project'
 
 import qgis  # NOQA
 
-from qgis.core import (QgsRendererAbstractMetadata,
-                       QgsApplication,
-                       QgsVectorLayer,
-                       QgsFeature,
-                       QgsGeometry,
-                       QgsPointXY
-                       )
+from qgis.core import (
+    QgsApplication,
+    QgsFeature,
+    QgsGeometry,
+    QgsPointXY,
+    QgsRendererAbstractMetadata,
+    QgsVectorLayer,
+)
 from qgis.testing import start_app, unittest
 
 start_app()

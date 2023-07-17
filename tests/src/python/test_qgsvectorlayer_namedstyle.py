@@ -13,20 +13,11 @@ __copyright__ = 'Copyright 2020, The QGIS Project'
 __revision__ = '$Format:%H$'
 
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (
-    QgsVectorLayer,
-    QgsMapLayer,
-    QgsReadWriteContext,
-)
+from qgis.core import QgsMapLayer, QgsReadWriteContext, QgsVectorLayer
 from qgis.testing import unittest
 
 
 class TestPyQgsVectorLayerNamedStyle(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        """Run before all tests"""
-        pass
 
     def testLoadWriteRenderingScaleVisibility(self):
         """Test write and load scale visibility, see GH #33840"""

@@ -15,7 +15,7 @@ from time import sleep
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import QgsTask, QgsApplication
+from qgis.core import QgsApplication, QgsTask
 from qgis.testing import start_app, unittest
 
 start_app()

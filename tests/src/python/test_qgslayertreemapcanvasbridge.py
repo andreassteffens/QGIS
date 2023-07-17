@@ -10,14 +10,18 @@ __date__ = '8/03/2017'
 __copyright__ = 'Copyright 2017, The QGIS Project'
 
 import qgis  # NOQA
-from qgis.core import (QgsProject,
-                       QgsVectorLayer)
-from qgis.gui import (QgsLayerTreeMapCanvasBridge,
-                      QgsMapCanvas,
-                      QgsCustomLayerOrderWidget)
+from qgis.core import (
+    QgsProject,
+    QgsVectorLayer,
+)
+from qgis.gui import (
+    QgsCustomLayerOrderWidget,
+    QgsLayerTreeMapCanvasBridge,
+    QgsMapCanvas,
+)
 from qgis.testing import start_app, unittest
 
-from utilities import (unitTestDataPath)
+from utilities import unitTestDataPath
 
 app = start_app()
 TEST_DATA_DIR = unitTestDataPath()

@@ -473,7 +473,7 @@ void QgsWfs3CollectionsHandler::handleRequest( const QgsServerApiContext &contex
       {
         continue;
       }
-      if ( layer->type() != QgsMapLayerType::VectorLayer )
+      if ( layer->type() != Qgis::LayerType::Vector )
       {
         continue;
       }
@@ -1388,6 +1388,47 @@ void QgsWfs3CollectionsItemsHandler::handleRequest( const QgsServerApiContext &c
         cleanedUrlAsString += '&';
       }
 
+      // Pagesize metadata
+      json pagesize = json::array();
+      const qlonglong maxLimit { context.serverInterface()->serverSettings()->apiWfs3MaxLimit() };
+      if ( matchedFeaturesCount > 1 && maxLimit > 1 )
+      {
+        const std::string pageSizeOneLink { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=0&limit=1" ).toStdString() };
+        pagesize.push_back( {{ "title", "1" }, { "href", pageSizeOneLink }} ) ;
+        if ( matchedFeaturesCount > 10 && maxLimit > 10 )
+        {
+          const std::string pageSizeTenLink  { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=0&limit=10" ).toStdString() };
+          pagesize.push_back( {{ "title", "10" }, { "href", pageSizeTenLink }} ) ;
+        }
+        if ( matchedFeaturesCount > 20 && maxLimit > 20 )
+        {
+          const std::string pageSizeTwentyLink { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=0&limit=20" ).toStdString() };
+          pagesize.push_back( {{ "title", "20" }, { "href", pageSizeTwentyLink }} ) ;
+        }
+        if ( matchedFeaturesCount > 50 && maxLimit > 50 )
+        {
+          const std::string pageSizeFiftyLink { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=0&limit=50" ).toStdString() };
+          pagesize.push_back( {{ "title", "50" }, { "href", pageSizeFiftyLink }} ) ;
+        }
+        if ( matchedFeaturesCount > 100 && maxLimit > 100 )
+        {
+          const std::string pageSizeHundredLink { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=0&limit=100" ).toStdString() };
+          pagesize.push_back( {{ "title", "100" }, { "href", pageSizeHundredLink }} ) ;
+        }
+        if ( matchedFeaturesCount > 1000 && maxLimit > 1000 )
+        {
+          const std::string pageSizeThousandLink { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=0&limit=1000" ).toStdString() };
+          pagesize.push_back( {{ "title", "1000" }, { "href", pageSizeThousandLink }} ) ;
+        }
+        std::string maxTitle = "All";
+        if ( maxLimit < matchedFeaturesCount )
+        {
+          maxTitle = "Maximum";
+        }
+        const std::string pageSizeMaxLink { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=0&limit=%1" ).arg( maxLimit ).toStdString() };
+        pagesize.push_back( {{ "title", maxTitle }, { "href", pageSizeMaxLink }} ) ;
+      }
+
       // Get the self link
       json selfLink;
       for ( const auto &l : data["links"] )
@@ -1399,23 +1440,94 @@ void QgsWfs3CollectionsItemsHandler::handleRequest( const QgsServerApiContext &c
         }
       }
 
-      // Add prev - next links
-      if ( offset != 0 )
-      {
-        json prevLink = selfLink;
-        prevLink["href"] = cleanedUrlAsString.toStdString() + QStringLiteral( "offset=%1&limit=%2" ).arg( std::max<long>( 0, offset - limit ) ).arg( limit ).toStdString();
-        prevLink["rel"] = "prev";
-        prevLink["title"] = "Previous page";
-        data["links"].push_back( prevLink );
-      }
+      // Pagination metadata
+      json pagination = json::array();
 
-      if ( limit + offset < matchedFeaturesCount )
+      if ( limit != 0 )
       {
-        json nextLink = selfLink;
-        nextLink["href"] = cleanedUrlAsString.toStdString() + QStringLiteral( "offset=%1&limit=%2" ).arg( std::min<long>( matchedFeaturesCount, limit + offset ) ).arg( limit ).toStdString();
-        nextLink["rel"] = "next";
-        nextLink["title"] = "Next page";
-        data["links"].push_back( nextLink );
+        // Add prev - next links
+        json prevLink;
+        if ( offset != 0 )
+        {
+          prevLink = selfLink;
+          prevLink["href"] = cleanedUrlAsString.toStdString() + QStringLiteral( "offset=%1&limit=%2" ).arg( std::max<long>( 0, offset - limit ) ).arg( limit ).toStdString();
+          prevLink["rel"] = "prev";
+          prevLink["title"] = "Previous page";
+          data["links"].push_back( prevLink );
+        }
+
+        json nextLink;
+        if ( limit + offset < matchedFeaturesCount )
+        {
+          nextLink = selfLink;
+          nextLink["href"] = cleanedUrlAsString.toStdString() + QStringLiteral( "offset=%1&limit=%2" ).arg( std::min<long>( matchedFeaturesCount, limit + offset ) ).arg( limit ).toStdString();
+          nextLink["rel"] = "next";
+          nextLink["title"] = "Next page";
+          data["links"].push_back( nextLink );
+        }
+
+        // Pagination
+        if ( matchedFeaturesCount - limit > 0 )
+        {
+          const int totalPages { static_cast<int>( std::ceil( static_cast<float>( matchedFeaturesCount ) / static_cast<float>( limit ) ) ) };
+          const int currentPage { static_cast<int>( offset / limit + 1 ) };
+          const std::string currentPageLink { selfLink["href"] };
+
+          std::string prevPageLink;
+          if ( prevLink.contains( std::string{ "href" } ) )
+          {
+            prevPageLink = prevLink["href"];
+          }
+
+          std::string nextPageLink;
+          if ( nextLink.contains( std::string{ "href" } ) )
+          {
+            nextPageLink = nextLink["href"];
+          }
+
+          const std::string firstPageLink { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=0&limit=%1" ).arg( limit ).toStdString() };
+          const std::string lastPageLink { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=%1&limit=%2" ).arg( totalPages * limit - limit ).arg( limit ).toStdString() };
+
+          if ( currentPage != 1 )
+          {
+            pagination.push_back( {{ "title",  "1" }, { "href", firstPageLink }, { "class", "page-item" }} ) ;
+          }
+          if ( currentPage > 3 )
+          {
+            pagination.push_back( {{ "title", "\u2026" }, { "class", "page-item disabled" }} ) ;
+          }
+          if ( currentPage > 2 )
+          {
+            pagination.push_back( {{ "title",  std::to_string( currentPage - 1 ) }, { "href", prevPageLink }, { "class", "page-item" }} ) ;
+          }
+          pagination.push_back( {{ "title",  std::to_string( currentPage ) }, { "href", currentPageLink }, { "class", "page-item active" }} ) ;
+          if ( currentPage < totalPages - 1 )
+          {
+            pagination.push_back( {{ "title",  std::to_string( currentPage + 1 )  }, { "href", nextPageLink }, { "class", "page-item" }} ) ;
+          }
+          if ( currentPage < totalPages - 2 )
+          {
+            pagination.push_back( {{ "title", "\u2026" }, { "class", "page-item disabled" }} ) ;
+          }
+          if ( currentPage != totalPages )
+          {
+            pagination.push_back( {{ "title",  std::to_string( totalPages ) }, { "href", lastPageLink }, { "class", "page-item" }} ) ;
+          }
+
+          // Add first - last links
+          // Since we are having them ready, not mandatory by the spec but allowed
+          json firstLink = selfLink;
+          firstLink["href"] = firstPageLink;
+          firstLink["rel"] = "first";
+          firstLink["title"] = "First page";
+          data["links"].push_back( firstLink );
+
+          json lastLink = selfLink;
+          lastLink["href"] = lastPageLink;
+          lastLink["rel"] = "last";
+          lastLink["title"] = "Last page";
+          data["links"].push_back( lastLink );
+        }
       }
 
       json navigation = json::array();
@@ -1431,6 +1543,8 @@ void QgsWfs3CollectionsItemsHandler::handleRequest( const QgsServerApiContext &c
           "geojsonUrl", href( context, "/",
                               QgsServerOgcApi::contentTypeToExtension( QgsServerOgcApi::ContentType::GEOJSON ) )
         },
+        { "pagesize", pagesize },
+        { "pagination", pagination },
         { "navigation", navigation }
       };
 
@@ -1469,7 +1583,7 @@ void QgsWfs3CollectionsItemsHandler::handleRequest( const QgsServerApiContext &c
       try
       {
         // Parse
-        json postData = json::parse( context.request()->data() );
+        json postData = json::parse( context.request()->data().toStdString() );
 
         // Process data: extract geometry (because we need to process attributes in a much more complex way)
         const QgsFields fields = QgsOgrUtils::stringToFields( context.request()->data(), QTextCodec::codecForName( "UTF-8" ) );
@@ -1733,7 +1847,7 @@ void QgsWfs3CollectionsFeatureHandler::handleRequest( const QgsServerApiContext 
       try
       {
         // Parse
-        json postData = json::parse( context.request()->data() );
+        json postData = json::parse( context.request()->data().toStdString() );
         // Process data: extract geometry (because we need to process attributes in a much more complex way)
         const QgsFields fields( QgsOgrUtils::stringToFields( context.request()->data(), QTextCodec::codecForName( "UTF-8" ) ) );
         const QgsFeatureList features = QgsOgrUtils::stringToFeatureList( context.request()->data(), fields, QTextCodec::codecForName( "UTF-8" ) );
@@ -1871,7 +1985,7 @@ void QgsWfs3CollectionsFeatureHandler::handleRequest( const QgsServerApiContext 
       try
       {
         // Parse
-        json postData = json::parse( context.request()->data() );
+        json postData = json::parse( context.request()->data().toStdString() );
 
         // If the request contains "add" we raise
         if ( postData.contains( "add" ) )

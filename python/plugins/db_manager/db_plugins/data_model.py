@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """
 /***************************************************************************
 Name                 : DB Manager
@@ -19,8 +17,6 @@ email                : brush.tyler@gmail.com
  *                                                                         *
  ***************************************************************************/
 """
-from builtins import str
-from builtins import range
 
 from qgis.PyQt.QtCore import (Qt,
                               QTime,
@@ -45,11 +41,11 @@ class BaseTableModel(QAbstractTableModel):
         self._header = header if header else []
         self.resdata = data if data else []
 
-    def headerToString(self, sep=u"\t"):
+    def headerToString(self, sep="\t"):
         header = self._header
         return sep.join(header)
 
-    def rowToString(self, row, sep=u"\t"):
+    def rowToString(self, row, sep="\t"):
         return sep.join(
             str(self.getData(row, col))
             for col in range(self.columnCount())
@@ -320,7 +316,7 @@ class TableConstraintsModel(SimpleTableModel):
 
     def append(self, constr):
         field_names = [str(k_v[1].name) for k_v in iter(list(constr.fields().items()))]
-        data = [constr.name, constr.type2String(), u", ".join(field_names)]
+        data = [constr.name, constr.type2String(), ", ".join(field_names)]
         self.appendRow(self.rowFromData(data))
         row = self.rowCount() - 1
         self.setData(self.index(row, 0), constr, Qt.UserRole)
@@ -356,7 +352,7 @@ class TableIndexesModel(SimpleTableModel):
 
     def append(self, idx):
         field_names = [str(k_v1[1].name) for k_v1 in iter(list(idx.fields().items()))]
-        data = [idx.name, u", ".join(field_names)]
+        data = [idx.name, ", ".join(field_names)]
         self.appendRow(self.rowFromData(data))
         row = self.rowCount() - 1
         self.setData(self.index(row, 0), idx, Qt.UserRole)

@@ -26,15 +26,16 @@ import os
 
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QSize
-from qgis.core import (QgsVectorLayer,
-                       QgsProject,
-                       QgsRectangle,
-                       QgsMultiRenderChecker,
-                       QgsSingleSymbolRenderer,
-                       QgsFillSymbol,
-                       QgsFeatureRequest,
-                       QgsRenderContext
-                       )
+from qgis.core import (
+    QgsFeatureRequest,
+    QgsFillSymbol,
+    QgsMultiRenderChecker,
+    QgsProject,
+    QgsRectangle,
+    QgsRenderContext,
+    QgsSingleSymbolRenderer,
+    QgsVectorLayer,
+)
 from qgis.testing import unittest
 from qgis.testing.mocked import get_iface
 
@@ -82,6 +83,12 @@ class TestQgsSingleSymbolRenderer(unittest.TestCase):
         ctx = QgsRenderContext.fromMapSettings(self.mapsettings)
 
         self.assertCountEqual(self.renderer.usedAttributes(ctx), {})
+
+    def test_legend_keys(self):
+        sym1 = QgsFillSymbol.createSimple({'color': '#fdbf6f', 'outline_color': 'black'})
+        renderer = QgsSingleSymbolRenderer(sym1)
+
+        self.assertEqual(renderer.legendKeys(), {'0'})
 
     def test_legend_key_to_expression(self):
         sym1 = QgsFillSymbol.createSimple({'color': '#fdbf6f', 'outline_color': 'black'})

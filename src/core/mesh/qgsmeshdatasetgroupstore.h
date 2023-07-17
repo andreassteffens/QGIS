@@ -47,7 +47,7 @@ class QgsMeshExtraDatasetStore: public QgsMeshDatasetSourceInterface
     bool hasTemporalCapabilities() const;
 
     //! Returns the relative times of the dataset index with \a index, returned value in milliseconds
-    quint64 datasetRelativeTime( QgsMeshDatasetIndex index );
+    qint64 datasetRelativeTime( QgsMeshDatasetIndex index ) const;
 
     //! Returns information related to the dataset group with \a groupIndex
     QString description( int groupIndex ) const;
@@ -125,7 +125,7 @@ class QgsMeshDatasetGroupStore: public QObject
 
   public:
     //! Constructor
-    QgsMeshDatasetGroupStore( QgsMeshLayer *layer );
+    explicit QgsMeshDatasetGroupStore( QgsMeshLayer *layer );
 
     //!  Sets the persistent mesh data provider with the path of its extra dataset to be loaded by the provider
     void setPersistentProvider( QgsMeshDataProvider *provider, const QStringList &extraDatasetUri );
@@ -203,7 +203,7 @@ class QgsMeshDatasetGroupStore: public QObject
     /**
      * Returns the global dataset index of the dataset int the dataset group with \a groupIndex, that is between relative times \a time1 and \a time2
      *
-     * Since QGIS 3.22
+     * \since QGIS 3.22
      */
     QList<QgsMeshDatasetIndex> datasetIndexInTimeInterval( qint64 time1, qint64 time2, int groupIndex ) const;
 
@@ -223,9 +223,23 @@ class QgsMeshDatasetGroupStore: public QObject
      * Returns the global dataset group index of the dataset group with native index \a nativeGroupIndex in the \a source
      * Returns -1 if the group or the source is not registered
      *
-     * Since QGIS 3.22
+     * \since QGIS 3.22
      */
     int globalDatasetGroupIndexInSource( QgsMeshDatasetSourceInterface *source, int nativeGroupIndex ) const;
+
+    /**
+     * Returns the global dataset group index of the dataset with name \a groupName
+     *
+     * \since QGIS 3.30.2
+     */
+    int indexFromGroupName( const QString &groupName ) const;
+
+    /**
+     * Returns the name of the dataset group with global index \a groupIndex
+     *
+     * \since QGIS 3.30.2
+     */
+    QString groupName( int groupIndex ) const;
 
   signals:
     //! Emitted after dataset groups are added
@@ -237,7 +251,7 @@ class QgsMeshDatasetGroupStore: public QObject
   private:
     QgsMeshLayer *mLayer = nullptr;
     QgsMeshDataProvider *mPersistentProvider = nullptr;
-    std::unique_ptr<QgsMeshExtraDatasetStore> mExtraDatasets;
+    QgsMeshExtraDatasetStore mExtraDatasets;
     QMap < int, DatasetGroup> mRegistery;
     QList<int> mPersistentExtraDatasetGroupIndexes;
     QMap<QString, int> mGroupNameToGlobalIndex;

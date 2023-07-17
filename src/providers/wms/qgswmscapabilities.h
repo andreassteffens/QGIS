@@ -23,13 +23,13 @@
 #include <QVector>
 
 #include "qgsauthmanager.h"
-#include "qgsraster.h"
 #include "qgsrectangle.h"
 #include "qgsrasteriterator.h"
 #include "qgsapplication.h"
-#include "qgsdataprovider.h"
 #include "qgsinterval.h"
 #include "qgstemporalutils.h"
+#include "qgshttpheaders.h"
+#include "qgscoordinatetransformcontext.h"
 
 class QNetworkReply;
 
@@ -478,11 +478,11 @@ struct QgsWmtsTileMatrix
   QStringList keywords;
   double scaleDenom = 0;
   QgsPointXY topLeft;  //!< Top-left corner of the tile matrix in map units
-  int tileWidth;     //!< Width of a tile in pixels
-  int tileHeight;    //!< Height of a tile in pixels
-  int matrixWidth;   //!< Number of tiles horizontally
-  int matrixHeight;  //!< Number of tiles vertically
-  double tres;       //!< Pixel span in map units
+  int tileWidth = 0;     //!< Width of a tile in pixels
+  int tileHeight = 0;    //!< Height of a tile in pixels
+  int matrixWidth = 0;   //!< Number of tiles horizontally
+  int matrixHeight = 0;  //!< Number of tiles vertically
+  double tres = 0;       //!< Pixel span in map units
 
   /**
    * Returns extent of a tile in map coordinates.
@@ -846,6 +846,8 @@ class QgsWmsSettings
     //! name of the chosen tile matrix set
     QString                 mTileMatrixSetId;
 
+    Qgis::TilePixelRatio mTilePixelRatio = Qgis::TilePixelRatio::Undefined;
+
     /**
      * Maximum width and height of getmap requests
      */
@@ -1038,7 +1040,7 @@ class QgsWmsCapabilities
     QgsWmsCapabilitiesProperty mCapabilities;
 
     //! Formats supported by server and provider
-    QMap<QgsRaster::IdentifyFormat, QString> mIdentifyFormats;
+    QMap<Qgis::RasterIdentifyFormat, QString> mIdentifyFormats;
 
 
     /**

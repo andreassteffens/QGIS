@@ -1,7 +1,10 @@
 #!/bin/sh
 
-dnf install -y 'dnf-command(config-manager)' && \
-dnf config-manager --add-repo https://copr.fedorainfracloud.org/coprs/smani/mingw-extras/repo/fedora-rawhide/smani-mingw-extras-fedora-rawhide.repo && \
+# To be removed
+# Workaround a bug where the initial /etc/dnf/dnf.conf file contains
+# just the "tsflags=nodocs" line
+printf '[main]\ngpgcheck=True\ninstallonly_limit=3\nclean_requirements_on_remove=True\nbest=False\nskip_if_unavailable=True\ntsflags=nodocs' > /etc/dnf/dnf.conf
+
 dnf install -y --nogpgcheck \
   mingw64-dlfcn \
   mingw64-exiv2 \
@@ -41,7 +44,6 @@ dnf install -y --nogpgcheck \
   mingw64-python3-qt5 \
   mingw64-python3-requests \
   mingw64-python3-shapely \
-  mingw64-python3-six \
   mingw64-python3-urllib3 \
   mingw64-qca-qt5 \
   mingw64-qscintilla-qt5 \
@@ -78,6 +80,7 @@ dnf install -y --nogpgcheck \
   proj-devel \
   python-devel \
   python-qt5 \
+  python3-qscintilla-qt5 \
   qt5-linguist \
   qt5-qtbase-devel \
   sqlite-devel \

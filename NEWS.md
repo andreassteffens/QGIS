@@ -1,5 +1,133 @@
 Change history for the QGIS Project
 
+# What's new in Version 3.32 'Lima'?
+
+This release has following new features:
+
+- Map Tools: Map tip preview
+- Map Tools: Measure tool copy coordinates
+- Map Tools: Disable map tips for a specific layer
+- User Interface: Show value relation description when hovering the combobox
+- User Interface: 2d map canvas view docking actions
+- User Interface: Add clear recently used crs button
+- User Interface: Reverse wheel zoom
+- User Interface: Spatial bookmarks rotation
+- Annotations: Annotation tool improvements
+- Annotations: Annotation live preview
+- 3D Features: Enable rendering virtual point clouds in 3d views
+- 3D Features: Improved 3d measure tool
+- Point Clouds: Native point cloud Processing provider
+- Point Clouds: Point cloud expression builder
+- Point Clouds: Add filtering by rectangle and expression to PDAL algorithms
+- Point Clouds: New parameter type for point cloud attribute
+- Print Layouts: Hyperlink support for HTML-enabled label exports
+- Print Layouts: Support filtering layout legends by multiple linked map items
+- Expressions: Add ltrim/rtrim functions
+- Digitising: Field value list in merge feature dialog
+- Digitising: Common angle option extensions for advanced digitizing
+- Digitising: Floater settings and bearing information for advanced digitizing
+- Data Management: Allow a range of cells to be copied from SQL results window
+- Data Management: Modified New field dialog behavior and alias support
+- Data Management: Add DistanceUnit value for inches
+- Data Management: Record split policy selection in form dialog
+- Forms and Widgets: Add control over horizontal / vertical stretch for attribute form widgets
+- Forms and Widgets: Add new attribute form container type "Row"
+- Processing: Download vector tiles algorithm
+- Processing: Allow configuration of the order of outputs created by a model
+- Processing: Algorithm to create COPC files for input point clouds
+- Processing: Add invert selection tool on refactor fields processing tool
+- Processing: Support field comments and aliases in processing algorithms
+- Processing: New options for Build VPC algorithm
+- Processing: Thread management in algorithm settings
+- Processing: Allow temporary folder to be temporarily changed through the algorithm settings panel
+- Processing: Allow processing dialog to override default processing context settings
+- Processing: Additional parameters for gdal2xyz algorithm
+- Processing: Add "Keep disjoint results separate" option to buffer algorithm
+- Processing: Allow filter expressions to be set for vector sources
+- Processing: Support `*.HEIC` HEIF format images in Processing `ImportPhotosAlgorithm`
+- Application and Project Options: Settings editor updates
+- Application and Project Options: User profile selector
+- Profile Plots: Distance unit selection for elevation profiles
+- Profile Plots: Export elevation profiles
+- Profile Plots: Add layers to elevation profiles
+- Profile Plots: Add "Fill Above" mode for elevation profile drawing
+- Profile Plots: Add option to lock the horizontal/ vertical scale to matching scales
+- Sensors: Core sensors framework
+- Sensors: Sensors GUI registry and configuration widgets
+- Sensors: Sensor options panel within the project properties dialog
+- Browser: Set field comments in browser
+- Browser: Set field aliases in browser
+- Data Providers: Load layers in parallel threads when opening project
+- Data Providers: Implements server-side filtering using Part 1 or Part 3
+- Data Providers: Virtual point cloud data provider
+- Data Providers: Expose option to load vector tile sources from files in Data Source Manager
+- Data Providers: Additional user controlled vector tile properties
+- Data Providers: Fix broken layer support for vtpk/mbtile vector tile layers, show vtpk files in browser
+- QGIS Server: PDF format options for WMS GetPrint
+- QGIS Server: Configurable capabilities cache size
+- QGIS Server: Add display name in GetFeatureInfo response
+- QGIS Server: OGC API - Features: Add full pagination for collection items HTML page
+- Programmability: Python console help improvements
+- Programmability: Run shell commands from the Python Console
+- Programmability: Reformat code action for code editors
+- Programmability: Toggle Python console to full main window
+- Programmability: Reformat HTML Code in Code Editors
+-
+
+
+# What's new in Version 3.30 ''s-Hertogenbosch'?
+
+This release has following new features:
+
+- Breaking Changes: Drop project backward compatibility for symbology with QGIS 3.16 and older
+- Map Tools: Raster MapTips
+- Map Tools: Identify on mouse move, no mouse click
+- User Interface: Constraint based functionality for attribute tables
+- User Interface: Additional GPS information panel and toolbar fields
+- User Interface: GPS Information Panel UX and Refactoring
+- Symbology: Improved SLD Export Options
+- Rendering: Global map terrain shading
+- Rendering: Add super and subscript support for text renderer
+- 3D Features: Limit 2D extent of 3D scene
+- Print Layouts: Shortcuts manager in print layouts
+- Print Layouts: Use text renderer in layout legends
+- Expressions: Add feature_id() function
+- Expressions: New is_feature_valid() and is_attribute_valid() functions
+- Expressions: Add x_at, y_at, z_at, m_at expression functions
+- Data Management: DateTime Field editing: segregation of display format and field value format
+- Data Management: Add option to directly log GPS points and tracks to a Geopackage or Spatialite db
+- Data Management: Add an explicit "Offset from UTC" option for storing GPS feature timestamps
+- Data Management: Raster Attribute Tables (RAT) Suppport
+- Metadata and Metasearch: Add key dates to layer and project metadata
+- Forms and Widgets: Audiovisual multimedia attribute attachments support
+- Forms and Widgets: Data defined editable state for form widgets
+- Forms and Widgets: Spacer widget for drag & drop attribute forms
+- Forms and Widgets: Dynamic text widgets with current_value support
+- Forms and Widgets: Dynamic HTML widgets with current_value support
+- Layer Legend: New layer ordering improvements
+- Processing: Additional options for XYZ Tile exports when using Leaflet html output
+- Processing: Support data defined parameter values when using qgis_process tool
+- Processing: New "load_layer" function
+- Processing: Add user interface for extent definition in GDAL Raster Calculator
+- Application and Project Options: Add option to store selected GPS component in geometry M values
+- Application and Project Options: Make GPS track destination layer an explicit user choice, remember in project
+- Profile Plots: New elevation profile canvas item for QGIS Quick
+- Browser: Add dataset relationship editing and creation capabilities in browser
+- Data Providers: Removal of Native GeoNode Provider
+- Data Providers: In data source manager, allow users to directly add an XYZ   tile layer without having to create a connection first
+- Data Providers: SQL Logging for OGR Provider
+- Data Providers: S3 Cloud Storage Support
+- Data Providers: Resolution aware WMTS layers with automatic upscaling
+- Data Providers: Drop unmaintained SAGA provider from QGIS installations
+- QGIS Server: QGIS_APPLICATION_FULL_NAME environment variable
+- QGIS Server: GeoJSON support for WFS DescribeFeatureType
+- Plugins: Topology checker rules enabling/disabling and filtering
+- Programmability: QgsExifTools Improvements
+- Programmability: Smart bracket autocomplete updates for Code Editors
+- Programmability: Add "toggle comment" action to the integrated python console
+-
+
+
 # What's new in Version 3.28 'Firenze'?
 
 This release has following new features:

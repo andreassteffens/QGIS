@@ -11,7 +11,7 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (QgsFeedback)
+from qgis.core import QgsFeedback
 from qgis.testing import unittest
 
 

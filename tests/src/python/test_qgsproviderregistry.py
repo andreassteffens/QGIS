@@ -11,12 +11,12 @@ __copyright__ = 'Copyright 2020, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.core import (
-    QgsProviderRegistry,
+    Qgis,
     QgsMapLayerType,
     QgsProviderMetadata,
+    QgsProviderRegistry,
     QgsProviderSublayerDetails,
-    Qgis,
-    QgsProviderUtils
+    QgsProviderUtils,
 )
 from qgis.testing import start_app, unittest
 
@@ -91,7 +91,7 @@ class TestQgsProviderRegistry(unittest.TestCase):
         """
         providers = QgsProviderRegistry.instance().providerList()
         for p in providers:
-            if p == 'geonode' or p == 'vectortile':
+            if p in ('vectortile', 'arcgisvectortileservice'):
                 continue
 
             self.assertTrue(QgsProviderRegistry.instance().createProvider(p, ''))

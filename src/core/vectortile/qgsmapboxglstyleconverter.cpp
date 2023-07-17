@@ -180,7 +180,7 @@ void QgsMapBoxGlStyleConverter::parseLayers( const QVariantList &layers, QgsMapB
     else
     {
       mWarnings << QObject::tr( "%1: Skipping unknown layer type %2" ).arg( context->layerId(), layerType );
-      QgsDebugMsg( mWarnings.constLast() );
+      QgsDebugError( mWarnings.constLast() );
       continue;
     }
 
@@ -434,8 +434,18 @@ bool QgsMapBoxGlStyleConverter::parseFillLayer( const QVariantMap &jsonLayer, Qg
     symbol->setOpacity( fillOpacity );
   }
 
-  if ( fillOutlineColor.isValid() )
+  // some complex logic here!
+  // by default a MapBox fill style will share the same stroke color as the fill color.
+  // This is generally desirable and the 1px stroke can help to hide boundaries between features which
+  // would otherwise be visible due to antialiasing effects.
+  // BUT if the outline color is semi-transparent, then drawing the stroke will result in a double rendering
+  // of strokes for adjacent polygons, resulting in visible seams between tiles. Accordingly, we only
+  // set the stroke color if it's a completely different color to the fill (ie the style designer explicitly
+  // wants a visible stroke) OR the stroke color is opaque and the double-rendering artifacts aren't an issue
+  if ( fillOutlineColor.isValid() && ( fillOutlineColor.alpha() == 255 || fillOutlineColor != fillColor ) )
   {
+    // mapbox fill strokes are always 1 px wide
+    fillSymbol->setStrokeWidth( 0 );
     fillSymbol->setStrokeColor( fillOutlineColor );
   }
   else
@@ -452,7 +462,7 @@ bool QgsMapBoxGlStyleConverter::parseFillLayer( const QVariantMap &jsonLayer, Qg
     fillSymbol->setBrushStyle( Qt::NoBrush );
   }
 
-  style.setGeometryType( QgsWkbTypes::PolygonGeometry );
+  style.setGeometryType( Qgis::GeometryType::Polygon );
   style.setSymbol( symbol.release() );
   return true;
 }
@@ -787,7 +797,7 @@ bool QgsMapBoxGlStyleConverter::parseLineLayer( const QVariantMap &jsonLayer, Qg
     }
   }
 
-  style.setGeometryType( QgsWkbTypes::LineGeometry );
+  style.setGeometryType( Qgis::GeometryType::Line );
   style.setSymbol( symbol.release() );
   return true;
 }
@@ -1037,7 +1047,7 @@ bool QgsMapBoxGlStyleConverter::parseCircleLayer( const QVariantMap &jsonLayer, 
     markerSymbolLayer->setStrokeWidthUnit( context.targetUnit() );
   }
 
-  style.setGeometryType( QgsWkbTypes::PointGeometry );
+  style.setGeometryType( Qgis::GeometryType::Point );
   style.setSymbol( symbol.release() );
   return true;
 }
@@ -1603,15 +1613,15 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
   }
 
   labelSettings.placement = Qgis::LabelPlacement::OverPoint;
-  QgsWkbTypes::GeometryType geometryType = QgsWkbTypes::PointGeometry;
+  Qgis::GeometryType geometryType = Qgis::GeometryType::Point;
   if ( jsonLayout.contains( QStringLiteral( "symbol-placement" ) ) )
   {
     const QString symbolPlacement = jsonLayout.value( QStringLiteral( "symbol-placement" ) ).toString();
     if ( symbolPlacement == QLatin1String( "line" ) )
     {
       labelSettings.placement = Qgis::LabelPlacement::Curved;
-      labelSettings.lineSettings().setPlacementFlags( QgsLabeling::OnLine );
-      geometryType = QgsWkbTypes::LineGeometry;
+      labelSettings.lineSettings().setPlacementFlags( Qgis::LabelLinePlacementFlag::OnLine );
+      geometryType = Qgis::GeometryType::Line;
 
       if ( jsonLayout.contains( QStringLiteral( "text-rotation-alignment" ) ) )
       {
@@ -1661,7 +1671,7 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
           {
             labelSettings.distUnits = context.targetUnit();
             labelSettings.dist = std::abs( textOffset.y() ) - textSize;
-            labelSettings.lineSettings().setPlacementFlags( textOffset.y() > 0.0 ? QgsLabeling::BelowLine : QgsLabeling::AboveLine );
+            labelSettings.lineSettings().setPlacementFlags( textOffset.y() > 0.0 ? Qgis::LabelLinePlacementFlag::BelowLine : Qgis::LabelLinePlacementFlag::AboveLine );
             if ( textSizeProperty && !textOffsetProperty )
             {
               ddLabelProperties.setProperty( QgsPalLayerSettings::LabelDistance, QStringLiteral( "with_variable('text_size',%2,%1*@text_size-@text_size)" ).arg( std::abs( textOffset.y() / textSize ) ).arg( textSizeProperty.asExpression() ) );
@@ -1671,7 +1681,7 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
 
         if ( textOffset.isNull() )
         {
-          labelSettings.lineSettings().setPlacementFlags( QgsLabeling::OnLine );
+          labelSettings.lineSettings().setPlacementFlags( Qgis::LabelLinePlacementFlag::OnLine );
         }
       }
     }
@@ -2039,7 +2049,7 @@ bool QgsMapBoxGlStyleConverter::parseSymbolLayerAsRenderer( const QVariantMap &j
     symbol->setOutputUnit( context.targetUnit() );
     lineSymbol->setOutputUnit( context.targetUnit() );
 
-    rendererStyle.setGeometryType( QgsWkbTypes::LineGeometry );
+    rendererStyle.setGeometryType( Qgis::GeometryType::Line );
     rendererStyle.setSymbol( symbol.release() );
     return true;
   }
@@ -2171,7 +2181,7 @@ bool QgsMapBoxGlStyleConverter::parseSymbolLayerAsRenderer( const QVariantMap &j
 
       QgsMarkerSymbol *markerSymbol = new QgsMarkerSymbol( QgsSymbolLayerList() << rasterMarker );
       rendererStyle.setSymbol( markerSymbol );
-      rendererStyle.setGeometryType( QgsWkbTypes::PointGeometry );
+      rendererStyle.setGeometryType( Qgis::GeometryType::Point );
       return true;
     }
   }
@@ -2894,15 +2904,20 @@ QString QgsMapBoxGlStyleConverter::interpolateExpression( double zoomMin, double
   }
   else
   {
-    expression = QStringLiteral( "scale_exp(@vector_tile_zoom,%1,%2,%3,%4,%5)" ).arg( zoomMin )
-                 .arg( zoomMax )
-                 .arg( minValueExpr )
-                 .arg( maxValueExpr )
-                 .arg( base );
+    // use formula to scale value exponentially as scale_exp expression function
+    // gives wrong resutls, see https://github.com/qgis/QGIS/pull/53164
+    QString ratioExpr = QStringLiteral( "(%1^(@vector_tile_zoom - %2) - 1) / (%1^(%3 - %2) - 1)" ).arg( base ).arg( zoomMin ).arg( zoomMax );
+    expression = QStringLiteral( "(%1) + (%2) * ((%3) - (%1))" ).arg( minValueExpr ).arg( ratioExpr ).arg( maxValueExpr );
+    // can be uncommented when scale_exponential expression function gets to the old LTR
+    //expression = QStringLiteral( "scale_exponential(@vector_tile_zoom,%1,%2,%3,%4,%5)" ).arg( zoomMin )
+    //             .arg( zoomMax )
+    //             .arg( minValueExpr )
+    //             .arg( maxValueExpr )
+    //             .arg( base );
   }
 
   if ( multiplier != 1 )
-    return QStringLiteral( "%1 * %2" ).arg( expression ).arg( multiplier );
+    return QStringLiteral( "(%1) * %2" ).arg( expression ).arg( multiplier );
   else
     return expression;
 }
@@ -3152,7 +3167,7 @@ QString QgsMapBoxGlStyleConverter::retrieveSpriteAsBase64( const QVariant &value
     case QVariant::String:
     {
       QString spriteName = value.toString();
-      const QRegularExpression fieldNameMatch( QStringLiteral( "{([^}]+)}" ) );
+      const thread_local QRegularExpression fieldNameMatch( QStringLiteral( "{([^}]+)}" ) );
       QRegularExpressionMatch match = fieldNameMatch.match( spriteName );
       if ( match.hasMatch() )
       {
@@ -3385,7 +3400,7 @@ QString QgsMapBoxGlStyleConverter::processLabelField( const QString &string, boo
 {
   // {field_name} is permitted in string -- if multiple fields are present, convert them to an expression
   // but if single field is covered in {}, return it directly
-  const QRegularExpression singleFieldRx( QStringLiteral( "^{([^}]+)}$" ) );
+  const thread_local QRegularExpression singleFieldRx( QStringLiteral( "^{([^}]+)}$" ) );
   const QRegularExpressionMatch match = singleFieldRx.match( string );
   if ( match.hasMatch() )
   {
@@ -3393,7 +3408,7 @@ QString QgsMapBoxGlStyleConverter::processLabelField( const QString &string, boo
     return match.captured( 1 );
   }
 
-  const QRegularExpression multiFieldRx( QStringLiteral( "(?={[^}]+})" ) );
+  const thread_local QRegularExpression multiFieldRx( QStringLiteral( "(?={[^}]+})" ) );
   const QStringList parts = string.split( multiFieldRx );
   if ( parts.size() > 1 )
   {
@@ -3519,7 +3534,7 @@ void QgsMapBoxGlStyleConverter::parseSources( const QVariantMap &sources, QgsMap
       case Qgis::MapBoxGlStyleSourceType::Image:
       case Qgis::MapBoxGlStyleSourceType::Video:
       case Qgis::MapBoxGlStyleSourceType::Unknown:
-        QgsDebugMsg( QStringLiteral( "Ignoring vector tile style source %1 (%2)" ).arg( name, qgsEnumValueToKey( type ) ) );
+        QgsDebugError( QStringLiteral( "Ignoring vector tile style source %1 (%2)" ).arg( name, qgsEnumValueToKey( type ) ) );
         continue;
     }
   }
@@ -3556,16 +3571,16 @@ bool QgsMapBoxGlStyleConverter::numericArgumentsOnly( const QVariant &bottomVari
 //
 void QgsMapBoxGlStyleConversionContext::pushWarning( const QString &warning )
 {
-  QgsDebugMsg( warning );
+  QgsDebugError( warning );
   mWarnings << warning;
 }
 
-QgsUnitTypes::RenderUnit QgsMapBoxGlStyleConversionContext::targetUnit() const
+Qgis::RenderUnit QgsMapBoxGlStyleConversionContext::targetUnit() const
 {
   return mTargetUnit;
 }
 
-void QgsMapBoxGlStyleConversionContext::setTargetUnit( QgsUnitTypes::RenderUnit targetUnit )
+void QgsMapBoxGlStyleConversionContext::setTargetUnit( Qgis::RenderUnit targetUnit )
 {
   mTargetUnit = targetUnit;
 }

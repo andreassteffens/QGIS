@@ -239,7 +239,7 @@ QgsRuleBasedLabeling::Rule *QgsRuleBasedLabeling::Rule::clone() const
   return newrule;
 }
 
-QgsRuleBasedLabeling::Rule *QgsRuleBasedLabeling::Rule::create( const QDomElement &ruleElem, const QgsReadWriteContext &context )
+QgsRuleBasedLabeling::Rule *QgsRuleBasedLabeling::Rule::create( const QDomElement &ruleElem, const QgsReadWriteContext &context, bool reuseId )
 {
   QgsPalLayerSettings *settings = nullptr;
   QDomElement settingsElem = ruleElem.firstChildElement( QStringLiteral( "settings" ) );
@@ -253,7 +253,11 @@ QgsRuleBasedLabeling::Rule *QgsRuleBasedLabeling::Rule::create( const QDomElemen
   QString description = ruleElem.attribute( QStringLiteral( "description" ) );
   int scaleMinDenom = ruleElem.attribute( QStringLiteral( "scalemindenom" ), QStringLiteral( "0" ) ).toInt();
   int scaleMaxDenom = ruleElem.attribute( QStringLiteral( "scalemaxdenom" ), QStringLiteral( "0" ) ).toInt();
-  QString ruleKey = ruleElem.attribute( QStringLiteral( "key" ) );
+  QString ruleKey;
+  if ( reuseId )
+    ruleKey = ruleElem.attribute( QStringLiteral( "key" ) );
+  else
+    ruleKey = QUuid::createUuid().toString();
   Rule *rule = new Rule( settings, scaleMinDenom, scaleMaxDenom, filterExp, description );
 
   if ( !ruleKey.isEmpty() )
@@ -271,7 +275,7 @@ QgsRuleBasedLabeling::Rule *QgsRuleBasedLabeling::Rule::create( const QDomElemen
     }
     else
     {
-      //QgsDebugMsg( QStringLiteral( "failed to init a child rule!" ) );
+      //QgsDebugError( QStringLiteral( "failed to init a child rule!" ) );
     }
     childRuleElem = childRuleElem.nextSiblingElement( QStringLiteral( "rule" ) );
   }
@@ -578,3 +582,26 @@ void QgsRuleBasedLabeling::toSld( QDomNode &parent, const QVariantMap &props ) c
   }
 
 }
+
+void QgsRuleBasedLabeling::multiplyOpacity( double opacityFactor )
+{
+  if ( !mRootRule )
+  {
+    return;
+  }
+
+  const QgsRuleBasedLabeling::RuleList rules = mRootRule->children();
+  for ( Rule *rule : rules )
+  {
+    QgsPalLayerSettings *settings = rule->settings();
+
+    if ( settings && settings->drawLabels )
+    {
+      QgsTextFormat format { settings->format() };
+      format.multiplyOpacity( opacityFactor );
+      settings->setFormat( format );
+    }
+
+  }
+}
+

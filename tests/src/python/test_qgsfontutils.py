@@ -13,21 +13,16 @@ __copyright__ = 'Copyright 2014, The QGIS Project'
 
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import QgsFontUtils, QgsSettings
-from qgis.testing import (
-    start_app,
-    unittest
-)
+from qgis.testing import start_app, unittest
 
-from utilities import (
-    getTestFontFamily,
-    loadTestFonts
-)
+from utilities import getTestFontFamily, loadTestFonts
 
 
 class TestQgsFontUtils(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("QGIS_TestPyQgsFontUtils.com")
         QCoreApplication.setApplicationName("QGIS_TestPyQgsFontUtils")

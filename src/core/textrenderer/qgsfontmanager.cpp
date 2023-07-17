@@ -18,7 +18,8 @@
 #include "qgsapplication.h"
 #include "qgsnetworkcontentfetchertask.h"
 #include "qgsziputils.h"
-#include "qgsfontutils.h"
+#include "qgssettingsentryimpl.h"
+#include "qgssettingstree.h"
 
 #include <QRegularExpression>
 #include <QRegularExpressionMatch>
@@ -27,10 +28,14 @@
 #include <QTemporaryFile>
 #include <QTemporaryDir>
 
+const QgsSettingsEntryStringList *QgsFontManager::settingsFontFamilyReplacements = new QgsSettingsEntryStringList( QStringLiteral( "fontFamilyReplacements" ), QgsSettingsTree::sTreeFonts, QStringList(), QStringLiteral( "Automatic font family replacements" ) );
+
+const QgsSettingsEntryBool *QgsFontManager::settingsDownloadMissingFonts = new QgsSettingsEntryBool( QStringLiteral( "downloadMissingFonts" ), QgsSettingsTree::sTreeFonts, true, QStringLiteral( "Automatically download missing fonts whenever possible" ) );
+
 QgsFontManager::QgsFontManager( QObject *parent )
   : QObject( parent )
 {
-  const QStringList replacements = settingsFontFamilyReplacements.value();
+  const QStringList replacements = settingsFontFamilyReplacements->value();
   for ( const QString &replacement : replacements )
   {
     const thread_local QRegularExpression rxReplacement( QStringLiteral( "(.*?):(.*)" ) );
@@ -91,7 +96,7 @@ void QgsFontManager::storeFamilyReplacements()
   QStringList replacements;
   for ( auto it = mFamilyReplacements.constBegin(); it != mFamilyReplacements.constEnd(); ++it )
     replacements << QStringLiteral( "%1:%2" ).arg( it.key(), it.value() );
-  settingsFontFamilyReplacements.setValue( replacements );
+  settingsFontFamilyReplacements->setValue( replacements );
 }
 
 void QgsFontManager::installUserFonts()
@@ -106,7 +111,7 @@ void QgsFontManager::installUserFonts()
   {
     if ( !QFile::exists( dir ) && !QDir().mkpath( dir ) )
     {
-      QgsDebugMsg( QStringLiteral( "Cannot create local fonts dir: %1" ).arg( dir ) );
+      QgsDebugError( QStringLiteral( "Cannot create local fonts dir: %1" ).arg( dir ) );
       return;
     }
 
@@ -123,7 +128,7 @@ void QgsFontManager::installFontsFromDirectory( const QString &dir )
     const int id = QFontDatabase::addApplicationFont( infoIt->filePath() );
     if ( id == -1 )
     {
-      QgsDebugMsg( QStringLiteral( "The user font %1 could not be installed" ).arg( infoIt->filePath() ) );
+      QgsDebugError( QStringLiteral( "The user font %1 could not be installed" ).arg( infoIt->filePath() ) );
       mUserFontToFamilyMap.remove( infoIt->filePath() );
       mUserFontToIdMap.remove( infoIt->filePath() );
     }
@@ -138,7 +143,7 @@ void QgsFontManager::installFontsFromDirectory( const QString &dir )
 bool QgsFontManager::tryToDownloadFontFamily( const QString &family, QString &matchedFamily )
 {
   matchedFamily.clear();
-  if ( !settingsDownloadMissingFonts.value() )
+  if ( !settingsDownloadMissingFonts->value() )
     return false;
 
   QgsReadWriteLocker locker( mReplacementLock, QgsReadWriteLocker::Read );
@@ -1129,7 +1134,7 @@ void QgsFontManager::addUserFontDirectory( const QString &directory )
 
   if ( !QFile::exists( directory ) && !QDir().mkpath( directory ) )
   {
-    QgsDebugMsg( QStringLiteral( "Cannot create local fonts dir: %1" ).arg( directory ) );
+    QgsDebugError( QStringLiteral( "Cannot create local fonts dir: %1" ).arg( directory ) );
     return;
   }
 

@@ -46,6 +46,7 @@
 #include "qgsinterval.h"
 #include "qgsrenderchecker.h"
 #include "qgsmultirenderchecker.h"
+#include "qgsunittypes.h"
 #include "qgis_test.h"
 
 #define QGSTEST_MAIN(TestObject) \
@@ -79,6 +80,15 @@
       qDebug( "Expecting %f to be differerent from %f (diff %f > %f)", static_cast< double >( value ), static_cast< double >( not_expected ), std::fabs( static_cast< double >( not_expected ) - value ), static_cast< double >( epsilon ) ); \
     } \
     QVERIFY( !qgsDoubleNear( value, not_expected, epsilon ) ); \
+  }(void)(0)
+
+#define QGSVERIFYLESSTHAN(value,expected) { \
+    bool _xxxresult = ( value ) < ( expected ); \
+    if ( !_xxxresult  ) \
+    { \
+      qDebug( "Expecting < %.10f got %.10f", static_cast< double >( expected ), static_cast< double >( value ) ); \
+    } \
+    QVERIFY( ( value ) < ( expected ) ); \
   }(void)(0)
 
 #define QGSCOMPARENEARPOINT(point1,point2,epsilon) { \

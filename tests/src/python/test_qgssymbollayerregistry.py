@@ -11,7 +11,13 @@ __copyright__ = 'Copyright 2015, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.PyQt import sip
-from qgis.core import Qgis, QgsApplication, QgsSymbolLayerAbstractMetadata, QgsSymbolLayer, QgsSimpleMarkerSymbolLayer
+from qgis.core import (
+    Qgis,
+    QgsApplication,
+    QgsSimpleMarkerSymbolLayer,
+    QgsSymbolLayer,
+    QgsSymbolLayerAbstractMetadata,
+)
 from qgis.testing import start_app, unittest
 
 start_app()
@@ -33,6 +39,7 @@ class TestQgsSymbolLayerRegistry(unittest.TestCase):
         Setup the involved layers and relations for a n:m relation
         :return:
         """
+        super().setUpClass()
         cls.registry = QgsApplication.instance().symbolLayerRegistry()
 
     def testCreateInstance(self):

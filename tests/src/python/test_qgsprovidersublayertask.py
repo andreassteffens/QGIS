@@ -12,14 +12,11 @@ __copyright__ = 'Copyright 2021, The QGIS Project'
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.core import (
     QgsApplication,
-    QgsProviderSublayerTask,
     QgsMapLayerType,
-    QgsWkbTypes
+    QgsProviderSublayerTask,
+    QgsWkbTypes,
 )
-from qgis.testing import (
-    unittest,
-    start_app
-)
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 

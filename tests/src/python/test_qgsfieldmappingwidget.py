@@ -15,23 +15,13 @@ __revision__ = '$Format:%H$'
 from qgis.PyQt.Qt import Qt
 from qgis.PyQt.QtCore import (
     QCoreApplication,
-    QVariant,
-    QModelIndex,
     QItemSelectionModel,
+    QModelIndex,
+    QVariant,
 )
-from qgis.PyQt.QtGui import (
-    QColor
-)
-from qgis.core import (
-    QgsFields,
-    QgsField,
-    QgsFieldConstraints,
-    QgsProperty
-)
-from qgis.gui import (
-    QgsFieldMappingWidget,
-    QgsFieldMappingModel,
-)
+from qgis.PyQt.QtGui import QColor
+from qgis.core import QgsField, QgsFieldConstraints, QgsFields, QgsProperty
+from qgis.gui import QgsFieldMappingModel, QgsFieldMappingWidget
 from qgis.testing import start_app, unittest
 
 
@@ -40,6 +30,7 @@ class TestPyQgsFieldMappingModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
 
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(cls.__name__)
@@ -51,12 +42,15 @@ class TestPyQgsFieldMappingModel(unittest.TestCase):
 
         source_fields = QgsFields()
         f = QgsField('source_field1', QVariant.String)
+        f.setComment('my comment')
         self.assertTrue(source_fields.append(f))
         f = QgsField('source_field2', QVariant.Int, 'integer', 10, 8)
+        f.setAlias('my alias')
         self.assertTrue(source_fields.append(f))
 
         destination_fields = QgsFields()
         f = QgsField('destination_field1', QVariant.Int, 'integer', 10, 8)
+        f.setComment('my comment')
         self.assertTrue(destination_fields.append(f))
         f = QgsField('destination_field2', QVariant.String)
         f.setAlias('my alias')
@@ -93,12 +87,18 @@ class TestPyQgsFieldMappingModel(unittest.TestCase):
         self.assertEqual(model.data(model.index(0, 1), Qt.DisplayRole), 'destination_field1')
         self.assertEqual(model.data(model.index(0, 3), Qt.DisplayRole), 10)
         self.assertEqual(model.data(model.index(0, 4), Qt.DisplayRole), 8)
+        self.assertFalse(model.data(model.index(0, 6), Qt.DisplayRole))
+        self.assertEqual(model.data(model.index(0, 7), Qt.DisplayRole), 'my comment')
 
         self.assertEqual(model.data(model.index(1, 0), Qt.DisplayRole), '"source_field1"')
         self.assertEqual(model.data(model.index(1, 1), Qt.DisplayRole), 'destination_field2 (my alias)')
+        self.assertEqual(model.data(model.index(1, 6), Qt.DisplayRole), 'my alias')
+        self.assertFalse(model.data(model.index(1, 7), Qt.DisplayRole))
 
         self.assertEqual(model.data(model.index(2, 0), Qt.DisplayRole), QVariant())
         self.assertEqual(model.data(model.index(2, 1), Qt.DisplayRole), 'destination_field3')
+        self.assertFalse(model.data(model.index(2, 6), Qt.DisplayRole))
+        self.assertFalse(model.data(model.index(2, 7), Qt.DisplayRole))
 
         # Test expression scope
         ctx = model.contextGenerator().createExpressionContext()
@@ -164,6 +164,8 @@ class TestPyQgsFieldMappingModel(unittest.TestCase):
         self.assertEqual(model.data(model.index(2, 1), Qt.DisplayRole), 'destination_field3')
 
         f = QgsField('source_field3', QVariant.String)
+        f.setAlias('an alias')
+        f.setComment('a comment')
         fields = self.source_fields
         fields.append(f)
         model.setSourceFields(fields)

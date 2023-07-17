@@ -12,25 +12,16 @@ __date__ = '2022-04-19'
 __copyright__ = 'Copyright 2022, The QGIS Project'
 
 import qgis  # NOQA
+
 from PyQt5.QtCore import QDateTime
 from qgis.core import (
     QgsApplication,
-    QgsVectorLayer,
     QgsProject,
+    QgsVectorLayer,
 )
 
 
 class TestPyQgsProjectStorageBase:
-
-    @classmethod
-    def setUpClass(cls):
-        """Run before all tests"""
-        pass
-
-    @classmethod
-    def tearDownClass(cls):
-        """Run after all tests"""
-        pass
 
     def dropProjectsTable(self):
         """Drop existing project storage table"""

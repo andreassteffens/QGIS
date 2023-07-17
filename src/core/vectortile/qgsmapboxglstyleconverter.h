@@ -20,7 +20,6 @@
 #include "qgis_sip.h"
 #include "qgsproperty.h"
 #include "qgspropertycollection.h"
-#include "qgsunittypes.h"
 
 #include <memory>
 #include <QVariantMap>
@@ -30,6 +29,7 @@ class QgsVectorTileRenderer;
 class QgsVectorTileLabeling;
 class QgsVectorTileBasicRendererStyle;
 class QgsVectorTileBasicLabelingStyle;
+class QgsMapLayer;
 class QgsRasterLayer;
 
 /**
@@ -67,7 +67,7 @@ class CORE_EXPORT QgsMapBoxGlStyleConversionContext
      *
      * \see setTargetUnit()
      */
-    QgsUnitTypes::RenderUnit targetUnit() const;
+    Qgis::RenderUnit targetUnit() const;
 
     /**
      * Sets the target unit type.
@@ -84,7 +84,7 @@ class CORE_EXPORT QgsMapBoxGlStyleConversionContext
      *
      * \see targetUnit()
      */
-    void setTargetUnit( QgsUnitTypes::RenderUnit targetUnit );
+    void setTargetUnit( Qgis::RenderUnit targetUnit );
 
     /**
      * Returns the pixel size conversion factor, used to scale the original pixel sizes
@@ -154,7 +154,7 @@ class CORE_EXPORT QgsMapBoxGlStyleConversionContext
 
     QString mLayerId;
 
-    QgsUnitTypes::RenderUnit mTargetUnit = QgsUnitTypes::RenderPixels;
+    Qgis::RenderUnit mTargetUnit = Qgis::RenderUnit::Pixels;
 
     double mSizeConversionFactor = 1.0;
 

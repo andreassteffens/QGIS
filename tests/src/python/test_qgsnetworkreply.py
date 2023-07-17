@@ -11,8 +11,9 @@ __date__ = '20/06/2022'
 __copyright__ = 'Copyright 2022, The QGIS Project'
 
 import qgis  # NOQA
+
 from qgis.core import QgsNetworkReplyContent
-from qgis.testing import unittest, start_app
+from qgis.testing import start_app, unittest
 
 app = start_app()
 

@@ -17,14 +17,14 @@ import os
 from qgis.PyQt.QtCore import QTemporaryDir
 from qgis.core import (
     Qgis,
-    QgsWkbTypes,
     QgsAbstractDatabaseProviderConnection,
+    QgsDataSourceUri,
     QgsProviderConnectionException,
-    QgsVectorLayer,
     QgsProviderRegistry,
     QgsRasterLayer,
-    QgsDataSourceUri,
     QgsSettings,
+    QgsVectorLayer,
+    QgsWkbTypes,
 )
 from qgis.testing import unittest
 
@@ -49,6 +49,7 @@ class TestPyQgsProviderConnectionPostgres(unittest.TestCase, TestPyQgsProviderCo
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super(TestPyQgsProviderConnectionPostgres, cls).setUpClass()
 
         TestPyQgsProviderConnectionBase.setUpClass()
         cls.postgres_conn = "service='qgis_test'"
@@ -73,7 +74,7 @@ class TestPyQgsProviderConnectionPostgres(unittest.TestCase, TestPyQgsProviderCo
 
         # Test raster
         self.assertEqual(conn.tableUri('qgis_test', 'Raster1'),
-                         '%s table="qgis_test"."Raster1"' % self.uri)
+                         f'{self.uri} table="qgis_test"."Raster1"')
 
         rl = QgsRasterLayer(conn.tableUri('qgis_test', 'Raster1'), 'r1', 'postgresraster')
         self.assertTrue(rl.isValid())

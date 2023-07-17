@@ -11,7 +11,13 @@ __copyright__ = 'Copyright 2015, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QSize
-from qgis.core import (QgsMapUnitScale, QgsRenderContext, QgsSymbolLayerUtils, QgsMapSettings, QgsRectangle)
+from qgis.core import (
+    QgsMapSettings,
+    QgsMapUnitScale,
+    QgsRectangle,
+    QgsRenderContext,
+    QgsSymbolLayerUtils,
+)
 from qgis.testing import unittest
 
 

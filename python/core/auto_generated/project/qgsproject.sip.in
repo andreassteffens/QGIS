@@ -678,7 +678,7 @@ Convenience function to set topological editing
 Convenience function to query topological editing status
 %End
 
-    QgsUnitTypes::DistanceUnit distanceUnits() const;
+    Qgis::DistanceUnit distanceUnits() const;
 %Docstring
 Convenience function to query default distance measurement units for project.
 
@@ -689,7 +689,7 @@ Convenience function to query default distance measurement units for project.
 .. versionadded:: 2.14
 %End
 
-    void setDistanceUnits( QgsUnitTypes::DistanceUnit unit );
+    void setDistanceUnits( Qgis::DistanceUnit unit );
 %Docstring
 Sets the default distance measurement units for the project.
 
@@ -700,7 +700,7 @@ Sets the default distance measurement units for the project.
 .. versionadded:: 3.0
 %End
 
-    QgsUnitTypes::AreaUnit areaUnits() const;
+    Qgis::AreaUnit areaUnits() const;
 %Docstring
 Convenience function to query default area measurement units for project.
 
@@ -709,7 +709,7 @@ Convenience function to query default area measurement units for project.
 .. versionadded:: 2.14
 %End
 
-    void setAreaUnits( QgsUnitTypes::AreaUnit unit );
+    void setAreaUnits( Qgis::AreaUnit unit );
 %Docstring
 Sets the default area measurement units for the project.
 
@@ -782,6 +782,15 @@ the project.
 %End
 
 
+    QgsSensorManager *sensorManager();
+%Docstring
+Returns the project's sensor manager, which manages sensors within
+the project.
+
+.. versionadded:: 3.32
+%End
+
+
     QgsProjectViewSettings *viewSettings();
 %Docstring
 Returns the project's view settings, which contains settings and properties
@@ -821,10 +830,19 @@ Returns the project's elevation properties, which contains the project's elevati
 
     QgsProjectDisplaySettings *displaySettings();
 %Docstring
-Returns the project's display settings, which settings and properties relating
+Returns the project's display settings, which contains settings and properties relating
 to how a QgsProject should display values such as map coordinates and bearings.
 
 .. versionadded:: 3.12
+%End
+
+
+    QgsProjectGpsSettings *gpsSettings();
+%Docstring
+Returns the project's GPS settings, which contains settings and properties relating
+to how a QgsProject should interact with a GPS device.
+
+.. versionadded:: 3.30
 %End
 
     QgsLayerTree *layerTreeRoot() const;
@@ -958,7 +976,7 @@ Returns the edit buffer group
 Should default values be evaluated on provider side when requested and not when committed.
 
 .. deprecated::
-   Test whether the :py:func:`~QgsProject.flags` method returns the Qgis.ProjectFlag.EvaluateDefaultValuesOnProviderSide flag instead.
+   Test whether the :py:func:`~QgsProject.flags` method returns the :py:class:`Qgis`.ProjectFlag.EvaluateDefaultValuesOnProviderSide flag instead.
 %End
 
  void setEvaluateDefaultValues( bool evaluateDefaultValues ) /Deprecated/;
@@ -966,7 +984,7 @@ Should default values be evaluated on provider side when requested and not when 
 Defines if default values should be evaluated on provider side when requested and not when committed.
 
 .. deprecated::
-   use setFlag( Qgis.ProjectFlag.EvaluateDefaultValuesOnProviderSide ) instead.
+   use setFlag( :py:class:`Qgis`.ProjectFlag.EvaluateDefaultValuesOnProviderSide ) instead.
 %End
 
     virtual QgsExpressionContext createExpressionContext() const;
@@ -1330,7 +1348,7 @@ materialized views with Postgres provider.
 :param trust: ``True`` to trust the project, ``False`` otherwise
 
 .. deprecated::
-   Use setFlag( Qgis.ProjectFlag.TrustStoredLayerStatistics ) instead.
+   Use setFlag( :py:class:`Qgis`.ProjectFlag.TrustStoredLayerStatistics ) instead.
 %End
 
  bool trustLayerMetadata() const /Deprecated/;
@@ -1343,7 +1361,7 @@ unicity is not checked for views and materialized views with Postgres
 provider.
 
 .. deprecated::
-   Test whether the :py:func:`~QgsProject.flags` method returns the Qgis.ProjectFlag.TrustStoredLayerStatistics flag instead.
+   Test whether the :py:func:`~QgsProject.flags` method returns the :py:class:`Qgis`.ProjectFlag.TrustStoredLayerStatistics flag instead.
 %End
 
 
@@ -1596,6 +1614,20 @@ should be canceled.
 .. versionadded:: 3.10
 %End
 
+    QgsElevationShadingRenderer elevationShadingRenderer() const;
+%Docstring
+Returns the elevation shading renderer used for map shading
+
+.. versionadded:: 3.30
+%End
+
+    void setElevationShadingRenderer( const QgsElevationShadingRenderer &elevationShadingRenderer );
+%Docstring
+Sets the elevation shading renderer used for global map shading
+
+.. versionadded:: 3.30
+%End
+
     SIP_PYOBJECT __repr__();
 %MethodCode
     QString str = QStringLiteral( "<QgsProject: '%1'%2>" ).arg( sipCpp->fileName(),
@@ -1696,7 +1728,7 @@ Emitted when a layer is loaded
 Emitted when loading layers has produced some messages
 
 :param layerName: the layer name
-:param messages: a list of pairs of Qgis.MessageLevel and messages
+:param messages: a list of pairs of :py:class:`Qgis`.MessageLevel and messages
 
 .. versionadded:: 3.2
 %End
@@ -2024,6 +2056,13 @@ Emitted when the list of custom project map scales changes.
 
 .. deprecated::
    Use :py:func:`~QgsProject.viewSettings` instead
+%End
+
+    void elevationShadingRendererChanged();
+%Docstring
+Emitted when the map shading renderer changes
+
+.. versionadded:: 3.30
 %End
 
   public slots:

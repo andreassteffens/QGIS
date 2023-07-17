@@ -14,14 +14,16 @@ from time import sleep
 import qgis  # NOQA
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.core import (QgsLocator,
-                       QgsLocatorFilter,
-                       QgsLocatorContext,
-                       QgsLocatorResult,
-                       QgsLocatorModel,
-                       QgsLocatorProxyModel,
-                       QgsLocatorAutomaticModel,
-                       QgsSettings)
+from qgis.core import (
+    QgsLocator,
+    QgsLocatorAutomaticModel,
+    QgsLocatorContext,
+    QgsLocatorFilter,
+    QgsLocatorModel,
+    QgsLocatorProxyModel,
+    QgsLocatorResult,
+    QgsSettings,
+)
 from qgis.testing import start_app, unittest
 
 start_app()
@@ -311,7 +313,7 @@ class TestQgsLocator(unittest.TestCase):
         l.deregisterFilter(filter_c)
 
         # filter with custom prefix
-        QgsSettings().setValue("locator_filters/prefix_test_custom", 'xyz', QgsSettings.Gui)
+        QgsSettings().setValue("locator-filters/items/test_custom/prefix", 'xyz')
         filter_c = test_filter('custom', 'abc')
         l.registerFilter(filter_c)
         self.assertEqual(filter_c.prefix(), 'abc')

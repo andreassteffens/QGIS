@@ -12,11 +12,11 @@ __copyright__ = 'Copyright 2020, The QGIS Project'
 import qgis  # NOQA
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.core import (
-    QgsProviderRegistry,
-    QgsPointCloudLayer,
+    QgsPointCloudAttribute,
     QgsPointCloudAttributeCollection,
     QgsPointCloudAttributeProxyModel,
-    QgsPointCloudAttribute
+    QgsPointCloudLayer,
+    QgsProviderRegistry,
 )
 from qgis.gui import QgsPointCloudAttributeComboBox
 from qgis.testing import start_app, unittest

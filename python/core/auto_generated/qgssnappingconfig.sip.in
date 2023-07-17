@@ -44,7 +44,7 @@ This is a container for configuration of the snapping of the project
     static QString snappingTypeToString( Qgis::SnappingType type );
 %Docstring
 Convenient method to returns the translated name of the enum type
-Qgis.SnappingTypes.
+:py:class:`Qgis`.SnappingTypes.
 
 .. versionadded:: 3.26
 %End
@@ -52,19 +52,19 @@ Qgis.SnappingTypes.
  static QString snappingTypeFlagToString( Qgis::SnappingType type ) /Deprecated/;
 %Docstring
 Convenient method to return the translated name of the enum type
-Qgis.SnappingTypes.
+:py:class:`Qgis`.SnappingTypes.
 
 .. versionadded:: 3.12
 
 .. deprecated:: QGIS 3.26
-   use Qgis.snappingTypeToString instead
+   use :py:class:`Qgis`.snappingTypeToString instead
 %End
 
 
     static QIcon snappingTypeToIcon( Qgis::SnappingType type );
 %Docstring
 Convenient method to return an icon corresponding to the enum type
-Qgis.SnappingTypes.
+:py:class:`Qgis`.SnappingTypes.
 
 .. versionadded:: 3.20
 %End
@@ -72,10 +72,10 @@ Qgis.SnappingTypes.
  static QIcon snappingTypeFlagToIcon( Qgis::SnappingType type ) /Deprecated/;
 %Docstring
 Convenient method to return an icon corresponding to the enum type
-Qgis.SnappingTypes.
+:py:class:`Qgis`.SnappingTypes.
 
 .. deprecated:: QGIS 3.26
-   use Qgis.snappingTypeToString instead
+   use :py:class:`Qgis`.snappingTypeToString instead
 
 .. versionadded:: 3.20
 %End
@@ -93,7 +93,7 @@ This is a container of advanced configuration (per layer) of the snapping of the
 %End
       public:
 
- IndividualLayerSettings( bool enabled, SnappingType type, double tolerance, QgsTolerance::UnitType units ) /Deprecated/;
+ IndividualLayerSettings( bool enabled, SnappingType type, double tolerance, Qgis::MapToolUnit units ) /Deprecated/;
 %Docstring
 IndividualLayerSettings
 
@@ -103,10 +103,10 @@ IndividualLayerSettings
 :param units:
 
 .. deprecated:: QGIS 3.12
-   use the method with Qgis.SnappingTypes instead.
+   use the method with :py:class:`Qgis`.SnappingTypes instead.
 %End
 
-        IndividualLayerSettings( bool enabled, Qgis::SnappingTypes type, double tolerance, QgsTolerance::UnitType units, double minScale = 0.0, double maxScale = 0.0 );
+        IndividualLayerSettings( bool enabled, Qgis::SnappingTypes type, double tolerance, Qgis::MapToolUnit units, double minScale = 0.0, double maxScale = 0.0 );
 %Docstring
 IndividualLayerSettings
 
@@ -180,12 +180,12 @@ Returns the tolerance
 Sets the tolerance
 %End
 
-        QgsTolerance::UnitType units() const;
+        Qgis::MapToolUnit units() const;
 %Docstring
 Returns the type of units
 %End
 
-        void setUnits( QgsTolerance::UnitType units );
+        void setUnits( Qgis::MapToolUnit units );
 %Docstring
 Sets the type of units
 %End
@@ -338,12 +338,12 @@ Returns the scale dependency mode
 .. versionadded:: 3.14
 %End
 
-    QgsTolerance::UnitType units() const;
+    Qgis::MapToolUnit units() const;
 %Docstring
 Returns the type of units
 %End
 
-    void setUnits( QgsTolerance::UnitType units );
+    void setUnits( Qgis::MapToolUnit units );
 %Docstring
 Sets the type of units
 %End

@@ -14,8 +14,13 @@ import shutil
 import tempfile
 
 import osgeo.gdal  # NOQA
-from qgis.PyQt.QtCore import QDate, QTime, QDateTime, QVariant, QDir
-from qgis.core import QgsVectorLayer, QgsFeatureRequest, QgsVectorDataProvider, QgsField
+from qgis.PyQt.QtCore import QDate, QDateTime, QDir, QTime, QVariant
+from qgis.core import (
+    QgsFeatureRequest,
+    QgsField,
+    QgsVectorDataProvider,
+    QgsVectorLayer,
+)
 from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
@@ -32,6 +37,7 @@ class TestPyQgsTabfileProvider(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
         cls.basetestpath = tempfile.mkdtemp()
         cls.dirs_to_cleanup = [cls.basetestpath]
 
@@ -40,6 +46,7 @@ class TestPyQgsTabfileProvider(unittest.TestCase):
         """Run after all tests"""
         for dirname in cls.dirs_to_cleanup:
             shutil.rmtree(dirname, True)
+        super().tearDownClass()
 
     def testDateTimeFormats(self):
         # check that date and time formats are correctly interpreted

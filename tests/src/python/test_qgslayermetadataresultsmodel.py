@@ -15,28 +15,28 @@ import os
 import unittest
 
 from osgeo import ogr
-from qgis.PyQt.QtCore import QCoreApplication, QTemporaryDir, QVariant, Qt
+from qgis.PyQt.QtCore import QCoreApplication, Qt, QTemporaryDir, QVariant
 from qgis.PyQt.QtTest import QAbstractItemModelTester
 from qgis.core import (
-    QgsVectorLayer,
-    QgsProviderRegistry,
-    QgsWkbTypes,
-    QgsLayerMetadata,
-    QgsProviderMetadata,
     QgsBox3d,
-    QgsRectangle,
-    QgsMetadataSearchContext,
-    QgsFields,
-    QgsField,
     QgsCoordinateReferenceSystem,
     QgsFeature,
+    QgsField,
+    QgsFields,
     QgsGeometry,
+    QgsLayerMetadata,
+    QgsMetadataSearchContext,
+    QgsProviderMetadata,
+    QgsProviderRegistry,
+    QgsRectangle,
+    QgsVectorLayer,
+    QgsWkbTypes,
 )
 from qgis.gui import (
     QgsLayerMetadataResultsModel,
     QgsLayerMetadataResultsProxyModel,
 )
-from qgis.testing import start_app, TestCase
+from qgis.testing import TestCase, start_app
 
 QGIS_APP = start_app()
 NUM_LAYERS = 20
@@ -49,6 +49,7 @@ class TestQgsLayerMetadataResultModels(TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
 
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(cls.__name__)
@@ -70,7 +71,7 @@ class TestQgsLayerMetadataResultModels(TestCase):
         self.conn.store('test_conn')
 
         for i in range(NUM_LAYERS):
-            lyr = ds.CreateLayer("layer_%s" % i, geom_type=ogr.wkbPoint, options=['SPATIAL_INDEX=NO'])
+            lyr = ds.CreateLayer(f"layer_{i}", geom_type=ogr.wkbPoint, options=['SPATIAL_INDEX=NO'])
             lyr.CreateField(ogr.FieldDefn('text_field', ogr.OFTString))
             f = ogr.Feature(lyr.GetLayerDefn())
             f['text_field'] = 'foo'

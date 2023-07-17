@@ -14,16 +14,16 @@ import random
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QLocale
 from qgis.core import (
-    QgsClassificationMethod,
-    QgsClassificationLogarithmic,
-    QgsClassificationJenks,
     QgsClassificationFixedInterval,
+    QgsClassificationJenks,
+    QgsClassificationLogarithmic,
+    QgsClassificationMethod,
     QgsFeature,
-    QgsVectorLayer,
+    QgsGeometry,
     QgsPointXY,
-    QgsGeometry
+    QgsVectorLayer,
 )
-from qgis.testing import unittest, start_app
+from qgis.testing import start_app, unittest
 
 start_app()
 

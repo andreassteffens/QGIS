@@ -11,12 +11,13 @@ __copyright__ = 'Copyright 2019, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (QgsPropertyCollection,
-                       QgsPalLayerSettings,
-                       QgsLabelObstacleSettings,
-                       QgsProperty)
-from qgis.gui import (QgsLabelSettingsWidgetBase,
-                      QgsLabelObstacleSettingsWidget)
+from qgis.core import (
+    QgsLabelObstacleSettings,
+    QgsPalLayerSettings,
+    QgsProperty,
+    QgsPropertyCollection,
+)
+from qgis.gui import QgsLabelObstacleSettingsWidget, QgsLabelSettingsWidgetBase
 from qgis.testing import start_app, unittest
 
 start_app()

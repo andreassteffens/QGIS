@@ -23,11 +23,12 @@
 #include "qgsgeometryengine.h"
 #include "qgsgeos.h"
 #include "qgslinesymbol.h"
-#include "qgsgeometryutils.h"
 #include "qgsprofilepoint.h"
 #include "qgsfillsymbol.h"
+#include "qgsthreadingutils.h"
 
 #include <QPolygonF>
+#include <QThread>
 
 //
 // QgsRasterLayerProfileResults
@@ -59,7 +60,8 @@ QVector<QgsProfileIdentifyResults> QgsRasterLayerProfileResults::identify( const
 //
 
 QgsRasterLayerProfileGenerator::QgsRasterLayerProfileGenerator( QgsRasterLayer *layer, const QgsProfileRequest &request )
-  : mId( layer->id() )
+  : QgsAbstractProfileSurfaceGenerator( request )
+  , mId( layer->id() )
   , mFeedback( std::make_unique< QgsRasterBlockFeedback >() )
   , mProfileCurve( request.profileCurve() ? request.profileCurve()->clone() : nullptr )
   , mSourceCrs( layer->crs() )
@@ -74,8 +76,10 @@ QgsRasterLayerProfileGenerator::QgsRasterLayerProfileGenerator( QgsRasterLayer *
   , mStepDistance( request.stepDistance() )
 {
   mRasterProvider.reset( layer->dataProvider()->clone() );
+  mRasterProvider->moveToThread( nullptr );
 
   mSymbology = qgis::down_cast< QgsRasterLayerElevationProperties * >( layer->elevationProperties() )->profileSymbology();
+  mElevationLimit = qgis::down_cast< QgsRasterLayerElevationProperties * >( layer->elevationProperties() )->elevationLimit();
   mLineSymbol.reset( qgis::down_cast< QgsRasterLayerElevationProperties * >( layer->elevationProperties() )->profileLineSymbol()->clone() );
   mFillSymbol.reset( qgis::down_cast< QgsRasterLayerElevationProperties * >( layer->elevationProperties() )->profileFillSymbol()->clone() );
 }
@@ -96,6 +100,8 @@ bool QgsRasterLayerProfileGenerator::generateProfile( const QgsProfileGeneration
 {
   if ( !mProfileCurve || mFeedback->isCanceled() )
     return false;
+
+  QgsScopedAssignObjectToCurrentThread assignProviderToCurrentThread( mRasterProvider.get() );
 
   const double startDistanceOffset = std::max( !context.distanceRange().isInfinite() ? context.distanceRange().lower() : 0, 0.0 );
   const double endDistance = context.distanceRange().upper();
@@ -121,7 +127,7 @@ bool QgsRasterLayerProfileGenerator::generateProfile( const QgsProfileGeneration
   }
   catch ( QgsCsException & )
   {
-    QgsDebugMsg( QStringLiteral( "Error transforming profile line to raster CRS" ) );
+    QgsDebugError( QStringLiteral( "Error transforming profile line to raster CRS" ) );
     return false;
   }
 
@@ -137,6 +143,7 @@ bool QgsRasterLayerProfileGenerator::generateProfile( const QgsProfileGeneration
 
   mResults = std::make_unique< QgsRasterLayerProfileResults >();
   mResults->mLayer = mLayer;
+  mResults->mId = mId;
   mResults->copyPropertiesFromGenerator( this );
 
   std::unique_ptr< QgsGeometryEngine > curveEngine( QgsGeometry::createGeometryEngine( transformedCurve.get() ) );
@@ -178,24 +185,37 @@ bool QgsRasterLayerProfileGenerator::generateProfile( const QgsProfileGeneration
   int subRegionHeight = 0;
   int subRegionLeft = 0;
   int subRegionTop = 0;
-  const QgsRectangle rasterSubRegion = mRasterProvider->xSize() > 0 && mRasterProvider->ySize() > 0 ?
-                                       QgsRasterIterator::subRegion(
-                                         mRasterProvider->extent(),
-                                         mRasterProvider->xSize(),
-                                         mRasterProvider->ySize(),
-                                         transformedCurve->boundingBox(),
-                                         subRegionWidth,
-                                         subRegionHeight,
-                                         subRegionLeft,
-                                         subRegionTop ) : transformedCurve->boundingBox();
+  QgsRectangle rasterSubRegion = mRasterProvider->xSize() > 0 && mRasterProvider->ySize() > 0 ?
+                                 QgsRasterIterator::subRegion(
+                                   mRasterProvider->extent(),
+                                   mRasterProvider->xSize(),
+                                   mRasterProvider->ySize(),
+                                   transformedCurve->boundingBox(),
+                                   subRegionWidth,
+                                   subRegionHeight,
+                                   subRegionLeft,
+                                   subRegionTop ) : transformedCurve->boundingBox();
 
   const bool zeroXYSize = mRasterProvider->xSize() == 0 || mRasterProvider->ySize() == 0;
   if ( zeroXYSize )
   {
     const double curveLengthInPixels = sourceCurve->length() / context.mapUnitsPerDistancePixel();
     const double conversionFactor = curveLengthInPixels / transformedCurve->length();
-    subRegionWidth = static_cast< int >( std::floor( rasterSubRegion.width() * conversionFactor ) );
-    subRegionHeight = static_cast< int >( std::floor( rasterSubRegion.height() * conversionFactor ) );
+    subRegionWidth = rasterSubRegion.width() * conversionFactor;
+    subRegionHeight = rasterSubRegion.height() * conversionFactor;
+
+    // ensure we fetch at least 1 pixel wide/high blocks, otherwise exactly vertical/horizontal profile lines will result in zero size blocks
+    // see https://github.com/qgis/QGIS/issues/51196
+    if ( subRegionWidth == 0 )
+    {
+      subRegionWidth = 1;
+      rasterSubRegion.setXMaximum( rasterSubRegion.xMinimum() + 1 / conversionFactor );
+    }
+    if ( subRegionHeight == 0 )
+    {
+      subRegionHeight = 1;
+      rasterSubRegion.setYMaximum( rasterSubRegion.yMinimum() + 1 / conversionFactor );
+    }
   }
 
   // iterate over the raster blocks, throwing away any which don't intersect the profile curve

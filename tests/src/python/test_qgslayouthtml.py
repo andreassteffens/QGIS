@@ -12,16 +12,18 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 import os
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import QUrl, qDebug, QRectF
-from qgis.core import (QgsLayout,
-                       QgsLayoutItemHtml,
-                       QgsLayoutFrame,
-                       QgsLayoutMultiFrame,
-                       QgsProject)
+from qgis.PyQt.QtCore import QRectF, QUrl, qDebug
+from qgis.core import (
+    QgsLayout,
+    QgsLayoutFrame,
+    QgsLayoutItemHtml,
+    QgsLayoutMultiFrame,
+    QgsProject,
+    QgsLayoutChecker
+)
 from qgis.testing import start_app, unittest
 from qgis.testing.mocked import get_iface
 
-from qgslayoutchecker import QgsLayoutChecker
 from utilities import unitTestDataPath
 
 start_app()

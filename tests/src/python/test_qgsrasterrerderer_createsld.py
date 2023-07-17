@@ -29,17 +29,17 @@ from qgis.PyQt.QtCore import (
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (
-    QgsRasterLayer,
-    QgsRasterRenderer,
-    QgsMultiBandColorRenderer,
-    QgsSingleBandGrayRenderer,
-    QgsPalettedRasterRenderer,
-    QgsSingleBandPseudoColorRenderer,
-    QgsContrastEnhancement,
-    QgsRasterMinMaxOrigin,
-    QgsRasterBandStats,
-    QgsRasterShader,
     QgsColorRampShader,
+    QgsContrastEnhancement,
+    QgsMultiBandColorRenderer,
+    QgsPalettedRasterRenderer,
+    QgsRasterBandStats,
+    QgsRasterLayer,
+    QgsRasterMinMaxOrigin,
+    QgsRasterRenderer,
+    QgsRasterShader,
+    QgsSingleBandGrayRenderer,
+    QgsSingleBandPseudoColorRenderer,
 )
 from qgis.testing import start_app, unittest
 
@@ -55,10 +55,6 @@ class TestQgsRasterRendererCreateSld(unittest.TestCase):
     """
      This class tests the creation of SLD from QGis raster layers
     """
-
-    @classmethod
-    def setUpClass(self):
-        pass
 
     def setUp(self):
         pass
@@ -541,7 +537,7 @@ class TestQgsRasterRendererCreateSld(unittest.TestCase):
                 self.assertEqual(expectedMax, vendorOption.firstChild().nodeValue())
             else:
                 self.fail(
-                    'Unrecognised vendorOption name {}'.format(vendorOption.attributes().namedItem('name').nodeValue()))
+                    f"Unrecognised vendorOption name {vendorOption.attributes().namedItem('name').nodeValue()}")
 
     def assertChannelBand(self, root, bandTag, expectedValue, index=0):
         channelSelection = root.elementsByTagName('sld:ChannelSelection').item(index)

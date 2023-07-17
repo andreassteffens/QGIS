@@ -20,8 +20,7 @@
 #include "qgslogger.h"
 #include "qgsmaplayerrenderer.h"
 #include "qgsmaplayerlistutils_p.h"
-#include "qgsvectorlayerlabeling.h"
-#include "qgsrasterlayerrenderer.h"
+#include "qgselevationmap.h"
 
 #include <QtConcurrentRun>
 
@@ -169,7 +168,7 @@ void QgsMapRendererCustomPainterJob::cancelWithoutBlocking()
 {
   if ( !isActive() )
   {
-    QgsDebugMsg( QStringLiteral( "QPAINTER not running!" ) );
+    QgsDebugError( QStringLiteral( "QPAINTER not running!" ) );
     return;
   }
 
@@ -282,16 +281,16 @@ void QgsMapRendererCustomPainterJob::staticRender( QgsMapRendererCustomPainterJo
   catch ( QgsException &e )
   {
     Q_UNUSED( e )
-    QgsDebugMsg( "Caught unhandled QgsException: " + e.what() );
+    QgsDebugError( "Caught unhandled QgsException: " + e.what() );
   }
   catch ( std::exception &e )
   {
     Q_UNUSED( e )
-    QgsDebugMsg( "Caught unhandled std::exception: " + QString::fromLatin1( e.what() ) );
+    QgsDebugError( "Caught unhandled std::exception: " + QString::fromLatin1( e.what() ) );
   }
   catch ( ... )
   {
-    QgsDebugMsg( QStringLiteral( "Caught unhandled unknown exception" ) );
+    QgsDebugError( QStringLiteral( "Caught unhandled unknown exception" ) );
   }
 }
 
@@ -301,6 +300,11 @@ void QgsMapRendererCustomPainterJob::doRender()
   QgsDebugMsgLevel( QStringLiteral( "Starting to render layer stack." ), 5 );
   QElapsedTimer renderTime;
   renderTime.start();
+
+  const QgsElevationShadingRenderer mapShadingRenderer = mSettings.elevationShadingRenderer();
+  std::unique_ptr<QgsElevationMap> mainElevationMap;
+  if ( mapShadingRenderer.isActive() )
+    mainElevationMap.reset( new QgsElevationMap( mSettings.deviceOutputSize(), mSettings.devicePixelRatio() ) );
 
   for ( LayerRenderJob &job : mLayerJobs )
   {
@@ -345,11 +349,29 @@ void QgsMapRendererCustomPainterJob::doRender()
       mPainter->setOpacity( 1.0 );
     }
 
+    if ( mainElevationMap && job.context()->elevationMap() )
+    {
+      const QgsElevationMap &layerElevationMap = *job.context()->elevationMap();
+      if ( layerElevationMap.isValid() )
+        mainElevationMap->combine( layerElevationMap, mapShadingRenderer.combinedElevationMethod() );
+    }
+
     emit layerRendered( job.layerId );
   }
 
   emit renderingLayersFinished();
   QgsDebugMsgLevel( QStringLiteral( "Done rendering map layers" ), 5 );
+
+  if ( mapShadingRenderer.isActive() &&  mainElevationMap )
+  {
+    QImage image( mainElevationMap->rawElevationImage().size(), QImage::Format_RGB32 );
+    image.fill( Qt::white );
+    mapShadingRenderer.renderShading( *mainElevationMap.get(), image, QgsRenderContext::fromMapSettings( mSettings ) );
+    mPainter->save();
+    mPainter->setCompositionMode( QPainter::CompositionMode_Multiply );
+    mPainter->drawImage( 0, 0, image );
+    mPainter->restore();
+  }
 
   if ( mSettings.testFlag( Qgis::MapSettingsFlag::DrawLabeling ) && !mLabelJob.context.renderingStopped() )
   {

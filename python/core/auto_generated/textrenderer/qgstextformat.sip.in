@@ -327,7 +327,7 @@ Sets the size for rendered text.
 .. seealso:: :py:func:`setSizeUnit`
 %End
 
-    QgsUnitTypes::RenderUnit sizeUnit() const;
+    Qgis::RenderUnit sizeUnit() const;
 %Docstring
 Returns the units for the size of rendered text.
 
@@ -338,7 +338,7 @@ Returns the units for the size of rendered text.
 .. seealso:: :py:func:`sizeMapUnitScale`
 %End
 
-    void setSizeUnit( QgsUnitTypes::RenderUnit unit );
+    void setSizeUnit( Qgis::RenderUnit unit );
 %Docstring
 Sets the units for the size of rendered text.
 
@@ -393,6 +393,16 @@ Returns the text's opacity. The opacity is a double value between 0 (fully trans
 opaque).
 
 .. seealso:: :py:func:`setOpacity`
+%End
+
+    void multiplyOpacity( double opacityFactor );
+%Docstring
+Multiply opacity by ``opacityFactor``.
+
+This method multiplies the opacity of all the labeling elements (text, shadow, buffer etc.)
+by ``opacityFactor`` effectively changing the opacity of the whole labeling.
+
+.. versionadded:: 3.32
 %End
 
     void setOpacity( double opacity );
@@ -477,7 +487,7 @@ Otherwise ``height`` is an absolute measurement in :py:func:`~QgsTextFormat.line
 .. seealso:: :py:func:`setLineHeightUnit`
 %End
 
-    QgsUnitTypes::RenderUnit lineHeightUnit() const;
+    Qgis::RenderUnit lineHeightUnit() const;
 %Docstring
 Returns the units for the line height for text.
 
@@ -488,7 +498,7 @@ Returns the units for the line height for text.
 .. versionadded:: 3.28
 %End
 
-    void setLineHeightUnit( QgsUnitTypes::RenderUnit unit );
+    void setLineHeightUnit( Qgis::RenderUnit unit );
 %Docstring
 Sets the ``unit`` for the line height for text.
 
@@ -708,7 +718,7 @@ Updates the format by evaluating current values of data defined properties.
 .. versionadded:: 3.10
 %End
 
-    static QPixmap textFormatPreviewPixmap( const QgsTextFormat &format, QSize size, const QString &previewText = QString(), int padding = 0 );
+    static QPixmap textFormatPreviewPixmap( const QgsTextFormat &format, QSize size, const QString &previewText = QString(), int padding = 0, const QgsScreenProperties &screen = QgsScreenProperties() );
 %Docstring
 Returns a pixmap preview for a text ``format``.
 
@@ -716,6 +726,7 @@ Returns a pixmap preview for a text ``format``.
 :param size: target pixmap size
 :param previewText: text to render in preview, or empty for default text
 :param padding: space between icon edge and color ramp
+:param screen: can be used to specify the destination screen properties for the icon. This allows the icon to be generated using the correct DPI and device pixel ratio for the target screen (since QGIS 3.32)
 
 .. versionadded:: 3.10
 %End

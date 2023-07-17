@@ -94,6 +94,12 @@ class GUI_EXPORT QgsMapToolCapture : public QgsMapToolAdvancedDigitizing
     void setCurrentCaptureTechnique( Qgis::CaptureTechnique technique );
 
     /**
+     * Returns the active capture technique
+     * \since QGIS 3.32
+     */
+    Qgis::CaptureTechnique currentCaptureTechnique() const { return mCurrentCaptureTechnique; }
+
+    /**
      * Sets the current shape tool
      * \see QgsMapToolShapeRegistry
      * \since QGIS 3.26
@@ -154,6 +160,8 @@ class GUI_EXPORT QgsMapToolCapture : public QgsMapToolAdvancedDigitizing
     /**
      * Returns the rubberBand currently owned by this map tool and
      * transfers ownership to the caller.
+     *
+     * May be NULLPTR.
      *
      * \since QGIS 3.8
      */
@@ -427,7 +435,7 @@ class GUI_EXPORT QgsMapToolCapture : public QgsMapToolAdvancedDigitizing
     QgsPointXY mTracingStartPoint;
 
     //! Used to store the state of digitizing type (linear or circular)
-    QgsWkbTypes::Type mLineDigitizingType = QgsWkbTypes::LineString;
+    Qgis::WkbType mLineDigitizingType = Qgis::WkbType::LineString;
 
     Qgis::CaptureTechnique mCurrentCaptureTechnique = Qgis::CaptureTechnique::StraightSegments;
 

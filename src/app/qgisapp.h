@@ -102,7 +102,6 @@ class QgsGeometryValidationService;
 class QgsGeometryValidationDock;
 class QgsGeometryValidationModel;
 class QgsUserProfileManager;
-class QgsUserProfileManagerWidgetFactory;
 class QgsHandleBadLayersHandler;
 class QgsNetworkAccessManager;
 class QgsGpsConnection;
@@ -112,6 +111,7 @@ class QgsAppMapTools;
 class QgsMapToolIdentifyAction;
 class Qgs3DMapCanvasWidget;
 class QgsVertexEditor;
+class QgsMapLayerActionContext;
 
 class QDomDocument;
 class QNetworkReply;
@@ -121,6 +121,9 @@ class QAuthenticator;
 class QgsBrowserDockWidget;
 class QgsAdvancedDigitizingDockWidget;
 class QgsGpsInformationWidget;
+class QgsGpsCanvasBridge;
+class QgsAppGpsDigitizing;
+class QgsAppGpsLogging;
 class QgsStatisticalSummaryDockWidget;
 class QgsMapCanvasTracer;
 class QgsTemporalControllerDockWidget;
@@ -140,7 +143,6 @@ class QgsNominatimGeocoder;
 class QgsDataSourceManagerDialog;
 class QgsBrowserGuiModel;
 class QgsBrowserModel;
-class QgsGeoCmsProviderRegistry;
 class QgsLayoutCustomDropHandler;
 class QgsProxyProgressTask;
 class QgsNetworkRequestParameters;
@@ -153,6 +155,10 @@ class QgsAppQueryLogger;
 class QgsMapToolCapture;
 class QgsElevationProfileWidget;
 class QgsScreenHelper;
+class QgsAppGpsConnection;
+class QgsGpsToolBar;
+class QgsAppGpsSettingsMenu;
+class Qgs3DMapScene;
 
 #include <QMainWindow>
 #include <QToolBar>
@@ -174,12 +180,12 @@ class QgsScreenHelper;
 #include "qgsattributetablefiltermodel.h"
 #include "qgsmasterlayoutinterface.h"
 #include "qgsmaptoolselect.h"
-#include "ogr/qgsvectorlayersaveasdialog.h"
+#include "qgsvectorlayersaveasdialog.h"
 #include "qgis.h"
 #include "ui_qgisapp.h"
 #include "qgis_app.h"
-#include "devtools/qgsappdevtoolutils.h"
-#include "options/qgsoptionsutils.h"
+#include "qgsappdevtoolutils.h"
+#include "qgsoptionsutils.h"
 
 #include <QGestureEvent>
 #include <QTapAndHoldGesture>
@@ -260,6 +266,16 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     QList< QgsMapCanvas * > mapCanvases();
 
     /**
+     * Returns the 2D map canvas dock widget named \a name
+     */
+    QgsMapCanvasDockWidget *getMapCanvas( const QString &name );
+
+    /**
+     * Returns a map of all 3D map scenes (by name) open in the app.
+     */
+    QMap<QString, Qgs3DMapScene *> map3DScenes();
+
+    /**
      * Create a new map canvas with the specified unique \a name.
      */
     QgsMapCanvas *createNewMapCanvas( const QString &name );
@@ -270,7 +286,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
      * unwanted map redraws. Callers must manually unfreeze the map canvas when they have finished
      * setting the initial state of the canvas and are ready for it to begin rendering.
      */
-    QgsMapCanvasDockWidget *createNewMapCanvasDock( const QString &name );
+    QgsMapCanvasDockWidget *createNewMapCanvasDock( const QString &name, bool isDocked = true );
 
     /**
      * Closes the additional map canvas with matching \a name.
@@ -637,6 +653,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
 
     //! Menus
     QMenu *projectMenu() { return mProjectMenu; }
+    QMenu *projectImportExportMenu() { return menuImport_Export; }
     QMenu *editMenu() { return mEditMenu; }
     QMenu *viewMenu() { return mViewMenu; }
     QMenu *layerMenu() { return mLayerMenu; }
@@ -864,6 +881,8 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     //! Returns pointer to the identify map tool - used by identify tool in 3D view
     QgsMapToolIdentifyAction *identifyMapTool() const;
 
+    QgsMapLayerActionContext createMapLayerActionContext();
+
     /**
      * Take screenshots for user documentation
      * @param saveDirectory path were the screenshots will be saved
@@ -880,6 +899,11 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
      * is automatically registered within the QgsApplication::gpsConnectionRegistry().
      */
     void setGpsPanelConnection( QgsGpsConnection *connection );
+
+    /**
+     * Returns the GPS settings menu;
+     */
+    QgsAppGpsSettingsMenu *gpsSettingsMenu();
 
     //! Returns the application vertex editor
     QgsVertexEditor *vertexEditor() { return mVertexEditorDock; }
@@ -906,14 +930,14 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
      *
      * Returns a list of layers loaded as a result of opening the URIs.
      */
-    QList< QgsMapLayer * > handleDropUriList( const QgsMimeDataUtils::UriList &lst, bool suppressBulkLayerPostProcessing = false );
+    QList< QgsMapLayer * > handleDropUriList( const QgsMimeDataUtils::UriList &lst, bool suppressBulkLayerPostProcessing = false, bool addToLegend = true );
 
     /**
      * Convenience function to open either a project or a layer file.
      *
      * Returns a list of layers loaded as a result of opening the file.
      */
-    QList< QgsMapLayer * > openFile( const QString &fileName, const QString &fileTypeHint = QString(), bool suppressBulkLayerPostProcessing = false );
+    QList< QgsMapLayer * > openFile( const QString &fileName, const QString &fileTypeHint = QString(), bool suppressBulkLayerPostProcessing = false, bool addToLegend = true );
     void layerTreeViewDoubleClicked( const QModelIndex &index );
     //! Make sure the insertion point for new layers is up-to-date with the current item in layer tree view
     void updateNewLayerInsertionPoint();
@@ -1095,6 +1119,33 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
      * Only works on raster layers.
     */
     void legendLayerStretchUsingCurrentExtent();
+
+    /**
+     * Open the Raster Attribute Table for the raster layer.
+     * Only works on raster layers.
+     *
+     * \since QGIS 3.30
+     */
+    void openRasterAttributeTable();
+
+    /**
+     * Creates a new Raster Attribute Table from the raster layer renderer if the
+     * renderer supports it.
+     *
+     * Only works on raster layers.
+     *
+     * \since QGIS 3.30
+     */
+    void createRasterAttributeTable();
+
+    /**
+     * Loads a Raster Attribute Table from a VAT.DBF file.
+     *
+     * Only works on raster layers.
+     *
+     * \since QGIS 3.30
+     */
+    void loadRasterAttributeTableFromFile();
 
     //! Watch for QFileOpenEvent.
     bool event( QEvent *event ) override;
@@ -1311,6 +1362,19 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
      * on any layer.
      */
     bool checkUnsavedLayerEdits();
+
+    /**
+     * Checks for unsaved changes in raster attribute tables and prompts the user to save
+     * or discard these changes for each raster attribute table.
+     *
+     * Returns TRUE if there are no unsaved raster attribute table remaining, or the user
+     * opted to discard them all. Returns FALSE if the user opted to cancel
+     * on any raster attribute table.
+     *
+     * \param mapLayers optional list of layers to check, if empty all project raster layers will be checked.
+     * \param allowCancel optional flag (default TRUE) that switches on the "Cancel" button.
+     */
+    bool checkUnsavedRasterAttributeTableEdits( const QList<QgsMapLayer *> &mapLayers = QList<QgsMapLayer *>(), bool allowCancel = true );
 
     /**
      * Checks whether memory layers (with features) exist in the project, and if so
@@ -1636,6 +1700,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
 
     //! Creates a new map canvas view
     void newMapCanvas();
+
     //! Creates a new 3D map canvas view
     void new3DMapCanvas();
 
@@ -1837,7 +1902,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     void extentChanged();
     void showRotation();
 
-    void showPanMessage( double distance, QgsUnitTypes::DistanceUnit unit, double bearing );
+    void showPanMessage( double distance, Qgis::DistanceUnit unit, double bearing );
 
     void selectionModeChanged( QgsMapToolSelect::Mode mode );
 
@@ -2173,7 +2238,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
                                          const QString &layerName,
                                          const QString &encoding,
                                          const QString &vectorFileName )> &onSuccess, const std::function< void ( int error, const QString &errorMessage ) > &onFailure,
-                                     QgsVectorLayerSaveAsDialog::Options dialogOptions = QgsVectorLayerSaveAsDialog::AllOptions,
+                                     QgsVectorLayerSaveAsDialog::Options dialogOptions = QgsVectorLayerSaveAsDialog::Option::AllOptions,
                                      const QString &dialogTitle = QString() );
 
     QString saveAsPointCloudLayer( QgsPointCloudLayer *pclayer );
@@ -2266,18 +2331,6 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     void setupDockWidget( QDockWidget *dockWidget, bool isFloating = false, QRect dockGeometry = QRect(),
                           Qt::DockWidgetArea area = Qt::RightDockWidgetArea );
 
-    /**
-     * Reads dock widget's position settings from a DOM element and calls setupDockWidget()
-     * \sa writeDockWidgetSettings()
-     */
-    void readDockWidgetSettings( QDockWidget *dockWidget, const QDomElement &elem );
-
-    /**
-     * Writes dock widget's position settings to a DOM element
-     * \sa readDockWidgetSettings()
-     */
-    void writeDockWidgetSettings( QDockWidget *dockWidget, QDomElement &elem );
-
 #ifdef HAVE_3D
 
     /**
@@ -2296,9 +2349,6 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
 #endif
 
     QgsCoordinateReferenceSystem defaultCrsForNewLayers() const;
-
-    //! Attempts to choose a reasonable default icon size based on the window's screen DPI
-    int chooseReasonableDefaultIconSize() const;
 
     //! Populates project "load from" / "save to" menu based on project storages (when the menu is about to be shown)
     void populateProjectStorageMenu( QMenu *menu, bool saving );
@@ -2458,6 +2508,9 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     QgsMapOverviewCanvas *mOverviewCanvas = nullptr;
     //! Table of contents (legend) for the map
     QgsLayerTreeView *mLayerTreeView = nullptr;
+    //! Keep track of whether ongoing dataset(s) is/are being dropped through the table of contens
+    bool mLayerTreeDrop = false;
+
     //! Helper class that connects layer tree with map canvas
     QgsLayerTreeMapCanvasBridge *mLayerTreeCanvasBridge = nullptr;
     //! Table of contents (legend) to order layers of the map
@@ -2553,7 +2606,13 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     QList<QgsDecorationItem *> mDecorationItems;
 
     //! Persistent GPS toolbox
+    QgsAppGpsConnection *mGpsConnection = nullptr;
+    QgsAppGpsSettingsMenu *mGpsSettingsMenu = nullptr;
     QgsGpsInformationWidget *mpGpsWidget = nullptr;
+    QgsGpsToolBar *mGpsToolBar = nullptr;
+    QgsGpsCanvasBridge *mGpsCanvasBridge = nullptr;
+    QgsAppGpsDigitizing *mGpsDigitizing = nullptr;
+    QgsAppGpsLogging *mGpsLogging = nullptr;
 
     QgsMessageBarItem *mLastMapToolMessage = nullptr;
 
@@ -2668,6 +2727,8 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
 
     QMap< QString, QToolButton * > mAnnotationItemGroupToolButtons;
     QAction *mAnnotationsItemInsertBefore = nullptr; // Used to insert annotation items at the appropriate location in the annotations toolbar
+
+    QSet<QgsMapCanvasDockWidget *> mOpen2DMapViews;
 
 #ifdef HAVE_3D
     QSet<Qgs3DMapCanvasWidget *> mOpen3DMapViews;

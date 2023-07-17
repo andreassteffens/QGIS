@@ -142,7 +142,7 @@ void Qgs3DExportObject::saveTo( QTextStream &out, float scale, const QVector3D &
 
   if ( !hasNormals && !mNormals.empty() )
   {
-    QgsDebugMsg( "Vertex normals count and vertex positions count are different" );
+    QgsDebugError( "Vertex normals count and vertex positions count are different" );
   }
   int verticesCount = mVertexPosition.size() / 3;
 
@@ -197,9 +197,9 @@ QString Qgs3DExportObject::saveMaterial( QTextStream &mtlOut, const QString &fol
     mTextureImage.save( filePath, "JPG" );
     mtlOut << "\tmap_Kd " << materialName << ".jpg" << "\n";
   }
-  for ( const QString &key : mMaterialParameters.keys() )
+  for ( auto it = mMaterialParameters.constBegin(); it != mMaterialParameters.constEnd(); it++ )
   {
-    mtlOut << "\t" << key << " " << mMaterialParameters[key] << "\n";
+    mtlOut << "\t" << it.key() << " " << it.value() << "\n";
   }
   mtlOut << "\tillum 2\n";
   return materialName;

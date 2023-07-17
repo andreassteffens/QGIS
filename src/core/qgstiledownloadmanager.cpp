@@ -20,6 +20,7 @@
 #include "qgslogger.h"
 #include "qgsnetworkaccessmanager.h"
 #include "qgsrangerequestcache.h"
+#include "qgssettings.h"
 
 #include <QElapsedTimer>
 #include <QNetworkReply>
@@ -394,7 +395,7 @@ bool QgsTileDownloadManager::isRangeRequest( const QNetworkRequest &request )
 {
   if ( request.rawHeader( "Range" ).isEmpty() )
     return false;
-  QRegularExpression regex( "^bytes=\\d+-\\d+$" );
+  const thread_local QRegularExpression regex( "^bytes=\\d+-\\d+$" );
   QRegularExpressionMatch match = regex.match( QString::fromUtf8( request.rawHeader( "Range" ) ) );
   return match.hasMatch();
 }

@@ -1,8 +1,15 @@
 import pathlib
 
-from qgis.core import QgsRasterLayer, QgsMultiBandColorRenderer, QgsSingleBandGrayRenderer
-from qgis.gui import QgsRendererRasterPropertiesWidget, QgsMapCanvas
-from qgis.testing import unittest, TestCase
+from qgis.core import (
+    QgsMultiBandColorRenderer,
+    QgsRasterLayer,
+    QgsSingleBandGrayRenderer,
+)
+from qgis.gui import (
+    QgsMapCanvas,
+    QgsRendererRasterPropertiesWidget,
+)
+from qgis.testing import TestCase, unittest
 from qgis.testing.mocked import get_iface
 
 

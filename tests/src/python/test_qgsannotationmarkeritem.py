@@ -12,32 +12,30 @@ __date__ = '29/07/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import (QSize,
-                              QDir)
-from qgis.PyQt.QtGui import (QImage,
-                             QPainter,
-                             QColor)
+from qgis.PyQt.QtCore import QDir, QSize
+from qgis.PyQt.QtGui import QColor, QImage, QPainter
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsMapSettings,
-                       QgsCoordinateTransform,
-                       QgsProject,
-                       QgsPoint,
-                       QgsCoordinateReferenceSystem,
-                       QgsMarkerSymbol,
-                       QgsRenderChecker,
-                       QgsReadWriteContext,
-                       QgsRenderContext,
-                       QgsAnnotationMarkerItem,
-                       QgsRectangle,
-                       QgsAnnotationItemNode,
-                       Qgis,
-                       QgsPointXY,
-                       QgsVertexId,
-                       QgsAnnotationItemEditOperationMoveNode,
-                       QgsAnnotationItemEditOperationDeleteNode,
-                       QgsAnnotationItemEditOperationTranslateItem,
-                       QgsAnnotationItemEditOperationAddNode
-                       )
+from qgis.core import (
+    Qgis,
+    QgsAnnotationItemEditOperationAddNode,
+    QgsAnnotationItemEditOperationDeleteNode,
+    QgsAnnotationItemEditOperationMoveNode,
+    QgsAnnotationItemEditOperationTranslateItem,
+    QgsAnnotationItemNode,
+    QgsAnnotationMarkerItem,
+    QgsCoordinateReferenceSystem,
+    QgsCoordinateTransform,
+    QgsMapSettings,
+    QgsMarkerSymbol,
+    QgsPoint,
+    QgsPointXY,
+    QgsProject,
+    QgsReadWriteContext,
+    QgsRectangle,
+    QgsRenderChecker,
+    QgsRenderContext,
+    QgsVertexId,
+)
 from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
@@ -50,13 +48,15 @@ class TestQgsAnnotationMarkerItem(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         cls.report = "<h1>Python QgsAnnotationMarkerItem Tests</h1>\n"
 
     @classmethod
     def tearDownClass(cls):
-        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        report_file_path = f"{QDir.tempPath()}/qgistest.html"
         with open(report_file_path, 'a') as report_file:
             report_file.write(cls.report)
+        super().tearDownClass()
 
     def testBasic(self):
         item = QgsAnnotationMarkerItem(QgsPoint(12, 13))

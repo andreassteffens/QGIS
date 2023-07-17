@@ -21,20 +21,20 @@ import osgeo.ogr
 from osgeo import gdal
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import (
+    Qgis,
     QgsApplication,
     QgsDataProvider,
-    QgsSettings,
     QgsFeature,
+    QgsFeatureRequest,
     QgsField,
     QgsGeometry,
-    QgsVectorLayer,
-    QgsFeatureRequest,
     QgsProviderRegistry,
     QgsRectangle,
+    QgsSettings,
     QgsVectorDataProvider,
-    QgsWkbTypes,
+    QgsVectorLayer,
     QgsVectorLayerExporter,
-    Qgis
+    QgsWkbTypes,
 )
 from qgis.testing import start_app, unittest
 
@@ -63,6 +63,7 @@ class TestPyQgsShapefileProvider(unittest.TestCase, ProviderTestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super(TestPyQgsShapefileProvider, cls).setUpClass()
         # Create test layer
         cls.basetestpath = tempfile.mkdtemp()
         cls.repackfilepath = tempfile.mkdtemp()
@@ -92,6 +93,7 @@ class TestPyQgsShapefileProvider(unittest.TestCase, ProviderTestCase):
         del cls.vl_poly
         for dirname in cls.dirs_to_cleanup:
             shutil.rmtree(dirname, True)
+        super(TestPyQgsShapefileProvider, cls).tearDownClass()
 
     def treat_time_as_string(self):
         return True
@@ -753,7 +755,7 @@ class TestPyQgsShapefileProvider(unittest.TestCase, ProviderTestCase):
 
         testPath = TEST_DATA_DIR + '/' + 'points.shp'
         subSetString = '"Class" = \'Biplane\''
-        subSet = '|layerid=0|subset=%s' % subSetString
+        subSet = f'|layerid=0|subset={subSetString}'
 
         # unfiltered
         vl = QgsVectorLayer(testPath, 'test', 'ogr')

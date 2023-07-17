@@ -16,10 +16,10 @@ from qgis.PyQt.QtCore import QCoreApplication, QDir
 from qgis.core import (
     QgsApplication,
     QgsCoordinateTransformContext,
+    QgsRasterFileWriter,
+    QgsRasterFileWriterTask,
     QgsRasterLayer,
     QgsRasterPipe,
-    QgsRasterFileWriter,
-    QgsRasterFileWriterTask
 )
 from qgis.testing import start_app, unittest
 

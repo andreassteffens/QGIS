@@ -15,15 +15,17 @@ import tempfile
 
 import qgis  # NOQA
 from osgeo import ogr
-from qgis.PyQt.QtCore import QDate, QTime, QDateTime, QVariant, QByteArray
-from qgis.core import (QgsVectorLayer,
-                       QgsFeature,
-                       QgsFeatureRequest,
-                       QgsFieldConstraints,
-                       QgsPointXY,
-                       NULL,
-                       QgsRectangle,
-                       QgsVectorDataProvider)
+from qgis.PyQt.QtCore import QByteArray, QDate, QDateTime, QTime, QVariant
+from qgis.core import (
+    NULL,
+    QgsFeature,
+    QgsFeatureRequest,
+    QgsFieldConstraints,
+    QgsPointXY,
+    QgsRectangle,
+    QgsVectorDataProvider,
+    QgsVectorLayer,
+)
 from qgis.testing import start_app, unittest
 
 start_app()
@@ -38,6 +40,7 @@ class TestPyQgsOGRProviderSqlite(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
         # Create test layer
         cls.basetestpath = tempfile.mkdtemp()
 
@@ -45,6 +48,7 @@ class TestPyQgsOGRProviderSqlite(unittest.TestCase):
     def tearDownClass(cls):
         """Run after all tests"""
         shutil.rmtree(cls.basetestpath, True)
+        super().tearDownClass()
 
     def testFidSupport(self):
         tmpfile = os.path.join(self.basetestpath, 'testFidSupport.sqlite')

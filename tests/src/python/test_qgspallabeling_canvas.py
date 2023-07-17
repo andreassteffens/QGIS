@@ -22,16 +22,8 @@ from qgis.PyQt.QtCore import qDebug
 from qgis.core import QgsVectorLayerSimpleLabeling
 
 from test_qgspallabeling_base import TestQgsPalLabeling, runSuite
-from test_qgspallabeling_tests import (
-    TestPointBase,
-    TestLineBase,
-    suiteTests
-)
-from utilities import (
-    getTempfilePath,
-    renderMapToImage,
-    mapSettingsString
-)
+from test_qgspallabeling_tests import TestLineBase, TestPointBase, suiteTests
+from utilities import getTempfilePath, mapSettingsString, renderMapToImage
 
 
 class TestCanvasBase(TestQgsPalLabeling):

@@ -15,13 +15,13 @@ import qgis  # NOQA
 from qgis.PyQt.QtCore import QTemporaryDir
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (
-    QgsProjectElevationProperties,
-    QgsReadWriteContext,
-    QgsProject,
     QgsFlatTerrainProvider,
-    QgsRasterDemTerrainProvider,
     QgsMeshTerrainProvider,
-    QgsRasterLayer
+    QgsProject,
+    QgsProjectElevationProperties,
+    QgsRasterDemTerrainProvider,
+    QgsRasterLayer,
+    QgsReadWriteContext,
 )
 from qgis.testing import start_app, unittest
 

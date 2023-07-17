@@ -73,6 +73,8 @@
 #include "qgslayoutlabelwidget.h"
 #include "qgslabelingresults.h"
 #include "qgsscreenhelper.h"
+#include "qgsshortcutsmanager.h"
+#include "qgsconfigureshortcutsdialog.h"
 #include "ui_defaults.h"
 
 #include <QShortcut>
@@ -308,7 +310,7 @@ QgsLayoutDesignerDialog::QgsLayoutDesignerDialog( QWidget *parent, Qt::WindowFla
     initializeRegistry();
   }
   QgsSettings settings;
-  int size = settings.value( QStringLiteral( "/qgis/iconSize" ), QGIS_ICON_SIZE ).toInt();
+  int size = settings.value( QStringLiteral( "/qgis/toolbarIconSize" ), QGIS_ICON_SIZE ).toInt();
   setIconSize( QSize( size, size ) );
   setStyleSheet( QgisApp::instance()->styleSheet() );
 
@@ -589,9 +591,11 @@ QgsLayoutDesignerDialog::QgsLayoutDesignerDialog( QWidget *parent, Qt::WindowFla
 
   //Ctrl+= should also trigger zoom in
   QShortcut *ctrlEquals = new QShortcut( QKeySequence( QStringLiteral( "Ctrl+=" ) ), this );
+  ctrlEquals->setObjectName( QStringLiteral( "LayoutZoomIn" ) );
   connect( ctrlEquals, &QShortcut::activated, mActionZoomIn, &QAction::trigger );
   //Backspace should also trigger delete selection
   QShortcut *backSpace = new QShortcut( QKeySequence( QStringLiteral( "Backspace" ) ), this );
+  backSpace->setObjectName( QStringLiteral( "LayoutDeleteSelection" ) );
   connect( backSpace, &QShortcut::activated, mActionDeleteSelection, &QAction::trigger );
 
 #ifdef Q_OS_MAC
@@ -829,7 +833,7 @@ QgsLayoutDesignerDialog::QgsLayoutDesignerDialog( QWidget *parent, Qt::WindowFla
   mStatusZoomCombo->setCompleter( nullptr );
   mStatusZoomCombo->setMinimumWidth( 100 );
   //zoom combo box accepts decimals in the range 1-9999, with an optional decimal point and "%" sign
-  QRegularExpression zoomRx( QStringLiteral( "\\s*\\d{1,4}(\\.\\d?)?\\s*%?" ) );
+  const thread_local QRegularExpression zoomRx( QStringLiteral( "\\s*\\d{1,4}(\\.\\d?)?\\s*%?" ) );
   QValidator *zoomValidator = new QRegularExpressionValidator( zoomRx, mStatusZoomCombo );
   mStatusZoomCombo->lineEdit()->setValidator( zoomValidator );
 
@@ -993,6 +997,12 @@ QgsLayoutDesignerDialog::QgsLayoutDesignerDialog( QWidget *parent, Qt::WindowFla
   std::sort( actions.begin(), actions.end(), cmpByText_ );
   mToolbarMenu->insertActions( nullptr, actions );
 
+  // Create the shortcuts manager
+  mShortcutsManager = new QgsShortcutsManager( this, "LayoutDesigner/shortcuts/" );
+  mShortcutsManager->registerAllChildren( this );
+  mShortcutsDialog = new QgsConfigureShortcutsDialog( this, mShortcutsManager ) ;
+  connect( mActionKeyboardShortcuts, &QAction::triggered, mShortcutsDialog, &QDialog::show );
+
   restoreWindowState();
 
   //listen out to status bar updates from the view
@@ -1124,6 +1134,13 @@ std::unique_ptr<QgsLayoutDesignerInterface::ExportResults> QgsLayoutDesignerDial
 {
   return mLastExportResults ? std::make_unique< QgsLayoutDesignerInterface::ExportResults>( *mLastExportResults ) : nullptr;
 }
+
+
+QgsShortcutsManager *QgsLayoutDesignerDialog::shortcutsManager()
+{
+  return mShortcutsManager;
+}
+
 
 QgsLayout *QgsLayoutDesignerDialog::currentLayout()
 {
@@ -1801,20 +1818,17 @@ void QgsLayoutDesignerDialog::updateStatusZoom()
     return;
 
   double zoomLevel = 0;
-  if ( currentLayout()->units() == QgsUnitTypes::LayoutPixels )
+  if ( currentLayout()->units() == Qgis::LayoutUnit::Pixels )
   {
     zoomLevel = mView->transform().m11() * 100;
   }
   else
   {
-    double dpi = mScreenHelper->screenDpi();
-    //monitor dpi is not always correct - so make sure the value is sane
-    if ( ( dpi < 60 ) || ( dpi > 1200 ) )
-      dpi = 72;
+    const double dpi = mScreenHelper->screenDpi();
 
     //pixel width for 1mm on screen
     double scale100 = dpi / 25.4;
-    scale100 = currentLayout()->convertFromLayoutUnits( scale100, QgsUnitTypes::LayoutMillimeters ).length();
+    scale100 = currentLayout()->convertFromLayoutUnits( scale100, Qgis::LayoutUnit::Millimeters ).length();
     //current zoomLevel
     zoomLevel = mView->transform().m11() * 100 / scale100;
   }
@@ -4024,12 +4038,12 @@ void QgsLayoutDesignerDialog::restoreWindowState()
 
   if ( !restoreState( settings.value( QStringLiteral( "LayoutDesigner/state" ), QByteArray::fromRawData( reinterpret_cast< const char * >( defaultLayerDesignerUIstate ), sizeof defaultLayerDesignerUIstate ), QgsSettings::App ).toByteArray() ) )
   {
-    QgsDebugMsg( QStringLiteral( "restore of layout UI state failed" ) );
+    QgsDebugError( QStringLiteral( "restore of layout UI state failed" ) );
   }
   // restore window geometry
   if ( !restoreGeometry( settings.value( QStringLiteral( "LayoutDesigner/geometry" ), QgsSettings::App ).toByteArray() ) )
   {
-    QgsDebugMsg( QStringLiteral( "restore of layout UI geometry failed" ) );
+    QgsDebugError( QStringLiteral( "restore of layout UI geometry failed" ) );
     // default to 80% of screen size, at 10% from top left corner
     resize( mScreenHelper->availableGeometry().size() * 0.8 );
     QSize pos = mScreenHelper->availableGeometry().size() * 0.1;
@@ -4220,7 +4234,7 @@ void QgsLayoutDesignerDialog::showForceVectorWarning()
 bool QgsLayoutDesignerDialog::showFileSizeWarning()
 {
   // Image size
-  double oneInchInLayoutUnits = mLayout->convertToLayoutUnits( QgsLayoutMeasurement( 1, QgsUnitTypes::LayoutInches ) );
+  double oneInchInLayoutUnits = mLayout->convertToLayoutUnits( QgsLayoutMeasurement( 1, Qgis::LayoutUnit::Inches ) );
   QSizeF maxPageSize = mLayout->pageCollection()->maximumPageSize();
   const int width = static_cast< int >( mLayout->renderContext().dpi() * maxPageSize.width() / oneInchInLayoutUnits );
   const int height = static_cast< int >( mLayout->renderContext().dpi() * maxPageSize.height() / oneInchInLayoutUnits );

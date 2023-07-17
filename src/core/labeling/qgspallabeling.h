@@ -41,7 +41,6 @@
 #include "qgslabelobstaclesettings.h"
 #include "qgslabelthinningsettings.h"
 #include "qgslabellinesettings.h"
-#include "qgslabeling.h"
 #include "qgscoordinatetransform.h"
 #include "qgsexpression.h"
 
@@ -68,6 +67,7 @@ class QPicture;
 class QgsGeometry;
 class QgsCoordinateTransform;
 class QgsLabelSearchTree;
+class QgsMapLayer;
 class QgsMapSettings;
 class QgsLabelFeature;
 class QgsLabelingEngine;
@@ -98,7 +98,7 @@ class CORE_EXPORT QgsPalLayerSettings
     /**
      * Line placement flags, which control how candidates are generated for a linear feature.
      *
-     * \deprecated Use QgsLabeling::LinePlacementFlags instead
+     * \deprecated Use Qgis::LabelLinePlacementFlags instead
      */
     enum LinePlacementFlags
     {
@@ -439,7 +439,7 @@ class CORE_EXPORT QgsPalLayerSettings
      * \see setPolygonPlacementFlags()
      * \since QGIS 3.14
      */
-    QgsLabeling::PolygonPlacementFlags polygonPlacementFlags() const { return mPolygonPlacementFlags; }
+    Qgis::LabelPolygonPlacementFlags polygonPlacementFlags() const { return mPolygonPlacementFlags; }
 
     /**
      * Sets the polygon placement \a flags, which dictate how polygon labels can be placed.
@@ -447,7 +447,7 @@ class CORE_EXPORT QgsPalLayerSettings
      * \see polygonPlacementFlags()
      * \since QGIS 3.14
      */
-    void setPolygonPlacementFlags( QgsLabeling::PolygonPlacementFlags flags ) { mPolygonPlacementFlags = flags; }
+    void setPolygonPlacementFlags( Qgis::LabelPolygonPlacementFlags flags ) { mPolygonPlacementFlags = flags; }
 
     /**
      * TRUE if feature centroid should be calculated from the whole feature, or
@@ -487,7 +487,7 @@ class CORE_EXPORT QgsPalLayerSettings
      * \see dist
      * \see distMapUnitScale
      */
-    QgsUnitTypes::RenderUnit distUnits = QgsUnitTypes::RenderMillimeters;
+    Qgis::RenderUnit distUnits = Qgis::RenderUnit::Millimeters;
 
     /**
      * Map unit scale for label feature distance.
@@ -511,7 +511,7 @@ class CORE_EXPORT QgsPalLayerSettings
      * \see repeatDistance
      * \see repeatDistanceMapUnitScale
      */
-    QgsUnitTypes::RenderUnit repeatDistanceUnit = QgsUnitTypes::RenderMillimeters;
+    Qgis::RenderUnit repeatDistanceUnit = Qgis::RenderUnit::Millimeters;
 
     /**
      * Map unit scale for repeating labels for a single feature.
@@ -547,7 +547,7 @@ class CORE_EXPORT QgsPalLayerSettings
      * \see yOffset
      * \see labelOffsetMapUnitScale
      */
-    QgsUnitTypes::RenderUnit offsetUnits = QgsUnitTypes::RenderMillimeters;
+    Qgis::RenderUnit offsetUnits = Qgis::RenderUnit::Millimeters;
 
     /**
      * Map unit scale for label offset.
@@ -568,14 +568,14 @@ class CORE_EXPORT QgsPalLayerSettings
      * \see setRotationUnit()
      * \since QGIS 3.22
      */
-    QgsUnitTypes::AngleUnit rotationUnit() const;
+    Qgis::AngleUnit rotationUnit() const;
 
     /**
       * Set unit for rotation of labels.
       * \see rotationUnit()
       * \since QGIS 3.22
       */
-    void setRotationUnit( QgsUnitTypes::AngleUnit angleUnit );
+    void setRotationUnit( Qgis::AngleUnit angleUnit );
 
     /**
      * Maximum angle between inside curved label characters (valid range 20.0 to 60.0).
@@ -695,7 +695,7 @@ class CORE_EXPORT QgsPalLayerSettings
     ObstacleType _getObstacleType() const { return static_cast< ObstacleType>( mObstacleSettings.type() ); }
     void _setObstacleType( ObstacleType type ) { mObstacleSettings.setType( static_cast< QgsLabelObstacleSettings::ObstacleType>( type ) ); }
     unsigned int _getLinePlacementFlags() const { return static_cast< unsigned int >( mLineSettings.placementFlags() ); }
-    void _setLinePlacementFlags( unsigned int flags ) { mLineSettings.setPlacementFlags( static_cast< QgsLabeling::LinePlacementFlags >( flags ) ); }
+    void _setLinePlacementFlags( unsigned int flags ) { mLineSettings.setPlacementFlags( static_cast< Qgis::LabelLinePlacementFlags >( flags ) ); }
     bool _getMergeLines() const { return mLineSettings.mergeLines(); }
     void _setMergeLines( bool merge ) { mLineSettings.setMergeLines( merge ); }
     bool _getAddDirectionSymbol() const { return mLineSettings.addDirectionSymbol(); }
@@ -712,8 +712,8 @@ class CORE_EXPORT QgsPalLayerSettings
     Q_NOWARN_DEPRECATED_POP
     double _getOverrunDistance() const { return mLineSettings.overrunDistance(); }
     void _setOverrunDistance( double distance ) { mLineSettings.setOverrunDistance( distance ); }
-    QgsUnitTypes::RenderUnit _getOverrunDistanceUnit() const { return mLineSettings.overrunDistanceUnit(); }
-    void _setOverrunDistanceUnit( QgsUnitTypes::RenderUnit unit ) { mLineSettings.setOverrunDistanceUnit( unit ); }
+    Qgis::RenderUnit _getOverrunDistanceUnit() const { return mLineSettings.overrunDistanceUnit(); }
+    void _setOverrunDistanceUnit( Qgis::RenderUnit unit ) { mLineSettings.setOverrunDistanceUnit( unit ); }
     QgsMapUnitScale _getOverrunDistanceMapUnitScale() const { return mLineSettings.overrunDistanceMapUnitScale(); }
     void _setOverrunDistanceMapUnitScale( const QgsMapUnitScale &scale ) { mLineSettings.setOverrunDistanceMapUnitScale( scale ); }
     bool _getDisplayAll() const { return mPlacementSettings.overlapHandling() == Qgis::LabelOverlapHandling::AllowOverlapIfRequired; }
@@ -727,7 +727,7 @@ class CORE_EXPORT QgsPalLayerSettings
     QString geometryGenerator;
 
     //! The type of the result geometry of the geometry generator.
-    QgsWkbTypes::GeometryType geometryGeneratorType = QgsWkbTypes::GeometryType::PointGeometry;
+    Qgis::GeometryType geometryGeneratorType = Qgis::GeometryType::Point;
 
     //! Defines if the geometry generator is enabled or not. If disabled, the standard geometry will be taken.
     bool geometryGeneratorEnabled = false;
@@ -736,7 +736,7 @@ class CORE_EXPORT QgsPalLayerSettings
      * Geometry type of layers associated with these settings.
      * \since QGIS 3.10
      */
-    QgsWkbTypes::GeometryType layerType = QgsWkbTypes::UnknownGeometry;
+    Qgis::GeometryType layerType = Qgis::GeometryType::Unknown;
 
     /**
      * \brief setLegendString
@@ -758,7 +758,7 @@ class CORE_EXPORT QgsPalLayerSettings
      */
 #ifndef SIP_RUN
     void calculateLabelSize( const QFontMetricsF *fm, const QString &text, double &labelX, double &labelY, const QgsFeature *f = nullptr, QgsRenderContext *context = nullptr, double *rotatedLabelX SIP_OUT = nullptr, double *rotatedLabelY SIP_OUT = nullptr,
-                             QgsTextDocument *document = nullptr, QgsTextDocumentMetrics *documentMetrics = nullptr );
+                             QgsTextDocument *document = nullptr, QgsTextDocumentMetrics *documentMetrics = nullptr, QRectF *outerBounds = nullptr );
 #else
     void calculateLabelSize( const QFontMetricsF *fm, const QString &text, double &labelX, double &labelY, const QgsFeature *f = nullptr, QgsRenderContext *context = nullptr, double *rotatedLabelX SIP_OUT = nullptr, double *rotatedLabelY SIP_OUT = nullptr );
 #endif
@@ -968,9 +968,10 @@ class CORE_EXPORT QgsPalLayerSettings
     * \param size target pixmap size
     * \param previewText text to render in preview, or empty for default text
     * \param padding space between icon edge and color ramp
+    * \param screen can be used to specify the destination screen properties for the icon. This allows the icon to be generated using the correct DPI and device pixel ratio for the target screen (since QGIS 3.32)
     * \since QGIS 3.10
     */
-    static QPixmap labelSettingsPreviewPixmap( const QgsPalLayerSettings &settings, QSize size, const QString &previewText = QString(), int padding = 0 );
+    static QPixmap labelSettingsPreviewPixmap( const QgsPalLayerSettings &settings, QSize size, const QString &previewText = QString(), int padding = 0, const QgsScreenProperties &screen = QgsScreenProperties() );
 
     /**
      * Returns the layer's unplaced label visibility.
@@ -1046,7 +1047,7 @@ class CORE_EXPORT QgsPalLayerSettings
                              QVariant &exprVal, QgsExpressionContext &context, const QVariant &originalValue = QVariant() );
 
     void parseTextStyle( QFont &labelFont,
-                         QgsUnitTypes::RenderUnit fontunits,
+                         Qgis::RenderUnit fontunits,
                          QgsRenderContext &context );
 
     void parseTextBuffer( QgsRenderContext &context );
@@ -1088,7 +1089,7 @@ class CORE_EXPORT QgsPalLayerSettings
     QgsLabelObstacleSettings mObstacleSettings;
     QgsLabelThinningSettings mThinningSettings;
 
-    QgsLabeling::PolygonPlacementFlags mPolygonPlacementFlags = QgsLabeling::PolygonPlacementFlag::AllowPlacementInsideOfPolygon;
+    Qgis::LabelPolygonPlacementFlags mPolygonPlacementFlags = Qgis::LabelPolygonPlacementFlag::AllowPlacementInsideOfPolygon;
 
     QgsExpression mGeometryGeneratorExpression;
 
@@ -1099,7 +1100,7 @@ class CORE_EXPORT QgsPalLayerSettings
     Qgis::UnplacedLabelVisibility mUnplacedVisibility = Qgis::UnplacedLabelVisibility::FollowEngineSetting;
 
     //! Unit for rotation of labels.
-    QgsUnitTypes::AngleUnit mRotationUnit = QgsUnitTypes::AngleDegrees;
+    Qgis::AngleUnit mRotationUnit = Qgis::AngleUnit::Degrees;
 
     static void initPropertyDefinitions();
 };

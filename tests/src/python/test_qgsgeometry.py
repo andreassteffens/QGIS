@@ -14,47 +14,49 @@ import math
 import os
 
 from qgis.PyQt.QtCore import QDir, QPointF
-from qgis.PyQt.QtGui import QImage, QPainter, QPen, QColor, QBrush, QPainterPath, QPolygonF, QTransform
+from qgis.PyQt.QtGui import (
+    QBrush,
+    QColor,
+    QImage,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QPolygonF,
+    QTransform,
+)
 from qgis.core import (
-    QgsGeometry,
-    QgsGeometryParameters,
-    QgsVectorLayer,
-    QgsFeature,
-    QgsPointXY,
-    QgsPoint,
+    Qgis,
+    QgsAbstractGeometryTransformer,
+    QgsCircle,
     QgsCircularString,
     QgsCompoundCurve,
+    QgsCoordinateReferenceSystem,
+    QgsCoordinateTransform,
     QgsCurvePolygon,
+    QgsFeature,
+    QgsGeometry,
     QgsGeometryCollection,
+    QgsGeometryParameters,
     QgsLineString,
     QgsMultiCurve,
     QgsMultiLineString,
     QgsMultiPoint,
     QgsMultiPolygon,
     QgsMultiSurface,
+    QgsPoint,
+    QgsPointXY,
     QgsPolygon,
-    QgsCoordinateTransform,
-    QgsRectangle,
-    QgsWkbTypes,
-    QgsTriangle,
-    QgsRenderChecker,
-    QgsCoordinateReferenceSystem,
     QgsProject,
+    QgsRectangle,
+    QgsRenderChecker,
+    QgsTriangle,
+    QgsVectorLayer,
     QgsVertexId,
-    QgsAbstractGeometryTransformer,
-    QgsCircle,
-    Qgis
+    QgsWkbTypes,
 )
-from qgis.testing import (
-    start_app,
-    unittest,
-)
+from qgis.testing import start_app, unittest
 
-from utilities import (
-    compareWkt,
-    unitTestDataPath,
-    writeShape
-)
+from utilities import compareWkt, unitTestDataPath, writeShape
 
 # Convenience instances in case you may need them not used in this test
 
@@ -848,7 +850,7 @@ class TestQgsGeometry(unittest.TestCase):
                 # test that geometry can be created from WKT
                 geom = QgsGeometry.fromWkt(row['wkt'])
                 if row['valid_wkt']:
-                    assert geom, "WKT conversion {} failed: could not create geom:\n{}\n".format(i + 1, row['wkt'])
+                    assert geom, f"WKT conversion {i + 1} failed: could not create geom:\n{row['wkt']}\n"
                 else:
                     assert not geom, "Corrupt WKT {} was incorrectly converted to geometry:\n{}\n".format(i + 1,
                                                                                                           row['wkt'])
@@ -1017,8 +1019,7 @@ class TestQgsGeometry(unittest.TestCase):
             QgsPointXY(2, 0),
             QgsPointXY(0, 0)]])
         touchesGeom = QgsGeometry.touches(myLine, myPoly)
-        myMessage = ('Expected:\n%s\nGot:\n%s\n' %
-                     ("True", touchesGeom))
+        myMessage = f"Expected:\n{'True'}\nGot:\n{touchesGeom}\n"
         assert touchesGeom, myMessage
 
     def testOverlaps(self):
@@ -1034,8 +1035,7 @@ class TestQgsGeometry(unittest.TestCase):
             QgsPointXY(0, 2),
             QgsPointXY(0, 0)]])
         overlapsGeom = QgsGeometry.overlaps(myPolyA, myPolyB)
-        myMessage = ('Expected:\n%s\nGot:\n%s\n' %
-                     ("True", overlapsGeom))
+        myMessage = f"Expected:\n{'True'}\nGot:\n{overlapsGeom}\n"
         assert overlapsGeom, myMessage
 
     def testWithin(self):
@@ -1051,16 +1051,14 @@ class TestQgsGeometry(unittest.TestCase):
             QgsPointXY(0, 2),
             QgsPointXY(0, 0)]])
         withinGeom = QgsGeometry.within(myLine, myPoly)
-        myMessage = ('Expected:\n%s\nGot:\n%s\n' %
-                     ("True", withinGeom))
+        myMessage = f"Expected:\n{'True'}\nGot:\n{withinGeom}\n"
         assert withinGeom, myMessage
 
     def testEquals(self):
         myPointA = QgsGeometry.fromPointXY(QgsPointXY(1, 1))
         myPointB = QgsGeometry.fromPointXY(QgsPointXY(1, 1))
         equalsGeom = QgsGeometry.equals(myPointA, myPointB)
-        myMessage = ('Expected:\n%s\nGot:\n%s\n' %
-                     ("True", equalsGeom))
+        myMessage = f"Expected:\n{'True'}\nGot:\n{equalsGeom}\n"
         assert equalsGeom, myMessage
 
     def testCrosses(self):
@@ -1075,8 +1073,7 @@ class TestQgsGeometry(unittest.TestCase):
             QgsPointXY(1, 2),
             QgsPointXY(1, 0)]])
         crossesGeom = QgsGeometry.crosses(myLine, myPoly)
-        myMessage = ('Expected:\n%s\nGot:\n%s\n' %
-                     ("True", crossesGeom))
+        myMessage = f"Expected:\n{'True'}\nGot:\n{crossesGeom}\n"
         assert crossesGeom, myMessage
 
     def testSimplifyIssue4189(self):
@@ -1163,7 +1160,7 @@ class TestQgsGeometry(unittest.TestCase):
             QgsPointXY(30, 20),
             QgsPointXY(20, 20),
         ]])
-        print('Clip: %s' % myClipPolygon.asWkt())
+        print(f'Clip: {myClipPolygon.asWkt()}')
         writeShape(myMemoryLayer, 'clipGeometryBefore.shp')
         fit = myProvider.getFeatures()
         myFeatures = []
@@ -1182,7 +1179,7 @@ class TestQgsGeometry(unittest.TestCase):
                 # print 'Original: %s' % myGeometry.asWkt()
                 # print 'Combined: %s' % myCombinedGeometry.asWkt()
                 # print 'Difference: %s' % myDifferenceGeometry.asWkt()
-                print('Symmetrical: %s' % mySymmetricalGeometry.asWkt())
+                print(f'Symmetrical: {mySymmetricalGeometry.asWkt()}')
 
                 if self.geos39:
                     myExpectedWkt = 'Polygon ((20 30, 30 30, 30 20, 20 20, 20 30))'
@@ -2399,7 +2396,7 @@ class TestQgsGeometry(unittest.TestCase):
         T = 'linestring_add_curve'
         geoms[T] = polyline1_geom()
         parts[T] = curve()
-        expec[T] = 'MultiLineString ({},{})'.format(polyline1_geom().asWkt()[len('LineString '):], curve().curveToLine().asWkt()[len('LineString '):])
+        expec[T] = f"MultiLineString ({polyline1_geom().asWkt()[len('LineString '):]},{curve().curveToLine().asWkt()[len('LineString '):]})"
 
         T = 'polygon_add_ring_1_point'
         geoms[T] = polygon1_geom()
@@ -2479,7 +2476,7 @@ class TestQgsGeometry(unittest.TestCase):
         T = 'multipolygon_add_curvepolygon'
         geoms[T] = multi_polygon1_geom()
         parts[T] = circle_curvepolygon()
-        expec[T] = 'MultiPolygon ({},{})'.format(polygon1_geom().asWkt()[len('Polygon '):], circle_polygon().asWkt()[len('Polygon '):])
+        expec[T] = f"MultiPolygon ({polygon1_geom().asWkt()[len('Polygon '):]},{circle_polygon().asWkt()[len('Polygon '):]})"
 
         T = 'multisurface_add_curvepolygon'
         geoms[T] = multi_surface_geom()
@@ -2863,6 +2860,85 @@ class TestQgsGeometry(unittest.TestCase):
         # test conversion of MultiPolygon
         assert poly.convertToMultiType()
         assert compareWkt(expWkt, wkt), "testConvertToMultiType failed: mismatch Expected:\n{}\nGot:\n{}\n".format(
+            expWkt, wkt)
+
+    def testConvertToCurvedMultiType(self):
+        """ Test converting geometries to multi curve type """
+        point = QgsGeometry.fromWkt('Point (1 2)')
+        assert point.convertToCurvedMultiType()
+        expWkt = 'MultiPoint ((1 2))'
+        wkt = point.asWkt()
+        assert compareWkt(expWkt, wkt), "testConvertToCurvedMultiType failed: mismatch Expected:\n{}\nGot:\n{}\n".format(
+            expWkt, wkt)
+        # test conversion of MultiPoint
+        assert point.convertToCurvedMultiType()
+        assert compareWkt(expWkt, wkt), "testConvertToCurvedMultiType failed: mismatch Expected:\n{}\nGot:\n{}\n".format(
+            expWkt, wkt)
+
+        multipoint = QgsGeometry.fromWkt('MultiPoint ((1 2))')
+        assert multipoint.convertToCurvedMultiType()
+        expWkt = 'MultiPoint ((1 2))'
+        wkt = multipoint.asWkt()
+        assert compareWkt(expWkt, wkt), "testConvertToCurvedMultiType failed: mismatch Expected:\n{}\nGot:\n{}\n".format(
+            expWkt, wkt)
+        # test conversion of MultiPoint
+        assert multipoint.convertToCurvedMultiType()
+        assert compareWkt(expWkt, wkt), "testConvertToCurvedMultiType failed: mismatch Expected:\n{}\nGot:\n{}\n".format(
+            expWkt, wkt)
+
+        line = QgsGeometry.fromWkt('LineString (1 0, 2 0)')
+        assert line.convertToCurvedMultiType()
+        expWkt = 'MultiCurve (LineString (1 0, 2 0))'
+        wkt = line.asWkt()
+        assert compareWkt(expWkt, wkt), "testConvertToCurvedMultiType failed: mismatch Expected:\n{}\nGot:\n{}\n".format(
+            expWkt, wkt)
+        # test conversion of MultiCurve
+        assert line.convertToCurvedMultiType()
+        assert compareWkt(expWkt, wkt), "testConvertToCurvedMultiType failed: mismatch Expected:\n{}\nGot:\n{}\n".format(
+            expWkt, wkt)
+
+        circular = QgsGeometry.fromWkt('CircularString (0 0, 1 1, 2 0)')
+        assert circular.convertToCurvedMultiType()
+        expWkt = 'MultiCurve (CircularString (0 0, 1 1, 2 0))'
+        wkt = circular.asWkt()
+        assert compareWkt(expWkt, wkt), "testConvertToCurvedMultiType failed: mismatch Expected:\n{}\nGot:\n{}\n".format(
+            expWkt, wkt)
+        # test conversion of MultiCurve
+        assert circular.convertToCurvedMultiType()
+        assert compareWkt(expWkt, wkt), "testConvertToCurvedMultiType failed: mismatch Expected:\n{}\nGot:\n{}\n".format(
+            expWkt, wkt)
+
+        multiline = QgsGeometry.fromWkt('MultiLineString ((1 0, 2 0))')
+        assert multiline.convertToCurvedMultiType()
+        expWkt = 'MultiCurve (LineString (1 0, 2 0))'
+        wkt = multiline.asWkt()
+        assert compareWkt(expWkt, wkt), "testConvertToCurvedMultiType failed: mismatch Expected:\n{}\nGot:\n{}\n".format(
+            expWkt, wkt)
+        # test conversion of MultiCurve
+        assert multiline.convertToCurvedMultiType()
+        assert compareWkt(expWkt, wkt), "testConvertToCurvedMultiType failed: mismatch Expected:\n{}\nGot:\n{}\n".format(
+            expWkt, wkt)
+
+        poly = QgsGeometry.fromWkt('Polygon ((1 0, 2 0, 2 1, 1 1, 1 0))')
+        assert poly.convertToCurvedMultiType()
+        expWkt = 'MultiSurface (Polygon((1 0, 2 0, 2 1, 1 1, 1 0)))'
+        wkt = poly.asWkt()
+        assert compareWkt(expWkt, wkt), "testConvertToCurvedMultiType failed: mismatch Expected:\n{}\nGot:\n{}\n".format(
+            expWkt, wkt)
+        # test conversion of MultiSurface
+        assert poly.convertToCurvedMultiType()
+        assert compareWkt(expWkt, wkt), "testConvertToCurvedMultiType failed: mismatch Expected:\n{}\nGot:\n{}\n".format(
+            expWkt, wkt)
+
+        multipoly = QgsGeometry.fromWkt('MultiPolygon (((1 0, 2 0, 2 1, 1 1, 1 0)))')
+        assert multipoly.convertToCurvedMultiType()
+        expWkt = 'MultiSurface ( Polygon((1 0, 2 0, 2 1, 1 1, 1 0)))'
+        wkt = multipoly.asWkt()
+        assert compareWkt(expWkt, wkt), "testConvertToCurvedMultiType failed: mismatch Expected:\n{}\nGot:\n{}\n".format(
+            expWkt, wkt)
+        # test conversion of MultiSurface
+        assert multipoly.convertToCurvedMultiType()
+        assert compareWkt(expWkt, wkt), "testConvertToCurvedMultiType failed: mismatch Expected:\n{}\nGot:\n{}\n".format(
             expWkt, wkt)
 
     def testConvertToSingleType(self):
@@ -3553,7 +3629,6 @@ class TestQgsGeometry(unittest.TestCase):
         self.assertEqual(QgsWkbTypes.displayString(QgsWkbTypes.MultiPoint25D), 'MultiPoint25D')
         self.assertEqual(QgsWkbTypes.displayString(QgsWkbTypes.MultiLineString25D), 'MultiLineString25D')
         self.assertEqual(QgsWkbTypes.displayString(QgsWkbTypes.MultiPolygon25D), 'MultiPolygon25D')
-        self.assertEqual(QgsWkbTypes.displayString(9999999), '')
 
         # test parseType method
         self.assertEqual(QgsWkbTypes.parseType('point( 1 2 )'), QgsWkbTypes.Point)
@@ -4525,7 +4600,6 @@ class TestQgsGeometry(unittest.TestCase):
         self.assertEqual(QgsWkbTypes.geometryDisplayString(QgsWkbTypes.PolygonGeometry), 'Polygon')
         self.assertEqual(QgsWkbTypes.geometryDisplayString(QgsWkbTypes.UnknownGeometry), 'Unknown geometry')
         self.assertEqual(QgsWkbTypes.geometryDisplayString(QgsWkbTypes.NullGeometry), 'No geometry')
-        self.assertEqual(QgsWkbTypes.geometryDisplayString(999999), 'Invalid type')
 
     def testDeleteVertexCircularString(self):
 
@@ -6344,6 +6418,11 @@ class TestQgsGeometry(unittest.TestCase):
                                        QgsWkbTypes.MultiLineString),
                          ['MultiLineString ((1 1, 1 2, 2 2, 1 1),(3 3, 4 3, 4 4, 3 3))'])
 
+        # Straight to curve
+        self.assertEqual(coerce_to_wkt('LineString (0 0,1 1)',
+                                       QgsWkbTypes.MultiCurve),
+                         ['MultiCurve (LineString (0 0, 1 1))'])
+
     def testTriangularWaves(self):
         """Test triangular waves"""
         self.assertEqual(QgsGeometry.fromWkt('Point (1 1)').triangularWaves(1, 2).asWkt(3), 'Point (1 1)')
@@ -6864,7 +6943,7 @@ class TestQgsGeometry(unittest.TestCase):
 
         for test in tests:
             geom = QgsGeometry.fromWkt(test['wkt'])
-            self.assertTrue(geom and not geom.isNull(), 'Could not create geometry {}'.format(test['wkt']))
+            self.assertTrue(geom and not geom.isNull(), f"Could not create geometry {test['wkt']}")
             rendered_image = self.renderGeometry(geom, test['use_pen'])
             self.assertTrue(self.imageCheck(test['name'], test['reference_image'], rendered_image), test['name'])
 
@@ -6963,7 +7042,7 @@ class TestQgsGeometry(unittest.TestCase):
             def get_geom():
                 if 'geom' not in test:
                     geom = QgsGeometry.fromWkt(test['wkt'])
-                    assert geom and not geom.isNull(), 'Could not create geometry {}'.format(test['wkt'])
+                    assert geom and not geom.isNull(), f"Could not create geometry {test['wkt']}"
                 else:
                     geom = test['geom']
                 return geom
@@ -7099,6 +7178,31 @@ class TestQgsGeometry(unittest.TestCase):
         self.assertTrue(poly.intersects(point))
         self.assertTrue(poly.boundingBox().intersects(bbox))
         self.assertTrue(poly.intersects(bbox))  # was failing here!
+
+    def testSplitGeometry(self):
+        """
+        splitGeometry takes either QVector<QgsPoint> or QVector<QgsPointXY>
+        testing the overloaded methods until the QgsPointXY variant is removed in QGIS 4.0
+        this could be potentially removed in favor of the existing cpp test which will be sufficient
+        """
+        square = QgsGeometry.fromWkt("Polygon ((0 0, 0 2, 2 2, 2 0, 0 0))")
+        line = [QgsPoint(1, -1), QgsPoint(1, 3)]
+        lineXY = [QgsPointXY(1, -1), QgsPointXY(1, 3)]
+
+        r1 = QgsGeometry.fromWkt("Polygon ((1 2, 1 0, 0 0, 0 2, 1 2))")
+        r2 = QgsGeometry.fromWkt("Polygon ((1 0, 1 2, 2 2, 2 0, 1 0))")
+
+        (result, parts, topo) = square.splitGeometry(lineXY, False)
+        self.assertEqual(result, Qgis.GeometryOperationResult.Success)
+        self.assertGeometriesEqual(square, r2)
+        self.assertEqual(len(parts), 1)
+        self.assertGeometriesEqual(parts[0], r1)
+
+        square = QgsGeometry.fromWkt("Polygon ((0 0, 0 2, 2 2, 2 0, 0 0))")
+        (result, parts, topo) = square.splitGeometry(line, False)
+        self.assertEqual(result, Qgis.GeometryOperationResult.Success)
+        self.assertGeometriesEqual(square, r2)
+        self.assertGeometriesEqual(parts[0], r1)
 
 
 if __name__ == '__main__':

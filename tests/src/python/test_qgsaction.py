@@ -17,11 +17,11 @@ from functools import partial
 import qgis  # NOQA switch sip api
 from qgis.PyQt.QtCore import QTemporaryDir
 from qgis.core import (
-    QgsExpressionContext,
     QgsAction,
+    QgsApplication,
+    QgsExpressionContext,
     QgsNetworkAccessManager,
     QgsNetworkRequestParameters,
-    QgsApplication,
 )
 from qgis.testing import start_app, unittest
 

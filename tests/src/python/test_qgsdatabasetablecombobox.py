@@ -15,16 +15,16 @@ import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.core import (
-    QgsProviderRegistry,
-    QgsFields,
+    QgsCoordinateReferenceSystem,
     QgsField,
+    QgsFields,
+    QgsProviderRegistry,
     QgsWkbTypes,
-    QgsCoordinateReferenceSystem
 )
 from qgis.gui import QgsDatabaseTableComboBox
 from qgis.testing import unittest
 
-from utilities import unitTestDataPath, start_app
+from utilities import start_app, unitTestDataPath
 
 start_app()
 
@@ -36,6 +36,7 @@ class TestQgsDatabaseTableComboBox(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
 
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(cls.__name__)

@@ -13,8 +13,8 @@ from processing.core.Processing import Processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
     QgsApplication,
-    QgsSettings,
     QgsProcessingParameterGeometry,
+    QgsSettings,
     QgsWkbTypes,
 )
 from qgis.testing import start_app, unittest
@@ -27,6 +27,7 @@ class TestQgsProcessingParameters(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(
             "QGIS_TestPyQgsProcessingParameters.com")

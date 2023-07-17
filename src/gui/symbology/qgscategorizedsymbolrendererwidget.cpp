@@ -28,13 +28,9 @@
 #include "qgslogger.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgstemporalcontroller.h"
-
 #include "qgssymbolselectordialog.h"
-#include "qgsexpressionbuilderdialog.h"
-
 #include "qgsvectorlayer.h"
 #include "qgsfeatureiterator.h"
-
 #include "qgsproject.h"
 #include "qgsprojectstylesettings.h"
 #include "qgsexpression.h"
@@ -52,11 +48,15 @@
 #include <QPainter>
 #include <QFileDialog>
 #include <QClipboard>
+#include <QPointer>
+#include <QScreen>
 
 ///@cond PRIVATE
 
-QgsCategorizedSymbolRendererModel::QgsCategorizedSymbolRendererModel( QObject *parent ) : QAbstractItemModel( parent )
+QgsCategorizedSymbolRendererModel::QgsCategorizedSymbolRendererModel( QObject *parent, QScreen *screen )
+  : QAbstractItemModel( parent )
   , mMimeFormat( QStringLiteral( "application/x-qgscategorizedsymbolrendererv2model" ) )
+  , mScreen( screen )
 {
 }
 
@@ -201,7 +201,7 @@ QVariant QgsCategorizedSymbolRendererModel::data( const QModelIndex &index, int 
       if ( index.column() == 0 && category.symbol() )
       {
         const int iconSize = QgsGuiUtils::scaleIconSize( 16 );
-        return QgsSymbolLayerUtils::symbolPreviewIcon( category.symbol(), QSize( iconSize, iconSize ) );
+        return QgsSymbolLayerUtils::symbolPreviewIcon( category.symbol(), QSize( iconSize, iconSize ), 0, nullptr, QgsScreenProperties( mScreen.data() ) );
       }
       break;
     }
@@ -420,7 +420,7 @@ bool QgsCategorizedSymbolRendererModel::dropMimeData( const QMimeData *data, Qt:
   if ( to == -1 ) to = mRenderer->categories().size(); // out of rang ok, will be decreased
   for ( int i = rows.size() - 1; i >= 0; i-- )
   {
-    QgsDebugMsg( QStringLiteral( "move %1 to %2" ).arg( rows[i] ).arg( to ) );
+    QgsDebugMsgLevel( QStringLiteral( "move %1 to %2" ).arg( rows[i] ).arg( to ), 2 );
     int t = to;
     // moveCategory first removes and then inserts
     if ( rows[i] < t ) t--;
@@ -673,7 +673,7 @@ QgsCategorizedSymbolRendererWidget::QgsCategorizedSymbolRendererWidget( QgsVecto
     btnChangeCategorizedSymbol->setSymbol( mCategorizedSymbol->clone() );
   }
 
-  mModel = new QgsCategorizedSymbolRendererModel( this );
+  mModel = new QgsCategorizedSymbolRendererModel( this, screen() );
   mModel->setRenderer( mRenderer.get() );
 
   // update GUI from renderer
@@ -1185,8 +1185,8 @@ int QgsCategorizedSymbolRendererWidget::matchToSymbols( QgsStyle *style )
   if ( !mLayer || !style )
     return 0;
 
-  const Qgis::SymbolType type = mLayer->geometryType() == QgsWkbTypes::PointGeometry ? Qgis::SymbolType::Marker
-                                : mLayer->geometryType() == QgsWkbTypes::LineGeometry ? Qgis::SymbolType::Line
+  const Qgis::SymbolType type = mLayer->geometryType() == Qgis::GeometryType::Point ? Qgis::SymbolType::Marker
+                                : mLayer->geometryType() == Qgis::GeometryType::Line ? Qgis::SymbolType::Line
                                 : Qgis::SymbolType::Fill;
 
   QVariantList unmatchedCategories;

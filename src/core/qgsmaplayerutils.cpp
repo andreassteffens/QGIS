@@ -22,7 +22,6 @@
 #include "qgsabstractdatabaseproviderconnection.h"
 #include "qgsprovidermetadata.h"
 #include "qgsproviderregistry.h"
-#include "qgsreferencedgeometry.h"
 #include "qgslogger.h"
 #include "qgsmaplayer.h"
 #include "qgscoordinatetransform.h"
@@ -58,7 +57,7 @@ QgsRectangle QgsMapLayerUtils::combinedExtent( const QList<QgsMapLayer *> &layer
     }
     catch ( QgsCsException & )
     {
-      QgsDebugMsg( QStringLiteral( "Could not reproject layer extent" ) );
+      QgsDebugError( QStringLiteral( "Could not reproject layer extent" ) );
     }
   }
 
@@ -110,7 +109,7 @@ QgsAbstractDatabaseProviderConnection *QgsMapLayerUtils::databaseConnection( con
   }
   catch ( const QgsProviderConnectionException &ex )
   {
-    QgsDebugMsg( QStringLiteral( "Error retrieving database connection for layer %1: %2" ).arg( layer->name(), ex.what() ) );
+    QgsDebugError( QStringLiteral( "Error retrieving database connection for layer %1: %2" ).arg( layer->name(), ex.what() ) );
     return nullptr;
   }
 }
@@ -139,12 +138,12 @@ bool QgsMapLayerUtils::updateLayerSourcePath( QgsMapLayer *layer, const QString 
   return true;
 }
 
-QList<QgsMapLayer *> QgsMapLayerUtils::sortLayersByType( const QList<QgsMapLayer *> &layers, const QList<QgsMapLayerType> &order )
+QList<QgsMapLayer *> QgsMapLayerUtils::sortLayersByType( const QList<QgsMapLayer *> &layers, const QList<Qgis::LayerType> &order )
 {
   QList< QgsMapLayer * > res = layers;
   std::sort( res.begin(), res.end(), [&order]( const QgsMapLayer * a, const QgsMapLayer * b ) -> bool
   {
-    for ( QgsMapLayerType type : order )
+    for ( Qgis::LayerType type : order )
     {
       if ( a->type() == type && b->type() != type )
         return true;

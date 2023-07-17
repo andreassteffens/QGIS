@@ -1594,18 +1594,18 @@ QgsPoint QgsGeos::coordSeqPoint( const GEOSCoordSequence *cs, int i, bool hasZ, 
     GEOSCoordSeq_getOrdinate_r( geosinit()->ctxt, cs, i, 3, &m );
   }
 
-  QgsWkbTypes::Type t = QgsWkbTypes::Point;
+  Qgis::WkbType t = Qgis::WkbType::Point;
   if ( hasZ && hasM )
   {
-    t = QgsWkbTypes::PointZM;
+    t = Qgis::WkbType::PointZM;
   }
   else if ( hasZ )
   {
-    t = QgsWkbTypes::PointZ;
+    t = Qgis::WkbType::PointZ;
   }
   else if ( hasM )
   {
-    t = QgsWkbTypes::PointM;
+    t = Qgis::WkbType::PointM;
   }
   return QgsPoint( t, x, y, z, m );
 }
@@ -1625,28 +1625,28 @@ geos::unique_ptr QgsGeos::asGeos( const QgsAbstractGeometry *geom, double precis
     ++coordDims;
   }
 
-  if ( QgsWkbTypes::isMultiType( geom->wkbType() )  || QgsWkbTypes::flatType( geom->wkbType() ) == QgsWkbTypes::GeometryCollection )
+  if ( QgsWkbTypes::isMultiType( geom->wkbType() )  || QgsWkbTypes::flatType( geom->wkbType() ) == Qgis::WkbType::GeometryCollection )
   {
     int geosType = GEOS_GEOMETRYCOLLECTION;
 
-    if ( QgsWkbTypes::flatType( geom->wkbType() ) != QgsWkbTypes::GeometryCollection )
+    if ( QgsWkbTypes::flatType( geom->wkbType() ) != Qgis::WkbType::GeometryCollection )
     {
       switch ( QgsWkbTypes::geometryType( geom->wkbType() ) )
       {
-        case QgsWkbTypes::PointGeometry:
+        case Qgis::GeometryType::Point:
           geosType = GEOS_MULTIPOINT;
           break;
 
-        case QgsWkbTypes::LineGeometry:
+        case Qgis::GeometryType::Line:
           geosType = GEOS_MULTILINESTRING;
           break;
 
-        case QgsWkbTypes::PolygonGeometry:
+        case Qgis::GeometryType::Polygon:
           geosType = GEOS_MULTIPOLYGON;
           break;
 
-        case QgsWkbTypes::UnknownGeometry:
-        case QgsWkbTypes::NullGeometry:
+        case Qgis::GeometryType::Unknown:
+        case Qgis::GeometryType::Null:
           return nullptr;
       }
     }
@@ -1668,17 +1668,17 @@ geos::unique_ptr QgsGeos::asGeos( const QgsAbstractGeometry *geom, double precis
   {
     switch ( QgsWkbTypes::geometryType( geom->wkbType() ) )
     {
-      case QgsWkbTypes::PointGeometry:
+      case Qgis::GeometryType::Point:
         return createGeosPoint( static_cast<const QgsPoint *>( geom ), coordDims, precision );
 
-      case QgsWkbTypes::LineGeometry:
+      case Qgis::GeometryType::Line:
         return createGeosLinestring( static_cast<const QgsLineString *>( geom ), precision );
 
-      case QgsWkbTypes::PolygonGeometry:
+      case Qgis::GeometryType::Polygon:
         return createGeosPolygon( static_cast<const QgsPolygon *>( geom ), precision );
 
-      case QgsWkbTypes::UnknownGeometry:
-      case QgsWkbTypes::NullGeometry:
+      case Qgis::GeometryType::Unknown:
+      case Qgis::GeometryType::Null:
         return nullptr;
     }
   }
@@ -2169,7 +2169,7 @@ GEOSCoordSequence *QgsGeos::createCoordinateSequence( const QgsCurve *curve, dou
         coordSeq = GEOSCoordSeq_copyFromArrays_r( ctxt, line->xData(), line->yData(), line->zData(), nullptr, numPoints );
         if ( !coordSeq )
         {
-          QgsDebugMsg( QStringLiteral( "GEOS Exception: Could not create coordinate sequence for %1 points" ).arg( numPoints ) );
+          QgsDebugError( QStringLiteral( "GEOS Exception: Could not create coordinate sequence for %1 points" ).arg( numPoints ) );
           return nullptr;
         }
       }
@@ -2191,7 +2191,7 @@ GEOSCoordSequence *QgsGeos::createCoordinateSequence( const QgsCurve *curve, dou
         coordSeq = GEOSCoordSeq_copyFromArrays_r( ctxt, x.constData(), y.constData(), !hasZ ? nullptr : z.constData(), nullptr, numPoints + 1 );
         if ( !coordSeq )
         {
-          QgsDebugMsg( QStringLiteral( "GEOS Exception: Could not create closed coordinate sequence for %1 points" ).arg( numPoints + 1 ) );
+          QgsDebugError( QStringLiteral( "GEOS Exception: Could not create closed coordinate sequence for %1 points" ).arg( numPoints + 1 ) );
           return nullptr;
         }
       }
@@ -2224,7 +2224,7 @@ GEOSCoordSequence *QgsGeos::createCoordinateSequence( const QgsCurve *curve, dou
     coordSeq = GEOSCoordSeq_create_r( ctxt, numOutPoints, coordDims );
     if ( !coordSeq )
     {
-      QgsDebugMsg( QStringLiteral( "GEOS Exception: Could not create coordinate sequence for %1 points in %2 dimensions" ).arg( numPoints ).arg( coordDims ) );
+      QgsDebugError( QStringLiteral( "GEOS Exception: Could not create coordinate sequence for %1 points in %2 dimensions" ).arg( numPoints ).arg( coordDims ) );
       return nullptr;
     }
 
@@ -2321,7 +2321,7 @@ geos::unique_ptr QgsGeos::createGeosPointXY( double x, double y, bool hasZ, doub
     GEOSCoordSequence *coordSeq = GEOSCoordSeq_create_r( geosinit()->ctxt, 1, coordDims );
     if ( !coordSeq )
     {
-      QgsDebugMsg( QStringLiteral( "GEOS Exception: Could not create coordinate sequence for point with %1 dimensions" ).arg( coordDims ) );
+      QgsDebugError( QStringLiteral( "GEOS Exception: Could not create coordinate sequence for point with %1 dimensions" ).arg( coordDims ) );
       return nullptr;
     }
     if ( precision > 0. )
@@ -2420,7 +2420,8 @@ QgsAbstractGeometry *QgsGeos::offsetCurve( double distance, int segments, Qgis::
   {
     // Force quadrant segments to be at least 8, see
     // https://github.com/qgis/QGIS/issues/53165#issuecomment-1563470832
-    if ( segments < 8 ) segments = 8;
+    if ( segments < 8 )
+      segments = 8;
     offset.reset( GEOSOffsetCurve_r( geosinit()->ctxt, mGeos.get(), distance, segments, static_cast< int >( joinStyle ), miterLimit ) );
   }
   CATCH_GEOS_WITH_ERRMSG( nullptr )

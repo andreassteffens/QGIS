@@ -266,10 +266,10 @@ void QgsLabelingEngine::registerLabels( QgsRenderContext &context )
 
   mPal = std::make_unique< pal::Pal >();
 
-  mPal->setMaximumLineCandidatesPerMapUnit( settings.maximumLineCandidatesPerCm() / context.convertToMapUnits( 10, QgsUnitTypes::RenderMillimeters ) );
-  mPal->setMaximumPolygonCandidatesPerMapUnitSquared( settings.maximumPolygonCandidatesPerCmSquared() / std::pow( context.convertToMapUnits( 10, QgsUnitTypes::RenderMillimeters ), 2 ) );
+  mPal->setMaximumLineCandidatesPerMapUnit( settings.maximumLineCandidatesPerCm() / context.convertToMapUnits( 10, Qgis::RenderUnit::Millimeters ) );
+  mPal->setMaximumPolygonCandidatesPerMapUnitSquared( settings.maximumPolygonCandidatesPerCmSquared() / std::pow( context.convertToMapUnits( 10, Qgis::RenderUnit::Millimeters ), 2 ) );
 
-  mPal->setShowPartialLabels( settings.testFlag( QgsLabelingEngineSettings::UsePartialCandidates ) );
+  mPal->setShowPartialLabels( settings.testFlag( Qgis::LabelingFlag::UsePartialCandidates ) );
   mPal->setPlacementVersion( settings.placementVersion() );
 
   // for each provider: get labels and register them in PAL
@@ -322,7 +322,7 @@ void QgsLabelingEngine::solve( QgsRenderContext &context )
     mapBoundaryGeom = mapBoundaryGeom.difference( region.geometry );
   }
 
-  if ( settings.flags() & QgsLabelingEngineSettings::DrawCandidates )
+  if ( settings.flags() & Qgis::LabelingFlag::DrawCandidates )
   {
     // draw map boundary
     QgsFeature f;
@@ -386,7 +386,7 @@ void QgsLabelingEngine::solve( QgsRenderContext &context )
   // this is done before actual solution of the problem
   // before number of candidates gets reduced
   // TODO mCandidates.clear();
-  if ( settings.testFlag( QgsLabelingEngineSettings::DrawCandidates ) && mProblem )
+  if ( settings.testFlag( Qgis::LabelingFlag::DrawCandidates ) && mProblem )
   {
     painter->setBrush( Qt::NoBrush );
     for ( int i = 0; i < static_cast< int >( mProblem->featureCount() ); i++ )
@@ -402,8 +402,9 @@ void QgsLabelingEngine::solve( QgsRenderContext &context )
 
   // find the solution
   mLabels = mPal->solveProblem( mProblem.get(), context,
-                                settings.testFlag( QgsLabelingEngineSettings::UseAllLabels ),
-                                settings.testFlag( QgsLabelingEngineSettings::DrawUnplacedLabels ) || settings.testFlag( QgsLabelingEngineSettings::CollectUnplacedLabels ) ? &mUnlabeled : nullptr );
+                                settings.testFlag( Qgis::LabelingFlag::UseAllLabels ),
+                                settings.testFlag( Qgis::LabelingFlag::DrawUnplacedLabels )
+                                || settings.testFlag( Qgis::LabelingFlag::CollectUnplacedLabels ) ? &mUnlabeled : nullptr );
 
   // sort labels
   std::sort( mLabels.begin(), mLabels.end(), QgsLabelSorter( mLayerRenderingOrderIds ) );
@@ -494,7 +495,7 @@ void QgsLabelingEngine::drawLabels( QgsRenderContext &context, const QString &la
   }
 
   // draw unplaced labels. These are always rendered on top
-  if ( settings.testFlag( QgsLabelingEngineSettings::DrawUnplacedLabels ) || settings.testFlag( QgsLabelingEngineSettings::CollectUnplacedLabels ) )
+  if ( settings.testFlag( Qgis::LabelingFlag::DrawUnplacedLabels ) || settings.testFlag( Qgis::LabelingFlag::CollectUnplacedLabels ) )
   {
     for ( pal::LabelPosition *label : std::as_const( mUnlabeled ) )
     {
@@ -767,38 +768,38 @@ QVector<Qgis::LabelPredefinedPointPosition> QgsLabelingUtils::decodePredefinedPo
   return result;
 }
 
-QString QgsLabelingUtils::encodeLinePlacementFlags( QgsLabeling::LinePlacementFlags flags )
+QString QgsLabelingUtils::encodeLinePlacementFlags( Qgis::LabelLinePlacementFlags flags )
 {
   QStringList parts;
-  if ( flags & QgsLabeling::LinePlacementFlag::OnLine )
+  if ( flags & Qgis::LabelLinePlacementFlag::OnLine )
     parts << QStringLiteral( "OL" );
-  if ( flags & QgsLabeling::LinePlacementFlag::AboveLine )
+  if ( flags & Qgis::LabelLinePlacementFlag::AboveLine )
     parts << QStringLiteral( "AL" );
-  if ( flags & QgsLabeling::LinePlacementFlag::BelowLine )
+  if ( flags & Qgis::LabelLinePlacementFlag::BelowLine )
     parts << QStringLiteral( "BL" );
-  if ( !( flags & QgsLabeling::LinePlacementFlag::MapOrientation ) )
+  if ( !( flags & Qgis::LabelLinePlacementFlag::MapOrientation ) )
     parts << QStringLiteral( "LO" );
   return parts.join( ',' );
 }
 
-QgsLabeling::LinePlacementFlags QgsLabelingUtils::decodeLinePlacementFlags( const QString &string )
+Qgis::LabelLinePlacementFlags QgsLabelingUtils::decodeLinePlacementFlags( const QString &string )
 {
-  QgsLabeling::LinePlacementFlags flags = QgsLabeling::LinePlacementFlags();
+  Qgis::LabelLinePlacementFlags flags = Qgis::LabelLinePlacementFlags();
   const QStringList flagList = string.split( ',' );
   bool foundLineOrientationFlag = false;
   for ( const QString &flag : flagList )
   {
     QString cleaned = flag.trimmed().toUpper();
     if ( cleaned == QLatin1String( "OL" ) )
-      flags |= QgsLabeling::LinePlacementFlag::OnLine;
+      flags |= Qgis::LabelLinePlacementFlag::OnLine;
     else if ( cleaned == QLatin1String( "AL" ) )
-      flags |= QgsLabeling::LinePlacementFlag::AboveLine;
+      flags |= Qgis::LabelLinePlacementFlag::AboveLine;
     else if ( cleaned == QLatin1String( "BL" ) )
-      flags |= QgsLabeling::LinePlacementFlag::BelowLine;
+      flags |= Qgis::LabelLinePlacementFlag::BelowLine;
     else if ( cleaned == QLatin1String( "LO" ) )
       foundLineOrientationFlag = true;
   }
   if ( !foundLineOrientationFlag )
-    flags |= QgsLabeling::LinePlacementFlag::MapOrientation;
+    flags |= Qgis::LabelLinePlacementFlag::MapOrientation;
   return flags;
 }

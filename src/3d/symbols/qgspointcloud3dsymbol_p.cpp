@@ -515,6 +515,7 @@ void QgsSingleColorPointCloud3DSymbolHandler::processNode( QgsPointCloudIndex *p
 
   QgsPointCloudRequest request;
   request.setAttributes( attributes );
+  request.setFilterRect( context.extent() );
   std::unique_ptr<QgsPointCloudBlock> block( pointCloudBlock( pc, n, request, context ) );
   if ( !block )
     return;
@@ -549,7 +550,7 @@ void QgsSingleColorPointCloud3DSymbolHandler::processNode( QgsPointCloudIndex *p
     {
       if ( !alreadyPrintedDebug )
       {
-        QgsDebugMsg( QStringLiteral( "Error transforming point coordinate" ) );
+        QgsDebugError( QStringLiteral( "Error transforming point coordinate" ) );
         alreadyPrintedDebug = true;
       }
     }
@@ -638,6 +639,7 @@ void QgsColorRampPointCloud3DSymbolHandler::processNode( QgsPointCloudIndex *pc,
 
   QgsPointCloudRequest request;
   request.setAttributes( attributes );
+  request.setFilterRect( context.extent() );
   std::unique_ptr<QgsPointCloudBlock> block( pointCloudBlock( pc, n, request, context ) );
   if ( !block )
     return;
@@ -669,7 +671,7 @@ void QgsColorRampPointCloud3DSymbolHandler::processNode( QgsPointCloudIndex *pc,
     {
       if ( !alreadyPrintedDebug )
       {
-        QgsDebugMsg( QStringLiteral( "Error transforming point coordinate" ) );
+        QgsDebugError( QStringLiteral( "Error transforming point coordinate" ) );
         alreadyPrintedDebug = true;
       }
     }
@@ -743,6 +745,7 @@ void QgsRGBPointCloud3DSymbolHandler::processNode( QgsPointCloudIndex *pc, const
 
   QgsPointCloudRequest request;
   request.setAttributes( attributes );
+  request.setFilterRect( context.extent() );
   std::unique_ptr<QgsPointCloudBlock> block( pointCloudBlock( pc, n, request, context ) );
   if ( !block )
     return;
@@ -788,7 +791,7 @@ void QgsRGBPointCloud3DSymbolHandler::processNode( QgsPointCloudIndex *pc, const
     {
       if ( !alreadyPrintedDebug )
       {
-        QgsDebugMsg( QStringLiteral( "Error transforming point coordinate" ) );
+        QgsDebugError( QStringLiteral( "Error transforming point coordinate" ) );
         alreadyPrintedDebug = true;
       }
     }
@@ -906,6 +909,7 @@ void QgsClassificationPointCloud3DSymbolHandler::processNode( QgsPointCloudIndex
 
   QgsPointCloudRequest request;
   request.setAttributes( attributes );
+  request.setFilterRect( context.extent() );
   std::unique_ptr<QgsPointCloudBlock> block( pointCloudBlock( pc, n, request, context ) );
   if ( !block )
     return;
@@ -949,7 +953,7 @@ void QgsClassificationPointCloud3DSymbolHandler::processNode( QgsPointCloudIndex
     {
       if ( !alreadyPrintedDebug )
       {
-        QgsDebugMsg( QStringLiteral( "Error transforming point coordinate" ) );
+        QgsDebugError( QStringLiteral( "Error transforming point coordinate" ) );
         alreadyPrintedDebug = true;
       }
     }

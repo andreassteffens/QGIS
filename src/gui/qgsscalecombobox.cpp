@@ -16,9 +16,9 @@
  ***************************************************************************/
 
 #include "qgis.h"
-#include "qgslogger.h"
+#include "qgssettingsregistrycore.h"
 #include "qgsscalecombobox.h"
-#include "qgssettings.h"
+#include "qgssettingsentryimpl.h"
 
 #include <QAbstractItemView>
 #include <QLocale>
@@ -44,12 +44,7 @@ void QgsScaleComboBox::updateScales( const QStringList &scales )
 
   if ( scales.isEmpty() )
   {
-    const QgsSettings settings;
-    const QString myScales = settings.value( QStringLiteral( "Map/scales" ), Qgis::defaultProjectScales() ).toString();
-    if ( !myScales.isEmpty() )
-    {
-      myScalesList = myScales.split( ',' );
-    }
+    myScalesList = QgsSettingsRegistryCore::settingsMapScales->value();
   }
   else
   {
@@ -59,6 +54,8 @@ void QgsScaleComboBox::updateScales( const QStringList &scales )
       myScalesList.append( *scaleIt );
     }
   }
+
+  QStringList  myCleanedScalesList;
 
   for ( int i = 0; i < myScalesList.size(); ++i )
   {
@@ -70,13 +67,21 @@ void QgsScaleComboBox::updateScales( const QStringList &scales )
     const double denominator = QLocale().toDouble( parts[1], &ok );
     if ( ok )
     {
-      myScalesList[ i ] = toString( denominator );
+      myCleanedScalesList.push_back( toString( denominator ) );
+    }
+    else
+    {
+      const double denominator = parts[1].toDouble( &ok );
+      if ( ok )
+      {
+        myCleanedScalesList.push_back( toString( denominator ) );
+      }
     }
   }
 
   blockSignals( true );
   clear();
-  addItems( myScalesList );
+  addItems( myCleanedScalesList );
   setScaleString( oldScale );
   blockSignals( false );
 }

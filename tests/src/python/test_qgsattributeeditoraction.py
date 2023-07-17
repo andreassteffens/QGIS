@@ -13,12 +13,13 @@ __copyright__ = 'Copyright 2021, The QGIS Project'
 
 import qgis  # NOQA switch sip api
 from qgis.PyQt.QtCore import QUuid
-from qgis.core import (QgsVectorLayer,
-                       QgsProject,
-                       QgsAction,
-                       QgsAttributeEditorAction,
-                       QgsAttributeEditorContainer,
-                       )
+from qgis.core import (
+    QgsAction,
+    QgsAttributeEditorAction,
+    QgsAttributeEditorContainer,
+    QgsProject,
+    QgsVectorLayer,
+)
 from qgis.testing import start_app, unittest
 
 start_app()
@@ -30,6 +31,7 @@ class TestQgsActionWidgetWrapper(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         cls.layer = QgsVectorLayer("Point?field=fldtxt:string&field=fldint:integer&field=flddate:datetime",
                                    "test_layer", "memory")
 
@@ -49,6 +51,7 @@ class TestQgsActionWidgetWrapper(unittest.TestCase):
     def tearDownClass(cls):
         cls.layer = None
         cls.manager = None
+        super().tearDownClass()
 
     def testEditorActionCtor(self):
 

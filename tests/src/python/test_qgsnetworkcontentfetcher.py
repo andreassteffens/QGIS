@@ -10,17 +10,18 @@ __author__ = 'Matthias Kuhn'
 __date__ = '4/28/2015'
 __copyright__ = 'Copyright 2015, The QGIS Project'
 
-import qgis  # NOQA
-
+import http.server
 import os
-from qgis.testing import unittest, start_app
-from qgis.core import QgsNetworkContentFetcher
-from utilities import unitTestDataPath
-from qgis.PyQt.QtCore import QUrl
-from qgis.PyQt.QtNetwork import QNetworkReply, QNetworkRequest
 import socketserver
 import threading
-import http.server
+
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QUrl
+from qgis.PyQt.QtNetwork import QNetworkReply, QNetworkRequest
+from qgis.core import QgsNetworkContentFetcher
+from qgis.testing import start_app, unittest
+
+from utilities import unitTestDataPath
 
 app = start_app()
 
@@ -29,6 +30,7 @@ class TestQgsNetworkContentFetcher(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         # Bring up a simple HTTP server
         os.chdir(unitTestDataPath() + '')
         handler = http.server.SimpleHTTPRequestHandler
@@ -37,7 +39,7 @@ class TestQgsNetworkContentFetcher(unittest.TestCase):
         cls.port = cls.httpd.server_address[1]
 
         cls.httpd_thread = threading.Thread(target=cls.httpd.serve_forever)
-        cls.httpd_thread.setDaemon(True)
+        cls.httpd_thread.daemon = True
         cls.httpd_thread.start()
 
     def __init__(self, methodName):

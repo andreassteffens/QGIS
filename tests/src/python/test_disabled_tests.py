@@ -13,11 +13,9 @@ import os
 import shutil
 import tempfile
 
-from qgis.PyQt.QtCore import QEventLoop, QT_VERSION
-from qgis.PyQt.QtCore import QLocale
+from qgis.PyQt.QtCore import QT_VERSION, QEventLoop, QLocale
 from qgis.PyQt.QtGui import QValidator
-from qgis.core import QgsDataCollectionItem, QgsLayerItem
-from qgis.core import QgsVectorLayer
+from qgis.core import QgsDataCollectionItem, QgsLayerItem, QgsVectorLayer
 from qgis.gui import QgsFieldValidator
 from qgis.testing import start_app, unittest
 
@@ -65,6 +63,7 @@ class TestQgsDisabledTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests."""
+        super().setUpClass()
         testPath = TEST_DATA_DIR + '/' + 'bug_17878.gpkg'
         # Copy it
         tempdir = tempfile.mkdtemp()
@@ -77,6 +76,7 @@ class TestQgsDisabledTests(unittest.TestCase):
     def tearDownClass(cls):
         """Run after all tests."""
         cls.vl = None
+        super().tearDownClass()
 
     @unittest.skipIf(QT_VERSION >= 0x050d00, 'Crashes on newer Qt/PyQt versions')
     def testPythonCreateChildrenCalledFromCplusplus(self):

@@ -13,16 +13,16 @@ __copyright__ = 'Copyright 2022, ItOpen'
 
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
-    QgsVectorLayer,
-    QgsRasterLayer,
-    QgsMapLayerType,
-    QgsProviderRegistry,
-    QgsWkbTypes,
-    QgsLayerMetadata,
-    QgsProviderMetadata,
     QgsBox3d,
-    QgsRectangle,
+    QgsLayerMetadata,
+    QgsMapLayerType,
     QgsMetadataSearchContext,
+    QgsProviderMetadata,
+    QgsProviderRegistry,
+    QgsRasterLayer,
+    QgsRectangle,
+    QgsVectorLayer,
+    QgsWkbTypes,
 )
 from qgis.testing import start_app
 
@@ -43,7 +43,6 @@ class LayerMetadataProviderTestBase():
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(cls.__name__)
         QCoreApplication.setApplicationName(cls.__name__)

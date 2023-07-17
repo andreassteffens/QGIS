@@ -16,11 +16,15 @@ from processing.core.Processing import Processing
 from processing.gui.AlgorithmExecutor import execute
 from qgis.PyQt.QtCore import QCoreApplication, QTemporaryDir
 from qgis.analysis import QgsNativeAlgorithms
-from qgis.core import (QgsApplication, QgsVectorLayer,
-                       QgsProcessingContext,
-                       QgsProcessingFeedback, QgsSettings,
-                       QgsProject, QgsRelation
-                       )
+from qgis.core import (
+    QgsApplication,
+    QgsProcessingContext,
+    QgsProcessingFeedback,
+    QgsProject,
+    QgsRelation,
+    QgsSettings,
+    QgsVectorLayer,
+)
 from qgis.testing import start_app, unittest
 
 start_app()
@@ -48,6 +52,7 @@ class TestPackageLayers(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(
             "QGIS_TestPyQgsPackageLayers.com")

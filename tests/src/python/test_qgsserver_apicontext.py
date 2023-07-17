@@ -22,10 +22,9 @@ os.environ['QT_HASH_SEED'] = '1'
 from qgis.server import (
     QgsBufferServerRequest,
     QgsBufferServerResponse,
-    QgsServerApiContext
+    QgsServerApiContext,
 )
 from qgis.testing import unittest
-
 from test_qgsserver import QgsServerTestBase
 
 

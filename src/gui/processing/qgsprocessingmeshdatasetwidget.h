@@ -54,10 +54,10 @@ class GUI_EXPORT QgsProcessingMeshDatasetGroupsWidget : public QWidget
     const QgsProcessingParameterMeshDatasetGroups *mParam = nullptr;
     QVariantList mValue;
 
-    QPointer<QLineEdit> mLineEdit = nullptr;
-    QPointer<QToolButton> mToolButton = nullptr;
-    QPointer<QAction> mActionCurrentActiveDatasetGroups = nullptr;
-    QPointer<QAction> mActionAvailableDatasetGroups = nullptr;
+    QPointer<QLineEdit> mLineEdit;
+    QPointer<QToolButton> mToolButton;
+    QPointer<QAction> mActionCurrentActiveDatasetGroups;
+    QPointer<QAction> mActionAvailableDatasetGroups;
     QgsMeshLayer *mMeshLayer = nullptr;
     QMap<int, QString> mDatasetGroupsNames; //used to store the dataet groups name if layer is not referenced
 
@@ -111,7 +111,7 @@ class GUI_EXPORT QgsProcessingMeshDatasetGroupsParameterDefinitionWidget : publi
         const QgsProcessingParameterDefinition *definition = nullptr,
         const QgsProcessingAlgorithm *algorithm = nullptr, QWidget *parent SIP_TRANSFERTHIS = nullptr );
 
-    QgsProcessingParameterDefinition *createParameter( const QString &name, const QString &description, QgsProcessingParameterDefinition::Flags flags ) const;
+    QgsProcessingParameterDefinition *createParameter( const QString &name, const QString &description, QgsProcessingParameterDefinition::Flags flags ) const override;
 
   private:
     QComboBox *mParentLayerComboBox = nullptr;
@@ -214,7 +214,7 @@ class GUI_EXPORT QgsProcessingMeshDatasetTimeParameterDefinitionWidget : public 
         const QgsProcessingParameterDefinition *definition = nullptr,
         const QgsProcessingAlgorithm *algorithm = nullptr, QWidget *parent SIP_TRANSFERTHIS = nullptr );
 
-    QgsProcessingParameterDefinition *createParameter( const QString &name, const QString &description, QgsProcessingParameterDefinition::Flags flags ) const;
+    QgsProcessingParameterDefinition *createParameter( const QString &name, const QString &description, QgsProcessingParameterDefinition::Flags flags ) const override;
 
   private:
     QComboBox *mParentDatasetComboBox = nullptr;

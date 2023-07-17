@@ -24,16 +24,16 @@ import os
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QDir, QSize
 from qgis.core import (
-    QgsMapSettings,
-    QgsRenderChecker,
-    QgsVectorLayer,
-    QgsRectangle,
-    QgsMultiRenderChecker,
-    QgsSingleSymbolRenderer,
     QgsAnimatedMarkerSymbolLayer,
-    QgsMarkerSymbol
+    QgsMapSettings,
+    QgsMarkerSymbol,
+    QgsMultiRenderChecker,
+    QgsRectangle,
+    QgsRenderChecker,
+    QgsSingleSymbolRenderer,
+    QgsVectorLayer,
 )
-from qgis.testing import unittest, start_app
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -47,7 +47,7 @@ class TestQgsAnimatedMarkerSymbolLayer(unittest.TestCase):
         self.report = "<h1>Python QgsAnimatedMarkerSymbolLayer Tests</h1>\n"
 
     def tearDown(self):
-        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        report_file_path = f"{QDir.tempPath()}/qgistest.html"
         with open(report_file_path, 'a') as report_file:
             report_file.write(self.report)
 

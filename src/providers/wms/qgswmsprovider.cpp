@@ -26,14 +26,12 @@
 
 #include "qgslogger.h"
 #include "qgswmsprovider.h"
-#include "qgswmsconnection.h"
 #include "qgscoordinatetransform.h"
 #include "qgswmsdataitems.h"
 #include "qgsdatasourceuri.h"
 #include "qgsfeaturestore.h"
 #include "qgsgeometry.h"
 #include "qgsrasteridentifyresult.h"
-#include "qgsrasterlayer.h"
 #include "qgsrectangle.h"
 #include "qgscoordinatereferencesystem.h"
 #include "qgsmapsettings.h"
@@ -54,6 +52,8 @@
 #include "qgsproviderregistry.h"
 #include "qgsruntimeprofiler.h"
 #include "qgstiledownloadmanager.h"
+#include "qgsproviderutils.h"
+#include "qgsprovidersublayerdetails.h"
 
 #include <QNetworkRequest>
 #include <QNetworkReply>
@@ -224,6 +224,22 @@ QgsWmsProvider::QgsWmsProvider( QString const &uri, const ProviderOptions &optio
       temporalCapabilities()->setFlags( mTileLayer->temporalCapabilityFlags );
       temporalCapabilities()->setIntervalHandlingMethod( Qgis::TemporalIntervalMatchMethod::FindClosestMatchToStartOfRange );
     }
+
+    if ( !mSettings.mXyz )
+    {
+      switch ( mSettings.mTilePixelRatio )
+      {
+        case Qgis::TilePixelRatio::Undefined:
+          mTileLayer->dpi = -1;
+          break;
+        case Qgis::TilePixelRatio::StandardDpi:
+          mTileLayer->dpi = 96;
+          break;
+        case Qgis::TilePixelRatio::HighDpi:
+          mTileLayer->dpi = 192;
+          break;
+      }
+    }
   }
 
   if ( profile )
@@ -242,6 +258,10 @@ QgsWmsProvider::QgsWmsProvider( QString const &uri, const ProviderOptions &optio
 
 
   mConverter = QgsWmsInterpretationConverter::createConverter( mSettings.mInterpretation );
+  if ( mConverter && mConverter->representsElevation() )
+  {
+    elevationProperties()->setContainsElevationData( true );
+  }
 
   mValid = true;
   QgsDebugMsgLevel( QStringLiteral( "exiting constructor." ), 4 );
@@ -519,7 +539,7 @@ void QgsWmsProvider::setLayerOrder( QStringList const &layers )
 {
   if ( layers.size() != mSettings.mActiveSubLayers.size() )
   {
-    QgsDebugMsg( QStringLiteral( "Invalid layer list length" ) );
+    QgsDebugError( QStringLiteral( "Invalid layer list length" ) );
     return;
   }
 
@@ -533,7 +553,7 @@ void QgsWmsProvider::setLayerOrder( QStringList const &layers )
   {
     if ( !styleMap.contains( layers[i] ) )
     {
-      QgsDebugMsg( QStringLiteral( "Layer %1 not found" ).arg( layers[i] ) );
+      QgsDebugError( QStringLiteral( "Layer %1 not found" ).arg( layers[i] ) );
       return;
     }
   }
@@ -551,7 +571,7 @@ void QgsWmsProvider::setSubLayerVisibility( QString const &name, bool vis )
 {
   if ( !mActiveSubLayerVisibility.contains( name ) )
   {
-    QgsDebugMsg( QStringLiteral( "Layer %1 not found." ).arg( name ) );
+    QgsDebugError( QStringLiteral( "Layer %1 not found." ).arg( name ) );
     return;
   }
 
@@ -593,17 +613,17 @@ bool QgsWmsProvider::setImageCrs( QString const &crs )
 
       if ( mSettings.mTileMatrixSetId.isEmpty() && tl->setLinks.size() == 1 )
       {
-        QString tms = tl->setLinks.keys()[0];
+        QString tms = tl->setLinks.constBegin().key();
 
         if ( !mCaps.mTileMatrixSets.contains( tms ) )
         {
-          QgsDebugMsg( QStringLiteral( "tile matrix set '%1' not found." ).arg( tms ) );
+          QgsDebugError( QStringLiteral( "tile matrix set '%1' not found." ).arg( tms ) );
           continue;
         }
 
         if ( mCaps.mTileMatrixSets[ tms ].crs != mImageCrs )
         {
-          QgsDebugMsg( QStringLiteral( "tile matrix set '%1' has crs %2 instead of %3." ).arg( tms, mCaps.mTileMatrixSets[ tms ].crs, mImageCrs ) );
+          QgsDebugError( QStringLiteral( "tile matrix set '%1' has crs %2 instead of %3." ).arg( tms, mCaps.mTileMatrixSets[ tms ].crs, mImageCrs ) );
           continue;
         }
 
@@ -628,13 +648,13 @@ bool QgsWmsProvider::setImageCrs( QString const &crs )
       }
       if ( !mTileMatrixSet->tileMatrices.empty() )
       {
-        setProperty( "tileWidth", mTileMatrixSet->tileMatrices.values().first().tileWidth );
-        setProperty( "tileHeight", mTileMatrixSet->tileMatrices.values().first().tileHeight );
+        setProperty( "tileWidth", mTileMatrixSet->tileMatrices.first().tileWidth );
+        setProperty( "tileHeight", mTileMatrixSet->tileMatrices.first().tileHeight );
       }
     }
     else
     {
-      QgsDebugMsg( QStringLiteral( "Expected tile matrix set '%1' not found." ).arg( mSettings.mTileMatrixSetId ) );
+      QgsDebugError( QStringLiteral( "Expected tile matrix set '%1' not found." ).arg( mSettings.mTileMatrixSetId ) );
       mTileMatrixSet = nullptr;
     }
 
@@ -649,11 +669,12 @@ bool QgsWmsProvider::setImageCrs( QString const &crs )
 
 void QgsWmsProvider::setQueryItem( QUrlQuery &url, const QString &item, const QString &value )
 {
-  url.removeQueryItem( item );
+  QString key = QUrl::toPercentEncoding( item );
+  url.removeQueryItem( key );
   if ( value.isNull() )
-    url.addQueryItem( item, "" );
+    url.addQueryItem( key, "" );
   else
-    url.addQueryItem( item, value );
+    url.addQueryItem( key, QUrl::toPercentEncoding( value ) );
 }
 
 void QgsWmsProvider::setFormatQueryItem( QUrlQuery &url )
@@ -819,7 +840,7 @@ QImage *QgsWmsProvider::draw( const QgsRectangle &viewExtent, int pixelWidth, in
 {
   if ( qApp && qApp->thread() == QThread::currentThread() )
   {
-    QgsDebugMsg( QStringLiteral( "Trying to draw a WMS image on the main thread. Stop it!" ) );
+    QgsDebugError( QStringLiteral( "Trying to draw a WMS image on the main thread. Stop it!" ) );
   }
 
   // compose the URL query string for the WMS server.
@@ -854,13 +875,15 @@ QImage *QgsWmsProvider::draw( const QgsRectangle &viewExtent, int pixelWidth, in
       Q_ASSERT( mTileMatrixSet );
       if ( mTileMatrixSet->tileMatrices.isEmpty() )
       {
-        QgsDebugMsg( QStringLiteral( "WMTS tile set is empty!" ) );
+        QgsDebugError( QStringLiteral( "WMTS tile set is empty!" ) );
         return image;
       }
 
       // if we know both source and output DPI, let's scale the tiles
       if ( mDpi != -1 && mTileLayer->dpi != -1 )
+      {
         vres *= static_cast<double>( mDpi ) / mTileLayer->dpi;
+      }
 
       // find nearest resolution
       tm = mTileMatrixSet->findNearestResolution( vres );
@@ -888,7 +911,7 @@ QImage *QgsWmsProvider::draw( const QgsRectangle &viewExtent, int pixelWidth, in
     }
     else
     {
-      QgsDebugMsg( QStringLiteral( "empty tile size" ) );
+      QgsDebugError( QStringLiteral( "empty tile size" ) );
       return image;
     }
 
@@ -970,7 +993,7 @@ QImage *QgsWmsProvider::draw( const QgsRectangle &viewExtent, int pixelWidth, in
         break;
 
       default:
-        QgsDebugMsg( QStringLiteral( "unexpected tile mode %1" ).arg( mTileLayer->tileMode ) );
+        QgsDebugError( QStringLiteral( "unexpected tile mode %1" ).arg( mTileLayer->tileMode ) );
         return image;
     }
 
@@ -1175,45 +1198,6 @@ QImage *QgsWmsProvider::draw( const QgsRectangle &viewExtent, int pixelWidth, in
   return image;
 }
 
-static GDALResampleAlg getGDALResamplingAlg( QgsRasterDataProvider::ResamplingMethod method )
-{
-  GDALResampleAlg eResampleAlg = GRA_NearestNeighbour;
-  switch ( method )
-  {
-    case QgsRasterDataProvider::ResamplingMethod::Nearest:
-    case QgsRasterDataProvider::ResamplingMethod::Gauss: // Gauss not available in GDALResampleAlg
-      eResampleAlg = GRA_NearestNeighbour;
-      break;
-
-    case QgsRasterDataProvider::ResamplingMethod::Bilinear:
-      eResampleAlg = GRA_Bilinear;
-      break;
-
-    case QgsRasterDataProvider::ResamplingMethod::Cubic:
-      eResampleAlg = GRA_Cubic;
-      break;
-
-    case QgsRasterDataProvider::ResamplingMethod::CubicSpline:
-      eResampleAlg = GRA_CubicSpline;
-      break;
-
-    case QgsRasterDataProvider::ResamplingMethod::Lanczos:
-      eResampleAlg = GRA_Lanczos;
-      break;
-
-    case QgsRasterDataProvider::ResamplingMethod::Average:
-      eResampleAlg = GRA_Average;
-      break;
-
-    case QgsRasterDataProvider::ResamplingMethod::Mode:
-      eResampleAlg = GRA_Mode;
-      break;
-  }
-
-  return eResampleAlg;
-}
-
-
 bool QgsWmsProvider::readBlock( int bandNo, QgsRectangle  const &viewExtent, int pixelWidth, int pixelHeight, void *block, QgsRasterBlockFeedback *feedback )
 {
   Q_UNUSED( bandNo )
@@ -1265,9 +1249,9 @@ bool QgsWmsProvider::readBlock( int bandNo, QgsRectangle  const &viewExtent, int
 
         GDALResampleAlg alg;
         if ( resamplingFactor < 1 || qgsDoubleNear( resamplingFactor, 1.0 ) )
-          alg = getGDALResamplingAlg( mZoomedInResamplingMethod );
+          alg = QgsGdalUtils::gdalResamplingAlgorithm( mZoomedInResamplingMethod );
         else
-          alg = getGDALResamplingAlg( mZoomedOutResamplingMethod );
+          alg = QgsGdalUtils::gdalResamplingAlgorithm( mZoomedOutResamplingMethod );
 
         gdal::dataset_unique_ptr gdalDsInput = QgsGdalUtils::blockToSingleBandMemoryDataset( image->width(), image->height(), effectiveExtent, data.data(), GDT_Float32 );
         gdal::dataset_unique_ptr gdalDsOutput = QgsGdalUtils::blockToSingleBandMemoryDataset( pixelWidth, pixelHeight, viewExtent, block, GDT_Float32 );
@@ -1310,8 +1294,8 @@ QUrl QgsWmsProvider::createRequestUrlWMS( const QgsRectangle &viewExtent, int pi
   {
     if ( mActiveSubLayerVisibility.constFind( *it ).value() )
     {
-      visibleLayers += QUrl::toPercentEncoding( *it );
-      visibleStyles += QUrl::toPercentEncoding( *it2 );
+      visibleLayers += *it;
+      visibleStyles += *it2;
     }
 
     ++it2;
@@ -1870,6 +1854,9 @@ void QgsWmsProvider::setupXyzCapabilities( const QString &uri, const QgsRectangl
   tl.tileMode = XYZ;
   tl.identifier = QStringLiteral( "xyz" );  // as set in parseUri
   tl.boundingBoxes << bbox;
+  // suppress cppcheck warnings
+  tl.dpi = -1;
+  tl.timeFormat = QgsWmtsTileLayer::WmtsTimeFormat::yyyyMMdd;
 
   double tilePixelRatio = sourceTilePixelRatio;  // by default 0 = unknown
   if ( parsedUri.hasParam( QStringLiteral( "tilePixelRatio" ) ) )
@@ -1952,7 +1939,7 @@ bool QgsWmsProvider::setupMBTilesCapabilities( const QString &uri )
     }
     catch ( const QgsCsException & )
     {
-      QgsDebugMsg( QStringLiteral( "Failed to reproject extent from MBTiles metadata" ) );
+      QgsDebugError( QStringLiteral( "Failed to reproject extent from MBTiles metadata" ) );
       return false;
     }
     sourceExtent = QgsRectangle( customTopLeft.x(), customBottomRight.y(), customBottomRight.x(), customTopLeft.y() );
@@ -2140,7 +2127,7 @@ bool QgsWmsProvider::parseServiceExceptionReportDom( QByteArray const &xml, QStr
 
       if ( tagName == QLatin1String( "ServiceException" ) )
       {
-        QgsDebugMsg( QStringLiteral( "  ServiceException." ) );
+        QgsDebugError( QStringLiteral( "  ServiceException." ) );
         parseServiceException( e, errorTitle, errorText );
       }
 
@@ -2456,7 +2443,7 @@ int QgsWmsProvider::capabilities() const
     }
   }
 
-  bool enablePrefetch = QgsSettingsRegistryCore::settingsEnableWMSTilePrefetching.value();
+  bool enablePrefetch = QgsSettingsRegistryCore::settingsEnableWMSTilePrefetching->value();
   if ( mSettings.mXyz || enablePrefetch )
   {
     capability |= Capability::Prefetch;
@@ -3187,7 +3174,7 @@ QString QgsWmsProvider::htmlMetadata()
       metadata += QLatin1String( "</table></td></tr>" );  // End nested table 3
     }
 
-    const QgsWmsStatistics::Stat &stat = QgsWmsStatistics::statForUri( dataSourceUri() );
+    const QgsWmsStatistics::Stat stat = QgsWmsStatistics::statForUri( dataSourceUri() );
 
     metadata += QStringLiteral( "<tr><th class=\"strong\" id=\"cachestats\">" ) %
                 tr( "Cache stats" ) %
@@ -3264,9 +3251,9 @@ double QgsWmsProvider::sample( const QgsPointXY &point, int band, bool *ok, cons
   return QgsRasterDataProvider::sample( point, band, ok, boundingBox, width, height, dpi );
 }
 
-QgsRasterIdentifyResult QgsWmsProvider::identify( const QgsPointXY &point, QgsRaster::IdentifyFormat format, const QgsRectangle &boundingBox, int width, int height, int /*dpi*/ )
+QgsRasterIdentifyResult QgsWmsProvider::identify( const QgsPointXY &point, Qgis::RasterIdentifyFormat format, const QgsRectangle &boundingBox, int width, int height, int /*dpi*/ )
 {
-  QgsDebugMsgLevel( QStringLiteral( "format = %1" ).arg( format ), 2 );
+  QgsDebugMsgLevel( QStringLiteral( "format = %1" ).arg( qgsEnumValueToKey( format ) ), 2 );
 
   QString formatStr;
   formatStr = mCaps.mIdentifyFormats.value( format );
@@ -3275,7 +3262,7 @@ QgsRasterIdentifyResult QgsWmsProvider::identify( const QgsPointXY &point, QgsRa
     return QgsRasterIdentifyResult( QGS_ERROR( tr( "Format not supported" ) ) );
   }
 
-  QgsDebugMsgLevel( QStringLiteral( "format = %1 format = %2" ).arg( format ).arg( formatStr ), 2 );
+  QgsDebugMsgLevel( QStringLiteral( "format = %1 format = %2" ).arg( qgsEnumValueToKey( format ) ).arg( formatStr ), 2 );
 
   QMap<int, QVariant> results;
   if ( !extent().contains( point ) )
@@ -3311,13 +3298,13 @@ QgsRasterIdentifyResult QgsWmsProvider::identify( const QgsPointXY &point, QgsRa
       // set resolution approximately to 1mm
       switch ( crs.mapUnits() )
       {
-        case QgsUnitTypes::DistanceMeters:
+        case Qgis::DistanceUnit::Meters:
           xRes = 0.001;
           break;
-        case QgsUnitTypes::DistanceFeet:
+        case Qgis::DistanceUnit::Feet:
           xRes = 0.003;
           break;
-        case QgsUnitTypes::DistanceDegrees:
+        case Qgis::DistanceUnit::Degrees:
           // max length of degree of latitude on pole is 111694 m
           xRes = 1e-8;
           break;
@@ -3607,7 +3594,7 @@ QgsRasterIdentifyResult QgsWmsProvider::identify( const QgsPointXY &point, QgsRa
     }
     else
     {
-      QgsDebugMsg( QStringLiteral( "No KVP and no feature info url for format %1" ).arg( formatStr ) );
+      QgsDebugError( QStringLiteral( "No KVP and no feature info url for format %1" ).arg( formatStr ) );
     }
   }
 
@@ -3629,7 +3616,7 @@ QgsRasterIdentifyResult QgsWmsProvider::identify( const QgsPointXY &point, QgsRa
 
     if ( mIdentifyResultBodies.isEmpty() ) // no result
     {
-      QgsDebugMsg( QStringLiteral( "mIdentifyResultBodies is empty" ) );
+      QgsDebugError( QStringLiteral( "mIdentifyResultBodies is empty" ) );
       continue;
     }
     else if ( mIdentifyResultBodies.size() == 1 )
@@ -3662,19 +3649,22 @@ QgsRasterIdentifyResult QgsWmsProvider::identify( const QgsPointXY &point, QgsRa
 
         if ( isXml && parseServiceExceptionReportDom( body, mErrorCaption, mError ) )
         {
-          QgsMessageLog::logMessage( tr( "Get feature info request error (Title: %1; Error: %2; URL: %3)" )
-                                     .arg( mErrorCaption, mError,
-                                           requestUrl.toString() ), tr( "WMS" ) );
-          continue;
+          if ( !mError.isEmpty() ) //xml is not necessarily an exception
+          {
+            QgsMessageLog::logMessage( tr( "Get feature info request error (Title: %1; Error: %2; URL: %3)" )
+                                       .arg( mErrorCaption, mError,
+                                             requestUrl.toString() ), tr( "WMS" ) );
+            continue;
+          }
         }
       }
     }
 
-    if ( format == QgsRaster::IdentifyFormatHtml || format == QgsRaster::IdentifyFormatText )
+    if ( format == Qgis::RasterIdentifyFormat::Html || format == Qgis::RasterIdentifyFormat::Text )
     {
       results.insert( results.size(), QString::fromUtf8( mIdentifyResultBodies.value( 0 ) ) );
     }
-    else if ( format == QgsRaster::IdentifyFormatFeature ) // GML
+    else if ( format == Qgis::RasterIdentifyFormat::Feature ) // GML
     {
       // The response maybe
       // 1) simple GML
@@ -3740,7 +3730,7 @@ QgsRasterIdentifyResult QgsWmsProvider::identify( const QgsPointXY &point, QgsRa
         }
         if ( mIdentifyResultBodies.size() == 2 ) // GML+XSD
         {
-          QgsDebugMsg( QStringLiteral( "Multipart with 2 parts - expected GML + XSD" ) );
+          QgsDebugMsgLevel( QStringLiteral( "Multipart with 2 parts - expected GML + XSD" ), 2 );
           // How to find which part is GML and which XSD? Both have
           // Content-Type: application/binary
           // different are Content-Disposition but it is not reliable.
@@ -3770,7 +3760,7 @@ QgsRasterIdentifyResult QgsWmsProvider::identify( const QgsPointXY &point, QgsRa
 
         QgsDebugMsgLevel( "GML UTF-8 (first 2000 bytes):\n" + gmlByteArray.left( 2000 ), 2 );
 
-        QgsWkbTypes::Type wkbType;
+        Qgis::WkbType wkbType;
         QgsGmlSchema gmlSchema;
 
         if ( xsdPart >= 0 )  // XSD available
@@ -3786,7 +3776,7 @@ QgsRasterIdentifyResult QgsWmsProvider::identify( const QgsPointXY &point, QgsRa
           {
             QgsError err = gmlSchema.error();
             err.append( tr( "Cannot identify" ) );
-            QgsDebugMsg( "guess schema error: " + err.message() );
+            QgsDebugError( "guess schema error: " + err.message() );
             return QgsRasterIdentifyResult( err );
           }
         }
@@ -3865,7 +3855,7 @@ QgsRasterIdentifyResult QgsWmsProvider::identify( const QgsPointXY &point, QgsRa
         {
           QgsError err = QGS_ERROR( tr( "Cannot identify" ) );
           err.append( tr( "Result parsing failed. %n feature type(s) were guessed from gml (%2) but no features were parsed.", nullptr, featureTypeNames.size() ).arg( featureTypeNames.join( QLatin1Char( ',' ) ) ) );
-          QgsDebugMsg( "parsing GML error: " + err.message() );
+          QgsDebugError( "parsing GML error: " + err.message() );
           return QgsRasterIdentifyResult( err );
         }
         results.insert( results.size(), QVariant::fromValue( featureStoreList ) );
@@ -3899,7 +3889,7 @@ QgsRasterIdentifyResult QgsWmsProvider::identify( const QgsPointXY &point, QgsRa
               crsText = QStringLiteral( "%1:%2" ).arg( crsType, result.value( QLatin1String( "crs" ) ).toObject().value( QLatin1String( "properties" ) ).toObject().value( QStringLiteral( "code" ) ).toString() );
             else
             {
-              QgsDebugMsg( QStringLiteral( "crs not supported:%1" ).arg( result.value( QLatin1String( "crs" ) ).toString() ) );
+              QgsDebugError( QStringLiteral( "crs not supported:%1" ).arg( result.value( QLatin1String( "crs" ) ).toString() ) );
             }
 
             QgsCoordinateReferenceSystem featuresCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( crsText );
@@ -4008,7 +3998,7 @@ QgsRasterIdentifyResult QgsWmsProvider::identify( const QgsPointXY &point, QgsRa
         }
         catch ( const QString &err )
         {
-          QgsDebugMsg( QStringLiteral( "JSON error: %1\nResult: %2" ).arg( err, QString::fromUtf8( mIdentifyResultBodies.value( jsonPart ) ) ) );
+          QgsDebugError( QStringLiteral( "JSON error: %1\nResult: %2" ).arg( err, QString::fromUtf8( mIdentifyResultBodies.value( jsonPart ) ) ) );
           results.insert( results.size(), err );  // string returned for format type "feature" means error
         }
 
@@ -4057,7 +4047,7 @@ void QgsWmsProvider::identifyReplyFinished()
     QgsNetworkReplyParser parser( mIdentifyReply );
     if ( !parser.isValid() )
     {
-      QgsDebugMsg( QStringLiteral( "Cannot parse reply" ) );
+      QgsDebugError( QStringLiteral( "Cannot parse reply" ) );
       mErrorFormat = QStringLiteral( "text/plain" );
       mError = tr( "Cannot parse getfeatureinfo: %1" ).arg( parser.error() );
       emit statusChanged( mError );
@@ -4527,6 +4517,11 @@ QgsWmsProvider *QgsWmsProviderMetadata::createProvider( const QString &uri, cons
 {
   Q_UNUSED( flags );
   return new QgsWmsProvider( uri, options );
+}
+
+QgsProviderMetadata::ProviderCapabilities QgsWmsProviderMetadata::providerCapabilities() const
+{
+  return FileBasedUris;
 }
 
 // -----------------
@@ -5271,6 +5266,13 @@ QIcon QgsWmsProviderMetadata::icon() const
   return QgsApplication::getThemeIcon( QStringLiteral( "mIconWms.svg" ) );
 }
 
+QgsProviderMetadata::ProviderMetadataCapabilities QgsWmsProviderMetadata::capabilities() const
+{
+  return ProviderMetadataCapability::LayerTypesForUri
+         | ProviderMetadataCapability::PriorityForUri
+         | ProviderMetadataCapability::QuerySublayers;
+}
+
 QList<QgsDataItemProvider *> QgsWmsProviderMetadata::dataItemProviders() const
 {
   QList<QgsDataItemProvider *> providers;
@@ -5285,9 +5287,9 @@ QList<QgsDataItemProvider *> QgsWmsProviderMetadata::dataItemProviders() const
 QVariantMap QgsWmsProviderMetadata::decodeUri( const QString &uri ) const
 {
   const QUrlQuery query { uri };
-  const auto constItems { query.queryItems() };
+  const QList<QPair<QString, QString> > constItems { query.queryItems() };
   QVariantMap decoded;
-  for ( const auto &item : constItems )
+  for ( const QPair<QString, QString> &item : constItems )
   {
     if ( item.first == QLatin1String( "url" ) )
     {
@@ -5295,6 +5297,10 @@ QVariantMap QgsWmsProviderMetadata::decodeUri( const QString &uri ) const
       if ( url.isLocalFile() )
       {
         decoded[ QStringLiteral( "path" ) ] = url.toLocalFile();
+      }
+      else if ( QFileInfo( item.second ).isFile() )
+      {
+        decoded[ QStringLiteral( "path" ) ] = item.second;
       }
       else
       {
@@ -5328,9 +5334,140 @@ QString QgsWmsProviderMetadata::encodeUri( const QVariantMap &parts ) const
   return query.toString();
 }
 
-QList<QgsMapLayerType> QgsWmsProviderMetadata::supportedLayerTypes() const
+QList<QgsProviderSublayerDetails> QgsWmsProviderMetadata::querySublayers( const QString &uri, Qgis::SublayerQueryFlags flags, QgsFeedback * ) const
 {
-  return { QgsMapLayerType::RasterLayer };
+  QString fileName;
+  const QFileInfo fi( uri );
+  if ( fi.isFile() )
+  {
+    fileName = uri;
+  }
+  else
+  {
+    const QVariantMap parts = decodeUri( uri );
+    if ( !parts.contains( QStringLiteral( "path" ) ) )
+    {
+      if ( parts.value( QStringLiteral( "url" ) ).isValid() )
+      {
+        // online wms source
+        QgsProviderSublayerDetails details;
+        details.setUri( uri );
+        details.setProviderKey( key() );
+        details.setType( Qgis::LayerType::Raster );
+        return {details};
+      }
+      else
+      {
+        // not a wms uri
+        return {};
+      }
+    }
+
+    fileName = parts.value( QStringLiteral( "path" ) ).toString();
+  }
+
+  if ( fileName.isEmpty() )
+    return {};
+
+  if ( QFileInfo( fileName ).suffix().compare( QLatin1String( "mbtiles" ), Qt::CaseInsensitive ) == 0 )
+  {
+    QVariantMap parts;
+    parts.insert( QStringLiteral( "path" ), fileName );
+    parts.insert( QStringLiteral( "type" ), QStringLiteral( "mbtiles" ) );
+
+    if ( flags & Qgis::SublayerQueryFlag::FastScan )
+    {
+      // fast scan -- assume raster tiles are available
+      QgsProviderSublayerDetails details;
+      details.setUri( encodeUri( parts ) );
+      details.setProviderKey( key() );
+      details.setType( Qgis::LayerType::Raster );
+      details.setName( QgsProviderUtils::suggestLayerNameFromFilePath( fileName ) );
+      details.setSkippedContainerScan( true );
+      return {details};
+    }
+    else
+    {
+      // slower scan, check actual mbtiles format
+      QgsMbTiles reader( fileName );
+      if ( reader.open() )
+      {
+        if ( reader.metadataValue( "format" ) != QLatin1String( "pbf" ) )
+        {
+          QgsProviderSublayerDetails details;
+          details.setUri( encodeUri( parts ) );
+          details.setProviderKey( key() );
+          details.setType( Qgis::LayerType::Raster );
+          details.setName( QgsProviderUtils::suggestLayerNameFromFilePath( fileName ) );
+          return {details};
+        }
+      }
+    }
+  }
+  return {};
+}
+
+int QgsWmsProviderMetadata::priorityForUri( const QString &uri ) const
+{
+  if ( validLayerTypesForUri( uri ).contains( Qgis::LayerType::Raster ) )
+    return 100;
+
+  return 0;
+}
+
+QList<Qgis::LayerType> QgsWmsProviderMetadata::validLayerTypesForUri( const QString &uri ) const
+{
+  const QFileInfo fi( uri );
+  if ( fi.isFile() && fi.suffix().compare( QLatin1String( "mbtiles" ), Qt::CaseInsensitive ) == 0 )
+  {
+    return { Qgis::LayerType::Raster };
+  }
+
+  const QVariantMap parts = decodeUri( uri );
+  if ( parts.value( QStringLiteral( "path" ) ).toString().endsWith( ".mbtiles", Qt::CaseSensitivity::CaseInsensitive ) )
+    return { Qgis::LayerType::Raster };
+
+  return {};
+}
+
+QString QgsWmsProviderMetadata::absoluteToRelativeUri( const QString &src, const QgsReadWriteContext &context ) const
+{
+  // handle relative paths to XYZ tiles
+  QgsDataSourceUri uri;
+  uri.setEncodedUri( src );
+  const QUrl srcUrl( uri.param( QStringLiteral( "url" ) ) );
+  if ( srcUrl.isLocalFile() )
+  {
+    // relative path will become "file:./x.txt"
+    const QString relSrcUrl = context.pathResolver().writePath( srcUrl.toLocalFile() );
+    uri.removeParam( QStringLiteral( "url" ) );  // needed because setParam() would insert second "url" key
+    uri.setParam( QStringLiteral( "url" ), QUrl::fromLocalFile( relSrcUrl ).toString() );
+    return uri.encodedUri();
+  }
+
+  return src;
+}
+
+QString QgsWmsProviderMetadata::relativeToAbsoluteUri( const QString &src, const QgsReadWriteContext &context ) const
+{
+  // handle relative paths to XYZ tiles
+  QgsDataSourceUri uri;
+  uri.setEncodedUri( src );
+  const QUrl srcUrl( uri.param( QStringLiteral( "url" ) ) );
+  if ( srcUrl.isLocalFile() )  // file-based URL? convert to relative path
+  {
+    const QString absSrcUrl = context.pathResolver().readPath( srcUrl.toLocalFile() );
+    uri.removeParam( QStringLiteral( "url" ) );  // needed because setParam() would insert second "url" key
+    uri.setParam( QStringLiteral( "url" ), QUrl::fromLocalFile( absSrcUrl ).toString() );
+    return uri.encodedUri();
+  }
+
+  return src;
+}
+
+QList<Qgis::LayerType> QgsWmsProviderMetadata::supportedLayerTypes() const
+{
+  return { Qgis::LayerType::Raster };
 }
 
 #ifndef HAVE_STATIC_PROVIDERS
@@ -5354,6 +5491,11 @@ std::unique_ptr<QgsWmsInterpretationConverter> QgsWmsInterpretationConverter::cr
 Qgis::DataType QgsWmsInterpretationConverter::dataType() const
 {
   return Qgis::DataType::Float32;
+}
+
+bool QgsWmsInterpretationConverter::representsElevation() const
+{
+  return false;
 }
 
 //
@@ -5390,6 +5532,11 @@ QgsRasterHistogram QgsWmsInterpretationConverterMapTilerTerrainRGB::histogram( i
   return QgsRasterHistogram();
 }
 
+bool QgsWmsInterpretationConverterMapTilerTerrainRGB::representsElevation() const
+{
+  return true;
+}
+
 //
 // QgsWmsInterpretationConverterTerrariumRGB
 //
@@ -5421,4 +5568,9 @@ QgsRasterBandStats QgsWmsInterpretationConverterTerrariumRGB::statistics( int, i
 QgsRasterHistogram QgsWmsInterpretationConverterTerrariumRGB::histogram( int, int, double, double, const QgsRectangle &, int, bool, QgsRasterBlockFeedback * ) const
 {
   return QgsRasterHistogram();
+}
+
+bool QgsWmsInterpretationConverterTerrariumRGB::representsElevation() const
+{
+  return true;
 }

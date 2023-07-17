@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """
 /***************************************************************************
 Name                 : DB Manager
@@ -221,7 +219,7 @@ class DBManager(QMainWindow):
     def update_query_tab_name(self, index, dbname, queryname):
         if not queryname:
             queryname = self.tr("Query")
-        tabname = u"%s (%s)" % (queryname, dbname)
+        tabname = "%s (%s)" % (queryname, dbname)
         self.tabs.setTabText(index, tabname)
 
     def showSystemTables(self):

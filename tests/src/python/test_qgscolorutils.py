@@ -12,11 +12,7 @@ __copyright__ = 'Copyright 2022, The QGIS Project'
 import qgis  # NOQA
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (
-    QgsSymbolLayerUtils,
-    QgsColorUtils,
-    QgsReadWriteContext
-)
+from qgis.core import QgsColorUtils, QgsReadWriteContext, QgsSymbolLayerUtils
 from qgis.testing import unittest
 
 
@@ -25,6 +21,7 @@ class TestQgsColorUtils(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
         try:
             QColor.ExtendedRgb
             cls.has_extended_rgb = True

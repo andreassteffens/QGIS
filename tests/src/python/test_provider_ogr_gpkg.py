@@ -22,35 +22,46 @@ from sqlite3 import OperationalError
 
 import qgis  # NOQA
 from osgeo import gdal, ogr
-from qgis.PyQt.QtCore import QCoreApplication, QVariant, QDate, QDateTime, Qt, QTemporaryDir, QTime, QFileInfo
+from qgis.PyQt.QtCore import (
+    QCoreApplication,
+    QDate,
+    QDateTime,
+    QFileInfo,
+    Qt,
+    QTemporaryDir,
+    QTime,
+    QVariant,
+)
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (Qgis,
-                       QgsFeature,
-                       QgsCoordinateReferenceSystem,
-                       QgsFeatureRequest,
-                       QgsFeatureSink,
-                       QgsFields,
-                       QgsField,
-                       QgsFieldConstraints,
-                       QgsGeometry,
-                       QgsProviderRegistry,
-                       QgsRectangle,
-                       QgsSettings,
-                       QgsVectorLayer,
-                       QgsVectorLayerExporter,
-                       QgsPointXY,
-                       QgsProject,
-                       QgsWkbTypes,
-                       QgsDataProvider,
-                       QgsVectorDataProvider,
-                       QgsLayerMetadata,
-                       QgsProviderMetadata,
-                       NULL)
+from qgis.core import (
+    NULL,
+    Qgis,
+    QgsCoordinateReferenceSystem,
+    QgsDataProvider,
+    QgsFeature,
+    QgsFeatureRequest,
+    QgsFeatureSink,
+    QgsField,
+    QgsFieldConstraints,
+    QgsFields,
+    QgsGeometry,
+    QgsLayerMetadata,
+    QgsPointXY,
+    QgsProject,
+    QgsProviderMetadata,
+    QgsProviderRegistry,
+    QgsRectangle,
+    QgsSettings,
+    QgsVectorDataProvider,
+    QgsVectorLayer,
+    QgsVectorLayerExporter,
+    QgsWkbTypes,
+)
 from qgis.testing import start_app, unittest
 from qgis.utils import spatialite_connect
 
 from providertestbase import ProviderTestCase
-from utilities import unitTestDataPath
+from utilities import compareWkt, unitTestDataPath
 
 TEST_DATA_DIR = unitTestDataPath()
 
@@ -68,6 +79,7 @@ class TestPyQgsOGRProviderGpkgConformance(unittest.TestCase, ProviderTestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super(TestPyQgsOGRProviderGpkgConformance, cls).setUpClass()
         # Create test layer
         cls.basetestpath = tempfile.mkdtemp()
         cls.repackfilepath = tempfile.mkdtemp()
@@ -108,6 +120,7 @@ class TestPyQgsOGRProviderGpkgConformance(unittest.TestCase, ProviderTestCase):
         del cls.unique_not_null_constraints
         for dirname in cls.dirs_to_cleanup:
             shutil.rmtree(dirname, True)
+        super(TestPyQgsOGRProviderGpkgConformance, cls).tearDownClass()
 
     def getSource(self):
         tmpdir = tempfile.mkdtemp()
@@ -216,6 +229,60 @@ class TestPyQgsOGRProviderGpkgConformance(unittest.TestCase, ProviderTestCase):
                 'name LIKE \'Ap\\_le\''
                 }
 
+    def testOrderByCompiled(self):
+        self.runOrderByTests()
+
+        # Below checks test particular aspects of the ORDER BY optimization for
+        # Geopackage
+
+        # Test orderBy + filter expression
+        request = QgsFeatureRequest().setFilterExpression('"cnt">=200').addOrderBy('num_char')
+        values = [f['pk'] for f in self.source.getFeatures(request)]
+        self.assertEqual(values, [2, 3, 4])
+        values = [f.geometry().asWkt() for f in self.source.getFeatures(request)]
+        # Check that we get geometries
+        assert compareWkt(values[0], "Point (-68.2 70.8)"), values[0]
+
+        # Test orderBy + subset string
+        request = QgsFeatureRequest().addOrderBy('num_char')
+        self.source.setSubsetString("cnt >= 200")
+        values = [f['pk'] for f in self.source.getFeatures(request)]
+        self.source.setSubsetString(None)
+        self.assertEqual(values, [2, 3, 4])
+
+        # Test orderBy + subset string + filter expression
+        request = QgsFeatureRequest().setFilterExpression('"cnt"<=300').addOrderBy('num_char')
+        self.source.setSubsetString("cnt >= 200")
+        values = [f['pk'] for f in self.source.getFeatures(request)]
+        self.source.setSubsetString(None)
+        self.assertEqual(values, [2, 3])
+
+        # Test orderBy + extent
+        # Note that currently the spatial filter will not use the spatial index
+        # (probably too tricky to implement on the OGR side since it would need
+        # to analyze the SQL SELECT, but QGIS could probably add the JOIN with
+        # the RTree)
+        extent = QgsRectangle(-70, 67, -60, 80)
+        request = QgsFeatureRequest().setFilterRect(extent).addOrderBy('num_char')
+        values = [f['pk'] for f in self.source.getFeatures(request)]
+        self.assertEqual(values, [2, 4])
+
+        # Test orderBy + subset string which is a SELECT
+        # (excluded by the optimization)
+        # For some weird reason, we need to re-open a new connection to the
+        # dataset (this weird behavior predates the optimization)
+        request = QgsFeatureRequest().addOrderBy('num_char')
+        tmpdir = tempfile.mkdtemp()
+        self.dirs_to_cleanup.append(tmpdir)
+        srcpath = os.path.join(TEST_DATA_DIR, 'provider')
+        shutil.copy(os.path.join(srcpath, 'geopackage.gpkg'), tmpdir)
+        datasource = os.path.join(tmpdir, 'geopackage.gpkg')
+        vl = QgsVectorLayer(datasource, 'test', 'ogr')
+        vl.setSubsetString("SELECT * FROM \"geopackage\" WHERE cnt >= 200")
+        values = [f['pk'] for f in vl.getFeatures(request)]
+        self.assertEqual(values, [2, 3, 4])
+        del vl
+
 
 class ErrorReceiver():
 
@@ -250,6 +317,7 @@ class TestPyQgsOGRProviderGpkg(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
 
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("TestPyQgsOGRProviderGpkg.com")
@@ -266,6 +334,7 @@ class TestPyQgsOGRProviderGpkg(unittest.TestCase):
         shutil.rmtree(cls.basetestpath, True)
 
         QgsSettings().clear()
+        super().tearDownClass()
 
     def testDecodeUri(self):
 
@@ -531,6 +600,16 @@ class TestPyQgsOGRProviderGpkg(unittest.TestCase):
         # but this is broken now.
         got = [feat for feat in vl.getFeatures(QgsFeatureRequest(1))]
         self.assertEqual(len(got), 1)  # this is the current behavior, broken
+
+        # Test setSubsetString() with a SELECT ... statement not selecting
+        # the FID column
+        vl = QgsVectorLayer(f'{tmpfile}', 'test', 'ogr')
+        vl.setSubsetString("SELECT name FROM test_layer WHERE name = 'two'")
+        got = [feat for feat in vl.getFeatures()]
+        self.assertEqual(len(got), 1)
+
+        attributes = got[0].attributes()
+        self.assertEqual(attributes[0], 'two')
 
     def testEditSubsetString(self):
 
@@ -1397,7 +1476,7 @@ class TestPyQgsOGRProviderGpkg(unittest.TestCase):
 
         testPath = tmpfile + '|layername=bug_17795'
         subSetString = '"name" = \'int\''
-        subSet = '|subset=%s' % subSetString
+        subSet = f'|subset={subSetString}'
 
         # unfiltered
         vl = QgsVectorLayer(testPath, 'test', 'ogr')
@@ -2131,7 +2210,7 @@ class TestPyQgsOGRProviderGpkg(unittest.TestCase):
         for tmpfile in (tmpfile1, tmpfile2):
             ds = ogr.GetDriverByName('GPKG').CreateDataSource(tmpfile)
             for i in range(2):
-                lyr = ds.CreateLayer('test%s' % i, geom_type=ogr.wkbPoint)
+                lyr = ds.CreateLayer(f'test{i}', geom_type=ogr.wkbPoint)
                 lyr.CreateField(ogr.FieldDefn('str_field', ogr.OFTString))
                 f = ogr.Feature(lyr.GetLayerDefn())
                 f.SetGeometry(ogr.CreateGeometryFromWkt('POINT (1 1)'))
@@ -2626,6 +2705,59 @@ class TestPyQgsOGRProviderGpkg(unittest.TestCase):
 
         got = [feat for feat in vl.getFeatures()]
         self.assertEqual(got[0]["dt"], new_dt)
+
+    def testTransactionModeAutoWithFilter(self):
+
+        temp_dir = QTemporaryDir()
+        temp_path = temp_dir.path()
+        filename = os.path.join(temp_path, "test.gpkg")
+        ds = ogr.GetDriverByName("GPKG").CreateDataSource(filename)
+        lyr = ds.CreateLayer("points", geom_type=ogr.wkbPoint)
+        lyr.CreateField(ogr.FieldDefn('name', ogr.OFTString))
+        f = ogr.Feature(lyr.GetLayerDefn())
+        f['name'] = 'a'
+        f.SetGeometry(ogr.CreateGeometryFromWkt('POINT(1 2)'))
+        lyr.CreateFeature(f)
+        f = None
+        ds = None
+        ds = None
+
+        vl = QgsVectorLayer(filename)
+        self.assertTrue(vl.isValid())
+        self.assertEqual(vl.featureCount(), 1)
+        self.assertEqual(next(vl.getFeatures())['name'], 'a')
+
+        p = QgsProject()
+        p.setAutoTransaction(True)
+        self.assertTrue(p.addMapLayers([vl]))
+        self.assertTrue(vl.setSubsetString('"name" IN (\'a\', \'b\')'))
+        self.assertEqual(vl.featureCount(), 1)
+        self.assertTrue(vl.startEditing())
+
+        # Add feature
+        f = QgsFeature(vl.fields())
+        f.setAttribute('name', 'b')
+        g = QgsGeometry.fromWkt('POINT(3 4)')
+        f.setGeometry(g)
+
+        # This triggers the issue because it sets the subset filter
+        req = QgsFeatureRequest()
+        req.setFilterExpression('"name" IS NULL')
+        self.assertEqual([f for f in vl.getFeatures(req)], [])
+
+        self.assertTrue(vl.addFeatures([f]))
+        self.assertTrue(vl.commitChanges())
+        self.assertEqual(vl.featureCount(), 2)
+        attrs = [f['name'] for f in vl.getFeatures()]
+        self.assertEqual(attrs, ['a', 'b'])
+
+        # verify
+        del p
+        vl2 = QgsVectorLayer(filename)
+        self.assertTrue(vl2.isValid())
+        self.assertEqual(vl2.featureCount(), 2)
+        attrs = [f['name'] for f in vl2.getFeatures()]
+        self.assertEqual(attrs, ['a', 'b'])
 
 
 if __name__ == '__main__':

@@ -17,18 +17,12 @@ __revision__ = '$Format:%H$'
 from qgis.PyQt.Qt import Qt
 from qgis.PyQt.QtCore import (
     QCoreApplication,
-    QVariant,
-    QModelIndex,
     QItemSelectionModel,
+    QModelIndex,
+    QVariant,
 )
-from qgis.core import (
-    QgsFields,
-    QgsField,
-)
-from qgis.gui import (
-    QgsAggregateMappingWidget,
-    QgsAggregateMappingModel,
-)
+from qgis.core import QgsField, QgsFields
+from qgis.gui import QgsAggregateMappingModel, QgsAggregateMappingWidget
 from qgis.testing import start_app, unittest
 
 
@@ -37,6 +31,7 @@ class TestPyQgsAggregateMappingModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
 
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(cls.__name__)

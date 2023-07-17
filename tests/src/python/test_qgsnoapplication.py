@@ -13,7 +13,7 @@ import sys
 
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.core import (QgsApplication)
+from qgis.core import QgsApplication
 from qgis.testing import unittest
 
 """

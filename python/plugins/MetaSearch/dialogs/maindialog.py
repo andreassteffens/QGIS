@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 ###############################################################################
 #
 # CSW Client
@@ -37,7 +36,7 @@ from qgis.PyQt.QtWidgets import (QDialog, QComboBox,
                                  QTreeWidgetItem, QWidget)
 from qgis.PyQt.QtGui import QColor
 
-from qgis.core import (QgsApplication, QgsCoordinateReferenceSystem,
+from qgis.core import (Qgis, QgsApplication, QgsCoordinateReferenceSystem,
                        QgsCoordinateTransform, QgsGeometry, QgsPointXY,
                        QgsProviderRegistry, QgsSettings, QgsProject,
                        QgsRectangle)
@@ -82,7 +81,7 @@ class MetaSearchDialog(QDialog, BASE_CLASS):
 
         self.setWindowTitle(self.tr('MetaSearch'))
 
-        self.rubber_band = QgsRubberBand(self.map, True)  # True = a polygon
+        self.rubber_band = QgsRubberBand(self.map, Qgis.GeometryType.Polygon)
         self.rubber_band.setColor(QColor(255, 0, 0, 75))
         self.rubber_band.setWidth(5)
 
@@ -985,12 +984,12 @@ class MetaSearchDialog(QDialog, BASE_CLASS):
             proxy_port = ''
 
             if all([user != '', password != '']):
-                proxy_up = '%s:%s@' % (user, password)
+                proxy_up = f'{user}:{password}@'
 
             if port != '':
                 proxy_port = ':%s' % port
 
-            conn = '%s://%s%s%s' % (ptype, proxy_up, host, proxy_port)
+            conn = f'{ptype}://{proxy_up}{host}{proxy_port}'
             install_opener(build_opener(ProxyHandler({ptype: conn})))
 
 

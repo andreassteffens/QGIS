@@ -100,13 +100,6 @@ class CORE_EXPORT QgsDxfExport : public QgsLabelSink
         int mLayerOutputAttributeIndex = -1;
     };
 
-    enum SymbologyExport
-    {
-      NoSymbology = 0, //!< Export only data
-      FeatureSymbology, //!< Keeps the number of features and export symbology per feature (using the first symbol level)
-      SymbolLayerSymbology //!< Exports one feature per symbol layer (considering symbol levels)
-    };
-
     //! Export flags
     enum Flag
     {
@@ -232,7 +225,7 @@ class CORE_EXPORT QgsDxfExport : public QgsLabelSink
      * Retrieve map units
      * \returns unit
      */
-    QgsUnitTypes::DistanceUnit mapUnits() const;
+    Qgis::DistanceUnit mapUnits() const;
 
     /**
      * Set destination CRS
@@ -252,14 +245,14 @@ class CORE_EXPORT QgsDxfExport : public QgsLabelSink
      * Set symbology export mode
      * \param e the mode
      */
-    void setSymbologyExport( QgsDxfExport::SymbologyExport e ) { mSymbologyExport = e; }
+    void setSymbologyExport( Qgis::FeatureSymbologyExport e ) { mSymbologyExport = e; }
 
     /**
      * Gets symbology export mode
      * \returns mode
      * \see setSymbologyExport
      */
-    QgsDxfExport::SymbologyExport symbologyExport() const { return mSymbologyExport; }
+    Qgis::FeatureSymbologyExport symbologyExport() const { return mSymbologyExport; }
 
     /**
      * Set extent of area to export
@@ -501,7 +494,7 @@ class CORE_EXPORT QgsDxfExport : public QgsLabelSink
      * \param mapUnits the map units
      * \param mapUnitsPerPixel Map units per pixel
     */
-    static double mapUnitScaleFactor( double scale, QgsUnitTypes::RenderUnit symbolUnits, QgsUnitTypes::DistanceUnit mapUnits, double mapUnitsPerPixel = 1.0 );
+    static double mapUnitScaleFactor( double scale, Qgis::RenderUnit symbolUnits, Qgis::DistanceUnit mapUnits, double mapUnitsPerPixel = 1.0 );
 
     /**
      * Clips value to scale minimum/maximum
@@ -547,8 +540,8 @@ class CORE_EXPORT QgsDxfExport : public QgsLabelSink
     QgsRectangle mExtent;
     //! Scale for symbology export (used if symbols units are mm)
     double mSymbologyScale = 1.0;
-    SymbologyExport mSymbologyExport = NoSymbology;
-    QgsUnitTypes::DistanceUnit mMapUnits = QgsUnitTypes::DistanceMeters;
+    Qgis::FeatureSymbologyExport mSymbologyExport = Qgis::FeatureSymbologyExport::NoSymbology;
+    Qgis::DistanceUnit mMapUnits = Qgis::DistanceUnit::Meters;
     bool mLayerTitleAsName = false;
 
     QTextStream mTextStream;
@@ -559,6 +552,8 @@ class CORE_EXPORT QgsDxfExport : public QgsLabelSink
 
     QHash< const QgsSymbolLayer *, QString > mLineStyles; //symbol layer name types
     QHash< const QgsSymbolLayer *, QString > mPointSymbolBlocks; //reference to point symbol blocks
+    QHash< const QgsSymbolLayer *, double > mPointSymbolBlockSizes; //reference to point symbol size used to create its block
+    QHash< const QgsSymbolLayer *, double > mPointSymbolBlockAngles; //reference to point symbol size used to create its block
 
     //AC1009
     void writeHeader( const QString &codepage );
@@ -576,7 +571,7 @@ class CORE_EXPORT QgsDxfExport : public QgsLabelSink
     void writePoint( const QgsPoint &pt, const QString &layer, const QColor &color, QgsSymbolRenderContext &ctx, const QgsSymbolLayer *symbolLayer, const QgsSymbol *symbol, double angle );
     void writeDefaultLinetypes();
     void writeSymbolLayerLinetype( const QgsSymbolLayer *symbolLayer );
-    void writeLinetype( const QString &styleName, const QVector<qreal> &pattern, QgsUnitTypes::RenderUnit u );
+    void writeLinetype( const QString &styleName, const QVector<qreal> &pattern, Qgis::RenderUnit u );
 
     /**
      * Helper method to calculate text properties from (PAL) label
@@ -618,7 +613,8 @@ class CORE_EXPORT QgsDxfExport : public QgsLabelSink
 
     QList< QPair< QgsSymbolLayer *, QgsSymbol * > > symbolLayers( QgsRenderContext &context );
     static int nLineTypes( const QList< QPair< QgsSymbolLayer *, QgsSymbol *> > &symbolLayers );
-    static bool hasDataDefinedProperties( const QgsSymbolLayer *sl, const QgsSymbol *symbol );
+    static bool hasBlockBreakingDataDefinedProperties( const QgsSymbolLayer *sl, const QgsSymbol *symbol );
+
     double dashSize() const;
     double dotSize() const;
     double dashSeparatorSize() const;

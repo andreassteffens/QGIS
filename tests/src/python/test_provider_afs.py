@@ -14,27 +14,33 @@ __copyright__ = 'Copyright 2018, Nyall Dawson'
 import hashlib
 import tempfile
 
-from qgis.PyQt.QtCore import QCoreApplication, Qt, QObject, QDate, QDateTime, QTime
-from qgis.core import (NULL,
-                       QgsVectorLayer,
-                       QgsLayerMetadata,
-                       QgsBox3d,
-                       QgsCoordinateReferenceSystem,
-                       QgsApplication,
-                       QgsSettings,
-                       QgsRectangle,
-                       QgsCategorizedSymbolRenderer,
-                       QgsProviderRegistry,
-                       QgsWkbTypes,
-                       QgsVectorDataProviderTemporalCapabilities,
-                       QgsFieldConstraints,
-                       QgsVectorDataProvider,
-                       QgsFeature,
-                       QgsGeometry
-                       )
-from qgis.testing import (start_app,
-                          unittest
-                          )
+from qgis.PyQt.QtCore import (
+    QCoreApplication,
+    QDate,
+    QDateTime,
+    QObject,
+    Qt,
+    QTime,
+)
+from qgis.core import (
+    NULL,
+    QgsApplication,
+    QgsBox3d,
+    QgsCategorizedSymbolRenderer,
+    QgsCoordinateReferenceSystem,
+    QgsFeature,
+    QgsFieldConstraints,
+    QgsGeometry,
+    QgsLayerMetadata,
+    QgsProviderRegistry,
+    QgsRectangle,
+    QgsSettings,
+    QgsVectorDataProvider,
+    QgsVectorDataProviderTemporalCapabilities,
+    QgsVectorLayer,
+    QgsWkbTypes,
+)
+from qgis.testing import start_app, unittest
 
 from providertestbase import ProviderTestCase
 
@@ -87,6 +93,7 @@ class TestPyQgsAFSProvider(unittest.TestCase, ProviderTestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super(TestPyQgsAFSProvider, cls).setUpClass()
 
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("TestPyQgsAFSProvider.com")
@@ -689,6 +696,7 @@ class TestPyQgsAFSProvider(unittest.TestCase, ProviderTestCase):
         QgsSettings().clear()
         # shutil.rmtree(cls.basetestpath, True)
         cls.vl = None  # so as to properly close the provider and remove any temporary file
+        super().tearDownClass()
 
     def testGetFeaturesSubsetAttributes2(self):
         """ Override and skip this test for AFS provider, as it's actually more efficient for the AFS provider to return

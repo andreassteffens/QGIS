@@ -12,32 +12,31 @@ __copyright__ = 'Copyright 2012, The QGIS Project'
 import os
 import platform
 import re
+import stat
 import sys
 import tempfile
 
 import qgis  # NOQA
 
 try:
-    from urllib2 import urlopen, HTTPError, URLError
+    from urllib2 import HTTPError, URLError, urlopen
 except ImportError:
     from urllib.request import urlopen, HTTPError, URLError
 
-from qgis.PyQt.QtCore import QDir, QUrl, QUrlQuery
+import hashlib
+import subprocess
+import webbrowser
 
 from qgis.core import (
     QgsCoordinateReferenceSystem,
-    QgsVectorFileWriter,
-    QgsMapSettings,
+    QgsFontUtils,
     QgsMapRendererParallelJob,
     QgsMapRendererSequentialJob,
-    QgsFontUtils
+    QgsMapSettings,
+    QgsVectorFileWriter,
 )
+from qgis.PyQt.QtCore import QDir, QUrl, QUrlQuery
 from qgis.testing import start_app
-import hashlib
-
-
-import webbrowser
-import subprocess
 
 GEOCRS = 4326  # constant for EPSG:GEOCRS Geographic CRS id
 
@@ -197,6 +196,9 @@ def getTempfilePath(sufx='png'):
         suffix=f".{sufx}", delete=False)
     filepath = tmp.name
     tmp.close()
+    # set read permission for group and other so we can access docker test generated file
+    # to build artifact for instance
+    os.chmod(filepath, stat.S_IRUSR | stat.S_IWUSR | stat.S_IROTH | stat.S_IRGRP)
     return filepath
 
 

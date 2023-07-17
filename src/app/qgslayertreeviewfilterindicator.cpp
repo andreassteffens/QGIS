@@ -16,10 +16,7 @@
 #include "qgslayertreeviewfilterindicator.h"
 
 #include "qgslayertree.h"
-#include "qgslayertreemodel.h"
-#include "qgslayertreeutils.h"
 #include "qgslayertreeview.h"
-#include "qgsquerybuilder.h"
 #include "qgsvectorlayer.h"
 #include "qgsrasterlayer.h"
 #include "qgspointcloudlayer.h"
@@ -87,30 +84,30 @@ void QgsLayerTreeViewFilterIndicatorProvider::connectSignals( QgsMapLayer *layer
   QgsLayerTreeViewIndicatorProvider::connectSignals( layer );
   switch ( layer->type() )
   {
-    case QgsMapLayerType::VectorLayer:
+    case Qgis::LayerType::Vector:
     {
       QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( layer );
       connect( vlayer, &QgsVectorLayer::subsetStringChanged, this, &QgsLayerTreeViewFilterIndicatorProvider::onLayerChanged );
       break;
     }
-    case QgsMapLayerType::RasterLayer:
+    case Qgis::LayerType::Raster:
     {
       // PG raster
       QgsRasterLayer *rlayer = qobject_cast<QgsRasterLayer *>( layer );
       connect( rlayer, &QgsRasterLayer::subsetStringChanged, this, &QgsLayerTreeViewFilterIndicatorProvider::onLayerChanged );
       break;
     }
-    case QgsMapLayerType::PointCloudLayer:
+    case Qgis::LayerType::PointCloud:
     {
       QgsPointCloudLayer *pclayer = qobject_cast<QgsPointCloudLayer *>( layer );
       connect( pclayer, &QgsPointCloudLayer::subsetStringChanged, this, &QgsLayerTreeViewFilterIndicatorProvider::onLayerChanged );
       break;
     }
-    case QgsMapLayerType::AnnotationLayer:
-    case QgsMapLayerType::GroupLayer:
-    case QgsMapLayerType::MeshLayer:
-    case QgsMapLayerType::PluginLayer:
-    case QgsMapLayerType::VectorTileLayer:
+    case Qgis::LayerType::Annotation:
+    case Qgis::LayerType::Group:
+    case Qgis::LayerType::Mesh:
+    case Qgis::LayerType::Plugin:
+    case Qgis::LayerType::VectorTile:
       break;
   }
 }
@@ -123,30 +120,30 @@ void QgsLayerTreeViewFilterIndicatorProvider::disconnectSignals( QgsMapLayer *la
   QgsLayerTreeViewIndicatorProvider::disconnectSignals( layer );
   switch ( layer->type() )
   {
-    case QgsMapLayerType::VectorLayer:
+    case Qgis::LayerType::Vector:
     {
       QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( layer );
       disconnect( vlayer, &QgsVectorLayer::subsetStringChanged, this, &QgsLayerTreeViewFilterIndicatorProvider::onLayerChanged );
       break;
     }
-    case QgsMapLayerType::RasterLayer:
+    case Qgis::LayerType::Raster:
     {
       // PG raster
       QgsRasterLayer *rlayer = qobject_cast<QgsRasterLayer *>( layer );
       disconnect( rlayer, &QgsRasterLayer::subsetStringChanged, this, &QgsLayerTreeViewFilterIndicatorProvider::onLayerChanged );
       break;
     }
-    case QgsMapLayerType::PointCloudLayer:
+    case Qgis::LayerType::PointCloud:
     {
       QgsPointCloudLayer *pclayer = qobject_cast<QgsPointCloudLayer *>( layer );
       disconnect( pclayer, &QgsPointCloudLayer::subsetStringChanged, this, &QgsLayerTreeViewFilterIndicatorProvider::onLayerChanged );
       break;
     }
-    case QgsMapLayerType::AnnotationLayer:
-    case QgsMapLayerType::GroupLayer:
-    case QgsMapLayerType::MeshLayer:
-    case QgsMapLayerType::PluginLayer:
-    case QgsMapLayerType::VectorTileLayer:
+    case Qgis::LayerType::Annotation:
+    case Qgis::LayerType::Group:
+    case Qgis::LayerType::Mesh:
+    case Qgis::LayerType::Plugin:
+    case Qgis::LayerType::VectorTile:
       break;
   }
 }
@@ -155,26 +152,26 @@ bool QgsLayerTreeViewFilterIndicatorProvider::acceptLayer( QgsMapLayer *layer )
 {
   switch ( layer->type() )
   {
-    case QgsMapLayerType::VectorLayer:
+    case Qgis::LayerType::Vector:
     {
       QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( layer );
       return ! vlayer->subsetString().isEmpty();
     }
-    case QgsMapLayerType::RasterLayer:
+    case Qgis::LayerType::Raster:
     {
       QgsRasterLayer *rlayer = qobject_cast<QgsRasterLayer *>( layer );
       return ! rlayer->subsetString().isEmpty();
     }
-    case QgsMapLayerType::PointCloudLayer:
+    case Qgis::LayerType::PointCloud:
     {
       QgsPointCloudLayer *pclayer = qobject_cast<QgsPointCloudLayer *>( layer );
       return ! pclayer->subsetString().isEmpty();
     }
-    case QgsMapLayerType::AnnotationLayer:
-    case QgsMapLayerType::GroupLayer:
-    case QgsMapLayerType::MeshLayer:
-    case QgsMapLayerType::PluginLayer:
-    case QgsMapLayerType::VectorTileLayer:
+    case Qgis::LayerType::Annotation:
+    case Qgis::LayerType::Group:
+    case Qgis::LayerType::Mesh:
+    case Qgis::LayerType::Plugin:
+    case Qgis::LayerType::VectorTile:
       break;
   }
   return false;

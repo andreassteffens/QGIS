@@ -30,6 +30,8 @@
 #include "qgsserversettings.h"
 #include "qgswfsparameters.h"
 
+class QgsMapLayer;
+
 /**
  * \ingroup server
  * \brief WMS implementation
@@ -78,5 +80,3 @@ namespace QgsWfs
 } // namespace QgsWfs
 
 #endif
-
-

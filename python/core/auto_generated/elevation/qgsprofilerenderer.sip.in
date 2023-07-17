@@ -44,6 +44,7 @@ Constructor for QgsProfilePlotRenderer, using the provided list of profile ``sou
 results.
 %End
 
+
     ~QgsProfilePlotRenderer();
 
     QStringList sourceIds() const;
@@ -55,6 +56,19 @@ Returns the ordered list of source IDs for the sources used by the renderer.
 %Docstring
 Start the generation job and immediately return.
 Does nothing if the generation is already in progress.
+%End
+
+    void generateSynchronously();
+%Docstring
+Generate the profile results synchronously in this thread. The function does not return until the generation
+is complete.
+
+This is an alternative to ordinary API (using :py:func:`~QgsProfilePlotRenderer.startGeneration` + waiting for :py:func:`~QgsProfilePlotRenderer.generationFinished` signal).
+Users are discouraged to use this method unless they have a strong reason for doing it.
+The synchronous generation blocks the main thread, making the application unresponsive.
+Also, it is not possible to cancel generation while it is in progress.
+
+.. versionadded:: 3.30
 %End
 
     void cancelGeneration();
@@ -124,7 +138,7 @@ Does nothing if the generation is already in progress.
 Returns the limits of the retrieved elevation values.
 %End
 
-    QImage renderToImage( int width, int height, double distanceMin, double distanceMax, double zMin, double zMax, const QString &sourceId = QString() );
+    QImage renderToImage( int width, int height, double distanceMin, double distanceMax, double zMin, double zMax, const QString &sourceId = QString(), double devicePixelRatio = 1.0 );
 %Docstring
 Renders a portion of the profile to an image with the given ``width`` and ``height``.
 
@@ -151,6 +165,13 @@ Identify results visible at the specified profile ``point``.
     QVector<QgsProfileIdentifyResults> identify( const QgsDoubleRange &distanceRange, const QgsDoubleRange &elevationRange, const QgsProfileIdentifyContext &context );
 %Docstring
 Identify results visible within the specified ranges.
+%End
+
+    QVector< QgsAbstractProfileResults::Feature > asFeatures( Qgis::ProfileExportType type, QgsFeedback *feedback = 0 );
+%Docstring
+Exports the profile results as a set of features.
+
+.. versionadded:: 3.32
 %End
 
   signals:

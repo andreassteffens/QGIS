@@ -12,7 +12,7 @@ __copyright__ = 'Copyright 2018, The QGIS Project'
 import os
 
 import qgis  # NOQA
-from qgis.core import QgsVectorLayer, QgsProject
+from qgis.core import QgsProject, QgsVectorLayer
 from qgis.testing import start_app, unittest
 
 start_app()
@@ -26,6 +26,7 @@ class TestQgsPostgresDomain(unittest.TestCase):
         Setup the involved layer
         :return:
         """
+        super().setUpClass()
         cls.dbconn = 'service=\'qgis_test\''
         if 'QGIS_PGTEST_DB' in os.environ:
             cls.dbconn = os.environ['QGIS_PGTEST_DB']

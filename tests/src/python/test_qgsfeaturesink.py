@@ -8,25 +8,27 @@ the Free Software Foundation; either version 2 of the License, or
 __author__ = '(C) 2017 by Nyall Dawson'
 __date__ = '26/04/2017'
 __copyright__ = 'Copyright 2017, The QGIS Project'
+
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QVariant
-from qgis.core import (QgsFeatureStore,
-                       QgsVectorLayer,
-                       QgsFeature,
-                       QgsGeometry,
-                       QgsPointXY,
-                       QgsField,
-                       QgsFields,
-                       QgsCoordinateReferenceSystem,
-                       QgsProxyFeatureSink,
-                       QgsRemappingProxyFeatureSink,
-                       QgsRemappingSinkDefinition,
-                       QgsWkbTypes,
-                       QgsProject,
-                       QgsProperty,
-                       QgsExpressionContext,
-                       QgsExpressionContextScope
-                       )
+from qgis.core import (
+    QgsCoordinateReferenceSystem,
+    QgsExpressionContext,
+    QgsExpressionContextScope,
+    QgsFeature,
+    QgsFeatureStore,
+    QgsField,
+    QgsFields,
+    QgsGeometry,
+    QgsPointXY,
+    QgsProject,
+    QgsProperty,
+    QgsProxyFeatureSink,
+    QgsRemappingProxyFeatureSink,
+    QgsRemappingSinkDefinition,
+    QgsVectorLayer,
+    QgsWkbTypes,
+)
 from qgis.testing import start_app, unittest
 
 start_app()

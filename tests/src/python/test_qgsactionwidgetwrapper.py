@@ -14,9 +14,7 @@ __copyright__ = 'Copyright 2021, The QGIS Project'
 import qgis  # NOQA switch sip api
 from qgis.PyQt.QtCore import QUuid
 from qgis.PyQt.QtWidgets import QPushButton, QWidget
-from qgis.core import (QgsVectorLayer,
-                       QgsAction,
-                       )
+from qgis.core import QgsAction, QgsVectorLayer
 from qgis.gui import QgsActionWidgetWrapper
 from qgis.testing import start_app, unittest
 
@@ -29,6 +27,7 @@ class TestQgsActionWidgetWrapper(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         cls.layer = QgsVectorLayer("Point?field=fldtxt:string&field=fldint:integer&field=flddate:datetime",
                                    "test_layer", "memory")
 
@@ -43,6 +42,7 @@ class TestQgsActionWidgetWrapper(unittest.TestCase):
     def tearDownClass(cls):
         cls.layer = None
         cls.manager = None
+        super().tearDownClass()
 
     def testWrapper(self):
 

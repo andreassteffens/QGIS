@@ -310,7 +310,7 @@ bool QgsWMSSourceSelect::populateLayerList( const QgsWmsCapabilities &capabiliti
     int id = mMimeMap.value( encoding, -1 );
     if ( id < 0 )
     {
-      QgsDebugMsg( QStringLiteral( "encoding %1 not supported." ).arg( encoding ) );
+      QgsDebugError( QStringLiteral( "encoding %1 not supported." ).arg( encoding ) );
       continue;
     }
     // Different mime-types can map to the same label. Just add the first
@@ -1047,7 +1047,6 @@ QString QgsWMSSourceSelect::connName()
 void QgsWMSSourceSelect::collectSelectedLayers( QStringList &layers, QStringList &styles, QStringList &titles )
 {
   //go through list in layer order tab
-  QStringList selectedLayerList;
   for ( int i = mLayerOrderTreeWidget->topLevelItemCount() - 1; i >= 0; --i )
   {
     layers << mLayerOrderTreeWidget->topLevelItem( i )->text( 0 );
@@ -1165,9 +1164,12 @@ void QgsWMSSourceSelect::filterLayers( const QString &searchText )
   {
     // show everything and reset tree nesting
     setChildrenVisible( lstLayers->invisibleRootItem(), true );
-    for ( QTreeWidgetItem *item : mTreeInitialExpand.keys() )
+    for ( auto it = mTreeInitialExpand.constBegin(); it != mTreeInitialExpand.constEnd(); it++ )
+    {
+      QTreeWidgetItem *item = it.key();
       if ( item )
-        item->setExpanded( mTreeInitialExpand.value( item ) );
+        item->setExpanded( it.value() );
+    }
     mTreeInitialExpand.clear();
   }
   else

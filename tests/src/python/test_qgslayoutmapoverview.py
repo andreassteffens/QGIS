@@ -12,28 +12,30 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 import os
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import QFileInfo, QRectF, QDir
+from qgis.PyQt.QtCore import QDir, QFileInfo, QRectF
 from qgis.PyQt.QtGui import QPainter
-from qgis.core import (QgsLayoutItemMap,
-                       QgsLayoutItemMapItem,
-                       QgsRectangle,
-                       QgsRasterLayer,
-                       QgsVectorLayer,
-                       QgsLayout,
-                       QgsProject,
-                       QgsMultiBandColorRenderer,
-                       QgsFillSymbol,
-                       QgsSingleSymbolRenderer,
-                       QgsCoordinateReferenceSystem,
-                       QgsLayoutItemMapOverview,
-                       QgsFeature,
-                       QgsSymbolLayer,
-                       QgsProperty,
-                       QgsGeometry,
-                       QgsPointXY)
+from qgis.core import (
+    QgsCoordinateReferenceSystem,
+    QgsFeature,
+    QgsFillSymbol,
+    QgsGeometry,
+    QgsLayout,
+    QgsLayoutItemMap,
+    QgsLayoutItemMapItem,
+    QgsLayoutItemMapOverview,
+    QgsMultiBandColorRenderer,
+    QgsPointXY,
+    QgsProject,
+    QgsProperty,
+    QgsRasterLayer,
+    QgsRectangle,
+    QgsSingleSymbolRenderer,
+    QgsSymbolLayer,
+    QgsVectorLayer,
+    QgsLayoutChecker
+)
 from qgis.testing import start_app, unittest
 
-from qgslayoutchecker import QgsLayoutChecker
 from test_qgslayoutitem import LayoutItemTestCase
 from utilities import unitTestDataPath
 
@@ -45,13 +47,14 @@ class TestQgsLayoutMap(unittest.TestCase, LayoutItemTestCase):
 
     @classmethod
     def setUpClass(cls):
+        super(TestQgsLayoutMap, cls).setUpClass()
         cls.item_class = QgsLayoutItemMap
 
     def setUp(self):
         self.report = "<h1>Python QgsLayoutItemMap Tests</h1>\n"
 
     def tearDown(self):
-        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        report_file_path = f"{QDir.tempPath()}/qgistest.html"
         with open(report_file_path, 'a') as report_file:
             report_file.write(self.report)
 

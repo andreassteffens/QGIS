@@ -13,7 +13,6 @@ import qgis  # NOQA
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtTest import QSignalSpy
-
 from qgis.testing import start_app, unittest
 
 start_app()

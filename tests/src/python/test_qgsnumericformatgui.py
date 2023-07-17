@@ -11,20 +11,24 @@ __copyright__ = 'Copyright 2020, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (QgsFallbackNumericFormat,
-                       QgsBasicNumericFormat,
-                       QgsBearingNumericFormat,
-                       QgsPercentageNumericFormat,
-                       QgsScientificNumericFormat,
-                       QgsCurrencyNumericFormat,
-                       QgsGeographicCoordinateNumericFormat,
-                       QgsNumericFormat,
-                       QgsApplication)
-from qgis.gui import (QgsNumericFormatSelectorWidget,
-                      QgsNumericFormatGuiRegistry,
-                      QgsNumericFormatConfigurationWidgetFactory,
-                      QgsNumericFormatWidget,
-                      QgsGui)
+from qgis.core import (
+    QgsApplication,
+    QgsBasicNumericFormat,
+    QgsBearingNumericFormat,
+    QgsCurrencyNumericFormat,
+    QgsFallbackNumericFormat,
+    QgsGeographicCoordinateNumericFormat,
+    QgsNumericFormat,
+    QgsPercentageNumericFormat,
+    QgsScientificNumericFormat,
+)
+from qgis.gui import (
+    QgsGui,
+    QgsNumericFormatConfigurationWidgetFactory,
+    QgsNumericFormatGuiRegistry,
+    QgsNumericFormatSelectorWidget,
+    QgsNumericFormatWidget,
+)
 from qgis.testing import start_app, unittest
 
 start_app()

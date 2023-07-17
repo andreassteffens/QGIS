@@ -14,16 +14,16 @@ from qgis.PyQt.QtCore import QDir, QSize, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (
-    QgsProviderRegistry,
-    QgsPointCloudLayer,
-    QgsPointCloudExtentRenderer,
-    QgsReadWriteContext,
-    QgsMultiRenderChecker,
-    QgsMapSettings,
-    QgsRectangle,
     QgsCoordinateReferenceSystem,
     QgsFillSymbol,
-    QgsLayerTreeLayer
+    QgsLayerTreeLayer,
+    QgsMapSettings,
+    QgsMultiRenderChecker,
+    QgsPointCloudExtentRenderer,
+    QgsPointCloudLayer,
+    QgsProviderRegistry,
+    QgsReadWriteContext,
+    QgsRectangle,
 )
 from qgis.testing import start_app, unittest
 
@@ -36,13 +36,15 @@ class TestQgsPointCloudExtentRenderer(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         cls.report = "<h1>Python QgsPointCloudExtentRenderer Tests</h1>\n"
 
     @classmethod
     def tearDownClass(cls):
-        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        report_file_path = f"{QDir.tempPath()}/qgistest.html"
         with open(report_file_path, 'a') as report_file:
             report_file.write(cls.report)
+        super().tearDownClass()
 
     def testBasic(self):
         renderer = QgsPointCloudExtentRenderer(QgsFillSymbol.createSimple({'color': '#ff00ff', 'outline_color': 'black'}))

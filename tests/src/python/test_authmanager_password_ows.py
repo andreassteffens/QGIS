@@ -23,6 +23,7 @@ import subprocess
 import sys
 import tempfile
 import urllib
+
 from functools import partial
 
 __author__ = 'Alessandro Pasotti'
@@ -31,23 +32,16 @@ __copyright__ = 'Copyright 2016, The QGIS Project'
 
 from shutil import rmtree
 
-from utilities import unitTestDataPath, waitServer
 from qgis.core import (
     QgsApplication,
     QgsAuthMethodConfig,
-    QgsVectorLayer,
-    QgsRasterLayer,
     QgsFileDownloader,
+    QgsRasterLayer,
+    QgsVectorLayer,
 )
-
-from qgis.testing import (
-    start_app,
-    unittest,
-)
-from qgis.PyQt.QtCore import (
-    QEventLoop,
-    QUrl,
-)
+from qgis.PyQt.QtCore import QEventLoop, QUrl
+from qgis.testing import start_app, unittest
+from utilities import unitTestDataPath, waitServer
 
 try:
     QGIS_SERVER_ENDPOINT_PORT = os.environ['QGIS_SERVER_ENDPOINT_PORT']
@@ -67,6 +61,7 @@ class TestAuthManager(unittest.TestCase):
     def setUpClass(cls):
         """Run before all tests:
         Creates an auth configuration"""
+        super().setUpClass()
         cls.port = QGIS_SERVER_ENDPOINT_PORT
         # Clean env just to be sure
         env_vars = ['QUERY_STRING', 'QGIS_PROJECT_FILE']
@@ -114,6 +109,7 @@ class TestAuthManager(unittest.TestCase):
         cls.server.terminate()
         rmtree(QGIS_AUTH_DB_DIR_PATH)
         del cls.server
+        super().tearDownClass()
 
     def setUp(self):
         """Run before each test."""
@@ -162,7 +158,7 @@ class TestAuthManager(unittest.TestCase):
         }
         if authcfg is not None:
             parms.update({'authcfg': authcfg})
-        uri = '&'.join([("{}={}".format(k, v.replace('=', '%3D'))) for k, v in list(parms.items())])
+        uri = '&'.join([f"{k}={v.replace('=', '%3D')}" for k, v in list(parms.items())])
         wms_layer = QgsRasterLayer(uri, layer_name, 'wms')
         return wms_layer
 
@@ -175,7 +171,7 @@ class TestAuthManager(unittest.TestCase):
             layer_name = 'geojson_' + type_name
         uri = f'{cls.protocol}://{cls.hostname}:{cls.port}/?MAP={cls.project_path}&SERVICE=WFS&REQUEST=GetFeature&TYPENAME={urllib.parse.quote(type_name)}&VERSION=2.0.0&OUTPUTFORMAT=geojson'
         if authcfg is not None:
-            uri += " authcfg='%s'" % authcfg
+            uri += f" authcfg='{authcfg}'"
         geojson_layer = QgsVectorLayer(uri, layer_name, 'ogr')
         return geojson_layer
 
@@ -235,7 +231,7 @@ class TestAuthManager(unittest.TestCase):
         loop.exec_()
 
         self.assertTrue(self.error_was_called)
-        self.assertTrue("Download failed: Host requires authentication" in str(self.error_args), "Error args is: %s" % str(self.error_args))
+        self.assertTrue("Download failed: Host requires authentication" in str(self.error_args), f"Error args is: {str(self.error_args)}")
 
     def testValidAuthFileDownload(self):
         """
@@ -272,7 +268,7 @@ class TestAuthManager(unittest.TestCase):
 
         # Check the we've got a likely PNG image
         self.assertTrue(self.completed_was_called)
-        self.assertTrue(os.path.getsize(destination) > 2000, "Image size: %s" % os.path.getsize(destination))  # > 1MB
+        self.assertTrue(os.path.getsize(destination) > 2000, f"Image size: {os.path.getsize(destination)}")  # > 1MB
         with open(destination, 'rb') as f:
             self.assertTrue(b'PNG' in f.read())  # is a PNG
 

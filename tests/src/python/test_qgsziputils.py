@@ -11,7 +11,7 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 
 import os
 
-from qgis.PyQt.QtCore import QTemporaryFile, QTemporaryDir
+from qgis.PyQt.QtCore import QTemporaryDir, QTemporaryFile
 from qgis.core import QgsZipUtils
 from qgis.testing import unittest
 
@@ -31,6 +31,7 @@ class TestQgsZip(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         cls.zipDir = os.path.join(unitTestDataPath(), "zip")
 
     def test_zip_ok(self):

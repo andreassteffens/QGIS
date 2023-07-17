@@ -29,7 +29,7 @@
  * implemented and can be used to create a QgsRelation after the
  * dependent layers are loaded and available.
  *
- * In constrast to QgsRelation, QgsWeakRelation can be used to encapsulate
+ * In contrast to QgsRelation, QgsWeakRelation can be used to encapsulate
  * information about a relationship which does not currently exist in a QGIS project.
  * E.g. it can be used to represent a relationship which exists in a database
  * backend (but not within a QGIS project). Accordingly, some properties
@@ -58,12 +58,10 @@ class CORE_EXPORT QgsWeakRelation
      */
     QgsWeakRelation();
 
-#ifndef SIP_RUN
-
     /**
      * Creates a QgsWeakRelation.
      *
-     * \note Not available in Python bindings.
+     * \since QGIS 3.30
      */
     QgsWeakRelation( const QString &relationId,
                      const QString &relationName,
@@ -77,7 +75,6 @@ class CORE_EXPORT QgsWeakRelation
                      const QString &referencedLayerSource,
                      const QString &referencedLayerProviderKey
                    );
-#endif
 
     /**
      * Resolves a weak relation in the given \a project returning a list of possibly invalid QgsRelations

@@ -70,7 +70,7 @@ void QgsMapToolShowHideLabels::canvasPressEvent( QgsMapMouseEvent *e )
   mSelectRect.setRect( 0, 0, 0, 0 );
   mSelectRect.setTopLeft( e->pos() );
   mSelectRect.setBottomRight( e->pos() );
-  mRubberBand = new QgsRubberBand( mCanvas, QgsWkbTypes::PolygonGeometry );
+  mRubberBand = new QgsRubberBand( mCanvas, Qgis::GeometryType::Polygon );
 }
 
 void QgsMapToolShowHideLabels::canvasMoveEvent( QgsMapMouseEvent *e )
@@ -123,7 +123,7 @@ void QgsMapToolShowHideLabels::canvasReleaseEvent( QgsMapMouseEvent *e )
 
     showHideLabels( e );
 
-    mRubberBand->reset( QgsWkbTypes::PolygonGeometry );
+    mRubberBand->reset( Qgis::GeometryType::Polygon );
     delete mRubberBand;
     mRubberBand = nullptr;
   }
@@ -259,8 +259,8 @@ bool QgsMapToolShowHideLabels::selectedFeatures( QgsVectorLayer *vlayer,
 
   QApplication::setOverrideCursor( Qt::WaitCursor );
 
-  QgsDebugMsg( "Selection layer: " + vlayer->name() );
-  QgsDebugMsg( "Selection polygon: " + selectGeomTrans.asWkt() );
+  QgsDebugMsgLevel( "Selection layer: " + vlayer->name(), 2 );
+  QgsDebugMsgLevel( "Selection polygon: " + selectGeomTrans.asWkt(), 2 );
 
   QgsFeatureIterator fit = vlayer->getFeatures( QgsFeatureRequest()
                            .setFilterRect( selectGeomTrans.boundingBox() )

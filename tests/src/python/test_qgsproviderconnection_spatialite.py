@@ -18,13 +18,13 @@ import tempfile
 
 from qgis.core import (
     Qgis,
-    QgsWkbTypes,
     QgsAbstractDatabaseProviderConnection,
-    QgsProviderConnectionException,
-    QgsVectorLayer,
-    QgsProviderRegistry,
-    QgsFields,
     QgsCoordinateReferenceSystem,
+    QgsFields,
+    QgsProviderConnectionException,
+    QgsProviderRegistry,
+    QgsVectorLayer,
+    QgsWkbTypes,
 )
 from qgis.testing import unittest
 
@@ -61,12 +61,13 @@ class TestPyQgsProviderConnectionSpatialite(unittest.TestCase, TestPyQgsProvider
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super(TestPyQgsProviderConnectionSpatialite, cls).setUpClass()
         TestPyQgsProviderConnectionBase.setUpClass()
         cls.basetestpath = tempfile.mkdtemp()
         spatialite_original_path = f'{TEST_DATA_DIR}/qgis_server/test_project_wms_grouped_layers.sqlite'
         cls.spatialite_path = os.path.join(cls.basetestpath, 'test.sqlite')
         shutil.copy(spatialite_original_path, cls.spatialite_path)
-        cls.uri = "dbname=\'%s\'" % cls.spatialite_path
+        cls.uri = f"dbname='{cls.spatialite_path}'"
         vl = QgsVectorLayer(f'{cls.uri} table=\'cdb_lines\'', 'test', 'spatialite')
         assert vl.isValid()
 
@@ -74,6 +75,7 @@ class TestPyQgsProviderConnectionSpatialite(unittest.TestCase, TestPyQgsProvider
     def tearDownClass(cls):
         """Run after all tests"""
         os.unlink(cls.spatialite_path)
+        super(TestPyQgsProviderConnectionSpatialite, cls).tearDownClass()
 
     def test_spatialite_connections_from_uri(self):
         """Create a connection from a layer uri and retrieve it"""

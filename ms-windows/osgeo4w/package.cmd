@@ -135,10 +135,10 @@ cmake -G "%CMAKEGEN%" -A %CMAKEARCH% ^
 	-D WITH_PDAL=TRUE ^
 	-D WITH_SERVER_PLUGINS=TRUE ^
 	-D SERVER_SKIP_ECW=FALSE ^
-	-D WITH_GRASS=TRUE ^
+	-D WITH_GRASS=FALSE ^
 	-D WITH_3D=TRUE ^
 	-D WITH_GRASS7=FALSE ^
-	-D WITH_GRASS8=TRUE ^
+	-D WITH_GRASS8=FALSE ^
 	-D GRASS_PREFIX7=%GRASS_PREFIX:\=/% ^
 	-D GRASS_PREFIX8=%GRASS_PREFIX:\=/% ^
 	-D WITH_ORACLE=TRUE ^
@@ -305,7 +305,6 @@ for %%i in (%packages%) do (
   "apps/%PACKAGENAME%/plugins/authmethod_basic.dll" ^
   "apps/%PACKAGENAME%/plugins/provider_delimitedtext.dll" ^
   "apps/%PACKAGENAME%/plugins/authmethod_esritoken.dll" ^
-  "apps/%PACKAGENAME%/plugins/provider_geonode.dll" ^
   "apps/%PACKAGENAME%/plugins/provider_gpx.dll" ^
   "apps/%PACKAGENAME%/plugins/authmethod_identcert.dll" ^
   "apps/%PACKAGENAME%/plugins/provider_mssql.dll" ^

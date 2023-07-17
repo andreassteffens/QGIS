@@ -22,33 +22,33 @@ __copyright__ = '(C) 2015, Matthias Kuhn'
 import os
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import QSize, QDir, QPointF
+from qgis.PyQt.QtCore import QDir, QPointF, QSize
 from qgis.PyQt.QtGui import QColor, QImage, QPainter, QPolygonF
 from qgis.core import (
-    QgsVectorLayer,
-    QgsSingleSymbolRenderer,
-    QgsFillSymbol,
-    QgsLineSymbol,
-    QgsMarkerSymbol,
-    QgsProject,
-    QgsRectangle,
-    QgsGeometryGeneratorSymbolLayer,
-    QgsSymbol,
-    QgsMultiRenderChecker,
-    QgsMapSettings,
     Qgis,
-    QgsUnitTypes,
-    QgsRenderContext,
-    QgsRenderChecker,
+    QgsArrowSymbolLayer,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
-    QgsArrowSymbolLayer,
     QgsFeature,
-    QgsGeometry,
+    QgsFillSymbol,
     QgsFontMarkerSymbolLayer,
     QgsFontUtils,
+    QgsGeometry,
+    QgsGeometryGeneratorSymbolLayer,
+    QgsLineSymbol,
+    QgsMapSettings,
+    QgsMarkerSymbol,
+    QgsMultiRenderChecker,
+    QgsProject,
+    QgsProperty,
+    QgsRectangle,
+    QgsRenderChecker,
+    QgsRenderContext,
+    QgsSingleSymbolRenderer,
+    QgsSymbol,
     QgsSymbolLayer,
-    QgsProperty
+    QgsUnitTypes,
+    QgsVectorLayer,
 )
 from qgis.testing import start_app, unittest
 from qgis.testing.mocked import get_iface
@@ -94,7 +94,7 @@ class TestQgsGeometryGeneratorSymbolLayerV2(unittest.TestCase):
 
     def tearDown(self):
         QgsProject.instance().removeAllMapLayers()
-        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        report_file_path = f"{QDir.tempPath()}/qgistest.html"
         with open(report_file_path, 'a') as report_file:
             report_file.write(self.report)
 

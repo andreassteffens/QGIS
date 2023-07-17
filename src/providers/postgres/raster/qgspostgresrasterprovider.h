@@ -20,8 +20,6 @@
 #include "qgscoordinatereferencesystem.h"
 #include "qgsprovidermetadata.h"
 #include "qgspostgresconn.h"
-#include "qgspostgresprovider.h"
-#include "qgsogrutils.h"
 #include "qgspostgresrastershareddata.h"
 
 #include <exception>
@@ -76,6 +74,18 @@ class QgsPostgresRasterProvider : public QgsRasterDataProvider
 
     static const QString PG_RASTER_PROVIDER_KEY;
     static const QString PG_RASTER_PROVIDER_DESCRIPTION;
+
+    /**
+     * Returns the type of primary key for a PK field
+     *
+     * \param fld the field to determine PK type of
+     * \returns the PrimaryKeyType
+     *
+     * \note that this only makes sense for single-field primary keys,
+     *       whereas multi-field keys always need the PktFidMap
+     *       primary key type.
+     */
+    static QgsPostgresPrimaryKeyType pkType( const QgsField &fld );
 
   private:
 
@@ -156,7 +166,7 @@ class QgsPostgresRasterProvider : public QgsRasterDataProvider
     /**
      * List of primary key attributes for fetching features.
      */
-    QList<QString> mPrimaryKeyAttrs;
+    QList<int> mPrimaryKeyAttrs;
 
     //! Mutable data shared between provider and feature sources
     std::shared_ptr<QgsPostgresRasterSharedData> mShared;
@@ -194,7 +204,7 @@ class QgsPostgresRasterProvider : public QgsRasterDataProvider
     static QString quotedValue( const QVariant &value ) { return QgsPostgresConn::quotedValue( value ); }
     static QString quotedJsonValue( const QVariant &value ) { return QgsPostgresConn::quotedJsonValue( value ); }
     static QString quotedByteaValue( const QVariant &value );
-    QgsPostgresProvider::Relkind relkind() const;
+    Qgis::PostgresRelKind relkind() const;
     bool loadFields();
 
     /**
@@ -255,7 +265,7 @@ class QgsPostgresRasterProviderMetadata: public QgsProviderMetadata
     QVariantMap decodeUri( const QString &uri ) const override;
     QgsPostgresRasterProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
     QString encodeUri( const QVariantMap &parts ) const override;
-    QList< QgsMapLayerType > supportedLayerTypes() const override;
+    QList< Qgis::LayerType > supportedLayerTypes() const override;
     bool saveLayerMetadata( const QString &uri, const QgsLayerMetadata &metadata, QString &errorMessage ) override;
     QgsProviderMetadata::ProviderCapabilities providerCapabilities() const override;
 };

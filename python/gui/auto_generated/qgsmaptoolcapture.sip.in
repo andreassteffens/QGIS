@@ -70,6 +70,13 @@ Sets the current capture if it is supported by the map tool
 .. versionadded:: 3.26
 %End
 
+    Qgis::CaptureTechnique currentCaptureTechnique() const;
+%Docstring
+Returns the active capture technique
+
+.. versionadded:: 3.32
+%End
+
 
     virtual void activate();
 
@@ -137,6 +144,8 @@ convenient method to clean members
 %Docstring
 Returns the rubberBand currently owned by this map tool and
 transfers ownership to the caller.
+
+May be ``None``.
 
 .. versionadded:: 3.8
 %End

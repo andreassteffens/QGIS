@@ -12,13 +12,11 @@ __copyright__ = 'Copyright 2020, The QGIS Project'
 import tempfile
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import (
-    QCoreApplication
-)
+from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
-    QgsSettings,
+    QgsNominatimGeocoder,
     QgsRectangle,
-    QgsNominatimGeocoder
+    QgsSettings,
 )
 from qgis.testing import start_app, unittest
 
@@ -30,6 +28,7 @@ class TestQgsNominatimGeocoder(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
 
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("TestQgsGeocoderLocatorFilter.com")
@@ -54,6 +53,7 @@ class TestQgsNominatimGeocoder(unittest.TestCase):
         """Run after all tests"""
         QgsSettings().clear()
         # shutil.rmtree(cls.basetestpath, True)
+        super().tearDownClass()
 
     def test_basic(self):
         """

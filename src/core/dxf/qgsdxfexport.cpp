@@ -33,20 +33,16 @@
 #include "qgscompoundcurve.h"
 #include "qgscircularstring.h"
 #include "qgslinestring.h"
-#include "qgsvectordataprovider.h"
 #include "qgspointxy.h"
 #include "qgsproject.h"
 #include "qgsrenderer.h"
 #include "qgssymbollayer.h"
-#include "qgsfillsymbollayer.h"
 #include "qgsfeatureiterator.h"
 #include "qgslinesymbollayer.h"
 #include "qgsvectorlayer.h"
 #include "qgsunittypes.h"
 #include "qgstextlabelfeature.h"
 #include "qgslogger.h"
-#include "qgsmaplayerstyle.h"
-#include "qgsmaplayerstylemanager.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgsdxfexport_p.h"
 #include "qgssymbol.h"
@@ -57,7 +53,6 @@
 #include "qgsgeos.h"
 
 #include "pal/feature.h"
-#include "pal/pointset.h"
 #include "pal/labelposition.h"
 
 #include <QIODevice>
@@ -241,11 +236,11 @@ QgsDxfExport::ExportResult QgsDxfExport::writeToFile( QIODevice *d, const QStrin
   if ( mExtent.isEmpty() )
     return ExportResult::EmptyExtentError;
 
-  QgsUnitTypes::DistanceUnit mapUnits = mCrs.mapUnits();
+  Qgis::DistanceUnit mapUnits = mCrs.mapUnits();
   mMapSettings.setExtent( mExtent );
 
   int dpi = 96;
-  mFactor = 1000 * dpi / mSymbologyScale / 25.4 * QgsUnitTypes::fromUnitToUnitFactor( mapUnits, QgsUnitTypes::DistanceMeters );
+  mFactor = 1000 * dpi / mSymbologyScale / 25.4 * QgsUnitTypes::fromUnitToUnitFactor( mapUnits, Qgis::DistanceUnit::Meters );
   mMapSettings.setOutputSize( QSize( mExtent.width() * mFactor, mExtent.height() * mFactor ) );
   mMapSettings.setOutputDpi( dpi );
 
@@ -260,7 +255,7 @@ QgsDxfExport::ExportResult QgsDxfExport::writeToFile( QIODevice *d, const QStrin
   return ExportResult::Success;
 }
 
-QgsUnitTypes::DistanceUnit QgsDxfExport::mapUnits() const
+Qgis::DistanceUnit QgsDxfExport::mapUnits() const
 {
   return mMapUnits;
 }
@@ -278,11 +273,11 @@ void QgsDxfExport::writeHeader( const QString &codepage )
 
   // EXTMIN
   writeGroup( 9, QStringLiteral( "$EXTMIN" ) );
-  writeGroup( 0, QgsPoint( QgsWkbTypes::PointZ, mExtent.xMinimum(), mExtent.yMinimum(), 0.0 ) );
+  writeGroup( 0, QgsPoint( Qgis::WkbType::PointZ, mExtent.xMinimum(), mExtent.yMinimum(), 0.0 ) );
 
   // EXTMAX
   writeGroup( 9, QStringLiteral( "$EXTMAX" ) );
-  writeGroup( 0, QgsPoint( QgsWkbTypes::PointZ, mExtent.xMaximum(), mExtent.yMaximum(), 0.0 ) );
+  writeGroup( 0, QgsPoint( Qgis::WkbType::PointZ, mExtent.xMaximum(), mExtent.yMaximum(), 0.0 ) );
 
   // Global linetype scale
   writeGroup( 9, QStringLiteral( "$LTSCALE" ) );
@@ -328,9 +323,17 @@ void QgsDxfExport::writeTables()
   // Iterate through all layers and get symbol layer pointers
   QgsRenderContext context = renderContext();
   QList< QPair< QgsSymbolLayer *, QgsSymbol * > > slList;
-  if ( mSymbologyExport != NoSymbology )
+  switch ( mSymbologyExport )
   {
-    slList = symbolLayers( context );
+    case Qgis::FeatureSymbologyExport::PerFeature:
+    case Qgis::FeatureSymbologyExport::PerSymbolLayer:
+    {
+      slList = symbolLayers( context );
+      break;
+    }
+
+    case Qgis::FeatureSymbologyExport::NoSymbology:
+      break;
   }
 
   // Line types
@@ -376,7 +379,7 @@ void QgsDxfExport::writeTables()
     if ( !ml )
       continue;
 
-    if ( hasDataDefinedProperties( ml, symbolLayer.second ) )
+    if ( hasBlockBreakingDataDefinedProperties( ml, symbolLayer.second ) )
       continue;
 
     QString name = QStringLiteral( "symbolLayer%1" ).arg( i++ );
@@ -437,7 +440,7 @@ void QgsDxfExport::writeTables()
   writeGroup( 3, QgsPoint( 0.0, 0.0 ) );                            // snap base point
   writeGroup( 4, QgsPoint( 1.0, 1.0 ) );                            // snap spacing
   writeGroup( 5, QgsPoint( 1.0, 1.0 ) );                            // grid spacing
-  writeGroup( 6, QgsPoint( QgsWkbTypes::PointZ, 0.0, 0.0, 1.0 ) );  // view direction from target point
+  writeGroup( 6, QgsPoint( Qgis::WkbType::PointZ, 0.0, 0.0, 1.0 ) );  // view direction from target point
   writeGroup( 7, QgsPoint( mExtent.center() ) );                    // view target point
   writeGroup( 40, mExtent.height() );                               // view height
   writeGroup( 41, mExtent.width() / mExtent.height() );             // view aspect ratio
@@ -456,9 +459,9 @@ void QgsDxfExport::writeTables()
   writeGroup( 78, 0 );                                              // snap isopair
   writeGroup( 281, 0 );                                             // render mode (0 = 2D optimized)
   writeGroup( 65, 1 );                                              // value of UCSVP for this viewport
-  writeGroup( 100, QgsPoint( QgsWkbTypes::PointZ, 0.0, 0.0, 0.0 ) );// UCS origin
-  writeGroup( 101, QgsPoint( QgsWkbTypes::PointZ, 1.0, 0.0, 0.0 ) );// UCS x axis
-  writeGroup( 102, QgsPoint( QgsWkbTypes::PointZ, 0.0, 1.0, 0.0 ) );// UCS y axis
+  writeGroup( 100, QgsPoint( Qgis::WkbType::PointZ, 0.0, 0.0, 0.0 ) );// UCS origin
+  writeGroup( 101, QgsPoint( Qgis::WkbType::PointZ, 1.0, 0.0, 0.0 ) );// UCS x axis
+  writeGroup( 102, QgsPoint( Qgis::WkbType::PointZ, 0.0, 1.0, 0.0 ) );// UCS y axis
   writeGroup( 79, 0 );                                              // Orthographic type of UCS (0 = UCS is not orthographic)
   writeGroup( 146, 0.0 );                                           // Elevation
 
@@ -575,7 +578,7 @@ void QgsDxfExport::writeBlocks()
     writeGroup( 100, QStringLiteral( "AcDbBlockBegin" ) );
     writeGroup( 2, block );
     writeGroup( 70, 0 );
-    writeGroup( 0, QgsPoint( QgsWkbTypes::PointZ, 0.0, 0.0, 0.0 ) );
+    writeGroup( 0, QgsPoint( Qgis::WkbType::PointZ, 0.0, 0.0, 0.0 ) );
     writeGroup( 3, block );
     writeGroup( 1, QString() );
     writeGroup( 0, QStringLiteral( "ENDBLK" ) );
@@ -589,9 +592,16 @@ void QgsDxfExport::writeBlocks()
 
   // Iterate through all layers and get symbol layer pointers
   QList< QPair< QgsSymbolLayer *, QgsSymbol * > > slList;
-  if ( mSymbologyExport != NoSymbology )
+  switch ( mSymbologyExport )
   {
-    slList = symbolLayers( ct );
+    case Qgis::FeatureSymbologyExport::PerFeature:
+    case Qgis::FeatureSymbologyExport::PerSymbolLayer:
+    {
+      slList = symbolLayers( ct );
+      break;
+    }
+    case Qgis::FeatureSymbologyExport::NoSymbology:
+      break;
   }
 
   for ( const auto &symbolLayer : std::as_const( slList ) )
@@ -601,10 +611,10 @@ void QgsDxfExport::writeBlocks()
       continue;
 
     // if point symbol layer and no data defined properties: write block
-    QgsSymbolRenderContext ctx( ct, QgsUnitTypes::RenderMapUnits, symbolLayer.second->opacity(), false, symbolLayer.second->renderHints(), nullptr );
+    QgsSymbolRenderContext ctx( ct, Qgis::RenderUnit::MapUnits, symbolLayer.second->opacity(), false, symbolLayer.second->renderHints(), nullptr );
 
     // markers with data defined properties are inserted inline
-    if ( hasDataDefinedProperties( ml, symbolLayer.second ) )
+    if ( hasBlockBreakingDataDefinedProperties( ml, symbolLayer.second ) )
     {
       continue;
     }
@@ -625,7 +635,7 @@ void QgsDxfExport::writeBlocks()
     // todo: consider anchor point
     // double size = ml->size();
     // size *= mapUnitScaleFactor( mSymbologyScale, ml->sizeUnit(), mMapUnits );
-    writeGroup( 0, QgsPoint( QgsWkbTypes::PointZ, 0.0, 0.0, 0.0 ) );
+    writeGroup( 0, QgsPoint( Qgis::WkbType::PointZ, 0.0, 0.0, 0.0 ) );
     writeGroup( 3, block );
     writeGroup( 1, QString() );
 
@@ -639,6 +649,8 @@ void QgsDxfExport::writeBlocks()
     writeGroup( 100, QStringLiteral( "AcDbBlockEnd" ) );
 
     mPointSymbolBlocks.insert( ml, block );
+    mPointSymbolBlockSizes.insert( ml, ml->dxfSize( *this, ctx ) );
+    mPointSymbolBlockAngles.insert( ml, ml->dxfAngle( ctx ) );
   }
   endSection();
 }
@@ -654,9 +666,9 @@ void QgsDxfExport::writeEntities()
   // iterate through the maplayers
   for ( DxfLayerJob *job : std::as_const( mJobs ) )
   {
-    QgsSymbolRenderContext sctx( mRenderContext, QgsUnitTypes::RenderMillimeters, 1.0, false, Qgis::SymbolRenderHints(), nullptr );
+    QgsSymbolRenderContext sctx( mRenderContext, Qgis::RenderUnit::Millimeters, 1.0, false, Qgis::SymbolRenderHints(), nullptr );
 
-    if ( mSymbologyExport == QgsDxfExport::SymbolLayerSymbology &&
+    if ( mSymbologyExport == Qgis::FeatureSymbologyExport::PerSymbolLayer &&
          ( job->renderer->capabilities() & QgsFeatureRenderer::SymbolLevels ) &&
          job->renderer->usingSymbolLevels() )
     {
@@ -685,7 +697,7 @@ void QgsDxfExport::writeEntities()
       if ( !job->renderer->willRenderFeature( fet, mRenderContext ) )
         continue;
 
-      if ( mSymbologyExport == NoSymbology )
+      if ( mSymbologyExport == Qgis::FeatureSymbologyExport::NoSymbology )
       {
         addFeature( sctx, ct, lName, nullptr, nullptr ); // no symbology at all
       }
@@ -694,7 +706,7 @@ void QgsDxfExport::writeEntities()
         const QgsSymbolList symbolList = job->renderer->symbolsForFeature( fet, mRenderContext );
         bool hasSymbology = symbolList.size() > 0;
 
-        if ( hasSymbology && mSymbologyExport == QgsDxfExport::SymbolLayerSymbology ) // symbol layer symbology, but layer does not use symbol levels
+        if ( hasSymbology && mSymbologyExport == Qgis::FeatureSymbologyExport::PerSymbolLayer ) // symbol layer symbology, but layer does not use symbol levels
         {
           for ( QgsSymbol *symbol : symbolList )
           {
@@ -815,7 +827,7 @@ void QgsDxfExport::writeEntitiesSymbolLevels( DxfLayerJob *job )
   const QList<QgsExpressionContextScope *> scopes = job->renderContext.expressionContext().scopes();
   for ( QgsExpressionContextScope *scope : scopes )
     ctx.expressionContext().appendScope( new QgsExpressionContextScope( *scope ) );
-  QgsSymbolRenderContext sctx( ctx, QgsUnitTypes::RenderMillimeters, 1.0, false, Qgis::SymbolRenderHints(), nullptr );
+  QgsSymbolRenderContext sctx( ctx, Qgis::RenderUnit::Millimeters, 1.0, false, Qgis::SymbolRenderHints(), nullptr );
 
   // get iterator
   QgsFeatureRequest req;
@@ -943,6 +955,8 @@ void QgsDxfExport::writePoint( const QgsPoint &pt, const QString &layer, const Q
   }
   else
   {
+    const double scale = symbolLayer->dxfSize( *this, ctx ) / mPointSymbolBlockSizes.value( symbolLayer );
+
     // insert block reference
     writeGroup( 0, QStringLiteral( "INSERT" ) );
     writeHandle();
@@ -950,7 +964,12 @@ void QgsDxfExport::writePoint( const QgsPoint &pt, const QString &layer, const Q
     writeGroup( 100, QStringLiteral( "AcDbBlockReference" ) );
     writeGroup( 8, layer );
     writeGroup( 2, blockIt.value() ); // Block name
-    writeGroup( 50, angle ); // angle
+    writeGroup( 50, mPointSymbolBlockAngles.value( symbolLayer ) - angle );
+    if ( scale != 1.0 )
+    {
+      writeGroup( 41, scale );
+      writeGroup( 42, scale );
+    }
     writeGroup( 0, pt );  // Insertion point (in OCS)
   }
 }
@@ -960,13 +979,13 @@ void QgsDxfExport::writePolyline( const QgsPointSequence &line, const QString &l
   int n = line.size();
   if ( n == 0 )
   {
-    QgsDebugMsg( QStringLiteral( "writePolyline: empty line layer=%1 lineStyleName=%2" ).arg( layer, lineStyleName ) );
+    QgsDebugError( QStringLiteral( "writePolyline: empty line layer=%1 lineStyleName=%2" ).arg( layer, lineStyleName ) );
     return;
   }
 
   if ( n < 2 )
   {
-    QgsDebugMsg( QStringLiteral( "writePolyline: line too short layer=%1 lineStyleName=%2" ).arg( layer, lineStyleName ) );
+    QgsDebugError( QStringLiteral( "writePolyline: line too short layer=%1 lineStyleName=%2" ).arg( layer, lineStyleName ) );
     return;
   }
 
@@ -1001,7 +1020,7 @@ void QgsDxfExport::writePolyline( const QgsPointSequence &line, const QString &l
     writeGroup( 6, lineStyleName );
     writeGroup( color );
     writeGroup( 100, QStringLiteral( "AcDb3dPolyline" ) );
-    writeGroup( 0, QgsPoint( QgsWkbTypes::PointZ, 0.0, 0.0, 0.0 ) );
+    writeGroup( 0, QgsPoint( Qgis::WkbType::PointZ, 0.0, 0.0, 0.0 ) );
     writeGroup( 70, 8 );
 
     for ( int i = 0; i < n; i++ )
@@ -1031,20 +1050,20 @@ void QgsDxfExport::appendCurve( const QgsCurve &c, QVector<QgsPoint> &points, QV
 {
   switch ( QgsWkbTypes::flatType( c.wkbType() ) )
   {
-    case QgsWkbTypes::LineString:
+    case Qgis::WkbType::LineString:
       appendLineString( *dynamic_cast<const QgsLineString *>( &c ), points, bulges );
       break;
 
-    case QgsWkbTypes::CircularString:
+    case Qgis::WkbType::CircularString:
       appendCircularString( *dynamic_cast<const QgsCircularString *>( &c ), points, bulges );
       break;
 
-    case QgsWkbTypes::CompoundCurve:
+    case Qgis::WkbType::CompoundCurve:
       appendCompoundCurve( *dynamic_cast<const QgsCompoundCurve *>( &c ), points, bulges );
       break;
 
     default:
-      QgsDebugMsg( QStringLiteral( "Unexpected curve type %1" ).arg( c.wktTypeStr() ) );
+      QgsDebugError( QStringLiteral( "Unexpected curve type %1" ).arg( c.wktTypeStr() ) );
       break;
   }
 }
@@ -1098,13 +1117,13 @@ void QgsDxfExport::writePolyline( const QgsCurve &curve, const QString &layer, c
   int n = curve.numPoints();
   if ( n == 0 )
   {
-    QgsDebugMsg( QStringLiteral( "writePolyline: empty line layer=%1 lineStyleName=%2" ).arg( layer, lineStyleName ) );
+    QgsDebugError( QStringLiteral( "writePolyline: empty line layer=%1 lineStyleName=%2" ).arg( layer, lineStyleName ) );
     return;
   }
 
   if ( n < 2 )
   {
-    QgsDebugMsg( QStringLiteral( "writePolyline: line too short layer=%1 lineStyleName=%2" ).arg( layer, lineStyleName ) );
+    QgsDebugError( QStringLiteral( "writePolyline: line too short layer=%1 lineStyleName=%2" ).arg( layer, lineStyleName ) );
     return;
   }
 
@@ -1153,7 +1172,7 @@ void QgsDxfExport::writePolyline( const QgsCurve &curve, const QString &layer, c
     writeGroup( 6, lineStyleName );
     writeGroup( color );
     writeGroup( 100, QStringLiteral( "AcDb3dPolyline" ) );
-    writeGroup( 0, QgsPoint( QgsWkbTypes::PointZ, 0.0, 0.0, 0.0 ) );
+    writeGroup( 0, QgsPoint( Qgis::WkbType::PointZ, 0.0, 0.0, 0.0 ) );
     writeGroup( 70, 8 );
 
     for ( int i = 0; i < points.size(); i++ )
@@ -1191,8 +1210,8 @@ void QgsDxfExport::writePolygon( const QgsRingSequence &polygon, const QString &
   writeGroup( color );              // Color
   writeGroup( 100, QStringLiteral( "AcDbHatch" ) );
 
-  writeGroup( 0, QgsPoint( QgsWkbTypes::PointZ, 0.0, 0.0, 0.0 ) ); // Elevation point (in OCS)
-  writeGroup( 200, QgsPoint( QgsWkbTypes::PointZ, 0.0, 0.0, 1.0 ) );
+  writeGroup( 0, QgsPoint( Qgis::WkbType::PointZ, 0.0, 0.0, 0.0 ) ); // Elevation point (in OCS)
+  writeGroup( 200, QgsPoint( Qgis::WkbType::PointZ, 0.0, 0.0, 1.0 ) );
 
   writeGroup( 2, hatchPattern );  // Hatch pattern name
   writeGroup( 70, hatchPattern == QLatin1String( "SOLID" ) ); // Solid fill flag (solid fill = 1; pattern fill = 0)
@@ -1230,8 +1249,8 @@ void QgsDxfExport::writePolygon( const QgsCurvePolygon &polygon, const QString &
   writeGroup( color );              // Color
   writeGroup( 100, QStringLiteral( "AcDbHatch" ) );
 
-  writeGroup( 0, QgsPoint( QgsWkbTypes::PointZ, 0.0, 0.0, 0.0 ) ); // Elevation point (in OCS)
-  writeGroup( 200, QgsPoint( QgsWkbTypes::PointZ, 0.0, 0.0, 1.0 ) );
+  writeGroup( 0, QgsPoint( Qgis::WkbType::PointZ, 0.0, 0.0, 0.0 ) ); // Elevation point (in OCS)
+  writeGroup( 200, QgsPoint( Qgis::WkbType::PointZ, 0.0, 0.0, 1.0 ) );
 
   writeGroup( 2, hatchPattern );  // Hatch pattern name
   writeGroup( 70, hatchPattern == QLatin1String( "SOLID" ) ); // Solid fill flag (solid fill = 1; pattern fill = 0)
@@ -1431,8 +1450,8 @@ void QgsDxfExport::writeFilledCircle( const QString &layer, const QColor &color,
   writeGroup( color );       // Color (0 by block, 256 by layer)
   writeGroup( 100, QStringLiteral( "AcDbHatch" ) );
 
-  writeGroup( 0, QgsPoint( QgsWkbTypes::PointZ, 0.0, 0.0, 0.0 ) ); // Elevation point (in OCS)
-  writeGroup( 200, QgsPoint( QgsWkbTypes::PointZ, 0.0, 0.0, 1.0 ) );
+  writeGroup( 0, QgsPoint( Qgis::WkbType::PointZ, 0.0, 0.0, 0.0 ) ); // Elevation point (in OCS)
+  writeGroup( 200, QgsPoint( Qgis::WkbType::PointZ, 0.0, 0.0, 1.0 ) );
 
   writeGroup( 2, QStringLiteral( "SOLID" ) );  // Hatch pattern name
   writeGroup( 70, 1 );       // Solid fill flag (solid fill = 1; pattern fill = 0)
@@ -1445,10 +1464,10 @@ void QgsDxfExport::writeFilledCircle( const QString &layer, const QColor &color,
   writeGroup( 73, 1 );       // Is closed flag
   writeGroup( 93, 2 );       // Number of polyline vertices
 
-  writeGroup( 0, QgsPoint( QgsWkbTypes::Point, pt.x() - radius, pt.y() ) );
+  writeGroup( 0, QgsPoint( Qgis::WkbType::Point, pt.x() - radius, pt.y() ) );
   writeGroup( 42, 1.0 );
 
-  writeGroup( 0, QgsPoint( QgsWkbTypes::Point, pt.x() + radius, pt.y() ) );
+  writeGroup( 0, QgsPoint( Qgis::WkbType::Point, pt.x() + radius, pt.y() ) );
   writeGroup( 42, 1.0 );
 
   writeGroup( 97, 0 );       // Number of source boundary objects
@@ -1512,7 +1531,7 @@ void QgsDxfExport::writeMText( const QString &layer, const QString &text, const 
   if ( !mTextStream.codec()->canEncode( text ) )
   {
     // TODO return error
-    QgsDebugMsg( QStringLiteral( "could not encode:%1" ).arg( text ) );
+    QgsDebugError( QStringLiteral( "could not encode:%1" ).arg( text ) );
     return;
   }
 #endif
@@ -1561,11 +1580,11 @@ void QgsDxfExport::addFeature( QgsSymbolRenderContext &ctx, const QgsCoordinateT
     geom.transform( ct );
   }
 
-  QgsWkbTypes::Type geometryType = geom.wkbType();
+  Qgis::WkbType geometryType = geom.wkbType();
 
   QColor penColor;
   QColor brushColor;
-  if ( mSymbologyExport != NoSymbology && symbolLayer )
+  if ( mSymbologyExport != Qgis::FeatureSymbologyExport::NoSymbology && symbolLayer )
   {
     penColor = colorFromSymbolLayer( symbolLayer, ctx );
     brushColor = symbolLayer->dxfBrushColor( ctx );
@@ -1576,7 +1595,7 @@ void QgsDxfExport::addFeature( QgsSymbolRenderContext &ctx, const QgsCoordinateT
   double width = -1;
   double offset = 0.0;
   double angle = 0.0;
-  if ( mSymbologyExport != NoSymbology && symbolLayer )
+  if ( mSymbologyExport != Qgis::FeatureSymbologyExport::NoSymbology && symbolLayer )
   {
     width = symbolLayer->dxfWidth( *this, ctx );
     offset = symbolLayer->dxfOffset( *this, ctx );
@@ -1589,19 +1608,19 @@ void QgsDxfExport::addFeature( QgsSymbolRenderContext &ctx, const QgsCoordinateT
   }
 
   QString lineStyleName = QStringLiteral( "CONTINUOUS" );
-  if ( mSymbologyExport != NoSymbology )
+  if ( mSymbologyExport != Qgis::FeatureSymbologyExport::NoSymbology )
   {
     lineStyleName = lineStyleFromSymbolLayer( symbolLayer );
   }
 
   // single point
-  if ( QgsWkbTypes::flatType( geometryType ) == QgsWkbTypes::Point )
+  if ( QgsWkbTypes::flatType( geometryType ) == Qgis::WkbType::Point )
   {
     writePoint( geom.constGet()->coordinateSequence().at( 0 ).at( 0 ).at( 0 ), layer, penColor, ctx, symbolLayer, symbol, angle );
     return;
   }
 
-  if ( QgsWkbTypes::flatType( geometryType ) == QgsWkbTypes::MultiPoint )
+  if ( QgsWkbTypes::flatType( geometryType ) == Qgis::WkbType::MultiPoint )
   {
     const QgsCoordinateSequence &cs = geom.constGet()->coordinateSequence();
     for ( int i = 0; i < cs.size(); i++ )
@@ -1618,11 +1637,11 @@ void QgsDxfExport::addFeature( QgsSymbolRenderContext &ctx, const QgsCoordinateT
 
     switch ( QgsWkbTypes::flatType( geometryType ) )
     {
-      case QgsWkbTypes::CircularString:
-      case QgsWkbTypes::CompoundCurve:
-      case QgsWkbTypes::LineString:
-      case QgsWkbTypes::MultiCurve:
-      case QgsWkbTypes::MultiLineString:
+      case Qgis::WkbType::CircularString:
+      case Qgis::WkbType::CompoundCurve:
+      case Qgis::WkbType::LineString:
+      case Qgis::WkbType::MultiCurve:
+      case Qgis::WkbType::MultiLineString:
       {
         if ( !qgsDoubleNear( offset, 0.0 ) )
         {
@@ -1656,10 +1675,10 @@ void QgsDxfExport::addFeature( QgsSymbolRenderContext &ctx, const QgsCoordinateT
         break;
       }
 
-      case QgsWkbTypes::CurvePolygon:
-      case QgsWkbTypes::Polygon:
-      case QgsWkbTypes::MultiSurface:
-      case QgsWkbTypes::MultiPolygon:
+      case Qgis::WkbType::CurvePolygon:
+      case Qgis::WkbType::Polygon:
+      case Qgis::WkbType::MultiSurface:
+      case Qgis::WkbType::MultiPolygon:
       {
         if ( !qgsDoubleNear( offset, 0.0 ) )
         {
@@ -1712,8 +1731,8 @@ void QgsDxfExport::addFeature( QgsSymbolRenderContext &ctx, const QgsCoordinateT
 
     switch ( QgsWkbTypes::flatType( geometryType ) )
     {
-      case QgsWkbTypes::CurvePolygon:
-      case QgsWkbTypes::Polygon:
+      case Qgis::WkbType::CurvePolygon:
+      case Qgis::WkbType::Polygon:
       {
         const QgsCurvePolygon *polygon = dynamic_cast<const QgsCurvePolygon *>( sourceGeom );
         Q_ASSERT( polygon );
@@ -1721,8 +1740,8 @@ void QgsDxfExport::addFeature( QgsSymbolRenderContext &ctx, const QgsCoordinateT
         break;
       }
 
-      case QgsWkbTypes::MultiSurface:
-      case QgsWkbTypes::MultiPolygon:
+      case Qgis::WkbType::MultiSurface:
+      case Qgis::WkbType::MultiPolygon:
       {
         const QgsGeometryCollection *gc = dynamic_cast<const QgsGeometryCollection *>( sourceGeom );
         Q_ASSERT( gc );
@@ -1800,13 +1819,13 @@ int QgsDxfExport::color_distance( QRgb p1, int index )
   double greenDiff = qGreen( p1 ) - sDxfColors[index][1];
   double blueDiff = qBlue( p1 ) - sDxfColors[index][2];
 #if 0
-  QgsDebugMsg( QStringLiteral( "color_distance( r:%1 g:%2 b:%3 <=> i:%4 r:%5 g:%6 b:%7 ) => %8" )
-               .arg( qRed( p1 ) ).arg( qGreen( p1 ) ).arg( qBlue( p1 ) )
-               .arg( index )
-               .arg( mDxfColors[index][0] )
-               .arg( mDxfColors[index][1] )
-               .arg( mDxfColors[index][2] )
-               .arg( redDiff * redDiff + greenDiff * greenDiff + blueDiff * blueDiff ) );
+  QgsDebugMsgLevel( QStringLiteral( "color_distance( r:%1 g:%2 b:%3 <=> i:%4 r:%5 g:%6 b:%7 ) => %8" )
+                    .arg( qRed( p1 ) ).arg( qGreen( p1 ) ).arg( qBlue( p1 ) )
+                    .arg( index )
+                    .arg( mDxfColors[index][0] )
+                    .arg( mDxfColors[index][1] )
+                    .arg( mDxfColors[index][2] )
+                    .arg( redDiff * redDiff + greenDiff * greenDiff + blueDiff * blueDiff ), 2 );
 #endif
   return redDiff * redDiff + greenDiff * greenDiff + blueDiff * blueDiff;
 }
@@ -1821,17 +1840,17 @@ QgsRenderContext QgsDxfExport::renderContext() const
   return mRenderContext;
 }
 
-double QgsDxfExport::mapUnitScaleFactor( double scale, QgsUnitTypes::RenderUnit symbolUnits, QgsUnitTypes::DistanceUnit mapUnits, double mapUnitsPerPixel )
+double QgsDxfExport::mapUnitScaleFactor( double scale, Qgis::RenderUnit symbolUnits, Qgis::DistanceUnit mapUnits, double mapUnitsPerPixel )
 {
-  if ( symbolUnits == QgsUnitTypes::RenderMapUnits )
+  if ( symbolUnits == Qgis::RenderUnit::MapUnits )
   {
     return 1.0;
   }
-  else if ( symbolUnits == QgsUnitTypes::RenderMillimeters )
+  else if ( symbolUnits == Qgis::RenderUnit::Millimeters )
   {
-    return ( scale * QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::DistanceMeters, mapUnits ) / 1000.0 );
+    return ( scale * QgsUnitTypes::fromUnitToUnitFactor( Qgis::DistanceUnit::Meters, mapUnits ) / 1000.0 );
   }
-  else if ( symbolUnits == QgsUnitTypes::RenderPixels )
+  else if ( symbolUnits == Qgis::RenderUnit::Pixels )
   {
     return mapUnitsPerPixel;
   }
@@ -1881,7 +1900,7 @@ QList< QPair< QgsSymbolLayer *, QgsSymbol * > > QgsDxfExport::symbolLayers( QgsR
     for ( QgsSymbol *symbol : symbols )
     {
       int maxSymbolLayers = symbol->symbolLayerCount();
-      if ( mSymbologyExport != SymbolLayerSymbology )
+      if ( mSymbologyExport != Qgis::FeatureSymbologyExport::PerSymbolLayer )
       {
         maxSymbolLayers = 1;
       }
@@ -1919,19 +1938,19 @@ void QgsDxfExport::writeDefaultLinetypes()
   QVector<qreal> dashVector( 2 );
   dashVector[0] = das;
   dashVector[1] = dss;
-  writeLinetype( QStringLiteral( "DASH" ), dashVector, QgsUnitTypes::RenderMapUnits );
+  writeLinetype( QStringLiteral( "DASH" ), dashVector, Qgis::RenderUnit::MapUnits );
 
   QVector<qreal> dotVector( 2 );
   dotVector[0] = dos;
   dotVector[1] = dss;
-  writeLinetype( QStringLiteral( "DOT" ), dotVector, QgsUnitTypes::RenderMapUnits );
+  writeLinetype( QStringLiteral( "DOT" ), dotVector, Qgis::RenderUnit::MapUnits );
 
   QVector<qreal> dashDotVector( 4 );
   dashDotVector[0] = das;
   dashDotVector[1] = dss;
   dashDotVector[2] = dos;
   dashDotVector[3] = dss;
-  writeLinetype( QStringLiteral( "DASHDOT" ), dashDotVector, QgsUnitTypes::RenderMapUnits );
+  writeLinetype( QStringLiteral( "DASHDOT" ), dashDotVector, Qgis::RenderUnit::MapUnits );
 
   QVector<qreal> dashDotDotVector( 6 );
   dashDotDotVector[0] = das;
@@ -1940,7 +1959,7 @@ void QgsDxfExport::writeDefaultLinetypes()
   dashDotDotVector[3] = dss;
   dashDotDotVector[4] = dos;
   dashDotDotVector[5] = dss;
-  writeLinetype( QStringLiteral( "DASHDOTDOT" ), dashDotDotVector, QgsUnitTypes::RenderMapUnits );
+  writeLinetype( QStringLiteral( "DASHDOTDOT" ), dashDotDotVector, Qgis::RenderUnit::MapUnits );
 }
 
 void QgsDxfExport::writeSymbolLayerLinetype( const QgsSymbolLayer *symbolLayer )
@@ -1950,7 +1969,7 @@ void QgsDxfExport::writeSymbolLayerLinetype( const QgsSymbolLayer *symbolLayer )
     return;
   }
 
-  QgsUnitTypes::RenderUnit unit;
+  Qgis::RenderUnit unit;
   QVector<qreal> customLinestyle = symbolLayer->dxfCustomDashPattern( unit );
   if ( !customLinestyle.isEmpty() )
   {
@@ -1977,7 +1996,7 @@ int QgsDxfExport::nLineTypes( const QList< QPair< QgsSymbolLayer *, QgsSymbol * 
   return nLineTypes;
 }
 
-void QgsDxfExport::writeLinetype( const QString &styleName, const QVector<qreal> &pattern, QgsUnitTypes::RenderUnit u )
+void QgsDxfExport::writeLinetype( const QString &styleName, const QVector<qreal> &pattern, Qgis::RenderUnit u )
 {
   double length = 0;
   for ( qreal size : pattern )
@@ -2049,19 +2068,24 @@ void QgsDxfExport::addGeometryGeneratorSymbolLayer( QgsSymbolRenderContext &ctx,
   }
 }
 
-bool QgsDxfExport::hasDataDefinedProperties( const QgsSymbolLayer *sl, const QgsSymbol *symbol )
+bool QgsDxfExport::hasBlockBreakingDataDefinedProperties( const QgsSymbolLayer *sl, const QgsSymbol *symbol )
 {
   if ( !sl || !symbol )
   {
     return false;
   }
 
-  if ( symbol->renderHints() & Qgis::SymbolRenderHint::DynamicRotation )
+  bool blockBreak = false;
+  if ( sl->hasDataDefinedProperties() )
   {
-    return true;
+    QSet<int> properties = sl->dataDefinedProperties().propertyKeys();
+    // Remove data defined properties handled through DXF property codes
+    properties.remove( QgsSymbolLayer::PropertySize );
+    properties.remove( QgsSymbolLayer::PropertyAngle );
+    blockBreak = !properties.isEmpty();
   }
 
-  return sl->hasDataDefinedProperties();
+  return blockBreak;
 }
 
 double QgsDxfExport::dashSize() const
@@ -2084,7 +2108,7 @@ double QgsDxfExport::dashSeparatorSize() const
 
 double QgsDxfExport::sizeToMapUnits( double s ) const
 {
-  double size = s * QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::DistanceMeters, mMapUnits );
+  double size = s * QgsUnitTypes::fromUnitToUnitFactor( Qgis::DistanceUnit::Meters, mMapUnits );
   return size;
 }
 
@@ -2146,7 +2170,7 @@ bool QgsDxfExport::layerIsScaleBasedVisible( const QgsMapLayer *layer ) const
   if ( !layer )
     return false;
 
-  if ( mSymbologyExport == QgsDxfExport::NoSymbology )
+  if ( mSymbologyExport == Qgis::FeatureSymbologyExport::NoSymbology )
     return true;
 
   return layer->isInScaleRange( mSymbologyScale );

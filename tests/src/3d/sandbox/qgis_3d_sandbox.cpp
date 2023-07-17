@@ -29,6 +29,7 @@
 #include "qgs3dmapsettings.h"
 #include "qgs3dmapcanvas.h"
 #include "qgsprojectviewsettings.h"
+#include "qgspointlightsettings.h"
 
 #include <QScreen>
 
@@ -57,7 +58,6 @@ void initCanvas3D( Qgs3DMapCanvas *canvas )
 
   QgsFlatTerrainGenerator *flatTerrain = new QgsFlatTerrainGenerator;
   flatTerrain->setCrs( map->crs() );
-  flatTerrain->setExtent( fullExtent );
   map->setTerrainGenerator( flatTerrain );
 
   QgsPointLightSettings defaultPointLight;

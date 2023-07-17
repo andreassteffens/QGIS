@@ -101,8 +101,8 @@ int QgsCoordinateUtils::calculateCoordinatePrecisionForCrs( const QgsCoordinateR
 
 int QgsCoordinateUtils::calculateCoordinatePrecision( const QgsCoordinateReferenceSystem &crs )
 {
-  const QgsUnitTypes::DistanceUnit unit = crs.mapUnits();
-  if ( unit == QgsUnitTypes::DistanceDegrees )
+  const Qgis::DistanceUnit unit = crs.mapUnits();
+  if ( unit == Qgis::DistanceUnit::Degrees )
   {
     return 8;
   }
@@ -141,10 +141,10 @@ QString QgsCoordinateUtils::formatCoordinateForProject( QgsProject *project, con
   {
     case Qgis::CoordinateOrder::Default:
     case Qgis::CoordinateOrder::XY:
-      return QStringLiteral( "%1%2%3" ).arg( formattedX, QgsCoordinateFormatter::separator(), formattedY );
+      return QStringLiteral( "%1%2 %3" ).arg( formattedX, QgsCoordinateFormatter::separator(), formattedY );
 
     case Qgis::CoordinateOrder::YX:
-      return QStringLiteral( "%1%2%3" ).arg( formattedY, QgsCoordinateFormatter::separator(), formattedX );
+      return QStringLiteral( "%1%2 %3" ).arg( formattedY, QgsCoordinateFormatter::separator(), formattedX );
   }
   BUILTIN_UNREACHABLE
 }

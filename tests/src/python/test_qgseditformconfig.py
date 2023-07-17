@@ -17,9 +17,18 @@ import threading
 import qgis  # NOQA
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsApplication, QgsVectorLayer, QgsReadWriteContext, QgsEditFormConfig,
-                       QgsFetchedContent, QgsAttributeEditorContainer, QgsFeature, QgsSettings,
-                       QgsNetworkContentFetcherRegistry, QgsAttributeEditorElement)
+from qgis.core import (
+    QgsApplication,
+    QgsAttributeEditorContainer,
+    QgsAttributeEditorElement,
+    QgsEditFormConfig,
+    QgsFeature,
+    QgsFetchedContent,
+    QgsNetworkContentFetcherRegistry,
+    QgsReadWriteContext,
+    QgsSettings,
+    QgsVectorLayer,
+)
 from qgis.gui import QgsGui
 from qgis.testing import start_app, unittest
 
@@ -32,6 +41,7 @@ class TestQgsEditFormConfig(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         QgsGui.editorWidgetRegistry().initEditors()
         QgsSettings().clear()
 
@@ -43,7 +53,7 @@ class TestQgsEditFormConfig(unittest.TestCase):
         cls.port = cls.httpd.server_address[1]
 
         cls.httpd_thread = threading.Thread(target=cls.httpd.serve_forever)
-        cls.httpd_thread.setDaemon(True)
+        cls.httpd_thread.daemon = True
         cls.httpd_thread.start()
 
     def createLayer(self):

@@ -35,7 +35,7 @@ QgsVirtualRasterProvider::QgsVirtualRasterProvider( const QString &uri, const Qg
 
   if ( ! decodedUriParams.crs.isValid() )
   {
-    QgsDebugMsg( "crs is not valid" );
+    QgsDebugError( "crs is not valid" );
     mValid = false;
     return;
   }
@@ -43,7 +43,7 @@ QgsVirtualRasterProvider::QgsVirtualRasterProvider( const QString &uri, const Qg
 
   if ( decodedUriParams.extent.isNull() )
   {
-    QgsDebugMsg( "extent is null" );
+    QgsDebugError( "extent is null" );
     mValid = false;
     return;
   }
@@ -121,6 +121,7 @@ QgsVirtualRasterProvider::QgsVirtualRasterProvider( const QgsVirtualRasterProvid
   , mYBlockSize( other.mYBlockSize )
   , mFormulaString( other.mFormulaString )
   , mLastError( other.mLastError )
+  , mRasterLayers{} // see note in other constructor above
 
 {
   for ( const auto &it : other.mRasterLayers )
@@ -170,7 +171,7 @@ QgsRasterBlock *QgsVirtualRasterProvider::block( int bandNo, const QgsRectangle 
       if ( rasterBlockFeedback->isCanceled() )
       {
         qDeleteAll( inputBlocks );
-        QgsDebugMsg( "Canceled = 3, User canceled calculation" );
+        QgsDebugMsgLevel( "Canceled = 3, User canceled calculation", 2 );
       }
     }
     else
@@ -206,7 +207,7 @@ QgsRasterBlock *QgsVirtualRasterProvider::block( int bandNo, const QgsRectangle 
     {
       qDeleteAll( inputBlocks );
       inputBlocks.clear();
-      QgsDebugMsg( "calcNode was not run in a correct way" );
+      QgsDebugError( "calcNode was not run in a correct way" );
     }
   }
 
@@ -272,9 +273,32 @@ QgsVirtualRasterProvider *QgsVirtualRasterProviderMetadata::createProvider( cons
   return new QgsVirtualRasterProvider( uri, options );
 }
 
-QList<QgsMapLayerType> QgsVirtualRasterProviderMetadata::supportedLayerTypes() const
+QString QgsVirtualRasterProviderMetadata::absoluteToRelativeUri( const QString &uri, const QgsReadWriteContext &context ) const
 {
-  return { QgsMapLayerType::RasterLayer };
+  QgsRasterDataProvider::VirtualRasterParameters decodedVirtualParams = QgsRasterDataProvider::decodeVirtualRasterProviderUri( uri );
+
+  for ( auto &it : decodedVirtualParams.rInputLayers )
+  {
+    it.uri = context.pathResolver().writePath( it.uri );
+  }
+  return QgsRasterDataProvider::encodeVirtualRasterProviderUri( decodedVirtualParams ) ;
+}
+
+QString QgsVirtualRasterProviderMetadata::relativeToAbsoluteUri( const QString &uri, const QgsReadWriteContext &context ) const
+{
+  QgsRasterDataProvider::VirtualRasterParameters decodedVirtualParams = QgsRasterDataProvider::decodeVirtualRasterProviderUri( uri );
+
+  for ( auto &it : decodedVirtualParams.rInputLayers )
+  {
+    it.uri = context.pathResolver().readPath( it.uri );
+  }
+  return QgsRasterDataProvider::encodeVirtualRasterProviderUri( decodedVirtualParams ) ;
+}
+
+
+QList<Qgis::LayerType> QgsVirtualRasterProviderMetadata::supportedLayerTypes() const
+{
+  return { Qgis::LayerType::Raster };
 }
 
 QgsVirtualRasterProvider *QgsVirtualRasterProvider::clone() const

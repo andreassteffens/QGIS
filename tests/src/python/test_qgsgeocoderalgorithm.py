@@ -13,19 +13,19 @@ import qgis  # NOQA
 from qgis.PyQt.QtCore import QVariant
 from qgis.analysis import QgsBatchGeocodeAlgorithm
 from qgis.core import (
+    NULL,
+    QgsCoordinateReferenceSystem,
+    QgsFeature,
+    QgsField,
+    QgsFields,
     QgsGeocoderInterface,
-    QgsWkbTypes,
     QgsGeocoderResult,
     QgsGeometry,
     QgsPointXY,
-    QgsCoordinateReferenceSystem,
-    QgsFeature,
     QgsProcessingContext,
     QgsProcessingFeedback,
     QgsRectangle,
-    QgsField,
-    QgsFields,
-    NULL
+    QgsWkbTypes,
 )
 from qgis.testing import start_app, unittest
 

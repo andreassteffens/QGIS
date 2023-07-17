@@ -18,12 +18,14 @@ import qgis  # NOQA
 import sip
 from qgis.PyQt.QtCore import QTemporaryDir
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsReadWriteContext,
-                       QgsVectorLayer,
-                       QgsRasterLayer,
-                       QgsProject,
-                       QgsLayerMetadata,
-                       QgsLayerNotesUtils)
+from qgis.core import (
+    QgsLayerMetadata,
+    QgsLayerNotesUtils,
+    QgsProject,
+    QgsRasterLayer,
+    QgsReadWriteContext,
+    QgsVectorLayer,
+)
 from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
@@ -153,12 +155,12 @@ class TestQgsMapLayer(unittest.TestCase):
         uri = layer.styleURI()
         self.assertEqual(uri, os.path.join(TEST_DATA_DIR, 'provider', 'bug_17795.qml'))
 
-        layer = QgsVectorLayer("{}|layername=bug_17795".format(os.path.join(TEST_DATA_DIR, 'provider', 'bug_17795.gpkg')), "layer", "ogr")
+        layer = QgsVectorLayer(f"{os.path.join(TEST_DATA_DIR, 'provider', 'bug_17795.gpkg')}|layername=bug_17795", "layer", "ogr")
         uri = layer.styleURI()
         self.assertEqual(uri, os.path.join(TEST_DATA_DIR, 'provider', 'bug_17795.qml'))
 
         # delimited text
-        uri = 'file://{}?type=csv&detectTypes=yes&geomType=none'.format(os.path.join(TEST_DATA_DIR, 'delimitedtext', 'test.csv'))
+        uri = f"file://{os.path.join(TEST_DATA_DIR, 'delimitedtext', 'test.csv')}?type=csv&detectTypes=yes&geomType=none"
         layer = QgsVectorLayer(uri, "layer", "delimitedtext")
         uri = layer.styleURI()
         self.assertEqual(uri, os.path.join(TEST_DATA_DIR, 'delimitedtext', 'test.qml'))
@@ -253,6 +255,18 @@ class TestQgsMapLayer(unittest.TestCase):
         # these setting WERE present, so must be retained
         self.assertIn('original abstract', vl.metadata().abstract())
         self.assertEqual(vl.metadata().rights(), ['original right 1', 'original right 2'])
+
+    def testMapTips(self):
+        rl = QgsRasterLayer(os.path.join(TEST_DATA_DIR, 'float1-16.tif'), 'test')
+        self.assertFalse(rl.hasMapTips())
+
+        rl.setMapTipTemplate('some template')
+        self.assertEqual(rl.mapTipTemplate(), 'some template')
+        self.assertTrue(rl.hasMapTips())
+
+        rl.setMapTipTemplate(None)
+        self.assertFalse(rl.mapTipTemplate())
+        self.assertFalse(rl.hasMapTips())
 
 
 if __name__ == '__main__':

@@ -95,7 +95,7 @@ QVector<T> getAttributeData( Qt3DQAttribute *attribute, const QByteArray &data )
 
   if ( bytesStride == 0 )
   {
-    QgsDebugMsg( "bytesStride==0, the attribute probably was not set properly" );
+    QgsDebugError( "bytesStride==0, the attribute probably was not set properly" );
     return result;
   }
 
@@ -143,7 +143,7 @@ QVector<uint> getIndexData( Qt3DQAttribute *indexAttribute, const QByteArray &da
     case Qt3DQAttribute::VertexBaseType::UnsignedByte:
       return _getIndexDataImplementation<uchar>( data );
     default:
-      QgsDebugMsg( "Probably trying to get index data using an attribute that has vertex data" );
+      QgsDebugError( "Probably trying to get index data using an attribute that has vertex data" );
       break;
   }
   return QVector<uint>();
@@ -154,7 +154,7 @@ QByteArray getData( Qt3DQBuffer *buffer )
   QByteArray bytes = buffer->data();
   if ( bytes.isNull() )
   {
-    QgsDebugMsg( "QBuffer is null" );
+    QgsDebugError( "QBuffer is null" );
   }
   return bytes;
 }
@@ -235,21 +235,25 @@ void Qgs3DSceneExporter::processEntityMaterial( Qt3DCore::QEntity *entity, Qgs3D
     QgsPhongMaterialSettings material = Qgs3DUtils::phongMaterialFromQt3DComponent( phongMaterial );
     object->setupMaterial( &material );
   }
-  Qt3DExtras::QDiffuseSpecularMaterial *diffuseMapMaterial = findTypedComponent<Qt3DExtras::QDiffuseSpecularMaterial>( entity );
 
+  Qt3DExtras::QDiffuseSpecularMaterial *diffuseMapMaterial = findTypedComponent<Qt3DExtras::QDiffuseSpecularMaterial>( entity );
   if ( diffuseMapMaterial != nullptr )
   {
-    const QVector<Qt3DRender::QAbstractTextureImage *> textureImages = diffuseMapMaterial->diffuse().value< Qt3DRender::QTexture2D * >()->textureImages();
-    QgsImageTexture *imageTexture = nullptr;
-    for ( Qt3DRender::QAbstractTextureImage *tex : textureImages )
+    const Qt3DRender::QTexture2D *diffuseTexture = diffuseMapMaterial->diffuse().value< Qt3DRender::QTexture2D * >();
+    if ( diffuseTexture != nullptr )
     {
-      imageTexture = dynamic_cast<QgsImageTexture *>( tex );
-      if ( imageTexture != nullptr ) break;
-    }
-    if ( imageTexture != nullptr )
-    {
-      const QImage image = imageTexture->getImage();
-      object->setTextureImage( image );
+      const QVector<Qt3DRender::QAbstractTextureImage *> textureImages = diffuseTexture->textureImages();
+      QgsImageTexture *imageTexture = nullptr;
+      for ( Qt3DRender::QAbstractTextureImage *tex : textureImages )
+      {
+        imageTexture = dynamic_cast<QgsImageTexture *>( tex );
+        if ( imageTexture != nullptr ) break;
+      }
+      if ( imageTexture != nullptr )
+      {
+        const QImage image = imageTexture->getImage();
+        object->setTextureImage( image );
+      }
     }
   }
 }
@@ -336,7 +340,7 @@ void Qgs3DSceneExporter::parseFlatTile( QgsTerrainTileEntity *tileEntity, const 
   Qt3DExtras::QPlaneGeometry *tileGeometry = qobject_cast<Qt3DExtras::QPlaneGeometry *>( geometry );
   if ( tileGeometry == nullptr )
   {
-    QgsDebugMsg( "Qt3DExtras::QPlaneGeometry* is expected but something else was given" );
+    QgsDebugError( "Qt3DExtras::QPlaneGeometry* is expected but something else was given" );
     return;
   }
 
@@ -393,7 +397,7 @@ void Qgs3DSceneExporter::parseDemTile( QgsTerrainTileEntity *tileEntity, const Q
   DemTerrainTileGeometry *tileGeometry = qobject_cast<DemTerrainTileGeometry *>( geometry );
   if ( tileGeometry == nullptr )
   {
-    QgsDebugMsg( "DemTerrainTileGeometry* is expected but something else was given" );
+    QgsDebugError( "DemTerrainTileGeometry* is expected but something else was given" );
     return;
   }
 
@@ -516,14 +520,14 @@ QVector<Qgs3DExportObject *> Qgs3DSceneExporter::processSceneLoaderGeometries( Q
   return objects;
 }
 
-Qgs3DExportObject *Qgs3DSceneExporter::processGeometryRenderer( Qt3DRender::QGeometryRenderer *mesh, const QString &objectNamePrefix, float sceneScale, QVector3D sceneTranslation )
+Qgs3DExportObject *Qgs3DSceneExporter::processGeometryRenderer( Qt3DRender::QGeometryRenderer *geomRenderer, const QString &objectNamePrefix, float sceneScale, QVector3D sceneTranslation )
 {
   // We only export triangles for now
-  if ( mesh->primitiveType() != Qt3DRender::QGeometryRenderer::Triangles ) return nullptr;
+  if ( geomRenderer->primitiveType() != Qt3DRender::QGeometryRenderer::Triangles ) return nullptr;
 
   float scale = 1.0f;
   QVector3D translation( 0.0f, 0.0f, 0.0f );
-  QObject *parent = mesh->parent();
+  QObject *parent = geomRenderer->parent();
   while ( parent != nullptr )
   {
     Qt3DCore::QEntity *entity = qobject_cast<Qt3DCore::QEntity *>( parent );
@@ -536,7 +540,7 @@ Qgs3DExportObject *Qgs3DSceneExporter::processGeometryRenderer( Qt3DRender::QGeo
     parent = parent->parent();
   }
 
-  Qt3DQGeometry *geometry = mesh->geometry();
+  Qt3DQGeometry *geometry = geomRenderer->geometry();
 
   Qt3DQAttribute *positionAttribute = findAttribute( geometry, Qt3DQAttribute::defaultPositionAttributeName(), Qt3DQAttribute::VertexAttribute );
   Qt3DQAttribute *indexAttribute = nullptr;
@@ -570,7 +574,7 @@ Qgs3DExportObject *Qgs3DSceneExporter::processGeometryRenderer( Qt3DRender::QGeo
 
   if ( positionAttribute == nullptr )
   {
-    QgsDebugMsg( "Geometry renderer with null data was being processed" );
+    QgsDebugError( "Geometry renderer with null data was being processed" );
     return nullptr;
   }
 
@@ -617,7 +621,7 @@ QVector<Qgs3DExportObject *> Qgs3DSceneExporter::processLines( Qt3DCore::QEntity
     }
     if ( positionAttribute == nullptr || indexAttribute == nullptr )
     {
-      QgsDebugMsg( "Position or index attribute was not found" );
+      QgsDebugError( "Position or index attribute was not found" );
       continue;
     }
 

@@ -12,7 +12,12 @@ __copyright__ = 'Copyright 2015, The QGIS Project'
 
 import os
 
-from qgis.core import QgsFeatureRequest, QgsVectorLayer, QgsProject, QgsVectorLayerTools
+from qgis.core import (
+    QgsFeatureRequest,
+    QgsProject,
+    QgsVectorLayer,
+    QgsVectorLayerTools,
+)
 from qgis.testing import start_app, unittest
 
 start_app()
@@ -44,6 +49,7 @@ class TestQgsVectorLayerTools(unittest.TestCase):
         Setup the involved layers and relations for a n:m relation
         :return:
         """
+        super().setUpClass()
         cls.dbconn = 'service=\'qgis_test\''
         if 'QGIS_PGTEST_DB' in os.environ:
             cls.dbconn = os.environ['QGIS_PGTEST_DB']

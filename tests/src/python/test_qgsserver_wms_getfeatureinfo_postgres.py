@@ -21,15 +21,20 @@ import os
 # executions
 os.environ['QT_HASH_SEED'] = '1'
 
+import json
 import urllib.parse
 import xml.etree.ElementTree as ET
-import json
 
-from qgis.testing import unittest
-
-from test_qgsserver_wms import TestQgsServerWMSTestBase
-from qgis.core import QgsProject, QgsVectorLayer, QgsFeatureRequest, QgsExpression, QgsProviderRegistry
+from qgis.core import (
+    QgsExpression,
+    QgsFeatureRequest,
+    QgsProject,
+    QgsProviderRegistry,
+    QgsVectorLayer,
+)
 from qgis.server import QgsBufferServerRequest, QgsBufferServerResponse
+from qgis.testing import unittest
+from test_qgsserver_wms import TestQgsServerWMSTestBase
 
 
 class TestQgsServerWMSGetFeatureInfoPG(TestQgsServerWMSTestBase):

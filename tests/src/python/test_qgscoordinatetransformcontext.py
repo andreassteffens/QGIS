@@ -13,11 +13,13 @@ import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsCoordinateReferenceSystem,
-                       QgsCoordinateTransformContext,
-                       QgsReadWriteContext,
-                       QgsProject,
-                       QgsSettings)
+from qgis.core import (
+    QgsCoordinateReferenceSystem,
+    QgsCoordinateTransformContext,
+    QgsProject,
+    QgsReadWriteContext,
+    QgsSettings,
+)
 from qgis.testing import start_app, unittest
 
 app = start_app()
@@ -28,6 +30,7 @@ class TestQgsCoordinateTransformContext(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("TestQgsCoordinateTransformContext.com")
         QCoreApplication.setApplicationName("TestQgsCoordinateTransformContext")

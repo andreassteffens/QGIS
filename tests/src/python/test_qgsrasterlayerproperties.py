@@ -17,7 +17,12 @@ import qgis  # NOQA
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QWidget
 from qgis.core import QgsMapLayer, QgsProject, QgsRasterLayer
-from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapLayerConfigWidget, QgsRasterLayerProperties
+from qgis.gui import (
+    QgsMapCanvas,
+    QgsMapLayerConfigWidget,
+    QgsMapLayerConfigWidgetFactory,
+    QgsRasterLayerProperties,
+)
 from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath

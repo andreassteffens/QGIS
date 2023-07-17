@@ -14,11 +14,13 @@ from time import sleep
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QImage
-from qgis.core import (QgsMapRendererCache,
-                       QgsRectangle,
-                       QgsVectorLayer,
-                       QgsProject,
-                       QgsMapToPixel)
+from qgis.core import (
+    QgsMapRendererCache,
+    QgsMapToPixel,
+    QgsProject,
+    QgsRectangle,
+    QgsVectorLayer,
+)
 from qgis.testing import start_app, unittest
 
 start_app()

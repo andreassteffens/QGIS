@@ -15,7 +15,7 @@ import qgis  # NOQA
 from console import console
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import QgsSettings
-from qgis.testing import unittest, start_app
+from qgis.testing import start_app, unittest
 
 start_app()
 

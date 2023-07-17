@@ -10,10 +10,25 @@ the Free Software Foundation; either version 2 of the License, or
 """
 
 from qgis import core as qgis_core
+from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
-from qgis.core import Qgis, QgsSettings, QgsSettingsEntryVariant, QgsSettingsEntryString, QgsSettingsEntryStringList, \
-    QgsSettingsEntryBool, QgsSettingsEntryInteger, QgsSettingsEntryDouble, QgsSettingsEntryEnumFlag, QgsUnitTypes, \
-    QgsMapLayerProxyModel, QgsSettingsEntryGroup
+from qgis.core import (
+    Qgis,
+    QgsMapLayerProxyModel,
+    QgsSettings,
+    QgsSettingsEntryBool,
+    QgsSettingsEntryColor,
+    QgsSettingsEntryDouble,
+    QgsSettingsEntryEnumFlag,
+    QgsSettingsEntryGroup,
+    QgsSettingsEntryInteger,
+    QgsSettingsEntryString,
+    QgsSettingsEntryStringList,
+    QgsSettingsEntryVariant,
+    QgsSettingsEntryVariantMap,
+    QgsSettingsTree,
+    QgsUnitTypes,
+)
 from qgis.testing import start_app, unittest
 
 __author__ = 'Damiano Lombardi'
@@ -36,7 +51,7 @@ class TestQgsSettingsEntry(unittest.TestCase):
 
     def test_settings_entry_base(self):
         settingsKey = "settingsEntryBase/variantValue"
-        settingsKeyComplete = f"plugins/{self.pluginName}/{settingsKey}"
+        settingsKeyComplete = f"/plugins/{self.pluginName}/{settingsKey}"
 
         # Make sure settings does not exists
         QgsSettings().remove(settingsKeyComplete)
@@ -88,19 +103,26 @@ class TestQgsSettingsEntry(unittest.TestCase):
             'QgsSettingsEntryInteger': 1,
             'QgsSettingsEntryString': 'Hello',
             'QgsSettingsEntryStringList': [],
-            'QgsSettingsEntryVariant': 1
+            'QgsSettingsEntryVariant': 1,
+            'QgsSettingsEntryVariantMap': {},
         }
         self.assertEqual(settings_types, list(hardcoded_types.keys()))
         for setting_type, default_value in hardcoded_types.items():
             settings_key = f"settings/key_{setting_type}"
-            settings_key_complete = f"plugins/{self.pluginName}/{settings_key}"
+            settings_key_complete = f"/plugins/{self.pluginName}/{settings_key}"
             QgsSettings().remove(settings_key_complete)
             settings_entry = eval(f'qgis_core.{setting_type}(settings_key, self.pluginName, default_value)')
             self.assertEqual(settings_entry.key(), settings_key_complete)
 
+    def test_with_parent_element(self):
+        root = QgsSettingsTree.createPluginTreeNode(self.pluginName)
+        setting = QgsSettingsEntryInteger("my_setting", root)
+        self.assertEqual(setting.key(), f"/plugins/{self.pluginName}/my_setting")
+        self.assertEqual(setting.name(), 'my_setting')
+
     def test_settings_entry_base_default_value_override(self):
         settingsKey = "settingsEntryBase/defaultValueOverride/variantValue"
-        settingsKeyComplete = f"plugins/{self.pluginName}/{settingsKey}"
+        settingsKeyComplete = f"/plugins/{self.pluginName}/{settingsKey}"
 
         # Make sure settings does not exists
         QgsSettings().remove(settingsKeyComplete)
@@ -123,8 +145,8 @@ class TestQgsSettingsEntry(unittest.TestCase):
         settingsKeyDynamic = "settingsEntryBase/%1/variantValue"
         dynamicKeyPart1 = "first"
         dynamicKeyPart2 = "second"
-        settingsKeyComplete1 = f"plugins/{self.pluginName}/{settingsKeyDynamic}".replace("%1", dynamicKeyPart1)
-        settingsKeyComplete2 = f"plugins/{self.pluginName}/{settingsKeyDynamic}".replace("%1", dynamicKeyPart2)
+        settingsKeyComplete1 = f"/plugins/{self.pluginName}/{settingsKeyDynamic}".replace("%1", dynamicKeyPart1)
+        settingsKeyComplete2 = f"/plugins/{self.pluginName}/{settingsKeyDynamic}".replace("%1", dynamicKeyPart2)
 
         # Make sure settings does not exists
         QgsSettings().remove(settingsKeyComplete1)
@@ -149,7 +171,7 @@ class TestQgsSettingsEntry(unittest.TestCase):
         settingsKeyDynamic = "settingsEntryBase/%1/anotherPart_%2/variantValue"
         dynamicKeyPart1 = "first"
         dynamicKeyPart2 = "second"
-        settingsKeyComplete = f"plugins/{self.pluginName}/{settingsKeyDynamic}".replace("%1", dynamicKeyPart1).replace("%2", dynamicKeyPart2)
+        settingsKeyComplete = f"/plugins/{self.pluginName}/{settingsKeyDynamic}".replace("%1", dynamicKeyPart1).replace("%2", dynamicKeyPart2)
 
         # Make sure settings does not exists
         QgsSettings().remove(settingsKeyComplete)
@@ -167,7 +189,7 @@ class TestQgsSettingsEntry(unittest.TestCase):
 
     def test_settings_entry_variant(self):
         settingsKey = "settingsEntryVariant/variantValue"
-        settingsKeyComplete = f"plugins/{self.pluginName}/{settingsKey}"
+        settingsKeyComplete = f"/plugins/{self.pluginName}/{settingsKey}"
 
         # Make sure settings does not exists
         QgsSettings().remove(settingsKeyComplete)
@@ -230,6 +252,24 @@ class TestQgsSettingsEntry(unittest.TestCase):
 
         # Settings type
         self.assertEqual(settingsEntryStringList.settingsType(), Qgis.SettingsType.StringList)
+
+    def test_settings_entry_variantmap(self):
+        settingsKey = "settingsEntryVariantMap/varriantMapValue"
+        settingsKeyComplete = f"plugins/{self.pluginName}/{settingsKey}"
+
+        # Make sure settings does not exists
+        QgsSettings().remove(settingsKeyComplete)
+
+        defaultValue = {"key0": "value0"}
+        settingsEntryVariantMap = QgsSettingsEntryVariantMap(settingsKey, self.pluginName, defaultValue)
+        self.assertEqual(settingsEntryVariantMap.value(), defaultValue)
+
+        newValue = {"number": 123, "text": "hi there", "color": QColor(Qt.yellow)}
+        settingsEntryVariantMap.setValue(newValue)
+        self.assertEqual(newValue, settingsEntryVariantMap.value())
+
+        # Settings type
+        self.assertEqual(settingsEntryVariantMap.settingsType(), Qgis.SettingsType.VariantMap)
 
     def test_settings_entry_bool(self):
         settingsKey = "settingsEntryBool/boolValue"
@@ -309,6 +349,23 @@ class TestQgsSettingsEntry(unittest.TestCase):
         # Settings type
         self.assertEqual(settingsEntryDouble.settingsType(), Qgis.SettingsType.Double)
 
+    def test_settings_entry_color(self):
+        settingsKey = "color"
+        settingsKeyComplete = f"plugins/{self.pluginName}/{settingsKey}"
+
+        # Make sure settings does not exists
+        QgsSettings().remove(settingsKeyComplete)
+
+        defaultValue = QColor(Qt.darkGreen)
+        settingsEntry = QgsSettingsEntryColor(settingsKey, self.pluginName, defaultValue, None, Qgis.SettingsOptions(), False)
+
+        # Check default value
+        self.assertEqual(settingsEntry.defaultValue(), defaultValue)
+
+        # Check alpha option
+        self.assertTrue(settingsEntry.setValue(QColor(Qt.yellow)))
+        self.assertFalse(settingsEntry.setValue(QColor(100, 100, 100, 100)))
+
     def test_settings_entry_enum(self):
         settingsKey = "settingsEntryEnum/enumValue"
         settingsKeyComplete = f"plugins/{self.pluginName}/{settingsKey}"
@@ -345,12 +402,12 @@ class TestQgsSettingsEntry(unittest.TestCase):
         self.assertEqual(qgsSettingsValue, QgsUnitTypes.LayoutPicas)
 
         # With save as integer option
-        settingsEntryEnumAsInteger = QgsSettingsEntryEnumFlag(settingsKey, self.pluginName, defaultValue, description, Qgis.SettingsOption.SaveEnumFlagAsInt)
+        settingsEntryEnumAsInteger = QgsSettingsEntryEnumFlag("enum-value-2", self.pluginName, defaultValue, description, Qgis.SettingsOption.SaveEnumFlagAsInt)
         settingsEntryEnumAsInteger.remove()
         self.assertEqual(settingsEntryEnumAsInteger.value(), defaultValue)
         success = settingsEntryEnumAsInteger.setValue(QgsUnitTypes.LayoutFeet)
         self.assertEqual(success, True)
-        qgsSettingsValue = QgsSettings().value(settingsKeyComplete, int(QgsUnitTypes.LayoutMeters))
+        qgsSettingsValue = QgsSettings().value(f"plugins/{self.pluginName}/enum-value-2", int(QgsUnitTypes.LayoutMeters))
         self.assertEqual(qgsSettingsValue, int(QgsUnitTypes.LayoutFeet))
 
     def test_settings_entry_flag(self):
@@ -411,6 +468,44 @@ class TestQgsSettingsEntry(unittest.TestCase):
         group_1.removeAllChildrenSettings()
         self.assertFalse(settingsEntryString_1.exists())
         self.assertFalse(settingsEntryString_2.exists())
+
+    def test_copy_value_from_key(self):
+        settingsNewKey = "settingsEntryMigrationNewKey"
+        settingsEntryNew = QgsSettingsEntryString(settingsNewKey, self.pluginName)
+        settingsEntryNew.remove()
+        settingsOldKey = "settingsEntryMigrationOldKey"
+        settingsEntryOld = QgsSettingsEntryString(settingsOldKey, self.pluginName)
+        settingsEntryOld.setValue("value from old key")
+        self.assertFalse(settingsEntryNew.exists())
+        self.assertFalse(settingsEntryNew.copyValueFromKey(f"plugins/{self.pluginName}/a-key-which-does-not-exist"))
+        self.assertTrue(settingsEntryNew.copyValueFromKey(f"plugins/{self.pluginName}/{settingsOldKey}", [], False))
+        self.assertTrue(settingsEntryNew.exists())
+        self.assertEqual(settingsEntryNew.value(), settingsEntryOld.value())
+
+        # with dynamic keys + delete
+        settingsNewKeyDynamic = "settingsEntryMigrationNewKeyDynamic/%1/key"
+        settingsEntryNewDynamic = QgsSettingsEntryString(settingsNewKeyDynamic, self.pluginName)
+        settingsEntryNewDynamic.remove("key1")
+        settingsOldKeyDynamic = "settingsEntryMigrationOldKey/%1/xxx"
+        settingsEntryOldDynamic = QgsSettingsEntryString(settingsOldKeyDynamic, self.pluginName)
+        settingsEntryOldDynamic.setValue("value from old key")
+        self.assertFalse(settingsEntryNewDynamic.exists())
+        self.assertTrue(settingsEntryNewDynamic.copyValueFromKey(f"plugins/{self.pluginName}/{settingsOldKey}", ["key1"], True))
+        self.assertTrue(settingsEntryNewDynamic.exists("key1"))
+        self.assertFalse(settingsEntryOldDynamic.exists("key1"))
+        self.assertEqual(settingsEntryNewDynamic.value("key1"), "value from old key")
+
+    def test_copy_to_value(self):
+        settingsDestKey = "settingsEntryMigrationDestKey"
+        settingsEntryDest = QgsSettingsEntryString(settingsDestKey, self.pluginName)
+        settingsEntryDest.remove()
+        settingsSrcKey = "settingsEntryMigrationSrcKey"
+        settingsEntrySrc = QgsSettingsEntryString(settingsSrcKey, self.pluginName)
+        settingsEntrySrc.setValue("value from source key")
+        self.assertFalse(settingsEntryDest.exists())
+        settingsEntrySrc.copyValueToKey(f"plugins/{self.pluginName}/{settingsDestKey}")
+        self.assertTrue(settingsEntryDest.exists())
+        self.assertEqual(settingsEntryDest.value(), settingsEntryDest.value())
 
 
 if __name__ == '__main__':

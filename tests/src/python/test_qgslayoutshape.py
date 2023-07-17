@@ -14,14 +14,14 @@ from qgis.PyQt.QtCore import QRectF
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (
-    QgsLayoutItemShape,
-    QgsProject,
+    QgsFillSymbol,
     QgsLayout,
     QgsLayoutItem,
+    QgsLayoutItemShape,
     QgsLayoutMeasurement,
+    QgsProject,
+    QgsReadWriteContext,
     QgsUnitTypes,
-    QgsFillSymbol,
-    QgsReadWriteContext
 )
 from qgis.testing import start_app, unittest
 
@@ -34,6 +34,7 @@ class TestQgsLayoutShape(unittest.TestCase, LayoutItemTestCase):
 
     @classmethod
     def setUpClass(cls):
+        super(TestQgsLayoutShape, cls).setUpClass()
         cls.item_class = QgsLayoutItemShape
 
     def testClipPath(self):

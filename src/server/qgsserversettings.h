@@ -85,6 +85,8 @@ class SERVER_EXPORT QgsServerSettingsEnv : public QObject
       QGIS_SERVER_PROJECT_CACHE_CHECK_INTERVAL, //! Set the interval for cache invalidation strategy 'interval', default to 0 which select the legacy File system watcher  (since QGIS 3.26).
       QGIS_SERVER_PROJECT_CACHE_STRATEGY, //! Set the project cache strategy. Possible values are 'filesystem', 'periodic' or 'off' (since QGIS 3.26).
       QGIS_SERVER_ALLOWED_EXTRA_SQL_TOKENS, //! Adds these tokens to the list of allowed tokens that the services accept when filtering features (since QGIS 3.28).
+      QGIS_SERVER_APPLICATION_NAME, //! Define the QGIS Server application name (since QGIS 3.30).
+      QGIS_SERVER_CAPABILITIES_CACHE_SIZE, //! Define the QGIS Server capabilities cache size (since QGIS 3.31)
     };
     Q_ENUM( EnvVar )
 };
@@ -371,10 +373,29 @@ class SERVER_EXPORT QgsServerSettings
     QStringList allowedExtraSqlTokens() const;
 
     /**
+     * Returns the QGIS Server application name.
+     * The default value is the concatenation of QgsApplication::applicationName()
+     * and QgsApplication::platform() separated by a space, the value can be changed
+     * by setting the environment variable QGIS_SERVER_APPLICATION_NAME.
+     *
+     * \since QGIS 3.30
+     */
+    QString applicationName() const;
+
+    /**
      * Returns the string representation of a setting.
      * \since QGIS 3.16
      */
     static QString name( QgsServerSettingsEnv::EnvVar env );
+
+    /**
+     * Returns the maximum number of project capabilities to cache.
+     * The default value is 40 and the value can be changed
+     * by setting the environment variable QGIS_SERVER_CAPABILITIES_CACHE_SIZE.
+     *
+     * \since QGIS 3.31
+     */
+    int capabilitiesCacheSize() const;
 
   private:
     void initSettings();

@@ -15,13 +15,13 @@ import os
 import shutil
 
 from qgis.PyQt.QtCore import QTemporaryDir
-from qgis.core import (
-    QgsVectorLayer,
-    QgsProviderRegistry,
-)
+from qgis.core import QgsProviderRegistry, QgsVectorLayer
 from qgis.testing import unittest
 
-from qgslayermetadataprovidertestbase import LayerMetadataProviderTestBase, TEST_DATA_DIR
+from qgslayermetadataprovidertestbase import (
+    TEST_DATA_DIR,
+    LayerMetadataProviderTestBase,
+)
 
 
 class TestPostgresLayerMetadataProvider(unittest.TestCase, LayerMetadataProviderTestBase):

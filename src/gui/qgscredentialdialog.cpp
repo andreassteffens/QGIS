@@ -19,8 +19,8 @@
 
 #include "qgsauthmanager.h"
 #include "qgslogger.h"
-#include "qgssettings.h"
 #include "qgsapplication.h"
+#include "qgsgui.h"
 
 #include <QPushButton>
 #include <QMenu>
@@ -46,6 +46,8 @@ QgsCredentialDialog::QgsCredentialDialog( QWidget *parent, Qt::WindowFlags fl )
 
 {
   setupUi( this );
+  QgsGui::enableAutoGeometryRestore( this );
+
   connect( leMasterPass, &QgsPasswordLineEdit::textChanged, this, &QgsCredentialDialog::leMasterPass_textChanged );
   connect( leMasterPassVerify, &QgsPasswordLineEdit::textChanged, this, &QgsCredentialDialog::leMasterPassVerify_textChanged );
   connect( chkbxEraseAuthDb, &QCheckBox::toggled, this, &QgsCredentialDialog::chkbxEraseAuthDb_toggled );
@@ -119,9 +121,9 @@ bool QgsCredentialDialog::request( const QString &realm, QString &username, QStr
   bool ok;
   if ( qApp->thread() != QThread::currentThread() )
   {
-    QgsDebugMsg( QStringLiteral( "emitting signal" ) );
+    QgsDebugMsgLevel( QStringLiteral( "emitting signal" ), 2 );
     emit credentialsRequested( realm, &username, &password, message, &ok );
-    QgsDebugMsg( QStringLiteral( "signal returned %1 (username=%2)" ).arg( ok ? "true" : "false", username ) );
+    QgsDebugMsgLevel( QStringLiteral( "signal returned %1 (username=%2)" ).arg( ok ? "true" : "false", username ), 2 );
   }
   else
   {
@@ -138,7 +140,7 @@ void QgsCredentialDialog::requestCredentials( const QString &realm, QString *use
     const QMutexLocker locker( &sIgnoredConnectionsCacheMutex );
     if ( sIgnoredConnectionsCache->contains( realm ) )
     {
-      QgsDebugMsg( QStringLiteral( "Skipping ignored connection: " ) + realm );
+      QgsDebugMsgLevel( QStringLiteral( "Skipping ignored connection: " ) + realm, 2 );
       *ok = false;
       return;
     }

@@ -13,26 +13,26 @@ import qgis  # NOQA
 from qgis.PyQt.QtCore import QDir, QSize, Qt
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (
-    QgsProviderRegistry,
-    QgsPointCloudLayer,
-    QgsPointCloudAttributeByRampRenderer,
-    QgsPointCloudRenderer,
-    QgsReadWriteContext,
-    QgsRenderContext,
-    QgsPointCloudRenderContext,
-    QgsVector3D,
-    QgsMultiRenderChecker,
-    QgsMapSettings,
-    QgsRectangle,
-    QgsUnitTypes,
-    QgsMapUnitScale,
+    QgsColorRampLegendNode,
+    QgsColorRampShader,
     QgsCoordinateReferenceSystem,
     QgsDoubleRange,
-    QgsColorRampShader,
-    QgsStyle,
     QgsLayerTreeLayer,
-    QgsColorRampLegendNode,
-    QgsSimpleLegendNode
+    QgsMapSettings,
+    QgsMapUnitScale,
+    QgsMultiRenderChecker,
+    QgsPointCloudAttributeByRampRenderer,
+    QgsPointCloudLayer,
+    QgsPointCloudRenderContext,
+    QgsPointCloudRenderer,
+    QgsProviderRegistry,
+    QgsReadWriteContext,
+    QgsRectangle,
+    QgsRenderContext,
+    QgsSimpleLegendNode,
+    QgsStyle,
+    QgsUnitTypes,
+    QgsVector3D,
 )
 from qgis.testing import start_app, unittest
 
@@ -45,13 +45,15 @@ class TestQgsPointCloudAttributeByRampRenderer(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         cls.report = "<h1>Python QgsPointCloudAttributeByRampRenderer Tests</h1>\n"
 
     @classmethod
     def tearDownClass(cls):
-        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        report_file_path = f"{QDir.tempPath()}/qgistest.html"
         with open(report_file_path, 'a') as report_file:
             report_file.write(cls.report)
+        super().tearDownClass()
 
     @unittest.skipIf('ept' not in QgsProviderRegistry.instance().providerList(), 'EPT provider not available')
     def testSetLayer(self):

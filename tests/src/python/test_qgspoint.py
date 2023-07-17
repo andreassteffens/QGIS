@@ -11,7 +11,7 @@ __copyright__ = 'Copyright 2012, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QPointF
-from qgis.core import QgsPointXY, QgsPoint, QgsWkbTypes
+from qgis.core import QgsPoint, QgsPointXY, QgsWkbTypes
 from qgis.testing import start_app, unittest
 
 start_app()

@@ -15,22 +15,24 @@ import qgis  # NOQA
 from qgis.PyQt.QtCore import QTemporaryDir
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsProject,
-                       QgsProjectViewSettings,
-                       QgsReadWriteContext,
-                       QgsReferencedRectangle,
-                       QgsRectangle,
-                       QgsCoordinateReferenceSystem,
-                       QgsVectorLayer,
-                       QgsFeature,
-                       QgsGeometry,
-                       QgsPointXY,
-                       QgsRasterLayer,
-                       Qgis)
+from qgis.core import (
+    Qgis,
+    QgsCoordinateReferenceSystem,
+    QgsFeature,
+    QgsGeometry,
+    QgsPointXY,
+    QgsProject,
+    QgsProjectViewSettings,
+    QgsRasterLayer,
+    QgsReadWriteContext,
+    QgsRectangle,
+    QgsReferencedRectangle,
+    QgsVectorLayer,
+)
 from qgis.gui import QgsMapCanvas
 from qgis.testing import start_app, unittest
 
-from utilities import (unitTestDataPath)
+from utilities import unitTestDataPath
 
 app = start_app()
 TEST_DATA_DIR = unitTestDataPath()

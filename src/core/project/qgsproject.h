@@ -34,7 +34,6 @@
 #include <QStringList>
 #include <QTranslator>
 
-#include "qgsunittypes.h"
 #include "qgssnappingconfig.h"
 #include "qgsprojectversion.h"
 #include "qgsexpressioncontextgenerator.h"
@@ -53,6 +52,8 @@
 #include "qgssettings.h"
 #include "qgspropertycollection.h"
 #include "qgsvectorlayereditbuffergroup.h"
+#include "qgselevationshadingrenderer.h"
+#include "qgsabstractsensor.h"
 
 #include "qgsrelationmanager.h"
 #include "qgsmapthemecollection.h"
@@ -86,6 +87,8 @@ class QgsAttributeEditorContainer;
 class QgsPropertyCollection;
 class QgsMapViewsManager;
 class QgsProjectElevationProperties;
+class QgsProjectGpsSettings;
+class QgsSensorManager;
 
 /**
  * \ingroup core
@@ -118,8 +121,8 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     Q_PROPERTY( QColor backgroundColor READ backgroundColor WRITE setBackgroundColor NOTIFY backgroundColorChanged )
     Q_PROPERTY( QColor selectionColor READ selectionColor WRITE setSelectionColor NOTIFY selectionColorChanged )
     Q_PROPERTY( bool topologicalEditing READ topologicalEditing WRITE setTopologicalEditing NOTIFY topologicalEditingChanged )
-    Q_PROPERTY( QgsUnitTypes::DistanceUnit distanceUnits READ distanceUnits WRITE setDistanceUnits NOTIFY distanceUnitsChanged )
-    Q_PROPERTY( QgsUnitTypes::AreaUnit areaUnits READ areaUnits WRITE setAreaUnits NOTIFY areaUnitsChanged )
+    Q_PROPERTY( Qgis::DistanceUnit distanceUnits READ distanceUnits WRITE setDistanceUnits NOTIFY distanceUnitsChanged )
+    Q_PROPERTY( Qgis::AreaUnit areaUnits READ areaUnits WRITE setAreaUnits NOTIFY areaUnitsChanged )
     Q_PROPERTY( QgsProjectDisplaySettings *displaySettings READ displaySettings CONSTANT )
 
   public:
@@ -695,7 +698,7 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
      * \see areaUnits()
      * \since QGIS 2.14
      */
-    QgsUnitTypes::DistanceUnit distanceUnits() const { return mDistanceUnits; }
+    Qgis::DistanceUnit distanceUnits() const { return mDistanceUnits; }
 
     /**
      * Sets the default distance measurement units for the project.
@@ -703,14 +706,14 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
      * \see setAreaUnits()
      * \since QGIS 3.0
      */
-    void setDistanceUnits( QgsUnitTypes::DistanceUnit unit );
+    void setDistanceUnits( Qgis::DistanceUnit unit );
 
     /**
      * Convenience function to query default area measurement units for project.
      * \see distanceUnits()
      * \since QGIS 2.14
      */
-    QgsUnitTypes::AreaUnit areaUnits() const { return mAreaUnits; }
+    Qgis::AreaUnit areaUnits() const { return mAreaUnits; }
 
     /**
      * Sets the default area measurement units for the project.
@@ -718,7 +721,7 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
      * \see setDistanceUnits()
      * \since QGIS 3.0
      */
-    void setAreaUnits( QgsUnitTypes::AreaUnit unit );
+    void setAreaUnits( Qgis::AreaUnit unit );
 
     /**
      * Returns the project's home path. This will either be a manually set home path
@@ -796,6 +799,21 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     QgsBookmarkManager *bookmarkManager();
 
     /**
+     * Returns the project's sensor manager, which manages sensors within
+     * the project.
+     * \note not available in Python bindings
+     * \since QGIS 3.32
+     */
+    const QgsSensorManager *sensorManager() const SIP_SKIP;
+
+    /**
+     * Returns the project's sensor manager, which manages sensors within
+     * the project.
+     * \since QGIS 3.32
+     */
+    QgsSensorManager *sensorManager();
+
+    /**
      * Returns the project's view settings, which contains settings and properties
      * relating to how a QgsProject should be viewed and behave inside a map canvas
      * (e.g. map scales and default view extent)
@@ -862,7 +880,7 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     QgsProjectElevationProperties *elevationProperties();
 
     /**
-     * Returns the project's display settings, which settings and properties relating
+     * Returns the project's display settings, which contains settings and properties relating
      * to how a QgsProject should display values such as map coordinates and bearings.
      * \note not available in Python bindings
      * \since QGIS 3.12
@@ -870,11 +888,26 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     const QgsProjectDisplaySettings *displaySettings() const SIP_SKIP;
 
     /**
-     * Returns the project's display settings, which settings and properties relating
+     * Returns the project's display settings, which contains settings and properties relating
      * to how a QgsProject should display values such as map coordinates and bearings.
      * \since QGIS 3.12
      */
     QgsProjectDisplaySettings *displaySettings();
+
+    /**
+     * Returns the project's GPS settings, which contains settings and properties relating
+     * to how a QgsProject should interact with a GPS device.
+     * \note not available in Python bindings
+     * \since QGIS 3.30
+     */
+    const QgsProjectGpsSettings *gpsSettings() const SIP_SKIP;
+
+    /**
+     * Returns the project's GPS settings, which contains settings and properties relating
+     * to how a QgsProject should interact with a GPS device.
+     * \since QGIS 3.30
+     */
+    QgsProjectGpsSettings *gpsSettings();
 
     /**
      * Returns pointer to the root (invisible) node of the project's layer tree
@@ -1618,6 +1651,20 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
      */
     bool accept( QgsStyleEntityVisitorInterface *visitor ) const;
 
+    /**
+     * Returns the elevation shading renderer used for map shading
+     *
+     * \since QGIS 3.30
+     */
+    QgsElevationShadingRenderer elevationShadingRenderer() const;
+
+    /**
+     * Sets the elevation shading renderer used for global map shading
+     *
+     * \since QGIS 3.30
+     */
+    void setElevationShadingRenderer( const QgsElevationShadingRenderer &elevationShadingRenderer );
+
 #ifdef SIP_RUN
     SIP_PYOBJECT __repr__();
     % MethodCode
@@ -1999,6 +2046,13 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
      */
     Q_DECL_DEPRECATED void mapScalesChanged() SIP_DEPRECATED;
 
+    /**
+     * Emitted when the map shading renderer changes
+     *
+     * \since QGIS 3.30
+     */
+    void elevationShadingRendererChanged();
+
   public slots:
 
     /**
@@ -2169,9 +2223,15 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
      *
      * The optional \a flags argument can be used to control layer reading behavior.
      *
+     * If the provider is already created, it can be passed with \a provider (takes ownership)
+     *
      * \note not available in Python bindings
      */
-    bool addLayer( const QDomElement &layerElem, QList<QDomNode> &brokenNodes, QgsReadWriteContext &context, Qgis::ProjectReadFlags flags = Qgis::ProjectReadFlags() ) SIP_SKIP;
+    bool addLayer( const QDomElement &layerElem,
+                   QList<QDomNode> &brokenNodes,
+                   QgsReadWriteContext &context,
+                   Qgis::ProjectReadFlags flags = Qgis::ProjectReadFlags(),
+                   QgsDataProvider *provider = nullptr ) SIP_SKIP;
 
     /**
      * Remove auxiliary layer of the corresponding layer.
@@ -2212,6 +2272,19 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     //! Returns the property definition used for a data defined server property
     static QgsPropertiesDefinition &dataDefinedServerPropertyDefinitions();
 
+    //! Attempts to preload providers in parallel
+    void preloadProviders( const QVector<QDomNode> &asynchronusLayerNodes,
+                           const QgsReadWriteContext &context,
+                           QMap<QString, QgsDataProvider *> &loadedProviders,
+                           QgsMapLayer::ReadFlags layerReadFlags,
+                           int totalProviderCount );
+
+    /**
+     * Releases any handles to files stored in the project archive, so that the
+     * archive can be safely removed.
+     */
+    void releaseHandlesToProjectArchive();
+
     Qgis::ProjectCapabilities mCapabilities;
 
     std::unique_ptr< QgsMapLayerStore > mLayerStore;
@@ -2238,6 +2311,8 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
 
     QgsBookmarkManager *mBookmarkManager = nullptr;
 
+    QgsSensorManager *mSensorManager = nullptr;
+
     QgsProjectViewSettings *mViewSettings = nullptr;
 
     QgsProjectStyleSettings *mStyleSettings = nullptr;
@@ -2247,6 +2322,8 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     QgsProjectElevationProperties *mElevationProperties = nullptr;
 
     QgsProjectDisplaySettings *mDisplaySettings = nullptr;
+
+    QgsProjectGpsSettings *mGpsSettings = nullptr;
 
     QgsLayerTree *mRootGroup = nullptr;
 
@@ -2288,8 +2365,8 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     QColor mBackgroundColor;
     QColor mSelectionColor;
 
-    QgsUnitTypes::DistanceUnit mDistanceUnits = QgsUnitTypes::DistanceMeters;
-    QgsUnitTypes::AreaUnit mAreaUnits = QgsUnitTypes::AreaSquareMeters;
+    Qgis::DistanceUnit mDistanceUnits = Qgis::DistanceUnit::Meters;
+    Qgis::AreaUnit mAreaUnits = Qgis::AreaUnit::SquareMeters;
 
     mutable QgsProjectPropertyKey mProperties;  // property hierarchy, TODO: this shouldn't be mutable
     Qgis::TransactionMode mTransactionMode = Qgis::TransactionMode::Disabled; // transaction grouped editing
@@ -2314,6 +2391,8 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     mutable std::unique_ptr< QgsExpressionContextScope > mProjectScope;
 
     int mBlockSnappingUpdates = 0;
+
+    QgsElevationShadingRenderer mElevationShadingRenderer;
 
     friend class QgsApplication;
 
@@ -2416,6 +2495,17 @@ class GetNamedProjectColor : public QgsScopedExpressionFunction
 
 };
 
+class GetSensorData : public QgsScopedExpressionFunction
+{
+  public:
+    GetSensorData( const QMap<QString, QgsAbstractSensor::SensorData> &sensorData = QMap<QString, QgsAbstractSensor::SensorData>() );
+    QVariant func( const QVariantList &values, const QgsExpressionContext *, QgsExpression *, const QgsExpressionNodeFunction * ) override;
+    QgsScopedExpressionFunction *clone() const override;
+
+  private:
+
+    QMap<QString, QgsAbstractSensor::SensorData> mSensorData;
+};
 #endif
 ///@endcond
 

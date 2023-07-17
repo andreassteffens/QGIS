@@ -23,31 +23,32 @@ import os
 
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QDir, QSize
-from qgis.PyQt.QtGui import QImage, QColor, QPainter
+from qgis.PyQt.QtGui import QColor, QImage, QPainter
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsGeometry,
-                       QgsFillSymbol,
-                       QgsRenderContext,
-                       QgsFeature,
-                       QgsMapSettings,
-                       QgsRenderChecker,
-                       QgsReadWriteContext,
-                       QgsSymbolLayerUtils,
-                       QgsLineSymbolLayer,
-                       QgsSymbol,
-                       QgsMultiRenderChecker,
-                       QgsLineSymbol,
-                       QgsSymbolLayer,
-                       QgsProperty,
-                       QgsRectangle,
-                       QgsUnitTypes,
-                       QgsSimpleLineSymbolLayer,
-                       QgsTemplatedLineSymbolLayerBase,
-                       QgsHashedLineSymbolLayer,
-                       QgsVectorLayer,
-                       QgsSingleSymbolRenderer
-                       )
-from qgis.testing import unittest, start_app
+from qgis.core import (
+    QgsFeature,
+    QgsFillSymbol,
+    QgsGeometry,
+    QgsHashedLineSymbolLayer,
+    QgsLineSymbol,
+    QgsLineSymbolLayer,
+    QgsMapSettings,
+    QgsMultiRenderChecker,
+    QgsProperty,
+    QgsReadWriteContext,
+    QgsRectangle,
+    QgsRenderChecker,
+    QgsRenderContext,
+    QgsSimpleLineSymbolLayer,
+    QgsSingleSymbolRenderer,
+    QgsSymbol,
+    QgsSymbolLayer,
+    QgsSymbolLayerUtils,
+    QgsTemplatedLineSymbolLayerBase,
+    QgsUnitTypes,
+    QgsVectorLayer,
+)
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -61,7 +62,7 @@ class TestQgsHashedLineSymbolLayer(unittest.TestCase):
         self.report = "<h1>Python QgsHashedLineSymbolLayer Tests</h1>\n"
 
     def tearDown(self):
-        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        report_file_path = f"{QDir.tempPath()}/qgistest.html"
         with open(report_file_path, 'a') as report_file:
             report_file.write(self.report)
 

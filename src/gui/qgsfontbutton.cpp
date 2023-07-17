@@ -490,7 +490,7 @@ QPixmap QgsFontButton::createDragIcon( QSize size, const QgsTextFormat *tempForm
       const double fontSize = context.convertToPainterUnits( tempFormat->size(), tempFormat->sizeUnit(), tempFormat->sizeMapUnitScale() );
       double xtrans = 0;
       if ( tempFormat->buffer().enabled() )
-        xtrans = tempFormat->buffer().sizeUnit() == QgsUnitTypes::RenderPercentage
+        xtrans = tempFormat->buffer().sizeUnit() == Qgis::RenderUnit::Percentage
                  ? fontSize * tempFormat->buffer().size() / 100
                  : context.convertToPainterUnits( tempFormat->buffer().size(), tempFormat->buffer().sizeUnit(), tempFormat->buffer().sizeMapUnitScale() );
       if ( tempFormat->background().enabled() && tempFormat->background().sizeType() != QgsTextBackgroundSettings::SizeFixed )
@@ -498,7 +498,7 @@ QPixmap QgsFontButton::createDragIcon( QSize size, const QgsTextFormat *tempForm
 
       double ytrans = 0.0;
       if ( tempFormat->buffer().enabled() )
-        ytrans = std::max( ytrans, tempFormat->buffer().sizeUnit() == QgsUnitTypes::RenderPercentage
+        ytrans = std::max( ytrans, tempFormat->buffer().sizeUnit() == Qgis::RenderUnit::Percentage
                            ? fontSize * tempFormat->buffer().size() / 100
                            : context.convertToPainterUnits( tempFormat->buffer().size(), tempFormat->buffer().sizeUnit(), tempFormat->buffer().sizeMapUnitScale() ) );
       if ( tempFormat->background().enabled() )
@@ -665,7 +665,7 @@ void QgsFontButton::prepareMenu()
   const int iconSize = QgsGuiUtils::scaleIconSize( 16 );
   if ( mMode == ModeTextRenderer && formatFromMimeData( QApplication::clipboard()->mimeData(), tempFormat ) )
   {
-    tempFormat.setSizeUnit( QgsUnitTypes::RenderPixels );
+    tempFormat.setSizeUnit( Qgis::RenderUnit::Pixels );
     tempFormat.setSize( 14 );
     pasteFormatAction->setIcon( createDragIcon( QSize( iconSize, iconSize ), &tempFormat ) );
   }
@@ -888,8 +888,9 @@ void QgsFontButton::updatePreview( const QColor &color, QgsTextFormat *format, Q
   }
 
   //create an icon pixmap
-  QPixmap pixmap( currentIconSize );
+  QPixmap pixmap( currentIconSize * devicePixelRatioF() );
   pixmap.fill( Qt::transparent );
+  pixmap.setDevicePixelRatio( devicePixelRatioF() );
   QPainter p;
   p.begin( &pixmap );
   p.setRenderHint( QPainter::Antialiasing );
@@ -905,6 +906,7 @@ void QgsFontButton::updatePreview( const QColor &color, QgsTextFormat *format, Q
       context.setMapToPixel( newCoordXForm );
 
       context.setScaleFactor( mScreenHelper->screenDpi() / 25.4 );
+      context.setDevicePixelRatio( devicePixelRatioF() );
       context.setUseAdvancedEffects( true );
       context.setFlag( Qgis::RenderContextFlag::Antialiasing, true );
       context.setPainter( &p );
@@ -913,7 +915,7 @@ void QgsFontButton::updatePreview( const QColor &color, QgsTextFormat *format, Q
       const double fontSize = context.convertToPainterUnits( tempFormat.size(), tempFormat.sizeUnit(), tempFormat.sizeMapUnitScale() );
       double xtrans = 0;
       if ( tempFormat.buffer().enabled() )
-        xtrans = tempFormat.buffer().sizeUnit() == QgsUnitTypes::RenderPercentage
+        xtrans = tempFormat.buffer().sizeUnit() == Qgis::RenderUnit::Percentage
                  ? fontSize * tempFormat.buffer().size() / 100
                  : context.convertToPainterUnits( tempFormat.buffer().size(), tempFormat.buffer().sizeUnit(), tempFormat.buffer().sizeMapUnitScale() );
       if ( tempFormat.background().enabled() && tempFormat.background().sizeType() != QgsTextBackgroundSettings::SizeFixed )
@@ -921,7 +923,7 @@ void QgsFontButton::updatePreview( const QColor &color, QgsTextFormat *format, Q
 
       double ytrans = 0.0;
       if ( tempFormat.buffer().enabled() )
-        ytrans = std::max( ytrans, tempFormat.buffer().sizeUnit() == QgsUnitTypes::RenderPercentage
+        ytrans = std::max( ytrans, tempFormat.buffer().sizeUnit() == Qgis::RenderUnit::Percentage
                            ? fontSize * tempFormat.buffer().size() / 100
                            : context.convertToPainterUnits( tempFormat.buffer().size(), tempFormat.buffer().sizeUnit(), tempFormat.buffer().sizeMapUnitScale() ) );
       if ( tempFormat.background().enabled() )

@@ -12,12 +12,14 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 import qgis  # NOQA
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsProject,
-                       QgsLayout,
-                       QgsLayoutItemPage,
-                       QgsSimpleFillSymbolLayer,
-                       QgsFillSymbol,
-                       QgsReadWriteContext)
+from qgis.core import (
+    QgsFillSymbol,
+    QgsLayout,
+    QgsLayoutItemPage,
+    QgsProject,
+    QgsReadWriteContext,
+    QgsSimpleFillSymbolLayer,
+)
 from qgis.testing import start_app, unittest
 
 from test_qgslayoutitem import LayoutItemTestCase
@@ -29,6 +31,7 @@ class TestQgsLayoutPage(unittest.TestCase, LayoutItemTestCase):
 
     @classmethod
     def setUpClass(cls):
+        super(TestQgsLayoutPage, cls).setUpClass()
         cls.item_class = QgsLayoutItemPage
 
     def testDefaults(self):

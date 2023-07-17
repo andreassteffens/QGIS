@@ -20,6 +20,7 @@
 #include "qgis.h"
 #include "qgspropertycollection.h"
 #include "qgsrendercontext.h"
+#include "qgsscreenproperties.h"
 
 class QgsSymbolLayer;
 class QgsLegendPatchShape;
@@ -120,7 +121,7 @@ class CORE_EXPORT QgsSymbol
      *
      * \since QGIS 3.20
      */
-    static Qgis::SymbolType symbolTypeForGeometryType( QgsWkbTypes::GeometryType type );
+    static Qgis::SymbolType symbolTypeForGeometryType( Qgis::GeometryType type );
 
     /**
      * Data definable properties.
@@ -144,7 +145,7 @@ class CORE_EXPORT QgsSymbol
      *
      * The caller takes ownership of the returned object.
      */
-    static QgsSymbol *defaultSymbol( QgsWkbTypes::GeometryType geomType ) SIP_FACTORY;
+    static QgsSymbol *defaultSymbol( Qgis::GeometryType geomType ) SIP_FACTORY;
 
     /**
      * Returns the symbol's type.
@@ -371,17 +372,17 @@ class CORE_EXPORT QgsSymbol
      * \param painter destination painter
      * \param size size of the icon
      * \param customContext the context in which the rendering happens
-     * \param selected set to TRUE to render the symbol in a selected state
+     * \param selected set to TRUE to render the symbol in a selected state (since QGIS 3.10)
      * \param expressionContext optional custom expression context
      * \param patchShape optional patch shape to use for symbol preview. If not specified a default shape will be used instead.
+     * \param screen can be used to specify the destination screen properties for the icon. This allows the icon to be generated using the correct DPI and device pixel ratio for the target screen (since QGIS 3.32)
      *
      * \see exportImage()
      * \see asImage()
-     * \note Parameter selected added in QGIS 3.10
      * \since QGIS 2.6
      */
     void drawPreviewIcon( QPainter *painter, QSize size, QgsRenderContext *customContext = nullptr, bool selected = false, const QgsExpressionContext *expressionContext = nullptr,
-                          const QgsLegendPatchShape *patchShape = nullptr );
+                          const QgsLegendPatchShape *patchShape = nullptr, const QgsScreenProperties &screen = QgsScreenProperties() );
 
     /**
      * Export the symbol as an image format, to the specified \a path and with the given \a size.
@@ -411,11 +412,12 @@ class CORE_EXPORT QgsSymbol
      * \param expressionContext optional expression context, for evaluation of
      * data defined symbol properties
      * \param flags optional flags to control how preview image is generated
+     * \param screen can be used to specify the destination screen properties for the icon. This allows the icon to be generated using the correct DPI and device pixel ratio for a target screen (since QGIS 3.32)
      *
      * \see asImage()
      * \see drawPreviewIcon()
      */
-    QImage bigSymbolPreviewImage( QgsExpressionContext *expressionContext = nullptr, Qgis::SymbolPreviewFlags flags = Qgis::SymbolPreviewFlag::FlagIncludeCrosshairsForMarkerSymbols ) SIP_PYNAME( bigSymbolPreviewImageV2 );
+    QImage bigSymbolPreviewImage( QgsExpressionContext *expressionContext = nullptr, Qgis::SymbolPreviewFlags flags = Qgis::SymbolPreviewFlag::FlagIncludeCrosshairsForMarkerSymbols, const QgsScreenProperties &screen = QgsScreenProperties() ) SIP_PYNAME( bigSymbolPreviewImageV2 );
 
     /**
      * \deprecated use bigSymbolPreviewImageV2 instead.
@@ -447,7 +449,7 @@ class CORE_EXPORT QgsSymbol
      * \returns output unit, or QgsUnitTypes::RenderUnknownUnit if the symbol contains mixed units
      * \see setOutputUnit()
      */
-    QgsUnitTypes::RenderUnit outputUnit() const;
+    Qgis::RenderUnit outputUnit() const;
 
     /**
      * Returns TRUE if the symbol has any components which use map unit based sizes.
@@ -464,7 +466,7 @@ class CORE_EXPORT QgsSymbol
      * \param unit output units
      * \see outputUnit()
      */
-    void setOutputUnit( QgsUnitTypes::RenderUnit unit ) const;
+    void setOutputUnit( Qgis::RenderUnit unit ) const;
 
     /**
      * Returns the map unit scale for the symbol.
@@ -774,7 +776,7 @@ class CORE_EXPORT QgsSymbol
      * Since QGIS 3.22, the optional \a geometryType, \a points and \a rings arguments can specify the original
      * geometry type, points and rings in which are being rendered by the parent symbol.
      */
-    void renderUsingLayer( QgsSymbolLayer *layer, QgsSymbolRenderContext &context, QgsWkbTypes::GeometryType geometryType = QgsWkbTypes::GeometryType::UnknownGeometry, const QPolygonF *points = nullptr, const QVector<QPolygonF> *rings = nullptr );
+    void renderUsingLayer( QgsSymbolLayer *layer, QgsSymbolRenderContext &context, Qgis::GeometryType geometryType = Qgis::GeometryType::Unknown, const QPolygonF *points = nullptr, const QVector<QPolygonF> *rings = nullptr );
 
     /**
      * Render editing vertex marker at specified point

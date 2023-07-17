@@ -21,16 +21,17 @@ __copyright__ = '(C) 2019, Nyall Dawson'
 
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QDir, Qt
-from qgis.PyQt.QtGui import QImage, QColor, QPainter
-from qgis.core import (QgsGeometry,
-                       QgsRenderContext,
-                       QgsFeature,
-                       QgsMapSettings,
-                       QgsRenderChecker,
-                       QgsLineSymbol,
-                       QgsRasterLineSymbolLayer
-                       )
-from qgis.testing import unittest, start_app
+from qgis.PyQt.QtGui import QColor, QImage, QPainter
+from qgis.core import (
+    QgsFeature,
+    QgsGeometry,
+    QgsLineSymbol,
+    QgsMapSettings,
+    QgsRasterLineSymbolLayer,
+    QgsRenderChecker,
+    QgsRenderContext,
+)
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -44,7 +45,7 @@ class TestQgsRasterLineSymbolLayer(unittest.TestCase):
         self.report = "<h1>Python QgsRasterLineSymbolLayer Tests</h1>\n"
 
     def tearDown(self):
-        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        report_file_path = f"{QDir.tempPath()}/qgistest.html"
         with open(report_file_path, 'a') as report_file:
             report_file.write(self.report)
 

@@ -11,7 +11,12 @@ the Free Software Foundation; either version 2 of the License, or
 """
 
 from qgis.PyQt.QtGui import QIcon
-from qgis.gui import (QgsGui, QgsSourceSelectProvider, QgsSourceSelectProviderRegistry, QgsAbstractDataSourceWidget)
+from qgis.gui import (
+    QgsAbstractDataSourceWidget,
+    QgsGui,
+    QgsSourceSelectProvider,
+    QgsSourceSelectProviderRegistry,
+)
 from qgis.testing import start_app, unittest
 
 __author__ = 'Alessandro Pasotti'

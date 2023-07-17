@@ -14,21 +14,16 @@ __revision__ = '$Format:%H$'
 
 import os
 
-from qgis.PyQt.QtCore import (
-    QCoreApplication,
-    QModelIndex,
-    Qt,
-    QVariant
-)
+from qgis.PyQt.QtCore import QCoreApplication, QModelIndex, Qt, QVariant
 from qgis.core import (
-    QgsDatabaseTableModel,
-    QgsProviderRegistry,
     QgsCoordinateReferenceSystem,
-    QgsWkbTypes,
+    QgsDatabaseTableModel,
+    QgsField,
     QgsFields,
-    QgsField
+    QgsProviderRegistry,
+    QgsWkbTypes,
 )
-from qgis.testing import unittest, start_app
+from qgis.testing import start_app, unittest
 
 
 class TestPyQgsDatabaseTableModel(unittest.TestCase):
@@ -40,6 +35,7 @@ class TestPyQgsDatabaseTableModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
 
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(cls.__name__)

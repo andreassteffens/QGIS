@@ -12,11 +12,13 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 import qgis  # NOQA
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsPrintLayout,
-                       QgsLayoutManager,
-                       QgsProject,
-                       QgsReport,
-                       QgsMasterLayoutInterface)
+from qgis.core import (
+    QgsLayoutManager,
+    QgsMasterLayoutInterface,
+    QgsPrintLayout,
+    QgsProject,
+    QgsReport,
+)
 from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath

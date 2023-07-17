@@ -51,7 +51,6 @@ class QgsMasterLayoutInterface;
 class QgsLayoutDesignerInterface;
 class QgsMapCanvas;
 class QgsMapLayer;
-enum class QgsMapLayerType;
 class QgsMapLayerConfigWidgetFactory;
 class QgsMapDecoration;
 class QgsMessageBar;
@@ -70,6 +69,8 @@ class QgsDevToolWidgetFactory;
 class QgsGpsConnection;
 class QgsApplicationExitBlockerInterface;
 class QgsAbstractMapToolHandler;
+class QgsUserProfileManager;
+class QgsDataSourceManagerDialog;
 
 /**
  * \ingroup gui
@@ -111,7 +112,7 @@ class GUI_EXPORT QgisInterface : public QObject
      * \see addCustomActionForLayer()
      */
     virtual void addCustomActionForLayerType( QAction *action, QString menu,
-        QgsMapLayerType type, bool allLayers ) = 0;
+        Qgis::LayerType type, bool allLayers ) = 0;
 
     /**
      * Add action to context menu for a specific layer in the layer tree.
@@ -215,6 +216,51 @@ class GUI_EXPORT QgisInterface : public QObject
     virtual QMenu *projectMenu() = 0;
 
     /**
+     * Returns a reference to the main window "Import/Export" project menu.
+     *
+     * \see addProjectImportAction()
+     * \see addProjectExportAction
+     * \since QGIS 3.30
+     */
+    virtual QMenu *projectImportExportMenu() = 0;
+
+    /**
+     * Adds an \a action to the QGIS "Import project" menu.
+     *
+     * \see removeProjectImportAction()
+     * \see addProjectExportAction()
+     * \since QGIS 3.30
+     */
+    virtual void addProjectImportAction( QAction *action ) = 0;
+
+    /**
+     * Adds an \a action to the QGIS "Import project" menu.
+     *
+     * \see addProjectImportAction()
+     * \see removeProjectExportAction()
+     * \since QGIS 3.30
+     */
+    virtual void removeProjectImportAction( QAction *action ) = 0;
+
+    /**
+     * Adds an \a action to the QGIS "Export project" menu.
+     *
+     * \see removeProjectExportAction()
+     * \see addProjectImportAction()
+     * \since QGIS 3.30
+     */
+    virtual void addProjectExportAction( QAction *action ) = 0;
+
+    /**
+     * Adds an \a action to the QGIS "Export project" menu.
+     *
+     * \see addProjectExportAction()
+     * \see removeProjectImportAction()
+     * \since QGIS 3.30
+     */
+    virtual void removeProjectExportAction( QAction *action ) = 0;
+
+    /**
      * Returns a reference to the main window "Edit" menu.
      */
     virtual QMenu *editMenu() = 0;
@@ -316,6 +362,15 @@ class GUI_EXPORT QgisInterface : public QObject
      * \since QGIS 3.4
      */
     virtual QToolBar *dataSourceManagerToolBar() = 0;
+
+    /**
+     * Opens a page in the main window "Data Source Manager" dialog.
+     *
+     * This method creates and opens the dialog if it is not already visible.
+     *
+     * \since QGIS 3.30
+     */
+    virtual void openDataSourceManagerPage( const QString &pageName ) = 0;
 
     /**
      * Returns a reference to the main window "Map Navigation" toolbar.
@@ -742,6 +797,12 @@ class GUI_EXPORT QgisInterface : public QObject
      * \since QGIS 3.10
      */
     virtual QgsLayerTreeRegistryBridge::InsertionPoint layerTreeInsertionPoint() = 0;
+
+    /**
+     * Returns a reference to the user profile manager
+     * \since QGIS 3.30
+    */
+    virtual QgsUserProfileManager *userProfileManager() = 0;
 
   public slots: // TODO: do these functions really need to be slots?
 
@@ -1388,7 +1449,7 @@ class GUI_EXPORT QgisInterface : public QObject
      *
      * \since QGIS 3.16
      */
-    virtual void setGpsPanelConnection( QgsGpsConnection *connection ) = 0;
+    virtual void setGpsPanelConnection( QgsGpsConnection *connection SIP_TRANSFER ) = 0;
 
   signals:
 

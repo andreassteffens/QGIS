@@ -1697,6 +1697,7 @@ consonents:consonants
 consorcium:consortium
 conspiracys:conspiracies
 conspiriator:conspirator
+constrast:contrast
 constains:contains
 constaints:constraints
 constanly:constantly
@@ -4517,6 +4518,7 @@ metalurgical:metallurgical
 metalurgy:metallurgy
 metamorphysis:metamorphosis
 metaphoricial:metaphorical
+metatada:metadata
 metdata:metadata
 meterologist:meteorologist
 meterology:meteorology
@@ -6219,7 +6221,7 @@ retuns:returns
 retur:return
 retured:returned
 returing:returning
-returnd:returned
+returnd:returned:*
 returnes:returns
 returs:returns
 reuest:request

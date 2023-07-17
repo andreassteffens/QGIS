@@ -22,29 +22,30 @@ __copyright__ = '(C) 2019, Nyall Dawson'
 import os
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import QDir, Qt, QSize
-from qgis.PyQt.QtGui import QImage, QColor, QPainter
+from qgis.PyQt.QtCore import QDir, QSize, Qt
+from qgis.PyQt.QtGui import QColor, QImage, QPainter
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsGeometry,
-                       QgsFillSymbol,
-                       QgsRenderContext,
-                       QgsFeature,
-                       QgsMapSettings,
-                       QgsReadWriteContext,
-                       QgsSymbolLayerUtils,
-                       QgsSimpleMarkerSymbolLayer,
-                       QgsSimpleFillSymbolLayer,
-                       QgsMarkerSymbol,
-                       QgsRandomMarkerFillSymbolLayer,
-                       QgsVectorLayer,
-                       QgsSingleSymbolRenderer,
-                       QgsProperty,
-                       QgsSymbolLayer,
-                       QgsRectangle,
-                       QgsMultiRenderChecker,
-                       QgsSymbol
-                       )
-from qgis.testing import unittest, start_app
+from qgis.core import (
+    QgsFeature,
+    QgsFillSymbol,
+    QgsGeometry,
+    QgsMapSettings,
+    QgsMarkerSymbol,
+    QgsMultiRenderChecker,
+    QgsProperty,
+    QgsRandomMarkerFillSymbolLayer,
+    QgsReadWriteContext,
+    QgsRectangle,
+    QgsRenderContext,
+    QgsSimpleFillSymbolLayer,
+    QgsSimpleMarkerSymbolLayer,
+    QgsSingleSymbolRenderer,
+    QgsSymbol,
+    QgsSymbolLayer,
+    QgsSymbolLayerUtils,
+    QgsVectorLayer,
+)
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -56,13 +57,15 @@ class TestQgsRandomMarkerSymbolLayer(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         cls.report = "<h1>Python QgsRandomMarkerFillSymbolLayer Tests</h1>\n"
 
     @classmethod
     def tearDownClass(cls):
-        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        report_file_path = f"{QDir.tempPath()}/qgistest.html"
         with open(report_file_path, 'a') as report_file:
             report_file.write(cls.report)
+        super().tearDownClass()
 
     def testSimple(self):
         s = QgsFillSymbol()

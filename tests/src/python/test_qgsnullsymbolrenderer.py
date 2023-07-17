@@ -23,11 +23,13 @@ import os
 
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QSize
-from qgis.core import (QgsVectorLayer,
-                       QgsProject,
-                       QgsRectangle,
-                       QgsMultiRenderChecker,
-                       QgsNullSymbolRenderer)
+from qgis.core import (
+    QgsMultiRenderChecker,
+    QgsNullSymbolRenderer,
+    QgsProject,
+    QgsRectangle,
+    QgsVectorLayer,
+)
 from qgis.testing import start_app, unittest
 from qgis.testing.mocked import get_iface
 

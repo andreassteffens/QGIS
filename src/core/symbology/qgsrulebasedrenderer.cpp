@@ -22,16 +22,14 @@
 #include "qgslogger.h"
 #include "qgsogcutils.h"
 #include "qgssinglesymbolrenderer.h"
-#include "qgspointdisplacementrenderer.h"
 #include "qgsinvertedpolygonrenderer.h"
-#include "qgspainteffect.h"
-#include "qgspainteffectregistry.h"
 #include "qgsproperty.h"
 #include "qgsstyleentityvisitor.h"
 #include "qgsembeddedsymbolrenderer.h"
 #include "qgslinesymbol.h"
 #include "qgsfillsymbol.h"
 #include "qgsmarkersymbol.h"
+#include "qgspointdistancerenderer.h"
 
 #include <QSet>
 
@@ -521,6 +519,11 @@ bool QgsRuleBasedRenderer::Rule::startRender( QgsRenderContext &context, const Q
   return true;
 }
 
+bool QgsRuleBasedRenderer::Rule::hasActiveChildren() const
+{
+  return !mActiveChildren.empty();
+}
+
 QSet<int> QgsRuleBasedRenderer::Rule::collectZLevels()
 {
   QSet<int> symbolZLevelsSet;
@@ -579,7 +582,7 @@ QgsRuleBasedRenderer::Rule::RenderResult QgsRuleBasedRenderer::Rule::renderFeatu
     const auto constMSymbolNormZLevels = mSymbolNormZLevels;
     for ( int normZLevel : constMSymbolNormZLevels )
     {
-      //QgsDebugMsg(QString("add job at level %1").arg(normZLevel));
+      //QgsDebugMsgLevel(QString("add job at level %1").arg(normZLevel),2);
       renderQueue[normZLevel].jobs.append( new RenderJob( featToRender, mSymbol.get() ) );
       rendered = true;
     }
@@ -674,36 +677,52 @@ QgsSymbolList QgsRuleBasedRenderer::Rule::symbolsForFeature( const QgsFeature &f
 
 QSet<QString> QgsRuleBasedRenderer::Rule::legendKeysForFeature( const QgsFeature &feature, QgsRenderContext *context )
 {
-  QSet< QString> lst;
+  QSet< QString> res;
   if ( !isFilterOK( feature, context ) )
-    return lst;
-  lst.insert( mRuleKey );
+    return res;
 
-  const auto constMActiveChildren = mActiveChildren;
-  for ( Rule *rule : constMActiveChildren )
+  res.insert( mRuleKey );
+
+  // first determine if any non else rules match at this level
+  bool matchedNonElseRule = false;
+  for ( Rule *rule : std::as_const( mActiveChildren ) )
   {
-    bool validKey = false;
     if ( rule->isElse() )
     {
-      RuleList lst = rulesForFeature( feature, context, false );
-      lst.removeOne( rule );
-
-      if ( lst.empty() )
-      {
-        validKey = true;
-      }
+      continue;
     }
-    else if ( !rule->isElse( ) && rule->willRenderFeature( feature, context ) )
+    if ( rule->willRenderFeature( feature, context ) )
     {
-      validKey = true;
-    }
-
-    if ( validKey )
-    {
-      lst.unite( rule->legendKeysForFeature( feature, context ) );
+      res.unite( rule->legendKeysForFeature( feature, context ) );
+      matchedNonElseRule = true;
     }
   }
-  return lst;
+
+  // second chance -- allow else rules to take effect if valid
+  if ( !matchedNonElseRule )
+  {
+    for ( Rule *rule : std::as_const( mActiveChildren ) )
+    {
+      if ( rule->isElse() )
+      {
+        if ( rule->children().isEmpty() )
+        {
+          RuleList lst = rulesForFeature( feature, context, false );
+          lst.removeOne( rule );
+
+          if ( lst.empty() )
+          {
+            res.unite( rule->legendKeysForFeature( feature, context ) );
+          }
+        }
+        else
+        {
+          res.unite( rule->legendKeysForFeature( feature, context ) );
+        }
+      }
+    }
+  }
+  return res;
 }
 
 QgsRuleBasedRenderer::RuleList QgsRuleBasedRenderer::Rule::rulesForFeature( const QgsFeature &feature, QgsRenderContext *context, bool onlyActive )
@@ -742,7 +761,7 @@ void QgsRuleBasedRenderer::Rule::stopRender( QgsRenderContext &context )
   mSymbolNormZLevels.clear();
 }
 
-QgsRuleBasedRenderer::Rule *QgsRuleBasedRenderer::Rule::create( QDomElement &ruleElem, QgsSymbolMap &symbolMap )
+QgsRuleBasedRenderer::Rule *QgsRuleBasedRenderer::Rule::create( QDomElement &ruleElem, QgsSymbolMap &symbolMap, bool reuseId )
 {
   QString symbolIdx = ruleElem.attribute( QStringLiteral( "symbol" ) );
   QgsSymbol *symbol = nullptr;
@@ -754,7 +773,7 @@ QgsRuleBasedRenderer::Rule *QgsRuleBasedRenderer::Rule::create( QDomElement &rul
     }
     else
     {
-      QgsDebugMsg( "symbol for rule " + symbolIdx + " not found!" );
+      QgsDebugError( "symbol for rule " + symbolIdx + " not found!" );
     }
   }
 
@@ -763,7 +782,11 @@ QgsRuleBasedRenderer::Rule *QgsRuleBasedRenderer::Rule::create( QDomElement &rul
   QString description = ruleElem.attribute( QStringLiteral( "description" ) );
   int scaleMinDenom = ruleElem.attribute( QStringLiteral( "scalemindenom" ), QStringLiteral( "0" ) ).toInt();
   int scaleMaxDenom = ruleElem.attribute( QStringLiteral( "scalemaxdenom" ), QStringLiteral( "0" ) ).toInt();
-  QString ruleKey = ruleElem.attribute( QStringLiteral( "key" ) );
+  QString ruleKey;
+  if ( reuseId )
+    ruleKey = ruleElem.attribute( QStringLiteral( "key" ) );
+  else
+    ruleKey = QUuid::createUuid().toString();
   Rule *rule = new Rule( symbol, scaleMinDenom, scaleMaxDenom, filterExp, label, description );
 
   if ( !ruleKey.isEmpty() )
@@ -781,7 +804,7 @@ QgsRuleBasedRenderer::Rule *QgsRuleBasedRenderer::Rule::create( QDomElement &rul
     }
     else
     {
-      QgsDebugMsg( QStringLiteral( "failed to init a child rule!" ) );
+      QgsDebugError( QStringLiteral( "failed to init a child rule!" ) );
     }
     childRuleElem = childRuleElem.nextSiblingElement( QStringLiteral( "rule" ) );
   }
@@ -800,11 +823,11 @@ QgsRuleBasedRenderer::RuleList QgsRuleBasedRenderer::Rule::descendants() const
   return l;
 }
 
-QgsRuleBasedRenderer::Rule *QgsRuleBasedRenderer::Rule::createFromSld( QDomElement &ruleElem, QgsWkbTypes::GeometryType geomType )
+QgsRuleBasedRenderer::Rule *QgsRuleBasedRenderer::Rule::createFromSld( QDomElement &ruleElem, Qgis::GeometryType geomType )
 {
   if ( ruleElem.localName() != QLatin1String( "Rule" ) )
   {
-    QgsDebugMsg( QStringLiteral( "invalid element: Rule element expected, %1 found!" ).arg( ruleElem.tagName() ) );
+    QgsDebugError( QStringLiteral( "invalid element: Rule element expected, %1 found!" ).arg( ruleElem.tagName() ) );
     return nullptr;
   }
 
@@ -855,7 +878,7 @@ QgsRuleBasedRenderer::Rule *QgsRuleBasedRenderer::Rule::createFromSld( QDomEleme
       {
         if ( filter->hasParserError() )
         {
-          QgsDebugMsg( "parser error: " + filter->parserErrorString() );
+          QgsDebugError( "parser error: " + filter->parserErrorString() );
         }
         else
         {
@@ -898,20 +921,20 @@ QgsRuleBasedRenderer::Rule *QgsRuleBasedRenderer::Rule::createFromSld( QDomEleme
   {
     switch ( geomType )
     {
-      case QgsWkbTypes::LineGeometry:
+      case Qgis::GeometryType::Line:
         symbol = new QgsLineSymbol( layers );
         break;
 
-      case QgsWkbTypes::PolygonGeometry:
+      case Qgis::GeometryType::Polygon:
         symbol = new QgsFillSymbol( layers );
         break;
 
-      case QgsWkbTypes::PointGeometry:
+      case Qgis::GeometryType::Point:
         symbol = new QgsMarkerSymbol( layers );
         break;
 
       default:
-        QgsDebugMsg( QStringLiteral( "invalid geometry type: found %1" ).arg( geomType ) );
+        QgsDebugError( QStringLiteral( "invalid geometry type: found %1" ).arg( qgsEnumValueToKey( geomType ) ) );
         return nullptr;
     }
   }
@@ -990,6 +1013,11 @@ void QgsRuleBasedRenderer::startRender( QgsRenderContext &context, const QgsFiel
   mRootRule->setNormZLevels( zLevelsToNormLevels );
 }
 
+bool QgsRuleBasedRenderer::canSkipRender()
+{
+  return !mRootRule->hasActiveChildren();
+}
+
 void QgsRuleBasedRenderer::stopRender( QgsRenderContext &context )
 {
   QgsFeatureRenderer::stopRender( context );
@@ -1004,12 +1032,12 @@ void QgsRuleBasedRenderer::stopRender( QgsRenderContext &context )
     const auto constMRenderQueue = mRenderQueue;
     for ( const RenderLevel &level : constMRenderQueue )
     {
-      //QgsDebugMsg(QString("level %1").arg(level.zIndex));
+      //QgsDebugMsgLevel(QString("level %1").arg(level.zIndex), 2);
       // go through all jobs at the level
       for ( const RenderJob *job : std::as_const( level.jobs ) )
       {
         context.expressionContext().setFeature( job->ftr.feat );
-        //QgsDebugMsg(QString("job fid %1").arg(job->f->id()));
+        //QgsDebugMsgLevel(QString("job fid %1").arg(job->f->id()), 2);
         // render feature - but only with symbol layers with specified zIndex
         QgsSymbol *s = job->symbol;
         int count = s->symbolLayerCount();
@@ -1138,7 +1166,7 @@ QString QgsRuleBasedRenderer::legendKeyToExpression( const QString &key, QgsVect
       const QList<QgsRuleBasedRenderer::Rule *> siblings = rule->parent()->children();
       for ( Rule *sibling : siblings )
       {
-        if ( sibling == rule )
+        if ( sibling == rule || sibling->isElse() )
           continue;
 
         const QString siblingExpression = ruleToExpression( sibling );
@@ -1239,7 +1267,7 @@ QgsFeatureRenderer *QgsRuleBasedRenderer::create( QDomElement &element, const Qg
   return r;
 }
 
-QgsFeatureRenderer *QgsRuleBasedRenderer::createFromSld( QDomElement &element, QgsWkbTypes::GeometryType geomType )
+QgsFeatureRenderer *QgsRuleBasedRenderer::createFromSld( QDomElement &element, Qgis::GeometryType geomType )
 {
   // retrieve child rules
   Rule *root = nullptr;

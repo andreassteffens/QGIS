@@ -11,13 +11,13 @@ __date__ = '12/11/2018'
 __copyright__ = 'Copyright 2018, The QGIS Project'
 
 import qgis  # NOQA
+from qgis.PyQt.QtCore import QUrl
+from qgis.PyQt.QtNetwork import QNetworkReply, QNetworkRequest
+from qgis.PyQt.QtTest import QSignalSpy
+from qgis.core import QgsBlockingNetworkRequest
+from qgis.testing import start_app, unittest
 
 import mockedwebserver
-from qgis.testing import unittest, start_app
-from qgis.core import QgsBlockingNetworkRequest
-from qgis.PyQt.QtCore import QUrl
-from qgis.PyQt.QtTest import QSignalSpy
-from qgis.PyQt.QtNetwork import QNetworkReply, QNetworkRequest
 
 app = start_app()
 
@@ -26,11 +26,13 @@ class TestQgsBlockingNetworkRequest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         cls.server, cls.port = mockedwebserver.launch()
 
     @classmethod
     def tearDownClass(cls):
         cls.server.stop()
+        super().tearDownClass()
 
     def testFetchEmptyUrl(self):
         request = QgsBlockingNetworkRequest()

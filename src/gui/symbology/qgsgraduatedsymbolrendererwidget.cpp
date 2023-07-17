@@ -22,6 +22,8 @@
 #include <QPainter>
 #include <QClipboard>
 #include <QCompleter>
+#include <QPointer>
+#include <QScreen>
 
 #include "qgsgraduatedsymbolrendererwidget.h"
 #include "qgspanelwidget.h"
@@ -36,7 +38,6 @@
 #include "qgsexpressioncontextutils.h"
 #include "qgsvectorlayer.h"
 #include "qgssymbolselectordialog.h"
-#include "qgsexpressionbuilderdialog.h"
 #include "qgslogger.h"
 #include "qgsludialog.h"
 #include "qgsproject.h"
@@ -61,8 +62,9 @@
 
 ///@cond PRIVATE
 
-QgsGraduatedSymbolRendererModel::QgsGraduatedSymbolRendererModel( QObject *parent ) : QAbstractItemModel( parent )
+QgsGraduatedSymbolRendererModel::QgsGraduatedSymbolRendererModel( QObject *parent, QScreen *screen ) : QAbstractItemModel( parent )
   , mMimeFormat( QStringLiteral( "application/x-qgsgraduatedsymbolrendererv2model" ) )
+  , mScreen( screen )
 {
 }
 
@@ -178,7 +180,7 @@ QVariant QgsGraduatedSymbolRendererModel::data( const QModelIndex &index, int ro
   else if ( role == Qt::DecorationRole && index.column() == 0 && range.symbol() )
   {
     const int iconSize = QgsGuiUtils::scaleIconSize( 16 );
-    return QgsSymbolLayerUtils::symbolPreviewIcon( range.symbol(), QSize( iconSize, iconSize ) );
+    return QgsSymbolLayerUtils::symbolPreviewIcon( range.symbol(), QSize( iconSize, iconSize ), 0, nullptr, QgsScreenProperties( mScreen.data() ) );
   }
   else if ( role == Qt::TextAlignmentRole )
   {
@@ -322,7 +324,7 @@ bool QgsGraduatedSymbolRendererModel::dropMimeData( const QMimeData *data, Qt::D
   if ( to == -1 ) to = mRenderer->ranges().size(); // out of rang ok, will be decreased
   for ( int i = rows.size() - 1; i >= 0; i-- )
   {
-    QgsDebugMsg( QStringLiteral( "move %1 to %2" ).arg( rows[i] ).arg( to ) );
+    QgsDebugMsgLevel( QStringLiteral( "move %1 to %2" ).arg( rows[i] ).arg( to ), 2 );
     int t = to;
     // moveCategory first removes and then inserts
     if ( rows[i] < t ) t--;
@@ -481,7 +483,7 @@ QgsGraduatedSymbolRendererWidget::QgsGraduatedSymbolRendererWidget( QgsVectorLay
   connect( methodComboBox, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsGraduatedSymbolRendererWidget::methodComboBox_currentIndexChanged );
   this->layout()->setContentsMargins( 0, 0, 0, 0 );
 
-  mModel = new QgsGraduatedSymbolRendererModel( this );
+  mModel = new QgsGraduatedSymbolRendererModel( this, screen() );
 
   mExpressionWidget->setFilters( QgsFieldProxyModel::Numeric | QgsFieldProxyModel::Date );
   mExpressionWidget->setLayer( mLayer );
@@ -489,8 +491,14 @@ QgsGraduatedSymbolRendererWidget::QgsGraduatedSymbolRendererWidget( QgsVectorLay
   btnChangeGraduatedSymbol->setLayer( mLayer );
   btnChangeGraduatedSymbol->registerExpressionContextGenerator( this );
 
-  mSizeUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << QgsUnitTypes::RenderMillimeters << QgsUnitTypes::RenderMapUnits << QgsUnitTypes::RenderPixels
-                             << QgsUnitTypes::RenderPoints << QgsUnitTypes::RenderInches );
+  mSizeUnitWidget->setUnits(
+  {
+    Qgis::RenderUnit::Millimeters,
+    Qgis::RenderUnit::MapUnits,
+    Qgis::RenderUnit::Pixels,
+    Qgis::RenderUnit::Points,
+    Qgis::RenderUnit::Inches
+  } );
 
   spinPrecision->setMinimum( QgsClassificationMethod::MIN_PRECISION );
   spinPrecision->setMaximum( QgsClassificationMethod::MAX_PRECISION );
@@ -598,6 +606,9 @@ QgsGraduatedSymbolRendererWidget::QgsGraduatedSymbolRendererWidget( QgsVectorLay
   connect( mExpressionWidget, static_cast < void ( QgsFieldExpressionWidget::* )( const QString & ) >( &QgsFieldExpressionWidget::fieldChanged ), mHistogramWidget, &QgsHistogramWidget::setSourceFieldExp );
 
   mExpressionWidget->registerExpressionContextGenerator( this );
+
+  mUpdateTimer.setSingleShot( true );
+  mUpdateTimer.connect( &mUpdateTimer, &QTimer::timeout, this, &QgsGraduatedSymbolRendererWidget::classifyGraduatedImpl );
 }
 
 void QgsGraduatedSymbolRendererWidget::mSizeUnitWidget_changed()
@@ -911,7 +922,7 @@ void QgsGraduatedSymbolRendererWidget::clearParameterWidgets()
   while ( mParametersLayout->rowCount() )
   {
     QFormLayout::TakeRowResult row = mParametersLayout->takeRow( 0 );
-    for ( QLayoutItem *item : QList<QLayoutItem *>( {row.labelItem, row.fieldItem} ) )
+    for ( QLayoutItem *item : {row.labelItem, row.fieldItem} )
       if ( item )
       {
         if ( item->widget() )
@@ -1022,6 +1033,12 @@ void QgsGraduatedSymbolRendererWidget::symmetryPointEditingFinished( )
 
 void QgsGraduatedSymbolRendererWidget::classifyGraduated()
 {
+  mUpdateTimer.start( 500 );
+}
+
+void QgsGraduatedSymbolRendererWidget::classifyGraduatedImpl( )
+{
+
   if ( mBlockUpdates )
     return;
 

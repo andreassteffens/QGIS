@@ -22,9 +22,6 @@
 #include "qgspoint.h"
 #include "qgspolygon.h"
 #include "qgstriangle.h"
-#include "qgis_sip.h"
-#include "qgsgeometryengine.h"
-
 #include "poly2tri.h"
 
 #include <QtDebug>
@@ -510,7 +507,7 @@ void QgsTessellator::addPolygon( const QgsPolygon &polygon, float extrusionHeigh
     }
 
     ptStart = QgsPoint( exterior->startPoint() );
-    pt0 = QgsPoint( QgsWkbTypes::PointZ, ptStart.x(), ptStart.y(), std::isnan( ptStart.z() ) ? 0 : ptStart.z() );
+    pt0 = QgsPoint( Qgis::WkbType::PointZ, ptStart.x(), ptStart.y(), std::isnan( ptStart.z() ) ? 0 : ptStart.z() );
 
     // subtract ptFirst from geometry for better numerical stability in triangulation
     // and apply new 3D vector base if the polygon is not horizontal
@@ -523,12 +520,13 @@ void QgsTessellator::addPolygon( const QgsPolygon &polygon, float extrusionHeigh
 
   const QVector3D upVector( 0, 0, 1 );
   const float pNormalUpVectorDotProduct = QVector3D::dotProduct( upVector, pNormal );
-  const float radsBetwwenUpNormal = qAcos( pNormalUpVectorDotProduct );
+  const float radsBetweenUpNormal = static_cast<float>( qAcos( pNormalUpVectorDotProduct ) );
 
   const float detectionDelta = qDegreesToRadians( 10.0f );
   int facade = 0;
-  if ( radsBetwwenUpNormal > M_PI_2 - detectionDelta && radsBetwwenUpNormal < M_PI_2 + detectionDelta ) facade = 1;
-  else if ( radsBetwwenUpNormal > - M_PI_2 - detectionDelta && radsBetwwenUpNormal < -M_PI_2 + detectionDelta ) facade = 1;
+  if ( ( radsBetweenUpNormal > M_PI_2 - detectionDelta && radsBetweenUpNormal < M_PI_2 + detectionDelta )
+       || ( radsBetweenUpNormal > - M_PI_2 - detectionDelta && radsBetweenUpNormal < -M_PI_2 + detectionDelta ) )
+    facade = 1;
   else facade = 2;
 
   if ( pCount == 4 && polygon.numInteriorRings() == 0 && ( mTessellatedFacade & facade ) )
@@ -547,11 +545,12 @@ void QgsTessellator::addPolygon( const QgsPolygon &polygon, float extrusionHeigh
     const double *zData = !mNoZ ? exterior->zData() : nullptr;
     for ( int i = 0; i < 3; i++ )
     {
-      const float z = !zData ? 0 : *zData;
-      if ( z < zMin )
-        zMin = z;
-      if ( z > zMaxBase )
-        zMaxBase = z;
+      const float baseHeight = !zData || mNoZ ? 0.0f : static_cast<float>( * zData );
+      const float z = mNoZ ? 0.0f : ( baseHeight + extrusionHeight );
+      if ( baseHeight < zMin )
+        zMin = baseHeight;
+      if ( baseHeight > zMaxBase )
+        zMaxBase = baseHeight;
       if ( z > zMaxExtruded )
         zMaxExtruded = z;
 

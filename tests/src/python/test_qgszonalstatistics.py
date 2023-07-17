@@ -15,7 +15,13 @@ import shutil
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QDir, QFile, QTemporaryDir
 from qgis.analysis import QgsZonalStatistics
-from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsFeature, QgsFeatureRequest, QgsGeometry
+from qgis.core import (
+    QgsFeature,
+    QgsFeatureRequest,
+    QgsGeometry,
+    QgsRasterLayer,
+    QgsVectorLayer,
+)
 from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath

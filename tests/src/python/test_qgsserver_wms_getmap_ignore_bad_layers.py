@@ -20,14 +20,13 @@ import os
 # Needed on Qt 5 so that the serialization of XML is consistent among all executions
 os.environ['QT_HASH_SEED'] = '1'
 
-import urllib.request
-import urllib.parse
 import urllib.error
-
-from qgis.testing import unittest
+import urllib.parse
+import urllib.request
 
 import osgeo.gdal  # NOQA
 
+from qgis.testing import unittest
 from test_qgsserver import QgsServerTestBase
 
 # Strip path and content length because path may vary

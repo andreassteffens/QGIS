@@ -11,15 +11,17 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsProject,
-                       QgsLayout,
-                       QgsReport,
-                       QgsReportSectionLayout,
-                       QgsReportSectionFieldGroup,
-                       QgsVectorLayer,
-                       QgsFeature,
-                       QgsReadWriteContext,
-                       QgsUnitTypes)
+from qgis.core import (
+    QgsFeature,
+    QgsLayout,
+    QgsProject,
+    QgsReadWriteContext,
+    QgsReport,
+    QgsReportSectionFieldGroup,
+    QgsReportSectionLayout,
+    QgsUnitTypes,
+    QgsVectorLayer,
+)
 from qgis.testing import start_app, unittest
 
 start_app()

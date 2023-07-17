@@ -32,8 +32,8 @@
 
 //qgis includes
 #include "qgis_sip.h"
+#include "qgis.h"
 #include "qgsconfig.h"
-#include "qgsunittypes.h"
 #include "qgsrectangle.h"
 #include "qgssqliteutils.h"
 
@@ -212,7 +212,7 @@ class CORE_EXPORT QgsCoordinateReferenceSystem
 {
     Q_GADGET
 
-    Q_PROPERTY( QgsUnitTypes::DistanceUnit mapUnits READ mapUnits )
+    Q_PROPERTY( Qgis::DistanceUnit mapUnits READ mapUnits )
     Q_PROPERTY( bool isGeographic READ isGeographic )
     Q_PROPERTY( QString authid READ authid )
     Q_PROPERTY( QString description READ description )
@@ -836,8 +836,11 @@ class CORE_EXPORT QgsCoordinateReferenceSystem
     QgsProjOperation operation() const;
 
     /**
-     * Returns whether axis is inverted (e.g., for WMS 1.3) for the CRS.
+     * Returns whether the axis order is inverted for the CRS compared to the order east/north (longitude/latitude).
+     * E.g. with WMS 1.3 the axis order for EPSG:4326 is north/east (latitude/longitude), i.e. inverted.
      * \returns TRUE if CRS axis is inverted
+     *
+     * \see axisOrdering()
      */
     bool hasAxisInverted() const;
 
@@ -889,7 +892,7 @@ class CORE_EXPORT QgsCoordinateReferenceSystem
     /**
      * Returns the units for the projection used by the CRS.
      */
-    QgsUnitTypes::DistanceUnit mapUnits() const;
+    Qgis::DistanceUnit mapUnits() const;
 
     /**
      * Returns the approximate bounds for the region the CRS is usable within.
@@ -1062,6 +1065,18 @@ class CORE_EXPORT QgsCoordinateReferenceSystem
      * \since QGIS 3.10.3
      */
     static void pushRecentCoordinateReferenceSystem( const QgsCoordinateReferenceSystem &crs );
+
+    /**
+     * Removes a CRS from the list of recently used CRS.
+     * \since QGIS 3.32
+     */
+    static void removeRecentCoordinateReferenceSystem( const QgsCoordinateReferenceSystem &crs );
+
+    /**
+     * Cleans the list of recently used CRS.
+     * \since QGIS 3.32
+     */
+    static void clearRecentCoordinateReferenceSystems();
 
 #ifndef SIP_RUN
 

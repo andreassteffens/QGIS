@@ -12,16 +12,15 @@ __copyright__ = 'Copyright 2022, The QGIS Project'
 import qgis  # NOQA
 
 from qgis.core import (
-    QgsLineString,
-    QgsProfileRequest,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransformContext,
-    QgsFlatTerrainProvider,
-    QgsMeshTerrainProvider,
     QgsExpressionContext,
-    QgsExpressionContextScope
+    QgsExpressionContextScope,
+    QgsFlatTerrainProvider,
+    QgsLineString,
+    QgsMeshTerrainProvider,
+    QgsProfileRequest,
 )
-
 from qgis.testing import start_app, unittest
 
 start_app()

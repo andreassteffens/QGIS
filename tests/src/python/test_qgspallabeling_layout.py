@@ -20,30 +20,24 @@ import sys
 
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QRect, QRectF, QSize, QSizeF, qDebug
-from qgis.PyQt.QtGui import QImage, QColor, QPainter
+from qgis.PyQt.QtGui import QColor, QImage, QPainter
 from qgis.PyQt.QtPrintSupport import QPrinter
-from qgis.PyQt.QtSvg import QSvgRenderer, QSvgGenerator
-from qgis.core import (QgsLayout,
-                       QgsLayoutItemPage,
-                       QgsLayoutSize,
-                       QgsLayoutItemMap,
-                       QgsLayoutExporter,
-                       QgsMapSettings,
-                       QgsProject,
-                       QgsVectorLayerSimpleLabeling,
-                       QgsLabelingEngineSettings)
+from qgis.PyQt.QtSvg import QSvgGenerator, QSvgRenderer
+from qgis.core import (
+    QgsLabelingEngineSettings,
+    QgsLayout,
+    QgsLayoutExporter,
+    QgsLayoutItemMap,
+    QgsLayoutItemPage,
+    QgsLayoutSize,
+    QgsMapSettings,
+    QgsProject,
+    QgsVectorLayerSimpleLabeling,
+)
 
 from test_qgspallabeling_base import TestQgsPalLabeling, runSuite
-from test_qgspallabeling_tests import (
-    TestPointBase,
-    TestLineBase,
-    suiteTests
-)
-from utilities import (
-    getTempfilePath,
-    getExecutablePath,
-    mapSettingsString
-)
+from test_qgspallabeling_tests import TestLineBase, TestPointBase, suiteTests
+from utilities import getExecutablePath, getTempfilePath, mapSettingsString
 
 # PDF-to-image utility
 # look for Poppler w/ Cairo, then muPDF
@@ -258,7 +252,7 @@ class TestLayoutBase(TestQgsPalLabeling):
         else:
             return False, ''
 
-        qDebug("_get_layout_pdf_image call: {}".format(' '.join(call)))
+        qDebug(f"_get_layout_pdf_image call: {' '.join(call)}")
         res = False
         try:
             subprocess.check_call(call)

@@ -14,11 +14,11 @@ import os
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
+    QgsApplication,
     QgsProject,
     QgsVectorLayer,
-    QgsApplication,
     QgsVirtualLayerDefinition,
-    QgsVirtualLayerTask
+    QgsVirtualLayerTask,
 )
 from qgis.testing import start_app, unittest
 

@@ -15,12 +15,8 @@ import shutil
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QTemporaryDir
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsProject,
-                       QgsLayerDefinition,
-                       QgsVectorLayer,
-                       Qgis
-                       )
-from qgis.testing import unittest, start_app
+from qgis.core import Qgis, QgsLayerDefinition, QgsProject, QgsVectorLayer
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 

@@ -20,17 +20,18 @@ from pathlib import Path
 
 import qgis  # NOQA
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (QgsVectorLayer,
-                       QgsVectorTileWriter,
-                       QgsDataSourceUri,
-                       QgsTileXYZ,
-                       QgsProviderRegistry,
-                       QgsVectorTileLayer,
-                       QgsGeometry,
-                       QgsSelectionContext,
-                       Qgis
-                       )
-from qgis.testing import unittest, start_app
+from qgis.core import (
+    Qgis,
+    QgsDataSourceUri,
+    QgsGeometry,
+    QgsProviderRegistry,
+    QgsSelectionContext,
+    QgsTileXYZ,
+    QgsVectorLayer,
+    QgsVectorTileLayer,
+    QgsVectorTileWriter,
+)
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -43,11 +44,13 @@ class TestVectorTile(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         cls.tempdir = Path(tempfile.mkdtemp())
 
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree(cls.tempdir, True)
+        super().tearDownClass()
 
     def setUp(self):
         """Run before each test."""
@@ -133,7 +136,7 @@ class TestVectorTile(unittest.TestCase):
         self.assertEqual(vl.sourceMaxZoom(), 19)
 
     def testSelection(self):
-        layer = QgsVectorTileLayer('type=vtpk&url={}'.format(unitTestDataPath() + '/testvtpk.vtpk'), 'tiles')
+        layer = QgsVectorTileLayer(f"type=vtpk&url={unitTestDataPath() + '/testvtpk.vtpk'}", 'tiles')
         self.assertTrue(layer.isValid())
 
         self.assertFalse(layer.selectedFeatures())

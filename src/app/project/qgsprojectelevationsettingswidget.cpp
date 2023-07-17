@@ -19,6 +19,7 @@
 #include "qgsterrainprovider.h"
 #include "qgsprojectelevationproperties.h"
 #include "qgsrasterlayerelevationproperties.h"
+#include "qgselevationshadingrenderersettingswidget.h"
 
 QgsProjectElevationSettingsWidget::QgsProjectElevationSettingsWidget( QWidget *parent )
   : QgsOptionsPageWidget( parent )
@@ -85,6 +86,9 @@ QgsProjectElevationSettingsWidget::QgsProjectElevationSettingsWidget( QWidget *p
   connect( mComboMeshLayer, &QgsMapLayerComboBox::layerChanged, this, &QgsProjectElevationSettingsWidget::validate );
 
   validate();
+
+  mElevationShadingSettingsWidget = new QgsElevationShadingRendererSettingsWidget( nullptr, nullptr, this );
+  mElevationShadingSettingsLayout->addWidget( mElevationShadingSettingsWidget );
 }
 
 void QgsProjectElevationSettingsWidget::apply()
@@ -116,6 +120,8 @@ void QgsProjectElevationSettingsWidget::apply()
   }
 
   QgsProject::instance()->elevationProperties()->setTerrainProvider( provider.release() );
+
+  mElevationShadingSettingsWidget->apply();
 }
 
 bool QgsProjectElevationSettingsWidget::validate()
@@ -154,7 +160,7 @@ bool QgsProjectElevationSettingsWidget::isValid()
 //
 
 QgsProjectElevationSettingsWidgetFactory::QgsProjectElevationSettingsWidgetFactory( QObject *parent )
-  : QgsOptionsWidgetFactory( tr( "Terrain" ), QgsApplication::getThemeIcon( QStringLiteral( "mLayoutItem3DMap.svg" ) ) )
+  : QgsOptionsWidgetFactory( tr( "Terrain" ), QgsApplication::getThemeIcon( QStringLiteral( "mLayoutItem3DMap.svg" ) ), QStringLiteral( "terrain" ) )
 {
   setParent( parent );
 }

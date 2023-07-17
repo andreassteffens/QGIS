@@ -16,19 +16,15 @@ import os
 import shutil
 import tempfile
 
-from qgis.PyQt.QtCore import (
-    QModelIndex,
-    Qt,
-    QCoreApplication
-)
+from qgis.PyQt.QtCore import QCoreApplication, QModelIndex, Qt
 from qgis.core import (
-    QgsVectorLayer,
-    QgsProviderRegistry,
     QgsProviderConnectionModel,
+    QgsProviderRegistry,
+    QgsVectorLayer,
 )
 from qgis.testing import unittest
 
-from utilities import unitTestDataPath, start_app
+from utilities import start_app, unitTestDataPath
 
 TEST_DATA_DIR = unitTestDataPath()
 
@@ -38,6 +34,7 @@ class TestPyQgsProviderConnectionModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(cls.__name__)
         QCoreApplication.setApplicationName(cls.__name__)
@@ -61,6 +58,7 @@ class TestPyQgsProviderConnectionModel(unittest.TestCase):
         """Run after all tests"""
         os.unlink(cls.gpkg_path)
         os.unlink(cls.gpkg_path2)
+        super().tearDownClass()
 
     def test_model(self):
         """Test model functionality"""

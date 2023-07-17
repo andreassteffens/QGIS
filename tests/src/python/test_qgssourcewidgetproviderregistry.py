@@ -12,9 +12,11 @@ __copyright__ = 'Copyright 2020, The QGIS Project'
 import qgis  # NOQA
 
 from qgis.core import QgsVectorLayer
-from qgis.gui import (QgsGui,
-                      QgsProviderSourceWidget,
-                      QgsProviderSourceWidgetProvider)
+from qgis.gui import (
+    QgsGui,
+    QgsProviderSourceWidget,
+    QgsProviderSourceWidgetProvider,
+)
 from qgis.testing import start_app, unittest
 
 app = start_app()

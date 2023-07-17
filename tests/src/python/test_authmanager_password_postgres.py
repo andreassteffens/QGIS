@@ -27,14 +27,11 @@ from qgis.PyQt.QtNetwork import QSslCertificate
 from qgis.core import (
     QgsApplication,
     QgsAuthMethodConfig,
-    QgsVectorLayer,
     QgsDataSourceUri,
+    QgsVectorLayer,
     QgsWkbTypes,
 )
-from qgis.testing import (
-    start_app,
-    unittest,
-)
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -80,6 +77,7 @@ class TestAuthManager(unittest.TestCase):
     def setUpClass(cls):
         """Run before all tests:
         Creates an auth configuration"""
+        super().setUpClass()
         cls.username = 'docker'
         cls.password = 'docker'
         cls.dbname = 'qgis_test'

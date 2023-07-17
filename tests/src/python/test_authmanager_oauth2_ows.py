@@ -30,20 +30,15 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 
 from shutil import rmtree
 
-from utilities import unitTestDataPath, waitServer
 from qgis.core import (
     QgsApplication,
     QgsAuthMethodConfig,
-    QgsVectorLayer,
     QgsRasterLayer,
+    QgsVectorLayer,
 )
-
 from qgis.PyQt.QtNetwork import QSslCertificate
-
-from qgis.testing import (
-    start_app,
-    unittest,
-)
+from qgis.testing import start_app, unittest
+from utilities import unitTestDataPath, waitServer
 
 try:
     QGIS_SERVER_ENDPOINT_PORT = os.environ['QGIS_SERVER_ENDPOINT_PORT']
@@ -136,6 +131,7 @@ class TestAuthManager(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         """Run before all tests:
         Creates an auth configuration"""
         cls.port = QGIS_SERVER_ENDPOINT_PORT
@@ -184,6 +180,7 @@ class TestAuthManager(unittest.TestCase):
         cls.server.kill()
         rmtree(QGIS_AUTH_DB_DIR_PATH)
         del cls.server
+        super().tearDownClass()
 
     def setUp(self):
         """Run before each test."""
@@ -233,7 +230,7 @@ class TestAuthManager(unittest.TestCase):
         }
         if authcfg is not None:
             parms.update({'authcfg': authcfg})
-        uri = '&'.join([("{}={}".format(k, v.replace('=', '%3D'))) for k, v in list(parms.items())])
+        uri = '&'.join([f"{k}={v.replace('=', '%3D')}" for k, v in list(parms.items())])
         wms_layer = QgsRasterLayer(uri, layer_name, 'wms')
         return wms_layer
 

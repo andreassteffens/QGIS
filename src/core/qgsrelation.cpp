@@ -15,7 +15,6 @@
 
 #include "qgsrelation.h"
 
-#include "qgsapplication.h"
 #include "qgsfeatureiterator.h"
 #include "qgslogger.h"
 #include "qgsproject.h"
@@ -23,6 +22,8 @@
 #include "qgsrelation_p.h"
 #include "qgspolymorphicrelation.h"
 #include "qgsrelationmanager.h"
+
+#include <QApplication>
 
 QgsRelation::QgsRelation()
   : d( new QgsRelationPrivate() )
@@ -76,7 +77,7 @@ QgsRelation QgsRelation::createFromXml( const QDomNode &node, QgsReadWriteContex
   {
     QgsLogger::warning( QApplication::translate( "QgsRelation", "Relation defined for layer '%1' which does not exist." ).arg( referencingLayerId ) );
   }
-  else if ( QgsMapLayerType::VectorLayer  != referencingLayer->type() )
+  else if ( Qgis::LayerType::Vector != referencingLayer->type() )
   {
     QgsLogger::warning( QApplication::translate( "QgsRelation", "Relation defined for layer '%1' which is not of type VectorLayer." ).arg( referencingLayerId ) );
   }
@@ -85,7 +86,7 @@ QgsRelation QgsRelation::createFromXml( const QDomNode &node, QgsReadWriteContex
   {
     QgsLogger::warning( QApplication::translate( "QgsRelation", "Relation defined for layer '%1' which does not exist." ).arg( referencedLayerId ) );
   }
-  else if ( QgsMapLayerType::VectorLayer  != referencedLayer->type() )
+  else if ( Qgis::LayerType::Vector != referencedLayer->type() )
   {
     QgsLogger::warning( QApplication::translate( "QgsRelation", "Relation defined for layer '%1' which is not of type VectorLayer." ).arg( referencedLayerId ) );
   }
@@ -213,7 +214,7 @@ QString QgsRelation::getRelatedFeaturesFilter( const QgsFeature &feature ) const
     }
     else
     {
-      QgsDebugMsg( "The polymorphic relation is invalid" );
+      QgsDebugError( "The polymorphic relation is invalid" );
       conditions << QStringLiteral( " FALSE " );
     }
   }
@@ -423,7 +424,7 @@ void QgsRelation::updateRelationStatus()
 
   if ( d->mRelationId.isEmpty() )
   {
-    QgsDebugMsg( QStringLiteral( "Invalid relation: no ID" ) );
+    QgsDebugError( QStringLiteral( "Invalid relation: no ID" ) );
     d->mValidationError = QObject::tr( "Relationship has no ID" );
     d->mValid = false;
   }
@@ -454,14 +455,14 @@ void QgsRelation::updateRelationStatus()
       {
         if ( -1 == d->mReferencingLayer->fields().lookupField( pair.first ) )
         {
-          QgsDebugMsg( QStringLiteral( "Invalid relation: field %1 does not exist in referencing layer %2" ).arg( pair.first, d->mReferencingLayer->name() ) );
+          QgsDebugError( QStringLiteral( "Invalid relation: field %1 does not exist in referencing layer %2" ).arg( pair.first, d->mReferencingLayer->name() ) );
           d->mValidationError = QObject::tr( "Field %1 does not exist in referencing layer %2" ).arg( pair.first, d->mReferencingLayer->name() );
           d->mValid = false;
           break;
         }
         else if ( -1 == d->mReferencedLayer->fields().lookupField( pair.second ) )
         {
-          QgsDebugMsg( QStringLiteral( "Invalid relation: field %1 does not exist in referenced layer %2" ).arg( pair.second, d->mReferencedLayer->name() ) );
+          QgsDebugError( QStringLiteral( "Invalid relation: field %1 does not exist in referenced layer %2" ).arg( pair.second, d->mReferencedLayer->name() ) );
           d->mValidationError = QObject::tr( "Field %1 does not exist in referenced layer %2" ).arg( pair.second, d->mReferencedLayer->name() );
           d->mValid = false;
           break;

@@ -36,6 +36,7 @@ class TestPyQgsAppStartup(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         cls.TMP_DIR = tempfile.mkdtemp()
         # print('TMP_DIR: ' + cls.TMP_DIR)
         # subprocess.call(['open', cls.TMP_DIR])
@@ -43,6 +44,7 @@ class TestPyQgsAppStartup(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree(cls.TMP_DIR, ignore_errors=True)
+        super().tearDownClass()
 
     # TODO: refactor parameters to **kwargs to handle all startup combinations
     def doTestStartup(self, option='', testDir='', testFile='',
@@ -80,11 +82,11 @@ class TestPyQgsAppStartup(unittest.TestCase):
         while not os.path.exists(myTestFile):
             p.poll()
             if p.returncode is not None:
-                raise Exception('Return code: {}, Call: "{}", Env: {}'.format(p.returncode, ' '.join(call), env))
+                raise Exception(f"Return code: {p.returncode}, Call: \"{' '.join(call)}\", Env: {env}")
             time.sleep(1)
             s += 1
             if s > timeOut:
-                raise Exception('Timed out waiting for application start, Call: "{}", Env: {}'.format(' '.join(call), env))
+                raise Exception(f"Timed out waiting for application start, Call: \"{' '.join(call)}\", Env: {env}")
 
         with open(myTestFile, encoding='utf-8') as res_file:
             lines = res_file.readlines()
@@ -103,8 +105,7 @@ class TestPyQgsAppStartup(unittest.TestCase):
         testfile = 'pyqgis_startup.txt'
         testfilepath = os.path.join(self.TMP_DIR, testfile).replace('\\', '/')
         testcode = [
-            "from qgis.core import QgsApplication\n"
-            "f = open('{}', 'w')\n".format(testfilepath),
+            f"from qgis.core import QgsApplication\nf = open('{testfilepath}', 'w')\n",
             "f.write('Platform: ' + QgsApplication.platform())\n",
             "f.close()\n"
         ]
@@ -124,8 +125,7 @@ class TestPyQgsAppStartup(unittest.TestCase):
         testfile = 'pyqgis_code.txt'
         testfilepath = os.path.join(self.TMP_DIR, testfile).replace('\\', '/')
         testcode = [
-            "import sys\n"
-            "f = open('{}', 'a')\n".format(testfilepath),
+            f"import sys\nf = open('{testfilepath}', 'a')\n",
             "for arg in sys.argv:\n"
             "  f.write(arg)\n",
             "  f.write('\\n')\n",

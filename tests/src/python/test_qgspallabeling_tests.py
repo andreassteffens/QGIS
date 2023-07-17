@@ -16,11 +16,18 @@ __copyright__ = 'Copyright 2013, The QGIS Project'
 import os
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import Qt, QPointF, QSizeF
+from qgis.PyQt.QtCore import QPointF, QSizeF, Qt
 from qgis.PyQt.QtGui import QFont
-from qgis.core import QgsCoordinateReferenceSystem
-from qgis.core import QgsLabelingEngineSettings, QgsPalLayerSettings, QgsUnitTypes, QgsTextBackgroundSettings, \
-    QgsProject, QgsExpressionContextUtils, QgsExpressionContext
+from qgis.core import (
+    QgsCoordinateReferenceSystem,
+    QgsExpressionContext,
+    QgsExpressionContextUtils,
+    QgsLabelingEngineSettings,
+    QgsPalLayerSettings,
+    QgsProject,
+    QgsTextBackgroundSettings,
+    QgsUnitTypes,
+)
 
 from utilities import svgSymbolsPath
 

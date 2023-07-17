@@ -17,16 +17,16 @@ import shutil
 import tempfile
 
 from qgis.PyQt.QtWidgets import (
+    QCheckBox,
+    QComboBox,
     QDialogButtonBox,
     QLineEdit,
-    QComboBox,
-    QCheckBox
 )
 from qgis.core import (
+    QgsFields,
     QgsProviderRegistry,
     QgsVectorLayer,
     QgsWkbTypes,
-    QgsFields
 )
 from qgis.gui import QgsNewVectorTableDialog
 from qgis.testing import start_app, unittest
@@ -42,13 +42,13 @@ class TestPyQgsNewVectorTableDialog(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
         start_app()
         gpkg_original_path = '{}/qgis_server/test_project_wms_grouped_layers.gpkg'.format(
             TEST_DATA_DIR)
         cls.gpkg_path = tempfile.mktemp('.gpkg')
         shutil.copy(gpkg_original_path, cls.gpkg_path)
-        vl = QgsVectorLayer('{}|layername=cdb_lines'.format(
-            cls.gpkg_path), 'test', 'ogr')
+        vl = QgsVectorLayer(f'{cls.gpkg_path}|layername=cdb_lines', 'test', 'ogr')
         assert vl.isValid()
         cls.uri = cls.gpkg_path
 

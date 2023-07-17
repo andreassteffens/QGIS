@@ -28,9 +28,7 @@ import os
 
 from qgis.PyQt.QtCore import QBuffer, QIODevice
 from qgis.core import QgsApplication
-from qgis.server import (QgsServer,
-                         QgsService,
-                         QgsServerResponse)
+from qgis.server import QgsServer, QgsServerResponse, QgsService
 from qgis.testing import unittest
 
 from utilities import unitTestDataPath
@@ -81,11 +79,13 @@ class TestModules(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         cls.app = QgsApplication([], False)
 
     @classmethod
     def tearDownClass(cls):
         cls.app.exitQgis()
+        super().tearDownClass()
 
     def setUp(self):
         """Create the server instance"""

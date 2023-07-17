@@ -11,13 +11,15 @@ __copyright__ = 'Copyright 2019, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (QgsProject,
-                       QgsPrintLayout,
-                       QgsLayoutItemMap,
-                       QgsLayoutItemLabel,
-                       QgsLayoutItemRegistry,
-                       QgsLayoutItemShape,
-                       QgsLayoutItem)
+from qgis.core import (
+    QgsLayoutItem,
+    QgsLayoutItemLabel,
+    QgsLayoutItemMap,
+    QgsLayoutItemRegistry,
+    QgsLayoutItemShape,
+    QgsPrintLayout,
+    QgsProject,
+)
 from qgis.gui import QgsLayoutItemComboBox
 from qgis.testing import start_app, unittest
 

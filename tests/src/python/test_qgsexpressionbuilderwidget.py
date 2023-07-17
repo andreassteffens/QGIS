@@ -12,12 +12,14 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 import qgis  # NOQA
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QListView
-from qgis.core import (QgsExpressionContext,
-                       QgsExpressionContextScope,
-                       QgsProject,
-                       QgsVectorLayer,
-                       QgsRelation,
-                       QgsFeature)
+from qgis.core import (
+    QgsExpressionContext,
+    QgsExpressionContextScope,
+    QgsFeature,
+    QgsProject,
+    QgsRelation,
+    QgsVectorLayer,
+)
 from qgis.gui import QgsExpressionBuilderWidget
 from qgis.testing import start_app, unittest
 

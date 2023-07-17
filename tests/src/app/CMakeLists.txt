@@ -17,6 +17,7 @@ set(TESTS
   testqgsattributetable.cpp
   testqgsapplocatorfilters.cpp
   testqgsdecorationscalebar.cpp
+  testqgsdwgimportdialog.cpp
   testqgsfieldcalculator.cpp
   testqgsmapcanvasdockwidget.cpp
   testqgsmaptooleditannotation.cpp
@@ -45,7 +46,7 @@ set(TESTS
   testqgsprojectproperties.cpp
   testqgsapplayoutvaliditychecks.cpp
   testqgsmeshcalculatordialog.cpp
-  testqgsgpsinformationwidget.cpp
+  testqgsgpsintegration.cpp
   testqgslabelpropertydialog.cpp
   testqgsmergeattributesdialog.cpp
 )

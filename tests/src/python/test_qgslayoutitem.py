@@ -15,18 +15,20 @@ import qgis  # NOQA
 from qgis.PyQt.QtCore import QRectF
 from qgis.PyQt.QtGui import QColor, QPainter
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (QgsProject,
-                       QgsLayout,
-                       QgsLayoutItemMap,
-                       QgsLayoutItemShape,
-                       QgsLayoutObject,
-                       QgsProperty,
-                       QgsLayoutMeasurement,
-                       QgsUnitTypes,
-                       QgsLayoutPoint,
-                       QgsLayoutSize,
-                       QgsLayoutItemLabel,
-                       QgsLayoutItem)
+from qgis.core import (
+    QgsLayout,
+    QgsLayoutItem,
+    QgsLayoutItemLabel,
+    QgsLayoutItemMap,
+    QgsLayoutItemShape,
+    QgsLayoutMeasurement,
+    QgsLayoutObject,
+    QgsLayoutPoint,
+    QgsLayoutSize,
+    QgsProject,
+    QgsProperty,
+    QgsUnitTypes,
+)
 from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath

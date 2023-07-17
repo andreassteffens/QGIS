@@ -68,7 +68,7 @@ QgsFontOptionsWidget::QgsFontOptionsWidget( QWidget *parent )
     }
   } );
 
-  mCheckBoxDownloadFonts->setChecked( QgsFontManager::settingsDownloadMissingFonts.value() );
+  mCheckBoxDownloadFonts->setChecked( QgsFontManager::settingsDownloadMissingFonts->value() );
 
   const QMap< QString, QStringList > userFonts = QgsApplication::fontManager()->userFontToFamilyMap();
   mTableUserFonts->setRowCount( userFonts.size() );
@@ -118,7 +118,7 @@ void QgsFontOptionsWidget::apply()
   }
   QgsApplication::fontManager()->setFontFamilyReplacements( replacements );
 
-  QgsFontManager::settingsDownloadMissingFonts.setValue( mCheckBoxDownloadFonts->isChecked() );
+  QgsFontManager::settingsDownloadMissingFonts->setValue( mCheckBoxDownloadFonts->isChecked() );
 
   const QMap< QString, QStringList > userFonts = QgsApplication::fontManager()->userFontToFamilyMap();
   QSet< QString > remainingUserFonts;
@@ -140,7 +140,7 @@ void QgsFontOptionsWidget::apply()
 // QgsFontOptionsFactory
 //
 QgsFontOptionsFactory::QgsFontOptionsFactory()
-  : QgsOptionsWidgetFactory( tr( "Fonts" ), QIcon() )
+  : QgsOptionsWidgetFactory( tr( "Fonts" ), QIcon(), QStringLiteral( "fonts" ) )
 {
 }
 

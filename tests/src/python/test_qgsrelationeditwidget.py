@@ -14,28 +14,28 @@ import os
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QTimer
 from qgis.PyQt.QtWidgets import (
-    QToolButton,
-    QMessageBox,
+    QDialog,
     QDialogButtonBox,
+    QMessageBox,
     QTableView,
-    QDialog
+    QToolButton,
 )
 from qgis.core import (
     QgsFeature,
-    QgsVectorLayer,
+    QgsFeatureRequest,
+    QgsGeometry,
     QgsProject,
     QgsRelation,
     QgsTransaction,
-    QgsFeatureRequest,
+    QgsVectorLayer,
     QgsVectorLayerTools,
-    QgsGeometry
 )
 from qgis.gui import (
-    QgsGui,
-    QgsRelationWidgetWrapper,
+    QgsAdvancedDigitizingDockWidget,
     QgsAttributeEditorContext,
+    QgsGui,
     QgsMapCanvas,
-    QgsAdvancedDigitizingDockWidget
+    QgsRelationWidgetWrapper,
 )
 from qgis.testing import start_app, unittest
 
@@ -50,6 +50,7 @@ class TestQgsRelationEditWidget(unittest.TestCase):
         Setup the involved layers and relations for a n:m relation
         :return:
         """
+        super().setUpClass()
         cls.mapCanvas = QgsMapCanvas()
         QgsGui.editorWidgetRegistry().initEditors(cls.mapCanvas)
         cls.dbconn = 'service=\'qgis_test\''
@@ -88,6 +89,8 @@ class TestQgsRelationEditWidget(unittest.TestCase):
         cls.mapCanvas = None
         cls.vltools = None
         cls.relMgr = None
+
+        super().tearDownClass()
 
     def setUp(self):
         self.rel_a = QgsRelation()

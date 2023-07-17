@@ -298,6 +298,7 @@ class CORE_EXPORT QgsVectorLayerFeatureIterator : public QgsAbstractFeatureItera
 
     // filter bounding box constraint, in SOURCE CRS
     QgsRectangle mFilterRect;
+    bool mHasValidTransform = false;
     QgsCoordinateTransform mTransform;
 
     // distance within constraint reference geometry and distance IN DESTINATION CRS
@@ -389,7 +390,7 @@ class CORE_EXPORT QgsVectorLayerSelectedFeatureSource : public QgsFeatureSource,
     QgsFeatureIterator getFeatures( const QgsFeatureRequest &request = QgsFeatureRequest() ) const override;
     QgsCoordinateReferenceSystem sourceCrs() const override;
     QgsFields fields() const override;
-    QgsWkbTypes::Type wkbType() const override;
+    Qgis::WkbType wkbType() const override;
     long long featureCount() const override;
     QString sourceName() const override;
     QgsExpressionContextScope *createExpressionContextScope() const override;
@@ -404,7 +405,7 @@ class CORE_EXPORT QgsVectorLayerSelectedFeatureSource : public QgsFeatureSource,
     // ideally this wouldn't be mutable, but QgsVectorLayerFeatureSource has non-const getFeatures()
     mutable QgsVectorLayerFeatureSource mSource;
     QgsFeatureIds mSelectedFeatureIds;
-    QgsWkbTypes::Type mWkbType = QgsWkbTypes::Unknown;
+    Qgis::WkbType mWkbType = Qgis::WkbType::Unknown;
     QString mName;
     QPointer< QgsVectorLayer > mLayer;
 

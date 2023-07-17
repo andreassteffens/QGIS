@@ -23,38 +23,38 @@ import sys
 from collections.abc import Callable
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import QSize, qDebug, Qt
-from qgis.PyQt.QtGui import QFont, QColor
+from qgis.PyQt.QtCore import QSize, Qt, qDebug
+from qgis.PyQt.QtGui import QColor, QFont
 from qgis.core import (
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
     QgsGeometry,
     QgsLabelingEngineSettings,
-    QgsProject,
     QgsMapSettings,
+    QgsMultiRenderChecker,
     QgsPalLabeling,
     QgsPalLayerSettings,
+    QgsProject,
     QgsStringReplacementCollection,
+    QgsTextFormat,
+    QgsUnitTypes,
     QgsVectorLayer,
     QgsVectorLayerSimpleLabeling,
-    QgsMultiRenderChecker,
-    QgsUnitTypes,
-    QgsVectorTileLayer,
-    QgsVectorTileBasicLabelingStyle,
-    QgsWkbTypes,
     QgsVectorTileBasicLabeling,
-    QgsTextFormat
+    QgsVectorTileBasicLabelingStyle,
+    QgsVectorTileLayer,
+    QgsWkbTypes,
 )
 from qgis.testing import start_app, unittest
 from qgis.testing.mocked import get_iface
 
 from utilities import (
-    unitTestDataPath,
     getTempfilePath,
-    renderMapToImage,
-    loadTestFonts,
     getTestFont,
-    openInBrowserTab
+    loadTestFonts,
+    openInBrowserTab,
+    renderMapToImage,
+    unitTestDataPath,
 )
 
 start_app(sys.platform != 'darwin')  # No cleanup on mac os x, it crashes the pallabelingcanvas test on exit
@@ -82,6 +82,7 @@ class TestQgsPalLabeling(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
 
         # qgis iface
         cls._Iface = get_iface()
@@ -112,10 +113,6 @@ class TestQgsPalLabeling(unittest.TestCase):
         cls.setDefaultEngineSettings()
 
         cls._BaseSetup = True
-
-    @classmethod
-    def tearDownClass(cls):
-        """Run after all tests"""
 
     def setUp(self):
         """Run before each test."""
@@ -224,13 +221,11 @@ class TestQgsPalLabeling(unittest.TestCase):
         testid = self.id().split('.')
         self._TestGroup = testid[1]
         self._TestFunction = testid[2]
-        testheader = '\n#####_____ {0}.{1} _____#####\n'.\
-            format(self._TestGroup, self._TestFunction)
+        testheader = f'\n#####_____ {self._TestGroup}.{self._TestFunction} _____#####\n'
         qDebug(testheader)
 
         # define the shorthand name of the test (to minimize file name length)
-        self._Test = '{}_{}'.format(self._TestGroupAbbr,
-                                    self._TestFunction.replace('test_', ''))
+        self._Test = f"{self._TestGroupAbbr}_{self._TestFunction.replace('test_', '')}"
 
     def defaultLayerSettings(self):
         lyr = QgsPalLayerSettings()
@@ -290,8 +285,7 @@ class TestQgsPalLabeling(unittest.TestCase):
         for f in glob.glob(imgbasepath + '.*'):
             if os.path.exists(f):
                 os.remove(f)
-        qDebug('Control image for {}.{}'.format(self._TestGroup,
-                                                self._TestFunction))
+        qDebug(f'Control image for {self._TestGroup}.{self._TestFunction}')
 
         if not tmpimg:
             # TODO: this can be deprecated, when per-base-test-class rendering
@@ -367,11 +361,13 @@ class TestPALConfig(TestQgsPalLabeling):
     @classmethod
     def setUpClass(cls):
         TestQgsPalLabeling.setUpClass()
+
         cls.layer = TestQgsPalLabeling.loadFeatureLayer('point')
 
     @classmethod
     def tearDownClass(cls):
         cls.removeMapLayer(cls.layer)
+        TestQgsPalLabeling.tearDownClass()
 
     def setUp(self):
         """Run before each test."""

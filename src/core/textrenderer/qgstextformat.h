@@ -18,12 +18,13 @@
 
 #include "qgis_sip.h"
 #include "qgis_core.h"
-#include "qgsunittypes.h"
+#include "qgis.h"
 #include "qgstextbuffersettings.h"
 #include "qgstextbackgroundsettings.h"
 #include "qgstextshadowsettings.h"
 #include "qgstextmasksettings.h"
 #include "qgsstringutils.h"
+#include "qgsscreenproperties.h"
 
 #include <QSharedDataPointer>
 
@@ -313,7 +314,7 @@ class CORE_EXPORT QgsTextFormat
      * \see setSizeUnit()
      * \see sizeMapUnitScale()
      */
-    QgsUnitTypes::RenderUnit sizeUnit() const;
+    Qgis::RenderUnit sizeUnit() const;
 
     /**
      * Sets the units for the size of rendered text.
@@ -322,7 +323,7 @@ class CORE_EXPORT QgsTextFormat
      * \see sizeUnit()
      * \see setSizeMapUnitScale()
      */
-    void setSizeUnit( QgsUnitTypes::RenderUnit unit );
+    void setSizeUnit( Qgis::RenderUnit unit );
 
     /**
      * Returns the map unit scale object for the size. This is only used if the
@@ -359,6 +360,16 @@ class CORE_EXPORT QgsTextFormat
      * \see setOpacity()
      */
     double opacity() const;
+
+    /**
+     * Multiply opacity by \a opacityFactor.
+     *
+     * This method multiplies the opacity of all the labeling elements (text, shadow, buffer etc.)
+     * by \a opacityFactor effectively changing the opacity of the whole labeling.
+     *
+     * \since QGIS 3.32
+     */
+    void multiplyOpacity( double opacityFactor );
 
     /**
      * Sets the text's opacity.
@@ -441,7 +452,7 @@ class CORE_EXPORT QgsTextFormat
      *
      * \since QGIS 3.28
      */
-    QgsUnitTypes::RenderUnit lineHeightUnit() const;
+    Qgis::RenderUnit lineHeightUnit() const;
 
     /**
      * Sets the \a unit for the line height for text.
@@ -451,7 +462,7 @@ class CORE_EXPORT QgsTextFormat
      *
      * \since QGIS 3.28
      */
-    void setLineHeightUnit( QgsUnitTypes::RenderUnit unit );
+    void setLineHeightUnit( Qgis::RenderUnit unit );
 
     /**
      * Returns the orientation of the text.
@@ -641,9 +652,10 @@ class CORE_EXPORT QgsTextFormat
     * \param size target pixmap size
     * \param previewText text to render in preview, or empty for default text
     * \param padding space between icon edge and color ramp
+    * \param screen can be used to specify the destination screen properties for the icon. This allows the icon to be generated using the correct DPI and device pixel ratio for the target screen (since QGIS 3.32)
     * \since QGIS 3.10
     */
-    static QPixmap textFormatPreviewPixmap( const QgsTextFormat &format, QSize size, const QString &previewText = QString(), int padding = 0 );
+    static QPixmap textFormatPreviewPixmap( const QgsTextFormat &format, QSize size, const QString &previewText = QString(), int padding = 0, const QgsScreenProperties &screen = QgsScreenProperties() );
 
   private:
 

@@ -14,7 +14,7 @@ import shutil
 import tempfile
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import QVariant, QLocale
+from qgis.PyQt.QtCore import QLocale, QVariant
 from qgis.PyQt.QtGui import QValidator
 from qgis.core import QgsVectorLayer
 from qgis.gui import QgsFieldValidator
@@ -32,6 +32,7 @@ class TestQgsFieldValidator(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests."""
+        super().setUpClass()
         testPath = TEST_DATA_DIR + '/' + 'bug_17878.gpkg'
         # Copy it
         tempdir = tempfile.mkdtemp()
@@ -44,6 +45,7 @@ class TestQgsFieldValidator(unittest.TestCase):
     def tearDownClass(cls):
         """Run after all tests."""
         cls.vl = None
+        super().tearDownClass()
 
     def _fld_checker(self, field):
         """
@@ -115,7 +117,7 @@ class TestQgsFieldValidator(unittest.TestCase):
 
         # Invalid
         _test('12345-1234', QValidator.Invalid)
-        _test('12345%s1234' % DECIMAL_SEPARATOR, QValidator.Invalid)
+        _test(f'12345{DECIMAL_SEPARATOR}1234', QValidator.Invalid)
         _test('onetwothree', QValidator.Invalid)
 
     def test_doubleValidator(self):

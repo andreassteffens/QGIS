@@ -15,9 +15,15 @@ import tempfile
 
 from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.PyQt.QtTest import QTest
-from qgis.PyQt.QtWidgets import QLineEdit, QDialogButtonBox, QTreeWidget, QComboBox, QToolButton
+from qgis.PyQt.QtWidgets import (
+    QComboBox,
+    QDialogButtonBox,
+    QLineEdit,
+    QToolButton,
+    QTreeWidget,
+)
 from qgis.core import QgsProject, QgsSettings, QgsWkbTypes
-from qgis.gui import QgsNewGeoPackageLayerDialog, QgsFileWidget
+from qgis.gui import QgsFileWidget, QgsNewGeoPackageLayerDialog
 from qgis.testing import start_app, unittest
 
 
@@ -30,6 +36,7 @@ class TestPyQgsNewGeoPackageLayerDialog(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("QGIS_TestPyQgsNewGeoPackageLayerDialog.com")
         QCoreApplication.setApplicationName("QGIS_TestPyQgsNewGeoPackageLayerDialog")
@@ -43,6 +50,8 @@ class TestPyQgsNewGeoPackageLayerDialog(unittest.TestCase):
         QgsSettings().clear()
         if cls.basetestpath is not None:
             shutil.rmtree(cls.basetestpath, True)
+
+        super().tearDownClass()
 
     def test(self):
 

@@ -21,20 +21,15 @@
 
 #include "qgsactionmanager.h"
 #include "qgsjoindialog.h"
+#include "qgssldexportcontext.h"
 #include "qgswmsdimensiondialog.h"
 #include "qgsapplication.h"
 #include "qgsattributeactiondialog.h"
-#include "qgscoordinatetransform.h"
 #include "qgsdatumtransformdialog.h"
 #include "qgsdiagramproperties.h"
-#include "qgsdiagramrenderer.h"
-#include "qgsexpressionbuilderdialog.h"
-#include "qgsfieldcalculator.h"
 #include "qgssourcefieldsproperties.h"
 #include "qgsattributesformproperties.h"
 #include "qgslabelingwidget.h"
-#include "qgsprojectionselectiondialog.h"
-#include "qgslogger.h"
 #include "qgsmapcanvas.h"
 #include "qgsmaplayerconfigwidgetfactory.h"
 #include "qgsmaplayerstyleguiutils.h"
@@ -42,15 +37,11 @@
 #include "sbjoinedtogglewidget.h"
 #include "sbminpixelsizefilterutils.h"
 #include "qgsmetadataurlitemdelegate.h"
-#include "qgsnative.h"
 #include "qgsproject.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectorlayerjoininfo.h"
 #include "qgsvectorlayerproperties.h"
-#include "qgsconfig.h"
 #include "qgsvectordataprovider.h"
-#include "qgssubsetstringeditorproviderregistry.h"
-#include "qgssubsetstringeditorprovider.h"
 #include "qgssubsetstringeditorinterface.h"
 #include "qgsdatasourceuri.h"
 #include "qgsrenderer.h"
@@ -63,8 +54,6 @@
 #include "qgsnewauxiliarylayerdialog.h"
 #include "qgsnewauxiliaryfielddialog.h"
 #include "qgslabelinggui.h"
-#include "qgssymbollayer.h"
-#include "qgsgeometryoptions.h"
 #include "qgsvectorlayersavestyledialog.h"
 #include "qgsmaplayerloadstyledialog.h"
 #include "qgsmessagebar.h"
@@ -72,12 +61,20 @@
 #include "qgsexpressioncontextutils.h"
 #include "qgsmaskingwidget.h"
 #include "qgsvectorlayertemporalpropertieswidget.h"
-#include "qgsprovidersourcewidgetproviderregistry.h"
 #include "qgsprovidersourcewidget.h"
 #include "qgsproviderregistry.h"
-
-#include "layertree/qgslayertreelayer.h"
-#include "qgslayertree.h"
+#include "qgsmaplayerstylemanager.h"
+#include "qgslayertreemodel.h"
+#include "qgsmaptip.h"
+#include "qgsgui.h"
+#include "qgsnative.h"
+#include "qgssubsetstringeditorproviderregistry.h"
+#include "qgsprovidersourcewidgetproviderregistry.h"
+#include "qgswebview.h"
+#include "qgswebframe.h"
+#if WITH_QTWEBKIT
+#include <QWebElement>
+#endif
 
 #include <QDesktopServices>
 #include <QMessageBox>
@@ -93,9 +90,6 @@
 #include <QMenu>
 #include <QUrl>
 #include <QRegularExpressionValidator>
-
-#include "qgsrendererpropertiesdialog.h"
-#include "qgsstyle.h"
 
 
 QgsVectorLayerProperties::QgsVectorLayerProperties(
@@ -177,11 +171,15 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
   mMapTipExpressionFieldWidget->registerExpressionContextGenerator( this );
   mDisplayExpressionWidget->setLayer( lyr );
   mDisplayExpressionWidget->registerExpressionContextGenerator( this );
+  initMapTipPreview();
 
   connect( mInsertExpressionButton, &QAbstractButton::clicked, this, &QgsVectorLayerProperties::insertFieldOrExpression );
 
   if ( !mLayer )
     return;
+
+  connect( mEnableMapTips, &QAbstractButton::toggled, mHtmlMapTipGroupBox, &QWidget::setEnabled );
+  mEnableMapTips->setChecked( mLayer->mapTipsEnabled() );
 
   QVBoxLayout *layout = nullptr;
 
@@ -573,8 +571,9 @@ void QgsVectorLayerProperties::syncToLayer()
   txtSubsetSQL->setCaretLineVisible( false );
   setPbnQueryBuilderEnabled();
 
-  mMapTipWidget->setText( mLayer->mapTipTemplate() );
   mDisplayExpressionWidget->setField( mLayer->displayExpression() );
+  mEnableMapTips->setChecked( mLayer->mapTipsEnabled() );
+  mMapTipWidget->setText( mLayer->mapTipTemplate() );
 
   // set up the scale based layer visibility stuff....
   mScaleRangeWidget->setScaleRange( mLayer->minimumScale(), mLayer->maximumScale() );
@@ -627,7 +626,7 @@ void QgsVectorLayerProperties::syncToLayer()
   }
 
   // disable simplification for point layers, now it is not implemented
-  if ( mLayer->geometryType() == QgsWkbTypes::PointGeometry )
+  if ( mLayer->geometryType() == Qgis::GeometryType::Point )
   {
     mSimplifyDrawingGroupBox->setChecked( false );
     mSimplifyDrawingGroupBox->setEnabled( false );
@@ -747,6 +746,7 @@ void QgsVectorLayerProperties::apply()
   }
 
   mLayer->setDisplayExpression( mDisplayExpressionWidget->asExpression() );
+  mLayer->setMapTipsEnabled( mEnableMapTips->isChecked() );
   mLayer->setMapTipTemplate( mMapTipWidget->text() );
 
   mLayer->actions()->clearActions();
@@ -1010,7 +1010,7 @@ void QgsVectorLayerProperties::mCrsSelector_crsChanged( const QgsCoordinateRefer
   mMetadataWidget->crsChanged();
 }
 
-void QgsVectorLayerProperties::loadDefaultStyle_clicked()
+void QgsVectorLayerProperties::loadDefaultStyle()
 {
   QString msg;
   bool defaultLoadedFlag = false;
@@ -1046,6 +1046,7 @@ void QgsVectorLayerProperties::loadDefaultStyle_clicked()
         else
         {
           syncToLayer();
+          apply();
         }
 
         return;
@@ -1061,6 +1062,7 @@ void QgsVectorLayerProperties::loadDefaultStyle_clicked()
   {
     // all worked OK so no need to inform user
     syncToLayer();
+    apply();
   }
   else
   {
@@ -1069,7 +1071,7 @@ void QgsVectorLayerProperties::loadDefaultStyle_clicked()
   }
 }
 
-void QgsVectorLayerProperties::saveDefaultStyle_clicked()
+void QgsVectorLayerProperties::saveDefaultStyle()
 {
   apply();
   QString errorMsg;
@@ -1259,7 +1261,10 @@ void QgsVectorLayerProperties::saveStyleAs()
         if ( type == QML )
           errorMessage = mLayer->saveNamedStyle( filePath, defaultLoadedFlag, dlg.styleCategories() );
         else
-          errorMessage = mLayer->saveSldStyle( filePath, defaultLoadedFlag );
+        {
+          const QgsSldExportContext sldContext { dlg.sldExportOptions(), Qgis::SldExportVendorExtension::NoVendorExtension, filePath };
+          errorMessage = mLayer->saveSldStyleV2( defaultLoadedFlag, sldContext );
+        }
 
         //reset if the default style was loaded OK only
         if ( defaultLoadedFlag )
@@ -1372,9 +1377,8 @@ void QgsVectorLayerProperties::saveMultipleStylesAs()
               while ( QFile::exists( safePath ) )
               {
                 const QFileInfo fi { filePath };
-                safePath = QString( filePath ).replace( '.' + fi.completeSuffix(), QStringLiteral( "_%1.%2" )
-                                                        .arg( QString::number( i ) )
-                                                        .arg( fi.completeSuffix() ) );
+                safePath = QString( filePath ).replace( '.' + fi.completeSuffix(),
+                                                        QStringLiteral( "_%1.%2" ).arg( QString::number( i ), fi.completeSuffix() ) );
                 i++;
               }
             }
@@ -1399,8 +1403,7 @@ void QgsVectorLayerProperties::saveMultipleStylesAs()
           case DB:
           {
             QString infoWindowTitle = QObject::tr( "Save style '%1' to DB (%2)" )
-                                      .arg( styleName )
-                                      .arg( mLayer->providerType() );
+                                      .arg( styleName, mLayer->providerType() );
             QString msgError;
 
             QgsVectorLayerSaveStyleDialog::SaveToDbSettings dbSettings = dlg.saveToDbSettings();
@@ -1418,7 +1421,7 @@ void QgsVectorLayerProperties::saveMultipleStylesAs()
               int i = 1;
               while ( names.contains( name ) )
               {
-                name = QStringLiteral( "%1 %2" ).arg( name ).arg( QString::number( i ) );
+                name = QStringLiteral( "%1 %2" ).arg( name, QString::number( i ) );
                 i++;
               }
             }
@@ -1484,8 +1487,8 @@ void QgsVectorLayerProperties::aboutToShowStyleMenu()
   }
 
   m->addSeparator();
-  m->addAction( tr( "Save as Default" ), this, &QgsVectorLayerProperties::saveDefaultStyle_clicked );
-  m->addAction( tr( "Restore Default" ), this, &QgsVectorLayerProperties::loadDefaultStyle_clicked );
+  m->addAction( tr( "Save as Default" ), this, &QgsVectorLayerProperties::saveDefaultStyle );
+  m->addAction( tr( "Restore Default" ), this, &QgsVectorLayerProperties::loadDefaultStyle );
 
   // re-add style manager actions!
   m->addSeparator();
@@ -1528,6 +1531,7 @@ void QgsVectorLayerProperties::loadStyle()
         if ( defaultLoadedFlag )
         {
           syncToLayer();
+          apply();
         }
         else
         {
@@ -1553,6 +1557,7 @@ void QgsVectorLayerProperties::loadStyle()
         if ( mLayer->importNamedStyle( myDocument, errorMsg, categories ) )
         {
           syncToLayer();
+          apply();
         }
         else
         {
@@ -1569,6 +1574,7 @@ void QgsVectorLayerProperties::loadStyle()
         if ( defaultLoadedFlag )
         {
           syncToLayer();
+          apply();
         }
         else
         {
@@ -1934,7 +1940,7 @@ void QgsVectorLayerProperties::addWmsDimensionInfoToTreeWidget( const QgsMapLaye
 
   QTreeWidgetItem *childWmsDimensionDefaultValue = new QTreeWidgetItem();
   childWmsDimensionDefaultValue->setText( 0, tr( "Default display" ) );
-  childWmsDimensionDefaultValue->setText( 1, QgsMapLayerServerProperties::wmsDimensionDefaultDisplayLabels()[wmsDim.defaultDisplayType] );
+  childWmsDimensionDefaultValue->setText( 1, QgsMapLayerServerProperties::wmsDimensionDefaultDisplayLabels().value( wmsDim.defaultDisplayType ) );
   childWmsDimensionDefaultValue->setFlags( Qt::ItemIsEnabled );
   wmsDimensionItem->addChild( childWmsDimensionDefaultValue );
 
@@ -2288,4 +2294,72 @@ void QgsVectorLayerProperties::deleteAuxiliaryField( int index )
     const QString msg = QObject::tr( "Unable to remove auxiliary field (%1)" ).arg( errors );
     mMessageBar->pushMessage( title, msg, Qgis::MessageLevel::Warning );
   }
+}
+
+bool QgsVectorLayerProperties::eventFilter( QObject *obj, QEvent *ev )
+{
+  // If the map tip preview container is resized, resize the map tip
+  if ( obj == mMapTipPreviewContainer && ev->type() == QEvent::Resize )
+  {
+    resizeMapTip();
+  }
+  return QgsOptionsDialogBase::eventFilter( obj, ev );
+}
+
+void QgsVectorLayerProperties::initMapTipPreview()
+{
+  // HTML editor and preview are in a splitter. By default, the editor takes 2/3 of the space
+  mMapTipSplitter->setSizes( { 400, 200 } );
+  // Event filter is used to resize the map tip when the container is resized
+  mMapTipPreviewContainer->installEventFilter( this );
+
+  // Note: there's quite a bit of overlap between this and the code in QgsMapTip::showMapTip
+  // Create the WebView
+  mMapTipPreview = new QgsWebView( mMapTipPreviewContainer );
+
+#if WITH_QTWEBKIT
+  mMapTipPreview->page()->setLinkDelegationPolicy( QWebPage::DelegateAllLinks );//Handle link clicks by yourself
+  mMapTipPreview->setContextMenuPolicy( Qt::NoContextMenu ); //No context menu is allowed if you don't need it
+  connect( mMapTipPreview, &QWebView::loadFinished, this, &QgsVectorLayerProperties::resizeMapTip );
+#endif
+
+  mMapTipPreview->page()->settings()->setAttribute( QWebSettings::DeveloperExtrasEnabled, true );
+  mMapTipPreview->page()->settings()->setAttribute( QWebSettings::JavascriptEnabled, true );
+  mMapTipPreview->page()->settings()->setAttribute( QWebSettings::LocalStorageEnabled, true );
+
+  // Disable scrollbars, avoid random resizing issues
+  mMapTipPreview->page()->mainFrame()->setScrollBarPolicy( Qt::Horizontal, Qt::ScrollBarAlwaysOff );
+  mMapTipPreview->page()->mainFrame()->setScrollBarPolicy( Qt::Vertical, Qt::ScrollBarAlwaysOff );
+
+  // Update the map tip preview when the expression or the map tip template changes
+  connect( mMapTipWidget, &QgsCodeEditorHTML::textChanged, this, &QgsVectorLayerProperties::updateMapTipPreview );
+  connect( mDisplayExpressionWidget, qOverload< const QString & >( &QgsFieldExpressionWidget::fieldChanged ), this, &QgsVectorLayerProperties::updateMapTipPreview );
+}
+
+void QgsVectorLayerProperties::updateMapTipPreview()
+{
+  mMapTipPreview->setMaximumSize( mMapTipPreviewContainer->width(), mMapTipPreviewContainer->height() );
+  const QString htmlContent = QgsMapTip::vectorMapTipPreviewText( mLayer, mCanvas, mMapTipWidget->text(), mDisplayExpressionWidget->asExpression() );
+  mMapTipPreview->setHtml( htmlContent );
+}
+
+void QgsVectorLayerProperties::resizeMapTip()
+{
+  // Ensure the map tip is not bigger than the container
+  mMapTipPreview->setMaximumSize( mMapTipPreviewContainer->width(), mMapTipPreviewContainer->height() );
+#if WITH_QTWEBKIT
+  // Get the content size
+  const QWebElement container = mMapTipPreview->page()->mainFrame()->findFirstElement(
+                                  QStringLiteral( "#QgsWebViewContainer" ) );
+  const int width = container.geometry().width();
+  const int height = container.geometry().height();
+  mMapTipPreview->resize( width, height );
+
+  // Move the map tip to the center of the container
+  mMapTipPreview->move( ( mMapTipPreviewContainer->width() - mMapTipPreview->width() ) / 2,
+                        ( mMapTipPreviewContainer->height() - mMapTipPreview->height() ) / 2 );
+
+#else
+  mMapTipPreview->adjustSize();
+#endif
 }

@@ -17,14 +17,15 @@ import time
 
 import qgis  # NOQA switch sip api
 from qgis.PyQt.QtCore import QDir, QTemporaryFile, QUuid
-from qgis.core import (QgsVectorLayer,
-                       QgsFeature,
-                       QgsActionManager,
-                       QgsAction,
-                       QgsExpressionContext,
-                       QgsField,
-                       QgsFields
-                       )
+from qgis.core import (
+    QgsAction,
+    QgsActionManager,
+    QgsExpressionContext,
+    QgsFeature,
+    QgsField,
+    QgsFields,
+    QgsVectorLayer,
+)
 from qgis.testing import start_app, unittest
 
 start_app()
@@ -34,6 +35,7 @@ class TestQgsActionManager(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         cls.layer = QgsVectorLayer("Point?field=fldtxt:string&field=fldint:integer&field=flddate:datetime",
                                    "test_layer", "memory")
         cls.manager = QgsActionManager(cls.layer)
@@ -49,6 +51,7 @@ class TestQgsActionManager(unittest.TestCase):
     def tearDownClass(cls):
         cls.layer = None
         cls.manager = None
+        super().tearDownClass()
 
     def get_temp_filename(self):
         tmpFile = QTemporaryFile()

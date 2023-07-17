@@ -12,9 +12,7 @@ __copyright__ = 'Copyright 2021, The QGIS Project'
 import sys
 
 import qgis  # NOQA
-from qgis.gui import (
-    QgsGui
-)
+from qgis.gui import QgsGui
 from qgis.testing import start_app, unittest
 
 # Convenience instances in case you may need them

@@ -33,7 +33,6 @@ email                : sherman at mrcc.com
 #include "qgslocalec.h"
 #include "qgssymbol.h"
 #include "qgsembeddedsymbolrenderer.h"
-#include "qgszipitem.h"
 #include "qgsprovidersublayerdetails.h"
 #include "qgsvectorlayer.h"
 #include "qgsproviderregistry.h"
@@ -221,7 +220,7 @@ void QgsOgrProvider::repack()
 
 Qgis::VectorExportResult QgsOgrProvider::createEmptyLayer( const QString &uri,
     const QgsFields &fields,
-    QgsWkbTypes::Type wkbType,
+    Qgis::WkbType wkbType,
     const QgsCoordinateReferenceSystem &srs,
     bool overwrite,
     QMap<int, int> *oldToNewAttrIdxMap,
@@ -331,7 +330,7 @@ Qgis::VectorExportResult QgsOgrProvider::createEmptyLayer( const QString &uri,
   saveOptions.datasourceOptions = dsOptions;
   saveOptions.layerOptions = layerOptions;
   saveOptions.actionOnExistingFile = action;
-  saveOptions.symbologyExport = QgsVectorFileWriter::NoSymbology;
+  saveOptions.symbologyExport = Qgis::FeatureSymbologyExport::NoSymbology;
   std::unique_ptr< QgsVectorFileWriter > writer( QgsVectorFileWriter::create( uri, cleanedFields, wkbType, srs, QgsCoordinateTransformContext(), saveOptions, QgsFeatureSink::SinkFlags(), nullptr, &newLayerName ) );
   layerName = newLayerName;
 
@@ -435,7 +434,7 @@ QgsOgrProvider::QgsOgrProvider( QString const &uri, const ProviderOptions &optio
 
   if ( uri.contains( QLatin1String( "authcfg" ) ) )
   {
-    QRegularExpression authcfgRe( QStringLiteral( " authcfg='([^']+)'" ) );
+    const thread_local QRegularExpression authcfgRe( QStringLiteral( " authcfg='([^']+)'" ) );
     QRegularExpressionMatch match;
     if ( uri.contains( authcfgRe, &match ) )
     {
@@ -815,6 +814,16 @@ void QgsOgrProvider::loadFields()
       newField.setAlias( alias );
     }
 
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,7,0)
+    {
+      const QString comment = textEncoding()->toUnicode( OGR_Fld_GetComment( fldDef ) );
+      if ( !comment.isEmpty() )
+      {
+        newField.setComment( comment );
+      }
+    }
+#endif
+
     // check if field is nullable
     bool nullable = OGR_Fld_IsNullable( fldDef );
     if ( !nullable )
@@ -858,6 +867,19 @@ void QgsOgrProvider::loadFields()
       // dataset retains ownership of domain!
       if ( OGRFieldDomainH domain = GDALDatasetGetFieldDomain( ds, domainName ) )
       {
+        switch ( OGR_FldDomain_GetSplitPolicy( domain ) )
+        {
+          case OFDSP_DEFAULT_VALUE:
+            newField.setSplitPolicy( Qgis::FieldDomainSplitPolicy::DefaultValue );
+            break;
+          case OFDSP_DUPLICATE:
+            newField.setSplitPolicy( Qgis::FieldDomainSplitPolicy::Duplicate );
+            break;
+          case OFDSP_GEOMETRY_RATIO:
+            newField.setSplitPolicy( Qgis::FieldDomainSplitPolicy::GeometryRatio );
+            break;
+        }
+
         switch ( OGR_FldDomain_GetDomainType( domain ) )
         {
           case OFDT_CODED:
@@ -1042,13 +1064,13 @@ void QgsOgrProvider::loadMetadata()
           }
           else
           {
-            QgsDebugMsg( QStringLiteral( "Error reading %1: %2 at line %3 column %4" ).arg( sidecarPath, errorMessage ).arg( line ).arg( column ) );
+            QgsDebugError( QStringLiteral( "Error reading %1: %2 at line %3 column %4" ).arg( sidecarPath, errorMessage ).arg( line ).arg( column ) );
           }
           file.close();
         }
         else
         {
-          QgsDebugMsg( QStringLiteral( "Error reading %1 - could not open file for read" ).arg( sidecarPath ) );
+          QgsDebugError( QStringLiteral( "Error reading %1 - could not open file for read" ).arg( sidecarPath ) );
         }
       }
     }
@@ -1289,21 +1311,21 @@ size_t QgsOgrProvider::layerCount() const
 /**
  * Returns the feature type
  */
-QgsWkbTypes::Type QgsOgrProvider::wkbType() const
+Qgis::WkbType QgsOgrProvider::wkbType() const
 {
-  QgsWkbTypes::Type wkb = QgsOgrUtils::ogrGeometryTypeToQgsWkbType( mOGRGeomType );
-  const QgsWkbTypes::Type wkbFlat = QgsWkbTypes::flatType( wkb );
-  if ( mGDALDriverName == QLatin1String( "ESRI Shapefile" ) && ( wkbFlat == QgsWkbTypes::LineString || wkbFlat == QgsWkbTypes::Polygon ) )
+  Qgis::WkbType wkb = QgsOgrUtils::ogrGeometryTypeToQgsWkbType( mOGRGeomType );
+  const Qgis::WkbType wkbFlat = QgsWkbTypes::flatType( wkb );
+  if ( mGDALDriverName == QLatin1String( "ESRI Shapefile" ) && ( wkbFlat == Qgis::WkbType::LineString || wkbFlat == Qgis::WkbType::Polygon ) )
   {
     wkb = QgsWkbTypes::multiType( wkb );
   }
   if ( mOGRGeomType % 1000 == wkbPolyhedralSurface ) // is PolyhedralSurface, PolyhedralSurfaceZ, PolyhedralSurfaceM or PolyhedralSurfaceZM => map to MultiPolygon
   {
-    wkb = static_cast<QgsWkbTypes::Type>( mOGRGeomType - ( wkbPolyhedralSurface - wkbMultiPolygon ) );
+    wkb = static_cast<Qgis::WkbType>( mOGRGeomType - ( wkbPolyhedralSurface - wkbMultiPolygon ) );
   }
   else if ( mOGRGeomType % 1000 == wkbTIN ) // is TIN, TINZ, TINM or TINZM => map to MultiPolygon
   {
-    wkb = static_cast<QgsWkbTypes::Type>( mOGRGeomType - ( wkbTIN - wkbMultiPolygon ) );
+    wkb = static_cast<Qgis::WkbType>( mOGRGeomType - ( wkbTIN - wkbMultiPolygon ) );
   }
   return wkb;
 }
@@ -1833,6 +1855,14 @@ bool QgsOgrProvider::addAttributeOGRLevel( const QgsField &field, bool &ignoreEr
       break;
   }
 
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,6,0)
+  OGR_Fld_SetAlternativeName( fielddefn.get(), textEncoding()->fromUnicode( field.alias() ).constData() );
+#endif
+
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,7,0)
+  OGR_Fld_SetComment( fielddefn.get(), textEncoding()->fromUnicode( field.comment() ).constData() );
+#endif
+
   if ( mOgrLayer->CreateField( fielddefn.get(), true ) != OGRERR_NONE )
   {
     pushError( tr( "OGR error creating field %1: %2" ).arg( field.name(), CPLGetLastErrorMsg() ) );
@@ -2063,12 +2093,14 @@ bool QgsOgrProvider::_setSubsetString( const QString &theSQL, bool updateFeature
   if ( !mOgrOrigLayer )
     return false;
 
-  if ( theSQL == mSubsetString && mFeaturesCounted != static_cast< long long >( Qgis::FeatureCountState::Uncounted ) )
+  const QString cleanSql = QgsOgrProviderUtils::cleanSubsetString( theSQL );
+
+  if ( cleanSql == mSubsetString && mFeaturesCounted != static_cast< long long >( Qgis::FeatureCountState::Uncounted ) )
     return true;
 
-  const bool subsetStringHasChanged { theSQL != mSubsetString };
+  const bool subsetStringHasChanged { cleanSql != mSubsetString };
 
-  if ( !theSQL.isEmpty() )
+  if ( !cleanSql.isEmpty() )
   {
     QRecursiveMutex *mutex = nullptr;
     OGRLayerH layer = mOgrOrigLayer->getHandleAndMutex( mutex );
@@ -2076,7 +2108,7 @@ bool QgsOgrProvider::_setSubsetString( const QString &theSQL, bool updateFeature
     OGRLayerH subsetLayerH;
     {
       QMutexLocker locker( mutex );
-      subsetLayerH = QgsOgrProviderUtils::setSubsetString( layer, ds, textEncoding(), theSQL );
+      subsetLayerH = QgsOgrProviderUtils::setSubsetString( layer, ds, textEncoding(), cleanSql );
     }
     if ( !subsetLayerH )
     {
@@ -2085,7 +2117,7 @@ bool QgsOgrProvider::_setSubsetString( const QString &theSQL, bool updateFeature
     }
     if ( layer != subsetLayerH )
     {
-      mOgrSqlLayer = QgsOgrProviderUtils::getSqlLayer( mOgrOrigLayer.get(), subsetLayerH, theSQL );
+      mOgrSqlLayer = QgsOgrProviderUtils::getSqlLayer( mOgrOrigLayer.get(), subsetLayerH, cleanSql );
       Q_ASSERT( mOgrSqlLayer.get() );
       mOgrLayer = mOgrSqlLayer.get();
     }
@@ -2106,7 +2138,7 @@ bool QgsOgrProvider::_setSubsetString( const QString &theSQL, bool updateFeature
       OGR_L_SetAttributeFilter( layer, nullptr );
     }
   }
-  mSubsetString = theSQL;
+  mSubsetString = cleanSql;
 
   QVariantMap parts;
   parts.insert( QStringLiteral( "path" ), mFilePath );
@@ -2599,7 +2631,7 @@ bool QgsOgrProvider::createSpatialIndex()
 
 QString QgsOgrProvider::createIndexName( QString tableName, QString field )
 {
-  QRegularExpression safeExp( QStringLiteral( "[^a-zA-Z0-9]" ) );
+  const thread_local QRegularExpression safeExp( QStringLiteral( "[^a-zA-Z0-9]" ) );
   tableName.replace( safeExp, QStringLiteral( "_" ) );
   field.replace( safeExp, QStringLiteral( "_" ) );
   return tableName + "_" + field + "_idx";
@@ -2750,6 +2782,11 @@ QgsVectorDataProvider::Capabilities QgsOgrProvider::capabilities() const
   return mCapabilities;
 }
 
+Qgis::VectorDataProviderAttributeEditCapabilities QgsOgrProvider::attributeEditCapabilities() const
+{
+  return mAttributeEditCapabilities;
+}
+
 void QgsOgrProvider::computeCapabilities()
 {
   QgsVectorDataProvider::Capabilities ability = QgsVectorDataProvider::Capabilities();
@@ -2891,12 +2928,32 @@ void QgsOgrProvider::computeCapabilities()
       ability |= TransactionSupport;
     }
 
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,7,0)
+    if ( GDALGetMetadataItem( mOgrLayer->driver(), GDAL_DCAP_FEATURE_STYLES_READ, nullptr ) != nullptr )
+#else
     // GDAL KML driver doesn't support reading feature style, skip metadata check until GDAL can separate reading/writing capability
     if ( mGDALDriverName != QLatin1String( "KML" ) && GDALGetMetadataItem( mOgrLayer->driver(), GDAL_DCAP_FEATURE_STYLES, nullptr ) != nullptr )
+#endif
     {
       ability |= FeatureSymbology;
       ability |= CreateRenderer;
     }
+
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,7,0)
+    if ( const char *pszAlterFieldDefnFlags = GDALGetMetadataItem( mOgrLayer->driver(), GDAL_DMD_CREATION_FIELD_DEFN_FLAGS, nullptr ) )
+    {
+      char **papszTokens = CSLTokenizeString2( pszAlterFieldDefnFlags, " ", 0 );
+      if ( CSLFindString( papszTokens, "AlternativeName" ) >= 0 )
+      {
+        mAttributeEditCapabilities |= Qgis::VectorDataProviderAttributeEditCapability::EditAlias;
+      }
+      if ( CSLFindString( papszTokens, "Comment" ) >= 0 )
+      {
+        mAttributeEditCapabilities |= Qgis::VectorDataProviderAttributeEditCapability::EditComment;
+      }
+      CSLDestroy( papszTokens );
+    }
+#endif
   }
 
   ability |= ReadLayerMetadata;
@@ -2936,7 +2993,7 @@ QgsCoordinateReferenceSystem QgsOgrProvider::crs() const
   }
   else
   {
-    QgsDebugMsg( QStringLiteral( "no spatial reference found" ) );
+    QgsDebugMsgLevel( QStringLiteral( "no spatial reference found" ), 2 );
   }
 
   return srs;
@@ -2988,7 +3045,7 @@ QSet<QVariant> QgsOgrProvider::uniqueValues( int index, int limit ) const
   QgsOgrLayerUniquePtr l = mOgrLayer->ExecuteSQL( sql );
   if ( !l )
   {
-    QgsDebugMsg( QStringLiteral( "Failed to execute SQL" ) );
+    QgsDebugError( QStringLiteral( "Failed to execute SQL" ) );
     return QgsVectorDataProvider::uniqueValues( index, limit );
   }
 
@@ -3066,7 +3123,7 @@ QStringList QgsOgrProvider::uniqueStringsMatching( int index, const QString &sub
   QgsOgrLayerUniquePtr l = mOgrLayer->ExecuteSQL( sql );
   if ( !l )
   {
-    QgsDebugMsg( QStringLiteral( "Failed to execute SQL" ) );
+    QgsDebugError( QStringLiteral( "Failed to execute SQL" ) );
     return QgsVectorDataProvider::uniqueStringsMatching( index, substring, limit, feedback );
   }
 
@@ -3321,7 +3378,7 @@ QVariant QgsOgrProvider::minimumValue( int index ) const
   QgsOgrLayerUniquePtr l = mOgrLayer->ExecuteSQL( sql );
   if ( !l )
   {
-    QgsDebugMsg( QStringLiteral( "Failed to execute SQL: %1" ).arg( textEncoding()->toUnicode( sql ) ) );
+    QgsDebugError( QStringLiteral( "Failed to execute SQL: %1" ).arg( textEncoding()->toUnicode( sql ) ) );
     return QgsVectorDataProvider::minimumValue( index );
   }
 
@@ -3381,7 +3438,7 @@ QVariant QgsOgrProvider::maximumValue( int index ) const
   QgsOgrLayerUniquePtr l = mOgrLayer->ExecuteSQL( sql );
   if ( !l )
   {
-    QgsDebugMsg( QStringLiteral( "Failed to execute SQL: %1" ).arg( textEncoding()->toUnicode( sql ) ) );
+    QgsDebugError( QStringLiteral( "Failed to execute SQL: %1" ).arg( textEncoding()->toUnicode( sql ) ) );
     return QgsVectorDataProvider::maximumValue( index );
   }
 
@@ -3535,7 +3592,7 @@ void QgsOgrProvider::open( OpenMode mode )
 
   // Try to open using VSIFileHandler
   //   see http://trac.osgeo.org/gdal/wiki/UserDocs/ReadInZip
-  QString vsiPrefix = QgsZipItem::vsiPrefix( dataSourceUri( true ) );
+  const QString vsiPrefix = QgsGdalUtils::vsiPrefixForPath( dataSourceUri( true ) );
   if ( !vsiPrefix.isEmpty() || mFilePath.startsWith( QLatin1String( "/vsicurl/" ) ) )
   {
     // GDAL>=1.8.0 has write support for zip, but read and write operations
@@ -3627,7 +3684,7 @@ void QgsOgrProvider::open( OpenMode mode )
     mWriteAccess = false;
     if ( !openReadOnly )
     {
-      QgsDebugMsg( QStringLiteral( "OGR failed to opened in update mode, trying in read-only mode" ) );
+      QgsDebugMsgLevel( QStringLiteral( "OGR failed to opened in update mode, trying in read-only mode" ), 2 );
     }
 
     QStringList options( mOpenOptions );

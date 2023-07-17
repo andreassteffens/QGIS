@@ -13,17 +13,17 @@ import qgis  # NOQA
 from qgis.PyQt.QtCore import QPointF
 from qgis.PyQt.QtGui import QPolygonF
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsLayoutItemPolyline,
-                       QgsLayoutItemRegistry,
-                       QgsLayout,
-                       QgsLineSymbol,
-                       QgsProject,
-                       QgsReadWriteContext)
-from qgis.testing import (start_app,
-                          unittest
-                          )
+from qgis.core import (
+    QgsLayout,
+    QgsLayoutItemPolyline,
+    QgsLayoutItemRegistry,
+    QgsLineSymbol,
+    QgsProject,
+    QgsReadWriteContext,
+    QgsLayoutChecker
+)
+from qgis.testing import start_app, unittest
 
-from qgslayoutchecker import QgsLayoutChecker
 from test_qgslayoutitem import LayoutItemTestCase
 from utilities import unitTestDataPath
 
@@ -35,6 +35,7 @@ class TestQgsLayoutPolyline(unittest.TestCase, LayoutItemTestCase):
 
     @classmethod
     def setUpClass(cls):
+        super(TestQgsLayoutPolyline, cls).setUpClass()
         cls.item_class = QgsLayoutItemPolyline
 
     def __init__(self, methodName):

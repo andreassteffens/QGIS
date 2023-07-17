@@ -10,22 +10,24 @@ __date__ = '20/10/2017'
 __copyright__ = 'Copyright 2012, The QGIS Project'
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import QRectF, QDir
-from qgis.PyQt.QtGui import QPainter, QColor
+from qgis.PyQt.QtCore import QDir, QRectF
+from qgis.PyQt.QtGui import QColor, QPainter
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (QgsLayoutItemMap,
-                       QgsLayoutItemMapGrid,
-                       QgsRectangle,
-                       QgsLayout,
-                       QgsProperty,
-                       QgsLayoutObject,
-                       QgsTextFormat,
-                       QgsProject,
-                       QgsCoordinateReferenceSystem)
+from qgis.core import (
+    QgsCoordinateReferenceSystem,
+    QgsLayout,
+    QgsLayoutItemMap,
+    QgsLayoutItemMapGrid,
+    QgsLayoutObject,
+    QgsProject,
+    QgsProperty,
+    QgsRectangle,
+    QgsTextFormat,
+    QgsLayoutChecker
+)
 from qgis.testing import start_app, unittest
 
-from qgslayoutchecker import QgsLayoutChecker
-from utilities import unitTestDataPath, getTestFont
+from utilities import getTestFont, unitTestDataPath
 
 start_app()
 TEST_DATA_DIR = unitTestDataPath()
@@ -37,7 +39,7 @@ class TestQgsLayoutMapGrid(unittest.TestCase):
         self.report = "<h1>Python QgsLayoutItemMap Tests</h1>\n"
 
     def tearDown(self):
-        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        report_file_path = f"{QDir.tempPath()}/qgistest.html"
         with open(report_file_path, 'a') as report_file:
             report_file.write(self.report)
 

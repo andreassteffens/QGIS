@@ -15,35 +15,37 @@ import shutil
 import tempfile
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import QFileInfo, QRectF, QDir
+from qgis.PyQt.QtCore import QDir, QFileInfo, QRectF
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (
-    QgsPrintLayout,
+    QgsCategorizedSymbolRenderer,
+    QgsCoordinateReferenceSystem,
+    QgsFeature,
+    QgsFillSymbol,
+    QgsFontUtils,
+    QgsGeometry,
+    QgsLayoutItemLabel,
+    QgsLayoutItemLegend,
+    QgsLayoutChecker,
+    QgsLayoutItemMap,
     QgsLayoutObject,
+    QgsLayoutPoint,
+    QgsLegendStyle,
+    QgsMarkerSymbol,
+    QgsPointXY,
+    QgsPrintLayout,
     QgsProject,
     QgsProperty,
-    QgsFillSymbol,
     QgsReadWriteContext,
-    QgsLayoutItemMap,
-    QgsLayoutPoint,
-    QgsVectorLayer,
     QgsRectangle,
-    QgsCoordinateReferenceSystem,
-    QgsSingleSymbolRenderer,
-    QgsLayoutItemLabel,
-    QgsFontUtils,
-    QgsFeature,
-    QgsGeometry,
-    QgsPointXY,
-    QgsCategorizedSymbolRenderer,
     QgsRendererCategory,
-    QgsMarkerSymbol,
-    QgsLayoutItemLegend,
-    QgsLegendStyle)
+    QgsSingleSymbolRenderer,
+    QgsVectorLayer,
+)
 from qgis.testing import start_app, unittest
 
-from qgslayoutchecker import QgsLayoutChecker
+
 from utilities import unitTestDataPath
 
 start_app()
@@ -55,7 +57,7 @@ class TestQgsLayoutAtlas(unittest.TestCase):
         self.report = "<h1>Python QgsLayoutAtlas Tests</h1>\n"
 
     def tearDown(self):
-        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        report_file_path = f"{QDir.tempPath()}/qgistest.html"
         with open(report_file_path, 'a') as report_file:
             report_file.write(self.report)
 

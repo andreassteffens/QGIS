@@ -19,19 +19,28 @@ import os
 # executions
 os.environ['QT_HASH_SEED'] = '1'
 
-import urllib.request
-import urllib.parse
-import urllib.error
-
 import json
-
-from qgis.testing import unittest
+import urllib.error
+import urllib.parse
+import urllib.request
 
 import osgeo.gdal  # NOQA
 
-from test_qgsserver_wms import TestQgsServerWMSTestBase
-from qgis.core import QgsProject
+from qgis.core import (
+    QgsCoordinateReferenceSystem,
+    QgsFeature,
+    QgsField,
+    QgsFields,
+    QgsGeometry,
+    QgsMapLayer,
+    QgsMemoryProviderUtils,
+    QgsProject,
+    QgsWkbTypes,
+)
+from qgis.PyQt.QtCore import QVariant
 from qgis.server import QgsBufferServerRequest, QgsBufferServerResponse
+from qgis.testing import unittest
+from test_qgsserver_wms import TestQgsServerWMSTestBase
 
 
 class TestQgsServerWMSGetFeatureInfo(TestQgsServerWMSTestBase):
@@ -107,23 +116,25 @@ class TestQgsServerWMSGetFeatureInfo(TestQgsServerWMSTestBase):
                                  'with_geometry=true',
                                  'wms_getfeatureinfo-text-html-geometry')
 
-        # Test getfeatureinfo response html with maptip
+        # Test getfeatureinfo response html with maptip and display name
         self.wms_request_compare('GetFeatureInfo',
                                  '&layers=testlayer%20%C3%A8%C3%A9&styles=&' +
                                  'info_format=text%2Fhtml&transparent=true&' +
                                  'width=600&height=400&srs=EPSG%3A3857&bbox=913190.6389747962%2C' +
                                  '5606005.488876367%2C913235.426296057%2C5606035.347090538&' +
                                  'query_layers=testlayer%20%C3%A8%C3%A9&X=190&Y=320&' +
+                                 'with_display_name=true&' +
                                  'with_maptip=true',
                                  'wms_getfeatureinfo-text-html-maptip')
 
-        # Test getfeatureinfo response html with maptip in text mode
+        # Test getfeatureinfo response html with maptip and display name in text mode
         self.wms_request_compare('GetFeatureInfo',
                                  '&layers=testlayer%20%C3%A8%C3%A9&styles=&' +
                                  'info_format=text%2Fplain&transparent=true&' +
                                  'width=600&height=400&srs=EPSG%3A3857&bbox=913190.6389747962%2C' +
                                  '5606005.488876367%2C913235.426296057%2C5606035.347090538&' +
                                  'query_layers=testlayer%20%C3%A8%C3%A9&X=190&Y=320&' +
+                                 'with_display_name=true&' +
                                  'with_maptip=true',
                                  'wms_getfeatureinfo-text-html-maptip-plain')
 
@@ -675,6 +686,91 @@ class TestQgsServerWMSGetFeatureInfo(TestQgsServerWMSTestBase):
                                  'wms_getfeatureinfo_group_query_child',
                                  'test_project_wms_grouped_nested_layers.qgs',
                                  normalizeJson=True)
+
+    def testGetFeatureInfoNoQueriable(self):
+        """Test GetFeatureInfo for all layers when there is a single not queryable,
+        issue GH #51613, cannot reproduce
+        """
+
+        project = QgsProject()
+        project.setTitle('wmsproject')
+
+        fields = QgsFields()
+        fields.append(QgsField('fid', QVariant.Int))
+        vl1 = QgsMemoryProviderUtils.createMemoryLayer(
+            'vl1', fields, QgsWkbTypes.Point, QgsCoordinateReferenceSystem(4326))
+
+        f1 = QgsFeature(vl1.fields())
+        f1['fid'] = 1
+        f1.setGeometry(QgsGeometry.fromWkt('Point(9 45)'))
+        f2 = QgsFeature(vl1.fields())
+        f2['fid'] = 1
+        f2.setGeometry(QgsGeometry.fromWkt('Point(10 46)'))
+
+        vl1.dataProvider().addFeatures([f1, f2])
+
+        vl2 = QgsMemoryProviderUtils.createMemoryLayer(
+            'vl2', fields, QgsWkbTypes.Point, QgsCoordinateReferenceSystem(4326))
+        vl2.dataProvider().addFeatures([f1, f2])
+
+        project.addMapLayers([vl1, vl2])
+
+        req_params = {
+            'SERVICE': 'WMS',
+            'REQUEST': 'GetFeatureInfo',
+            'VERSION': '1.3.0',
+            'LAYERS': '',
+            'STYLES': '',
+            'INFO_FORMAT': r'application%2Fjson',
+            'WIDTH': '10',
+            'HEIGHT': '10',
+            'SRS': r'EPSG%3A4326',
+            'BBOX': '45,9,46,10',
+            'CRS': 'EPSG:4326',
+            'FEATURE_COUNT': '2',
+            'QUERY_LAYERS': 'wmsproject',
+            'I': '0',
+            'J': '10',
+            'FILTER': '',
+            'FI_POINT_TOLERANCE': '2'
+        }
+
+        req = QgsBufferServerRequest('?' + '&'.join([f"{k}={v}" for k, v in req_params.items()]))
+        res = QgsBufferServerResponse()
+        self.server.handleRequest(req, res, project)
+        j_body = json.loads(bytes(res.body()).decode())
+        self.assertEqual(len(j_body['features']), 2)
+
+        vl1.setFlags(vl1.flags() & ~ QgsMapLayer.Identifiable)
+
+        req = QgsBufferServerRequest('?' + '&'.join([f"{k}={v}" for k, v in req_params.items()]))
+        res = QgsBufferServerResponse()
+        self.server.handleRequest(req, res, project)
+        j_body = json.loads(bytes(res.body()).decode())
+        self.assertEqual(len(j_body['features']), 1)
+
+        req_params['LAYERS'] = 'vl1,vl2'
+        req = QgsBufferServerRequest('?' + '&'.join([f"{k}={v}" for k, v in req_params.items()]))
+        res = QgsBufferServerResponse()
+        self.server.handleRequest(req, res, project)
+        j_body = json.loads(bytes(res.body()).decode())
+        self.assertEqual(len(j_body['features']), 1)
+
+        req_params['LAYERS'] = 'wmsproject'
+        req_params['QUERY_LAYERS'] = 'vl2'
+        req = QgsBufferServerRequest('?' + '&'.join([f"{k}={v}" for k, v in req_params.items()]))
+        res = QgsBufferServerResponse()
+        self.server.handleRequest(req, res, project)
+        j_body = json.loads(bytes(res.body()).decode())
+        self.assertEqual(len(j_body['features']), 1)
+
+        req_params['LAYERS'] = 'vl2'
+        req_params['QUERY_LAYERS'] = 'wmsproject'
+        req = QgsBufferServerRequest('?' + '&'.join([f"{k}={v}" for k, v in req_params.items()]))
+        res = QgsBufferServerResponse()
+        self.server.handleRequest(req, res, project)
+        j_body = json.loads(bytes(res.body()).decode())
+        self.assertEqual(len(j_body['features']), 1)
 
     def testGetFeatureInfoJsonUseIdAsLayerName(self):
         """Test GH #36262 where json response + use layer id"""

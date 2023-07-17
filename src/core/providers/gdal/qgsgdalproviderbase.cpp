@@ -25,6 +25,7 @@
 #include "qgsapplication.h"
 #include "qgslogger.h"
 #include "qgsgdalproviderbase.h"
+#include "qgsgdalutils.h"
 #include "qgssettings.h"
 
 #include <mutex>
@@ -51,14 +52,14 @@ QList<QgsColorRampShader::ColorRampItem> QgsGdalProviderBase::colorTable( GDALDa
   //Invalid band number, segfault prevention
   if ( 0 >= bandNumber )
   {
-    QgsDebugMsg( QStringLiteral( "Invalid parameter" ) );
+    QgsDebugError( QStringLiteral( "Invalid parameter" ) );
     return ct;
   }
 
   GDALRasterBandH myGdalBand = GDALGetRasterBand( gdalDataset, bandNumber );
   if ( ! myGdalBand )
   {
-    QgsDebugMsg( QStringLiteral( "Could not get raster band %1" ).arg( bandNumber ) );
+    QgsDebugError( QStringLiteral( "Could not get raster band %1" ).arg( bandNumber ) );
     return ct;
   }
 
@@ -160,8 +161,7 @@ Qgis::DataType QgsGdalProviderBase::dataTypeFromGdal( const GDALDataType gdalDat
   {
 #if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,7,0)
     case GDT_Int8:
-      // Promote to Int16 due to lack of native Qgis data type for Int8
-      return Qgis::DataType::Int16;
+      return Qgis::DataType::Int8;
 #endif
     case GDT_Byte:
       return Qgis::DataType::Byte;
@@ -200,46 +200,46 @@ Qgis::DataType QgsGdalProviderBase::dataTypeFromGdal( const GDALDataType gdalDat
   return Qgis::DataType::UnknownDataType;
 }
 
-int QgsGdalProviderBase::colorInterpretationFromGdal( const GDALColorInterp gdalColorInterpretation ) const
+Qgis::RasterColorInterpretation QgsGdalProviderBase::colorInterpretationFromGdal( const GDALColorInterp gdalColorInterpretation ) const
 {
   switch ( gdalColorInterpretation )
   {
     case GCI_GrayIndex:
-      return QgsRaster::GrayIndex;
+      return Qgis::RasterColorInterpretation::GrayIndex;
     case GCI_PaletteIndex:
-      return QgsRaster::PaletteIndex;
+      return Qgis::RasterColorInterpretation::PaletteIndex;
     case GCI_RedBand:
-      return QgsRaster::RedBand;
+      return Qgis::RasterColorInterpretation::RedBand;
     case GCI_GreenBand:
-      return QgsRaster::GreenBand;
+      return Qgis::RasterColorInterpretation::GreenBand;
     case GCI_BlueBand:
-      return QgsRaster::BlueBand;
+      return Qgis::RasterColorInterpretation::BlueBand;
     case GCI_AlphaBand:
-      return QgsRaster::AlphaBand;
+      return Qgis::RasterColorInterpretation::AlphaBand;
     case GCI_HueBand:
-      return QgsRaster::HueBand;
+      return Qgis::RasterColorInterpretation::HueBand;
     case GCI_SaturationBand:
-      return QgsRaster::SaturationBand;
+      return Qgis::RasterColorInterpretation::SaturationBand;
     case GCI_LightnessBand:
-      return QgsRaster::LightnessBand;
+      return Qgis::RasterColorInterpretation::LightnessBand;
     case GCI_CyanBand:
-      return QgsRaster::CyanBand;
+      return Qgis::RasterColorInterpretation::CyanBand;
     case GCI_MagentaBand:
-      return QgsRaster::MagentaBand;
+      return Qgis::RasterColorInterpretation::MagentaBand;
     case GCI_YellowBand:
-      return QgsRaster::YellowBand;
+      return Qgis::RasterColorInterpretation::YellowBand;
     case GCI_BlackBand:
-      return QgsRaster::BlackBand;
+      return Qgis::RasterColorInterpretation::BlackBand;
     case GCI_YCbCr_YBand:
-      return QgsRaster::YCbCr_YBand;
+      return Qgis::RasterColorInterpretation::YCbCr_YBand;
     case GCI_YCbCr_CbBand:
-      return QgsRaster::YCbCr_CbBand;
+      return Qgis::RasterColorInterpretation::YCbCr_CbBand;
     case GCI_YCbCr_CrBand:
-      return QgsRaster::YCbCr_CrBand;
+      return Qgis::RasterColorInterpretation::YCbCr_CrBand;
     case GCI_Undefined:
-      return QgsRaster::UndefinedColorInterpretation;
+      return Qgis::RasterColorInterpretation::Undefined;
   }
-  return QgsRaster::UndefinedColorInterpretation;
+  return Qgis::RasterColorInterpretation::Undefined;
 }
 
 void QgsGdalProviderBase::registerGdalDrivers()
@@ -303,9 +303,7 @@ GDALDatasetH QgsGdalProviderBase::gdalOpen( const QString &uri, unsigned int nOp
   {
     const QString vsiPrefix = parts.value( QStringLiteral( "vsiPrefix" ) ).toString();
     const QString vsiSuffix = parts.value( QStringLiteral( "vsiSuffix" ) ).toString();
-    if ( vsiSuffix.isEmpty() && ( vsiPrefix == QLatin1String( "/vsizip/" )
-                                  || vsiPrefix == QLatin1String( "/vsigzip/" )
-                                  || vsiPrefix == QLatin1String( "/vsitar/" ) ) )
+    if ( vsiSuffix.isEmpty() && QgsGdalUtils::isVsiArchivePrefix( vsiPrefix ) )
     {
       // in the case that a direct path to a vsi supported archive was specified BUT
       // no file suffix was given, see if there's only one valid file we could read anyway and
@@ -348,6 +346,7 @@ GDALDatasetH QgsGdalProviderBase::gdalOpen( const QString &uri, unsigned int nOp
   {
     CPLSetThreadLocalConfigOption( "OGR_GPKG_FOREIGN_KEY_CHECK", nullptr );
   }
+
   return hDS;
 }
 
@@ -393,7 +392,7 @@ QVariantMap QgsGdalProviderBase::decodeGdalUri( const QString &uri )
   QString authcfg;
   QStringList openOptions;
 
-  const QRegularExpression authcfgRegex( " authcfg='([^']+)'" );
+  const thread_local QRegularExpression authcfgRegex( " authcfg='([^']+)'" );
   QRegularExpressionMatch match;
   if ( path.contains( authcfgRegex, &match ) )
   {
@@ -401,13 +400,13 @@ QVariantMap QgsGdalProviderBase::decodeGdalUri( const QString &uri )
     authcfg = match.captured( 1 );
   }
 
-  QString vsiPrefix = qgsVsiPrefix( path );
+  QString vsiPrefix = QgsGdalUtils::vsiPrefixForPath( path );
   QString vsiSuffix;
   if ( path.startsWith( vsiPrefix, Qt::CaseInsensitive ) )
   {
     path = path.mid( vsiPrefix.count() );
 
-    const QRegularExpression vsiRegex( QStringLiteral( "(?:\\.zip|\\.tar|\\.gz|\\.tar\\.gz|\\.tgz)([^|]+)" ) );
+    const thread_local QRegularExpression vsiRegex( QStringLiteral( "(?:\\.zip|\\.tar|\\.gz|\\.tar\\.gz|\\.tgz)([^|]+)" ) );
     const QRegularExpressionMatch match = vsiRegex.match( path );
     if ( match.hasMatch() )
     {
@@ -438,7 +437,7 @@ QVariantMap QgsGdalProviderBase::decodeGdalUri( const QString &uri )
 
   if ( path.contains( '|' ) )
   {
-    const QRegularExpression openOptionRegex( QStringLiteral( "\\|option:([^|]*)" ) );
+    const thread_local QRegularExpression openOptionRegex( QStringLiteral( "\\|option:([^|]*)" ) );
     while ( true )
     {
       const QRegularExpressionMatch match = openOptionRegex.match( path );

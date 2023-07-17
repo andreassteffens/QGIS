@@ -16,9 +16,13 @@ import threading
 import time
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import QDir, QCoreApplication, QSize
+from qgis.PyQt.QtCore import QCoreApplication, QDir, QSize
 from qgis.PyQt.QtGui import QImage, QPainter
-from qgis.core import (QgsRenderChecker, QgsApplication, QgsMultiRenderChecker)
+from qgis.core import (
+    QgsApplication,
+    QgsMultiRenderChecker,
+    QgsRenderChecker,
+)
 from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
@@ -38,6 +42,8 @@ class TestQgsImageCache(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
+
         # Bring up a simple HTTP server, for remote SVG tests
         os.chdir(unitTestDataPath() + '')
         handler = SlowHTTPRequestHandler
@@ -46,7 +52,7 @@ class TestQgsImageCache(unittest.TestCase):
         cls.port = cls.httpd.server_address[1]
 
         cls.httpd_thread = threading.Thread(target=cls.httpd.serve_forever)
-        cls.httpd_thread.setDaemon(True)
+        cls.httpd_thread.daemon = True
         cls.httpd_thread.start()
 
     def setUp(self):
@@ -56,7 +62,7 @@ class TestQgsImageCache(unittest.TestCase):
         QgsApplication.imageCache().remoteImageFetched.connect(self.imageFetched)
 
     def tearDown(self):
-        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        report_file_path = f"{QDir.tempPath()}/qgistest.html"
         with open(report_file_path, 'a') as report_file:
             report_file.write(self.report)
 

@@ -11,23 +11,23 @@ __copyright__ = 'Copyright 2016, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QPointF, QRectF
-from qgis.PyQt.QtGui import QPolygonF, QPainter, QImage
+from qgis.PyQt.QtGui import QImage, QPainter, QPolygonF
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsLayoutItemPolygon,
-                       QgsLayoutItemRegistry,
-                       QgsLayout,
-                       QgsFillSymbol,
-                       QgsProject,
-                       QgsReadWriteContext,
-                       QgsLayoutItem,
-                       QgsLayoutItemRenderContext,
-                       QgsLayoutUtils)
-from qgis.testing import (start_app,
-                          unittest
-                          )
+from qgis.core import (
+    QgsFillSymbol,
+    QgsLayout,
+    QgsLayoutItem,
+    QgsLayoutItemPolygon,
+    QgsLayoutItemRegistry,
+    QgsLayoutItemRenderContext,
+    QgsLayoutUtils,
+    QgsProject,
+    QgsReadWriteContext,
+    QgsLayoutChecker
+)
+from qgis.testing import start_app, unittest
 
-from qgslayoutchecker import QgsLayoutChecker
 from test_qgslayoutitem import LayoutItemTestCase
 from utilities import unitTestDataPath
 
@@ -39,6 +39,7 @@ class TestQgsLayoutPolygon(unittest.TestCase, LayoutItemTestCase):
 
     @classmethod
     def setUpClass(cls):
+        super(TestQgsLayoutPolygon, cls).setUpClass()
         cls.item_class = QgsLayoutItemPolygon
 
     def __init__(self, methodName):

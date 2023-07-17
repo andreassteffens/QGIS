@@ -18,16 +18,15 @@ from qgis.PyQt.QtGui import QFont
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (
-    QgsFontManager,
-    QgsSettings,
     QgsApplication,
+    QgsFontManager,
+    QgsReadWriteContext,
+    QgsSettings,
     QgsTextFormat,
-    QgsReadWriteContext
 )
 from qgis.testing import start_app, unittest
 
-from utilities import getTestFont
-from utilities import unitTestDataPath
+from utilities import getTestFont, unitTestDataPath
 
 start_app()
 
@@ -37,6 +36,7 @@ class TestQgsFontManager(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("QGIS_TestQgsFontManager.com")
         QCoreApplication.setApplicationName("QGIS_TestQgsFontManager")

@@ -448,16 +448,16 @@ class CORE_EXPORT QgsStyle : public QObject
      *
      * \since QGIS 3.16
      */
-    QList< QgsWkbTypes::GeometryType > symbol3DCompatibleGeometryTypes( const QString &name ) const;
+    QList< Qgis::GeometryType > symbol3DCompatibleGeometryTypes( const QString &name ) const;
 
     /**
      * Returns the layer geometry type corresponding to the label settings
-     * with the specified \a name, or QgsWkbTypes::UnknownGeometry
+     * with the specified \a name, or Qgis::GeometryType::Unknown
      * if matching label settings are not present.
      *
      * \since QGIS 3.10
      */
-    QgsWkbTypes::GeometryType labelSettingsLayerType( const QString &name ) const;
+    Qgis::GeometryType labelSettingsLayerType( const QString &name ) const;
 
     /**
      * Returns count of label settings in the style.
@@ -834,7 +834,6 @@ class CORE_EXPORT QgsStyle : public QObject
      * Creates tables structure for new database
      *
      *  This function is used to create the tables structure in a newly-created database.
-     *  \returns returns the success state of the temporary memory database creation
      *  \see createDatabase()
      *  \see createMemoryDatabase()
      *  \since QGIS 3.0

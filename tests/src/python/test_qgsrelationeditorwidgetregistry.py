@@ -11,20 +11,18 @@ __copyright__ = 'Copyright 2015, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.PyQt.QtWidgets import (
-    QLabel,
-    QGridLayout,
     QCheckBox,
+    QGridLayout,
+    QLabel,
 )
-from qgis.core import (
-    QgsRelation,
-)
+from qgis.core import QgsRelation
 from qgis.gui import (
-    QgsGui,
-    QgsAbstractRelationEditorWidget,
     QgsAbstractRelationEditorConfigWidget,
+    QgsAbstractRelationEditorWidget,
     QgsAbstractRelationEditorWidgetFactory,
+    QgsGui,
+    QgsRelationEditorConfigWidget,
     QgsRelationEditorWidget,
-    QgsRelationEditorConfigWidget
 )
 from qgis.testing import start_app, unittest
 
@@ -39,6 +37,7 @@ class TestQgsRelationEditorWidgetRegistry(unittest.TestCase):
         Setup the involved layers and relations for a n:m relation
         :return:
         """
+        super().setUpClass()
         cls.registry = QgsGui.relationWidgetRegistry()
 
     def test_cannot_delete_relation_editor(self):

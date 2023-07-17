@@ -21,11 +21,11 @@ import sys
 
 import qgis  # NOQA
 from qgis.PyQt.QtCore import qDebug
-from qgis.core import QgsProject, QgsApplication, QgsSettings
+from qgis.core import QgsApplication, QgsProject, QgsSettings
 
 from qgis_local_server import getLocalServer
 from test_qgspallabeling_base import TestQgsPalLabeling, runSuite
-from test_qgspallabeling_tests import TestPointBase, TestLineBase, suiteTests
+from test_qgspallabeling_tests import TestLineBase, TestPointBase, suiteTests
 from utilities import mapSettingsString
 
 MAPSERV = getLocalServer()

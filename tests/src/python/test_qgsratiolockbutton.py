@@ -12,7 +12,6 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 import qgis  # NOQA
 
 from qgis.PyQt.QtWidgets import QDoubleSpinBox
-
 from qgis.testing import start_app, unittest
 
 start_app()

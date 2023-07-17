@@ -11,15 +11,16 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 
 import qgis  # NOQA
 
-from qgis.core import (QgsUnitTypes,
-                       QgsLayout,
-                       QgsLayoutAligner,
-                       QgsProject,
-                       QgsLayoutItemPicture,
-                       QgsLayoutSize,
-                       QgsLayoutPoint,
-                       QgsLayoutItem)
-
+from qgis.core import (
+    QgsLayout,
+    QgsLayoutAligner,
+    QgsLayoutItem,
+    QgsLayoutItemPicture,
+    QgsLayoutPoint,
+    QgsLayoutSize,
+    QgsProject,
+    QgsUnitTypes,
+)
 from qgis.testing import start_app, unittest
 
 start_app()

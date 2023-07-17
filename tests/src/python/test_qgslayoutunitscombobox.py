@@ -12,7 +12,7 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 import qgis  # NOQA
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtWidgets import QDoubleSpinBox
-from qgis.core import QgsUnitTypes, QgsLayoutMeasurementConverter
+from qgis.core import QgsLayoutMeasurementConverter, QgsUnitTypes
 from qgis.testing import start_app, unittest
 
 start_app()

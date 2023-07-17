@@ -14,6 +14,7 @@
 
 
 
+
 typedef QList<int> QgsAttributeList;
 typedef QSet<int> QgsAttributeIds;
 
@@ -339,6 +340,8 @@ Provider to display vector data in a GRASS GIS layer.
 %End
   public:
 
+
+
     struct LayerOptions
     {
 
@@ -364,13 +367,15 @@ Constructor for LayerOptions.
 
       QgsCoordinateTransformContext transformContext;
 
-      QgsWkbTypes::Type fallbackWkbType;
+      Qgis::WkbType fallbackWkbType;
 
       QgsCoordinateReferenceSystem fallbackCrs;
 
       bool skipCrsValidation;
 
       bool forceReadOnly;
+
+      bool loadAllStoredStyles;
     };
 
     struct DeleteContext
@@ -505,6 +510,9 @@ Uses :py:class:`QgsExpression`
 
 :return: The expression which will be used to preview features for this layer
 %End
+
+    virtual bool hasMapTips() const ${SIP_FINAL};
+
 
     virtual QgsVectorDataProvider *dataProvider() ${SIP_FINAL};
 
@@ -882,12 +890,12 @@ Returns a list of the feature renderer generators owned by the layer.
 .. versionadded:: 3.18
 %End
 
-    QgsWkbTypes::GeometryType geometryType() const;
+    Qgis::GeometryType geometryType() const;
 %Docstring
 Returns point, line or polygon
 %End
 
-    virtual QgsWkbTypes::Type wkbType() const ${SIP_FINAL};
+    virtual Qgis::WkbType wkbType() const ${SIP_FINAL};
 
 %Docstring
 Returns the WKBType or WKBUnknown in case of error
@@ -1308,7 +1316,7 @@ Adds a ring to polygon/multipolygon features
 :param ring: ring to add
 :param featureId: if specified, feature ID for feature ring was added to will be stored in this parameter
 
-:return: Qgis.GeometryOperationResult
+:return: :py:class:`Qgis`.GeometryOperationResult
 
          - Success
          - LayerNotEditable
@@ -1337,7 +1345,7 @@ Adds a ring to polygon/multipolygon features
 :param ring: ring to add
 :param featureId: if specified, feature ID for feature ring was added to will be stored in this parameter
 
-:return: Qgis.GeometryOperationResult
+:return: :py:class:`Qgis`.GeometryOperationResult
 
          - Success
          - LayerNotEditable
@@ -1362,7 +1370,7 @@ Adds a ring to polygon/multipolygon features (takes ownership)
 :param ring: ring to add
 :param featureId: if specified, feature ID for feature ring was added to will be stored in this parameter
 
-:return: Qgis.GeometryOperationResult
+:return: :py:class:`Qgis`.GeometryOperationResult
 
          - Success
          - LayerNotEditable
@@ -1388,7 +1396,7 @@ Adds a ring to polygon/multipolygon features (takes ownership)
 %Docstring
 Adds a new part polygon to a multipart feature
 
-:return: Qgis.GeometryOperationResult
+:return: :py:class:`Qgis`.GeometryOperationResult
 
          - Success
          - LayerNotEditable
@@ -1415,7 +1423,7 @@ Adds a new part polygon to a multipart feature
 %Docstring
 Adds a new part polygon to a multipart feature
 
-:return: Qgis.GeometryOperationResult
+:return: :py:class:`Qgis`.GeometryOperationResult
 
          - Success
          - LayerNotEditable
@@ -1445,7 +1453,7 @@ Adds a new part polygon to a multipart feature
 %Docstring
 Adds a new part polygon to a multipart feature
 
-:return: Qgis.GeometryOperationResult
+:return: :py:class:`Qgis`.GeometryOperationResult
 
          - Success
          - LayerNotEditable
@@ -1508,7 +1516,7 @@ Splits parts cut by the given line
 :param splitLine: line that splits the layer features
 :param topologicalEditing: ``True`` if topological editing is enabled
 
-:return: Qgis.GeometryOperationResult
+:return: :py:class:`Qgis`.GeometryOperationResult
 
          - Success
          - NothingHappened
@@ -1536,7 +1544,7 @@ Splits parts cut by the given line
 :param splitLine: line that splits the layer features
 :param topologicalEditing: ``True`` if topological editing is enabled
 
-:return: Qgis.GeometryOperationResult
+:return: :py:class:`Qgis`.GeometryOperationResult
 
          - Success
          - NothingHappened
@@ -1561,7 +1569,7 @@ Splits features cut by the given line
 :param splitLine: line that splits the layer features
 :param topologicalEditing: ``True`` if topological editing is enabled
 
-:return: Qgis.GeometryOperationResult
+:return: :py:class:`Qgis`.GeometryOperationResult
 
          - Success
          - NothingHappened
@@ -1589,7 +1597,7 @@ Splits features cut by the given line
 :param splitLine: line that splits the layer features
 :param topologicalEditing: ``True`` if topological editing is enabled
 
-:return: Qgis.GeometryOperationResult
+:return: :py:class:`Qgis`.GeometryOperationResult
 
          - Success
          - NothingHappened
@@ -1616,7 +1624,7 @@ Splits features cut by the given curve
 :param preserveCircular: whether circular strings are preserved after splitting
 :param topologicalEditing: ``True`` if topological editing is enabled
 
-:return: Qgis.GeometryOperationResult
+:return: :py:class:`Qgis`.GeometryOperationResult
 
          - Success
          - NothingHappened
@@ -2028,6 +2036,28 @@ Convenience function that returns the attribute alias if defined or the field na
     QgsStringMap attributeAliases() const;
 %Docstring
 Returns a map of field name to attribute alias
+%End
+
+
+    void setFieldSplitPolicy( int index, Qgis::FieldDomainSplitPolicy policy );
+%Docstring
+Sets a split ``policy`` for the field with the specified index.
+
+:raises KeyError: if no field with the specified index exists
+
+.. versionadded:: 3.30
+%End
+
+%MethodCode
+    if ( a0 < 0 || a0 >= sipCpp->fields().count() )
+    {
+      PyErr_SetString( PyExc_KeyError, QByteArray::number( a0 ) );
+      sipIsErr = 1;
+    }
+    else
+    {
+      sipCpp->setFieldSplitPolicy( a0, a1 );
+    }
 %End
 
  QSet<QString> excludeAttributesWms() const /Deprecated/;
@@ -2571,24 +2601,6 @@ Sets the attribute table configuration object.
 This defines the appearance of the attribute table.
 %End
 
-    QString mapTipTemplate() const;
-%Docstring
-The mapTip is a pretty, html representation for feature information.
-
-It may also contain embedded expressions.
-
-.. versionadded:: 3.0
-%End
-
-    void setMapTipTemplate( const QString &mapTipTemplate );
-%Docstring
-The mapTip is a pretty, html representation for feature information.
-
-It may also contain embedded expressions.
-
-.. versionadded:: 3.0
-%End
-
     virtual QgsExpressionContext createExpressionContext() const ${SIP_FINAL};
 
 
@@ -2984,13 +2996,6 @@ to this signal and update the element accordingly.
 :param element: The XML element where you can add additional style information to.
 :param doc: The XML document that you can use to create new XML nodes.
 :param errorMessage: Write error messages into this string.
-%End
-
-    void mapTipTemplateChanged();
-%Docstring
-Emitted when the map tip changes
-
-.. versionadded:: 3.0
 %End
 
     void displayExpressionChanged();

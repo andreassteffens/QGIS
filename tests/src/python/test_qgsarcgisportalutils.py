@@ -16,13 +16,8 @@ import os
 import tempfile
 
 from qgis.PyQt.QtCore import QCoreApplication, QObject
-from qgis.core import (QgsArcGisPortalUtils,
-                       QgsApplication,
-                       QgsSettings
-                       )
-from qgis.testing import (start_app,
-                          unittest
-                          )
+from qgis.core import QgsApplication, QgsArcGisPortalUtils, QgsSettings
+from qgis.testing import start_app, unittest
 
 
 def sanitize(endpoint, x):
@@ -69,6 +64,7 @@ class TestPyQgsArcGisPortalUtils(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
 
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("TestPyQgsAFSProvider.com")
@@ -85,6 +81,7 @@ class TestPyQgsArcGisPortalUtils(unittest.TestCase):
         """Run after all tests"""
         QgsSettings().clear()
         # shutil.rmtree(cls.basetestpath, True)
+        super().tearDownClass()
 
     def testUserInfoSelf(self):
         """

@@ -14,9 +14,10 @@ import os
 import qgis  # NOQA
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.core import (
-    QgsDatumTransform,
     QgsCoordinateReferenceSystem,
-    QgsCoordinateTransformContext)
+    QgsCoordinateTransformContext,
+    QgsDatumTransform,
+)
 from qgis.gui import QgsCoordinateOperationWidget
 from qgis.testing import start_app, unittest
 

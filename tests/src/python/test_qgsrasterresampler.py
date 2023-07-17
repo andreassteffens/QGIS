@@ -19,14 +19,15 @@ from contextlib import contextmanager
 import qgis  # NOQA
 from osgeo import gdal
 from qgis.PyQt.QtGui import qRed
-from qgis.core import (QgsRasterLayer,
-                       QgsRectangle,
-                       QgsRasterResampleFilter,
-                       QgsSingleBandGrayRenderer,
-                       QgsCubicRasterResampler,
-                       QgsBilinearRasterResampler,
-                       QgsRasterDataProvider
-                       )
+from qgis.core import (
+    QgsBilinearRasterResampler,
+    QgsCubicRasterResampler,
+    QgsRasterDataProvider,
+    QgsRasterLayer,
+    QgsRasterResampleFilter,
+    QgsRectangle,
+    QgsSingleBandGrayRenderer,
+)
 from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath

@@ -30,6 +30,7 @@
 #include "qgis_gui.h"
 #include "qgsresamplingutils.h"
 #include "qgsrasterpipe.h"
+#include "qgsexpressioncontextgenerator.h"
 
 class QgsPointXY;
 class QgsMapLayer;
@@ -47,6 +48,8 @@ class QgsMapLayerConfigWidgetFactory;
 class QgsMapLayerConfigWidget;
 class QgsPropertyOverrideButton;
 class QgsRasterTransparencyWidget;
+class QgsRasterAttributeTableWidget;
+class QgsWebView;
 
 
 /**
@@ -90,6 +93,36 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsOptionsDialogBase, private
     void addPropertiesPageFactory( const QgsMapLayerConfigWidgetFactory *factory );
 
     QgsExpressionContext createExpressionContext() const override;
+
+    bool eventFilter( QObject *obj, QEvent *ev ) override;
+
+    /**
+     * Loads the default style when appropriate button is pressed
+     *
+     * \since QGIS 3.30
+     */
+    void loadDefaultStyle();
+
+    /**
+     * Saves the default style when appropriate button is pressed
+     *
+     * \since QGIS 3.30
+     */
+    void saveDefaultStyle();
+
+    /**
+     * Loads a saved style when appropriate button is pressed
+     *
+     * \since QGIS 3.30
+     */
+    void loadStyle();
+
+    /**
+     * Saves a style when appriate button is pressed
+     *
+     * \since QGIS 3.30
+     */
+    void saveStyleAs();
 
   protected slots:
     //! \brief auto slot executed when the active page in the main widget stack is changed
@@ -152,17 +185,8 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsOptionsDialogBase, private
     void updateGammaSlider( double value );
 
     void mRenderTypeComboBox_currentIndexChanged( int index );
-    //! Load the default style when appropriate button is pressed.
-    void loadDefaultStyle_clicked();
-    //! Save the default style when appropriate button is pressed.
-    void saveDefaultStyle_clicked();
-    //! Load a saved style when appropriate button is pressed.
-    void loadStyle_clicked();
-    //! Save a style when appriate button is pressed.
-    void saveStyleAs_clicked();
     //! Restore dialog modality and focus, usually after a pixel clicked to pick transparency color
     void restoreWindowModality();
-
 
     //! Load a saved metadata file.
     void loadMetadata();
@@ -197,6 +221,11 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsOptionsDialogBase, private
     void syncToLayer();
 
     void urlClicked( const QUrl &url );
+
+    // Update the preview of the map tip
+    void updateMapTipPreview();
+    // Resize the map tip preview
+    void resizeMapTip();
 
   private:
     QPushButton *mBtnStyle = nullptr;
@@ -258,6 +287,11 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsOptionsDialogBase, private
 
     void setRendererWidget( const QString &rendererName );
 
+    /**
+     * Setup or update the raster attribute table options page.
+     */
+    void updateRasterAttributeTableOptionsPage();
+
     //TODO: we should move these gradient generators somewhere more generic
     //so they can be used generically throughout the app
     QLinearGradient greenGradient();
@@ -298,5 +332,11 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsOptionsDialogBase, private
     friend class QgsAppScreenShots;
 
     QgsCoordinateReferenceSystem mBackupCrs;
+
+    QgsRasterAttributeTableWidget *mRasterAttributeTableWidget = nullptr;
+
+    void initMapTipPreview();
+
+    QgsWebView *mMapTipPreview = nullptr;
 };
 #endif

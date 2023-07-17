@@ -179,8 +179,8 @@ class TestQgsServerPlugins(QgsServerTestBase):
         """ Test plugin can read confif path
         """
         try:
-            from qgis.server import QgsServerFilter
             from qgis.core import QgsProject
+            from qgis.server import QgsServerFilter
         except ImportError:
             print("QGIS Server plugins are not compiled. Skipping test")
             return
@@ -203,7 +203,7 @@ class TestQgsServerPlugins(QgsServerTestBase):
         serverIface.registerFilter(Filter0(serverIface), 100)
 
         # Test using MAP
-        self._execute_request('?service=simple&MAP=%s' % self.projectPath)
+        self._execute_request(f'?service=simple&MAP={self.projectPath}')
 
         # Check config file path
         self.assertEqual(configFilePath2, self.projectPath)
@@ -272,8 +272,8 @@ class TestQgsServerPlugins(QgsServerTestBase):
         """ Test streaming pipeline propagation
         """
         try:
-            from qgis.server import QgsServerFilter
             from qgis.core import QgsProject
+            from qgis.server import QgsServerFilter
         except ImportError:
             print("QGIS Server plugins are not compiled. Skipping test")
             return
@@ -357,13 +357,13 @@ class TestQgsServerPlugins(QgsServerTestBase):
 
         # Test no propagation
         filter1.propagate = False
-        _, body = self._execute_request_project('?service=%s' % service0.name(), project=project)
+        _, body = self._execute_request_project(f'?service={service0.name()}', project=project)
         self.assertFalse(filter2.request_ready)
         self.assertEqual(body, b'ABC')
 
         # Test with propagation
         filter1.propagate = True
-        _, body = self._execute_request_project('?service=%s' % service0.name(), project=project)
+        _, body = self._execute_request_project(f'?service={service0.name()}', project=project)
         self.assertTrue(filter2.request_ready)
         self.assertEqual(body, b'ABDCE')
 

@@ -14,13 +14,13 @@ from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (
+    Qgis,
+    QgsPointCloudClassifiedRenderer,
+    QgsPointCloudLayer,
     QgsPointCloudLayerElevationProperties,
+    QgsProviderRegistry,
     QgsReadWriteContext,
     QgsUnitTypes,
-    Qgis,
-    QgsPointCloudLayer,
-    QgsProviderRegistry,
-    QgsPointCloudClassifiedRenderer
 )
 from qgis.testing import start_app, unittest
 

@@ -15,20 +15,21 @@ import socketserver
 import threading
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import QRectF, QDir
+from qgis.PyQt.QtCore import QDir, QRectF
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsLayoutItemPicture,
-                       QgsLayout,
-                       QgsLayoutItemMap,
-                       QgsRectangle,
-                       QgsCoordinateReferenceSystem,
-                       QgsProject,
-                       QgsReadWriteContext
-                       )
+from qgis.core import (
+    QgsCoordinateReferenceSystem,
+    QgsLayout,
+    QgsLayoutItemMap,
+    QgsLayoutItemPicture,
+    QgsProject,
+    QgsReadWriteContext,
+    QgsRectangle,
+    QgsLayoutChecker
+)
 from qgis.testing import start_app, unittest
 
-from qgslayoutchecker import QgsLayoutChecker
 from test_qgslayoutitem import LayoutItemTestCase
 from utilities import unitTestDataPath
 
@@ -40,6 +41,7 @@ class TestQgsLayoutPicture(unittest.TestCase, LayoutItemTestCase):
 
     @classmethod
     def setUpClass(cls):
+        super(TestQgsLayoutPicture, cls).setUpClass()
         cls.item_class = QgsLayoutItemPicture
 
         # Bring up a simple HTTP server, for remote picture tests
@@ -50,7 +52,7 @@ class TestQgsLayoutPicture(unittest.TestCase, LayoutItemTestCase):
         cls.port = cls.httpd.server_address[1]
 
         cls.httpd_thread = threading.Thread(target=cls.httpd.serve_forever)
-        cls.httpd_thread.setDaemon(True)
+        cls.httpd_thread.daemon = True
         cls.httpd_thread.start()
 
     def __init__(self, methodName):
@@ -75,7 +77,7 @@ class TestQgsLayoutPicture(unittest.TestCase, LayoutItemTestCase):
         self.report = "<h1>Python QgsLayoutItemPicture Tests</h1>\n"
 
     def tearDown(self):
-        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        report_file_path = f"{QDir.tempPath()}/qgistest.html"
         with open(report_file_path, 'a') as report_file:
             report_file.write(self.report)
 

@@ -25,6 +25,7 @@
 #include "qgsconfig.h"
 #include "qgsfontmanager.h"
 #include "qgsapplication.h"
+#include "qgsunittypes.h"
 
 #include <QFontDatabase>
 #include <QMimeData>
@@ -262,12 +263,12 @@ void QgsTextFormat::setFamilies( const QStringList &families )
   d->families = families;
 }
 
-QgsUnitTypes::RenderUnit QgsTextFormat::sizeUnit() const
+Qgis::RenderUnit QgsTextFormat::sizeUnit() const
 {
   return d->fontSizeUnits;
 }
 
-void QgsTextFormat::setSizeUnit( QgsUnitTypes::RenderUnit unit )
+void QgsTextFormat::setSizeUnit( Qgis::RenderUnit unit )
 {
   d->isValid = true;
   d->fontSizeUnits = unit;
@@ -311,6 +312,17 @@ double QgsTextFormat::opacity() const
   return d->opacity;
 }
 
+void QgsTextFormat::multiplyOpacity( double opacityFactor )
+{
+  if ( qgsDoubleNear( opacityFactor, 1.0 ) )
+    return;
+  d->opacity *= opacityFactor;
+  mBufferSettings.setOpacity( mBufferSettings.opacity() * opacityFactor );
+  mShadowSettings.setOpacity( mShadowSettings.opacity() * opacityFactor );
+  mBackgroundSettings.setOpacity( mBackgroundSettings.opacity() * opacityFactor );
+  mMaskSettings.setOpacity( mMaskSettings.opacity() * opacityFactor );
+}
+
 void QgsTextFormat::setOpacity( double opacity )
 {
   d->isValid = true;
@@ -350,12 +362,12 @@ void QgsTextFormat::setLineHeight( double height )
   d->multilineHeight = height;
 }
 
-QgsUnitTypes::RenderUnit QgsTextFormat::lineHeightUnit() const
+Qgis::RenderUnit QgsTextFormat::lineHeightUnit() const
 {
   return d->multilineHeightUnits;
 }
 
-void QgsTextFormat::setLineHeightUnit( QgsUnitTypes::RenderUnit unit )
+void QgsTextFormat::setLineHeightUnit( Qgis::RenderUnit unit )
 {
   d->isValid = true;
   d->multilineHeightUnits = unit;
@@ -447,14 +459,14 @@ void QgsTextFormat::readFromLayer( QgsVectorLayer *layer )
   if ( layer->customProperty( QStringLiteral( "labeling/fontSizeUnit" ) ).toString().isEmpty() )
   {
     d->fontSizeUnits = layer->customProperty( QStringLiteral( "labeling/fontSizeInMapUnits" ), QVariant( false ) ).toBool() ?
-                       QgsUnitTypes::RenderMapUnits : QgsUnitTypes::RenderPoints;
+                       Qgis::RenderUnit::MapUnits : Qgis::RenderUnit::Points;
   }
   else
   {
     bool ok = false;
     d->fontSizeUnits = QgsUnitTypes::decodeRenderUnit( layer->customProperty( QStringLiteral( "labeling/fontSizeUnit" ) ).toString(), &ok );
     if ( !ok )
-      d->fontSizeUnits = QgsUnitTypes::RenderPoints;
+      d->fontSizeUnits = Qgis::RenderUnit::Points;
   }
   if ( layer->customProperty( QStringLiteral( "labeling/fontSizeMapUnitScale" ) ).toString().isEmpty() )
   {
@@ -488,7 +500,7 @@ void QgsTextFormat::readFromLayer( QgsVectorLayer *layer )
     d->opacity = ( layer->customProperty( QStringLiteral( "labeling/textOpacity" ) ).toDouble() );
   }
   d->blendMode = QgsPainting::getCompositionMode(
-                   static_cast< QgsPainting::BlendMode >( layer->customProperty( QStringLiteral( "labeling/blendMode" ), QVariant( QgsPainting::BlendNormal ) ).toUInt() ) );
+                   static_cast< Qgis::BlendMode >( layer->customProperty( QStringLiteral( "labeling/blendMode" ), QVariant( static_cast< int >( Qgis::BlendMode::Normal ) ) ).toUInt() ) );
   d->multilineHeight = layer->customProperty( QStringLiteral( "labeling/multilineHeight" ), QVariant( 1.0 ) ).toDouble();
   d->previewBackgroundColor = QgsTextRendererUtils::readColor( layer, QStringLiteral( "labeling/previewBkgrdColor" ), QColor( 255, 255, 255 ), false );
 
@@ -570,8 +582,8 @@ void QgsTextFormat::readXml( const QDomElement &elem, const QgsReadWriteContext 
 
   if ( !textStyleElem.hasAttribute( QStringLiteral( "fontSizeUnit" ) ) )
   {
-    d->fontSizeUnits = textStyleElem.attribute( QStringLiteral( "fontSizeInMapUnits" ) ).toUInt() == 0 ? QgsUnitTypes::RenderPoints
-                       : QgsUnitTypes::RenderMapUnits;
+    d->fontSizeUnits = textStyleElem.attribute( QStringLiteral( "fontSizeInMapUnits" ) ).toUInt() == 0 ? Qgis::RenderUnit::Points
+                       : Qgis::RenderUnit::MapUnits;
   }
   else
   {
@@ -619,7 +631,7 @@ void QgsTextFormat::readXml( const QDomElement &elem, const QgsReadWriteContext 
   d->previewBackgroundColor = QgsSymbolLayerUtils::decodeColor( textStyleElem.attribute( QStringLiteral( "previewBkgrdColor" ), QgsSymbolLayerUtils::encodeColor( Qt::white ) ) );
 
   d->blendMode = QgsPainting::getCompositionMode(
-                   static_cast< QgsPainting::BlendMode >( textStyleElem.attribute( QStringLiteral( "blendMode" ), QString::number( QgsPainting::BlendNormal ) ).toUInt() ) );
+                   static_cast< Qgis::BlendMode >( textStyleElem.attribute( QStringLiteral( "blendMode" ), QString::number( static_cast< int >( Qgis::BlendMode::Normal ) ) ).toUInt() ) );
 
   if ( !textStyleElem.hasAttribute( QStringLiteral( "multilineHeight" ) ) )
   {
@@ -728,7 +740,7 @@ QDomElement QgsTextFormat::writeXml( QDomDocument &doc, const QgsReadWriteContex
     textStyleElem.setAttribute( QStringLiteral( "stretchFactor" ), d->textFont.stretch() );
 #endif
   textStyleElem.setAttribute( QStringLiteral( "textOrientation" ), QgsTextRendererUtils::encodeTextOrientation( d->orientation ) );
-  textStyleElem.setAttribute( QStringLiteral( "blendMode" ), QgsPainting::getBlendModeEnum( d->blendMode ) );
+  textStyleElem.setAttribute( QStringLiteral( "blendMode" ), static_cast< int >( QgsPainting::getBlendModeEnum( d->blendMode ) ) );
   textStyleElem.setAttribute( QStringLiteral( "multilineHeight" ), d->multilineHeight );
   textStyleElem.setAttribute( QStringLiteral( "multilineHeightUnit" ), QgsUnitTypes::encodeUnit( d->multilineHeightUnits ) );
 
@@ -770,12 +782,12 @@ QgsTextFormat QgsTextFormat::fromQFont( const QFont &font )
   if ( font.pointSizeF() > 0 )
   {
     format.setSize( font.pointSizeF() );
-    format.setSizeUnit( QgsUnitTypes::RenderPoints );
+    format.setSizeUnit( Qgis::RenderUnit::Points );
   }
   else if ( font.pixelSize() > 0 )
   {
     format.setSize( font.pixelSize() );
-    format.setSizeUnit( QgsUnitTypes::RenderPixels );
+    format.setSizeUnit( Qgis::RenderUnit::Pixels );
   }
 
   return format;
@@ -786,26 +798,26 @@ QFont QgsTextFormat::toQFont() const
   QFont f = font();
   switch ( sizeUnit() )
   {
-    case QgsUnitTypes::RenderPoints:
+    case Qgis::RenderUnit::Points:
       f.setPointSizeF( size() );
       break;
 
-    case QgsUnitTypes::RenderMillimeters:
+    case Qgis::RenderUnit::Millimeters:
       f.setPointSizeF( size() * 2.83464567 );
       break;
 
-    case QgsUnitTypes::RenderInches:
+    case Qgis::RenderUnit::Inches:
       f.setPointSizeF( size() * 72 );
       break;
 
-    case QgsUnitTypes::RenderPixels:
+    case Qgis::RenderUnit::Pixels:
       f.setPixelSize( static_cast< int >( std::round( size() ) ) );
       break;
 
-    case QgsUnitTypes::RenderMapUnits:
-    case QgsUnitTypes::RenderMetersInMapUnits:
-    case QgsUnitTypes::RenderUnknownUnit:
-    case QgsUnitTypes::RenderPercentage:
+    case Qgis::RenderUnit::MapUnits:
+    case Qgis::RenderUnit::MetersInMapUnits:
+    case Qgis::RenderUnit::Unknown:
+    case Qgis::RenderUnit::Percentage:
       // no meaning here
       break;
   }
@@ -1023,7 +1035,7 @@ void QgsTextFormat::updateDataDefinedProperties( QgsRenderContext &context )
     if ( !units.isEmpty() )
     {
       bool ok;
-      QgsUnitTypes::RenderUnit res = QgsUnitTypes::decodeRenderUnit( units, &ok );
+      Qgis::RenderUnit res = QgsUnitTypes::decodeRenderUnit( units, &ok );
       if ( ok )
         d->fontSizeUnits = res;
     }
@@ -1092,17 +1104,20 @@ void QgsTextFormat::updateDataDefinedProperties( QgsRenderContext &context )
   mMaskSettings.updateDataDefinedProperties( context, d->mDataDefinedProperties );
 }
 
-QPixmap QgsTextFormat::textFormatPreviewPixmap( const QgsTextFormat &format, QSize size, const QString &previewText, int padding )
+QPixmap QgsTextFormat::textFormatPreviewPixmap( const QgsTextFormat &format, QSize size, const QString &previewText, int padding, const QgsScreenProperties &screen )
 {
+  const double devicePixelRatio = screen.isValid() ? screen.devicePixelRatio() : 1;
   QgsTextFormat tempFormat = format;
-  QPixmap pixmap( size );
+  QPixmap pixmap( size * devicePixelRatio );
   pixmap.fill( Qt::transparent );
+  pixmap.setDevicePixelRatio( devicePixelRatio );
+
   QPainter painter;
   painter.begin( &pixmap );
 
   painter.setRenderHint( QPainter::Antialiasing );
 
-  QRect rect( 0, 0, size.width(), size.height() );
+  const QRectF rect( 0, 0, size.width(), size.height() );
 
   // shameless eye candy - use a subtle gradient when drawing background
   painter.setPen( Qt::NoPen );
@@ -1138,9 +1153,24 @@ QPixmap QgsTextFormat::textFormatPreviewPixmap( const QgsTextFormat &format, QSi
   newCoordXForm.setParameters( 1, 0, 0, 0, 0, 0 );
   context.setMapToPixel( newCoordXForm );
 
-  QWidget *activeWindow = QApplication::activeWindow();
-  const double logicalDpiX = activeWindow && activeWindow->screen() ? activeWindow->screen()->logicalDotsPerInchX() : 96.0;
-  context.setScaleFactor( logicalDpiX / 25.4 );
+  if ( screen.isValid() )
+  {
+    screen.updateRenderContextForScreen( context );
+  }
+  else
+  {
+    QWidget *activeWindow = QApplication::activeWindow();
+    if ( QScreen *screen = activeWindow ? activeWindow->screen() : nullptr )
+    {
+      context.setScaleFactor( screen->physicalDotsPerInch() / 25.4 );
+      context.setDevicePixelRatio( screen->devicePixelRatio() );
+    }
+    else
+    {
+      context.setScaleFactor( 96.0 / 25.4 );
+      context.setDevicePixelRatio( 1.0 );
+    }
+  }
 
   context.setUseAdvancedEffects( true );
   context.setFlag( Qgis::RenderContextFlag::Antialiasing, true );
@@ -1151,7 +1181,7 @@ QPixmap QgsTextFormat::textFormatPreviewPixmap( const QgsTextFormat &format, QSi
   const double fontSize = context.convertToPainterUnits( tempFormat.size(), tempFormat.sizeUnit(), tempFormat.sizeMapUnitScale() );
   double xtrans = 0;
   if ( tempFormat.buffer().enabled() )
-    xtrans = tempFormat.buffer().sizeUnit() == QgsUnitTypes::RenderPercentage
+    xtrans = tempFormat.buffer().sizeUnit() == Qgis::RenderUnit::Percentage
              ? fontSize * tempFormat.buffer().size() / 100
              : context.convertToPainterUnits( tempFormat.buffer().size(), tempFormat.buffer().sizeUnit(), tempFormat.buffer().sizeMapUnitScale() );
   if ( tempFormat.background().enabled() && tempFormat.background().sizeType() != QgsTextBackgroundSettings::SizeFixed )
@@ -1159,7 +1189,7 @@ QPixmap QgsTextFormat::textFormatPreviewPixmap( const QgsTextFormat &format, QSi
 
   double ytrans = 0.0;
   if ( tempFormat.buffer().enabled() )
-    ytrans = std::max( ytrans, tempFormat.buffer().sizeUnit() == QgsUnitTypes::RenderPercentage
+    ytrans = std::max( ytrans, tempFormat.buffer().sizeUnit() == Qgis::RenderUnit::Percentage
                        ? fontSize * tempFormat.buffer().size() / 100
                        : context.convertToPainterUnits( tempFormat.buffer().size(), tempFormat.buffer().sizeUnit(), tempFormat.buffer().sizeMapUnitScale() ) );
   if ( tempFormat.background().enabled() )

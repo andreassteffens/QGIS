@@ -15,14 +15,14 @@ import os
 import qgis  # NOQA
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (
+    QgsCoordinateReferenceSystem,
     QgsFlatTerrainProvider,
-    QgsRasterDemTerrainProvider,
+    QgsMeshLayer,
     QgsMeshTerrainProvider,
     QgsProject,
+    QgsRasterDemTerrainProvider,
     QgsRasterLayer,
-    QgsMeshLayer,
     QgsReadWriteContext,
-    QgsCoordinateReferenceSystem
 )
 from qgis.testing import start_app, unittest
 

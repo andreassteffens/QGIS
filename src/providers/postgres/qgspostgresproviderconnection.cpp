@@ -55,7 +55,7 @@ QgsPostgresProviderConnection::QgsPostgresProviderConnection( const QString &nam
 {
   mProviderKey = QStringLiteral( "postgres" );
   // Remove the sql and table empty parts
-  const QRegularExpression removePartsRe { R"raw(\s*sql=\s*|\s*table=""\s*)raw" };
+  const thread_local QRegularExpression removePartsRe { R"raw(\s*sql=\s*|\s*table=""\s*)raw" };
   setUri( QgsPostgresConn::connUri( name ).uri( false ).replace( removePartsRe, QString() ) );
 
   QgsSettings settings;
@@ -132,6 +132,20 @@ void QgsPostgresProviderConnection::setDefaultCapabilities()
     Qgis::SqlLayerDefinitionCapability::GeometryColumn,
     Qgis::SqlLayerDefinitionCapability::UnstableFeatureIds,
   };
+
+  mCapabilities2 |= Qgis::DatabaseProviderConnectionCapability2::SetFieldComment;
+
+  // see https://www.postgresql.org/docs/current/ddl-system-columns.html
+  mIllegalFieldNames =
+  {
+    QStringLiteral( "tableoid" ),
+    QStringLiteral( "xmin" ),
+    QStringLiteral( "cmin" ),
+    QStringLiteral( "xmax" ),
+    QStringLiteral( "cmax" ),
+    QStringLiteral( "ctid" ),
+
+  };
 }
 
 void QgsPostgresProviderConnection::dropTablePrivate( const QString &schema, const QString &name ) const
@@ -143,7 +157,7 @@ void QgsPostgresProviderConnection::dropTablePrivate( const QString &schema, con
 void QgsPostgresProviderConnection::createVectorTable( const QString &schema,
     const QString &name,
     const QgsFields &fields,
-    QgsWkbTypes::Type wkbType,
+    Qgis::WkbType wkbType,
     const QgsCoordinateReferenceSystem &srs,
     bool overwrite,
     const QMap<QString,
@@ -156,7 +170,7 @@ void QgsPostgresProviderConnection::createVectorTable( const QString &schema,
   newUri.setSchema( schema );
   newUri.setTable( name );
   // Set geometry column if it's not aspatial
-  if ( wkbType != QgsWkbTypes::Type::Unknown &&  wkbType != QgsWkbTypes::Type::NoGeometry )
+  if ( wkbType != Qgis::WkbType::Unknown &&  wkbType != Qgis::WkbType::NoGeometry )
   {
     newUri.setGeometryColumn( options->value( QStringLiteral( "geometryColumn" ), QStringLiteral( "geom" ) ).toString() );
   }
@@ -251,7 +265,6 @@ QgsAbstractDatabaseProviderConnection::QueryResult QgsPostgresProviderConnection
 
 QList<QVariantList> QgsPostgresProviderConnection::executeSqlPrivate( const QString &sql, bool resolveTypes, QgsFeedback *feedback, std::shared_ptr<QgsPoolPostgresConn> pgconn ) const
 {
-  QStringList columnNames;
   return execSqlPrivate( sql, resolveTypes, feedback, pgconn ).rows();
 }
 
@@ -575,14 +588,27 @@ void QgsPostgresProviderConnection::deleteSpatialIndex( const QString &schema, c
                      QgsPostgresConn::quotedIdentifier( indexName ) ), false );
 }
 
-QList<QgsPostgresProviderConnection::TableProperty> QgsPostgresProviderConnection::tables( const QString &schema, const TableFlags &flags ) const
+void QgsPostgresProviderConnection::setFieldComment( const QString &fieldName, const QString &schema, const QString &tableName, const QString &comment ) const
+{
+  executeSqlPrivate( QStringLiteral( "COMMENT ON COLUMN %1.%2.%3 IS %4;" )
+                     .arg( QgsPostgresConn::quotedIdentifier( schema ),
+                           QgsPostgresConn::quotedIdentifier( tableName ),
+                           QgsPostgresConn::quotedIdentifier( fieldName ),
+                           QgsPostgresConn::quotedValue( comment )
+                         ) );
+}
+
+QList<QgsPostgresProviderConnection::TableProperty> QgsPostgresProviderConnection::tables( const QString &schema, const TableFlags &flags, QgsFeedback *feedback ) const
 {
   checkCapability( Capability::Tables );
   QList<QgsPostgresProviderConnection::TableProperty> tables;
   QString errCause;
   // TODO: set flags from the connection if flags argument is 0
   const QgsDataSourceUri dsUri { uri() };
-  QgsPostgresConn *conn = QgsPostgresConnPool::instance()->acquireConnection( dsUri.connectionInfo( false ) );
+  QgsPostgresConn *conn = QgsPostgresConnPool::instance()->acquireConnection( dsUri.connectionInfo( false ), -1, false, feedback );
+  if ( feedback && feedback->isCanceled() )
+    return {};
+
   if ( !conn )
   {
     errCause = QObject::tr( "Connection failed: %1" ).arg( uri() );
@@ -607,15 +633,15 @@ QList<QgsPostgresProviderConnection::TableProperty> QgsPostgresProviderConnectio
       {
         // Classify
         TableFlags prFlags;
-        if ( pr.isView )
+        if ( pr.relKind == Qgis::PostgresRelKind::View || pr.relKind == Qgis::PostgresRelKind::MaterializedView )
         {
           prFlags.setFlag( QgsPostgresProviderConnection::TableFlag::View );
         }
-        if ( pr.isMaterializedView )
+        if ( pr.relKind == Qgis::PostgresRelKind::MaterializedView )
         {
           prFlags.setFlag( QgsPostgresProviderConnection::TableFlag::MaterializedView );
         }
-        if ( pr.isForeignTable )
+        if ( pr.relKind == Qgis::PostgresRelKind::ForeignTable )
         {
           prFlags.setFlag( QgsPostgresProviderConnection::TableFlag::Foreign );
         }
@@ -636,10 +662,10 @@ QList<QgsPostgresProviderConnection::TableProperty> QgsPostgresProviderConnectio
         {
           // retrieve layer types if needed
           if ( ! dontResolveType && ( !pr.geometryColName.isNull() &&
-                                      ( pr.types.value( 0, QgsWkbTypes::Unknown ) == QgsWkbTypes::Unknown ||
+                                      ( pr.types.value( 0, Qgis::WkbType::Unknown ) == Qgis::WkbType::Unknown ||
                                         pr.srids.value( 0, std::numeric_limits<int>::min() ) == std::numeric_limits<int>::min() ) ) )
           {
-            conn->retrieveLayerTypes( pr, useEstimatedMetadata );
+            conn->retrieveLayerTypes( pr, useEstimatedMetadata, feedback );
           }
           QgsPostgresProviderConnection::TableProperty property;
           property.setFlags( prFlags );
@@ -656,7 +682,9 @@ QList<QgsPostgresProviderConnection::TableProperty> QgsPostgresProviderConnectio
           property.setComment( pr.tableComment );
 
           // Get PKs
-          if ( pr.isView || pr.isMaterializedView || pr.isForeignTable )
+          if ( pr.relKind == Qgis::PostgresRelKind::View
+               || pr.relKind == Qgis::PostgresRelKind::MaterializedView
+               || pr.relKind == Qgis::PostgresRelKind::ForeignTable )
           {
             // Set the candidates
             property.setPrimaryKeyColumns( pr.pkCols );
@@ -682,7 +710,7 @@ QList<QgsPostgresProviderConnection::TableProperty> QgsPostgresProviderConnectio
             }
             catch ( const QgsProviderConnectionException &ex )
             {
-              QgsDebugMsg( QStringLiteral( "Error retrieving primary keys: %1" ).arg( ex.what() ) );
+              QgsDebugError( QStringLiteral( "Error retrieving primary keys: %1" ).arg( ex.what() ) );
             }
           }
 
@@ -1800,19 +1828,22 @@ QMultiMap<Qgis::SqlKeywordCategory, QStringList> QgsPostgresProviderConnection::
   } );
 }
 
-QgsFields QgsPostgresProviderConnection::fields( const QString &schema, const QString &tableName ) const
+QgsFields QgsPostgresProviderConnection::fields( const QString &schema, const QString &tableName, QgsFeedback *feedback ) const
 {
   // Try the base implementation first and fall back to a more complex approach for the
   // few PG-specific corner cases that do not work with the base implementation.
   try
   {
-    return QgsAbstractDatabaseProviderConnection::fields( schema, tableName );
+    return QgsAbstractDatabaseProviderConnection::fields( schema, tableName, feedback );
   }
   catch ( QgsProviderConnectionException &ex )
   {
     // This table might expose multiple geometry columns (different geom type or SRID)
     // but we are only interested in fields here, so let's pick the first one.
-    TableProperty tableInfo { table( schema, tableName ) };
+    TableProperty tableInfo { table( schema, tableName, feedback ) };
+    if ( feedback && feedback->isCanceled() )
+      return QgsFields();
+
     try
     {
       QgsDataSourceUri tUri { tableUri( schema, tableName ) };

@@ -11,12 +11,14 @@ __copyright__ = 'Copyright 2020, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.PyQt.QtCore import Qt
-from qgis.core import (QgsPointCloudAttribute,
-                       QgsPointCloudAttributeCollection,
-                       QgsPointCloudAttributeModel,
-                       QgsPointCloudAttributeProxyModel,
-                       QgsProviderRegistry,
-                       QgsPointCloudLayer)
+from qgis.core import (
+    QgsPointCloudAttribute,
+    QgsPointCloudAttributeCollection,
+    QgsPointCloudAttributeModel,
+    QgsPointCloudAttributeProxyModel,
+    QgsPointCloudLayer,
+    QgsProviderRegistry,
+)
 from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath

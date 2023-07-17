@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """
 /***************************************************************************
 Name                 : DB Manager
@@ -20,7 +18,6 @@ email                : hugo dot mercier at oslandia dot com
 
 Query builder dialog, based on the QSpatialite plugin (GPLv2+) by Romain Riviere
 """
-from builtins import str
 
 from qgis.PyQt.QtCore import Qt, QObject, QEvent
 from qgis.PyQt.QtWidgets import QDialog, QMessageBox, QTextEdit
@@ -290,14 +287,14 @@ class QueryBuilderDlg(QDialog):
         value = index.data(Qt.EditRole)
 
         if value is None:
-            queryWord = u'NULL'
+            queryWord = 'NULL'
         elif isinstance(value, (int, float)):
             queryWord = str(value)
         else:
             queryWord = self.db.connector.quoteString(value)
 
         if queryWord.strip() != '':
-            self.ui.where.insertPlainText(u' ' + queryWord)
+            self.ui.where.insertPlainText(' ' + queryWord)
             self.ui.where.setFocus()
 
     def use_rtree(self):

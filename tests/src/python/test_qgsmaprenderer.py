@@ -13,21 +13,23 @@ from random import uniform
 
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QSize
-from qgis.PyQt.QtGui import QPainter, QImage
+from qgis.PyQt.QtGui import QImage, QPainter
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (QgsMapRendererCache,
-                       QgsMapRendererParallelJob,
-                       QgsMapRendererSequentialJob,
-                       QgsMapRendererCustomPainterJob,
-                       QgsPalLayerSettings,
-                       QgsRectangle,
-                       QgsTextFormat,
-                       QgsVectorLayer,
-                       QgsVectorLayerSimpleLabeling,
-                       QgsFeature,
-                       QgsGeometry,
-                       QgsMapSettings,
-                       QgsPointXY)
+from qgis.core import (
+    QgsFeature,
+    QgsGeometry,
+    QgsMapRendererCache,
+    QgsMapRendererCustomPainterJob,
+    QgsMapRendererParallelJob,
+    QgsMapRendererSequentialJob,
+    QgsMapSettings,
+    QgsPalLayerSettings,
+    QgsPointXY,
+    QgsRectangle,
+    QgsTextFormat,
+    QgsVectorLayer,
+    QgsVectorLayerSimpleLabeling,
+)
 from qgis.testing import start_app, unittest
 
 app = start_app()

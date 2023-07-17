@@ -15,25 +15,27 @@ import tempfile
 
 import qgis  # NOQA
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import Qt, QPointF
+from qgis.PyQt.QtCore import QPointF, Qt
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsUnitTypes,
-                       QgsLayout,
-                       QgsLayoutItemPage,
-                       QgsLayoutGuide,
-                       QgsProject,
-                       QgsPrintLayout,
-                       QgsLayoutItemGroup,
-                       QgsLayoutItem,
-                       QgsLayoutItemHtml,
-                       QgsLayoutMeasurement,
-                       QgsLayoutFrame,
-                       QgsReadWriteContext,
-                       QgsLayoutItemMap,
-                       QgsLayoutItemLabel,
-                       QgsLayoutSize,
-                       QgsLayoutPoint)
+from qgis.core import (
+    QgsLayout,
+    QgsLayoutFrame,
+    QgsLayoutGuide,
+    QgsLayoutItem,
+    QgsLayoutItemGroup,
+    QgsLayoutItemHtml,
+    QgsLayoutItemLabel,
+    QgsLayoutItemMap,
+    QgsLayoutItemPage,
+    QgsLayoutMeasurement,
+    QgsLayoutPoint,
+    QgsLayoutSize,
+    QgsPrintLayout,
+    QgsProject,
+    QgsReadWriteContext,
+    QgsUnitTypes,
+)
 from qgis.testing import start_app, unittest
 
 start_app()
@@ -44,12 +46,14 @@ class TestQgsLayout(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
         cls.basetestpath = tempfile.mkdtemp()
 
     @classmethod
     def tearDownClass(cls):
         """Run after all tests"""
         shutil.rmtree(cls.basetestpath, True)
+        super().tearDownClass()
 
     def testReadWriteXml(self):
         p = QgsProject()

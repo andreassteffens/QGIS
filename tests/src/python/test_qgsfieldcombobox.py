@@ -12,7 +12,13 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 import qgis  # NOQA
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import QgsFields, QgsVectorLayer, QgsFieldProxyModel, QgsField, QgsFieldModel
+from qgis.core import (
+    QgsField,
+    QgsFieldModel,
+    QgsFieldProxyModel,
+    QgsFields,
+    QgsVectorLayer,
+)
 from qgis.gui import QgsFieldComboBox
 from qgis.testing import start_app, unittest
 

@@ -41,20 +41,26 @@
 #include "internalexception.h"
 #include "util.h"
 #include "palrtree.h"
-#include "qgssettings.h"
 #include "qgslabelingengine.h"
 #include "qgsrendercontext.h"
+#include "qgssettingsentryimpl.h"
+
 #include <cfloat>
 #include <list>
 
+
 using namespace pal;
+
+const QgsSettingsEntryInteger *Pal::settingsRenderingLabelCandidatesLimitPoints = new QgsSettingsEntryInteger( QStringLiteral( "label-candidates-limit-points" ), sTreePal, 0 );
+const QgsSettingsEntryInteger *Pal::settingsRenderingLabelCandidatesLimitLines = new QgsSettingsEntryInteger( QStringLiteral( "label-candidates-limit-lines" ), sTreePal, 0 );
+const QgsSettingsEntryInteger *Pal::settingsRenderingLabelCandidatesLimitPolygons = new QgsSettingsEntryInteger( QStringLiteral( "label-candidates-limit-polygons" ), sTreePal, 0 );
+
 
 Pal::Pal()
 {
-  QgsSettings settings;
-  mGlobalCandidatesLimitPoint = settings.value( QStringLiteral( "rendering/label_candidates_limit_points" ), 0, QgsSettings::Core ).toInt();
-  mGlobalCandidatesLimitLine = settings.value( QStringLiteral( "rendering/label_candidates_limit_lines" ), 0, QgsSettings::Core ).toInt();
-  mGlobalCandidatesLimitPolygon = settings.value( QStringLiteral( "rendering/label_candidates_limit_polygons" ), 0, QgsSettings::Core ).toInt();
+  mGlobalCandidatesLimitPoint = Pal::settingsRenderingLabelCandidatesLimitPoints->value();
+  mGlobalCandidatesLimitLine = Pal::settingsRenderingLabelCandidatesLimitLines->value();
+  mGlobalCandidatesLimitPolygon = Pal::settingsRenderingLabelCandidatesLimitPolygons->value();
 }
 
 Pal::~Pal() = default;
@@ -88,6 +94,7 @@ Layer *Pal::addLayer( QgsAbstractLabelProvider *provider, const QString &layerNa
   mLayers.insert( std::pair<QgsAbstractLabelProvider *, std::unique_ptr< Layer >>( provider, std::move( layer ) ) );
   mMutex.unlock();
 
+  // cppcheck-suppress returnDanglingLifetime
   return res;
 }
 
@@ -389,10 +396,10 @@ std::unique_ptr<Problem> Pal::extractProblem( const QgsRectangle &extent, const 
       {
         switch ( mPlacementVersion )
         {
-          case QgsLabelingEngineSettings::PlacementEngineVersion1:
+          case Qgis::LabelPlacementEngineVersion::Version1:
             break;
 
-          case QgsLabelingEngineSettings::PlacementEngineVersion2:
+          case Qgis::LabelPlacementEngineVersion::Version2:
           {
             // v2 placement rips out candidates where the candidate cost is too high when compared to
             // their inactive cost
@@ -636,12 +643,12 @@ void Pal::setShowPartialLabels( bool show )
   this->mShowPartialLabels = show;
 }
 
-QgsLabelingEngineSettings::PlacementEngineVersion Pal::placementVersion() const
+Qgis::LabelPlacementEngineVersion Pal::placementVersion() const
 {
   return mPlacementVersion;
 }
 
-void Pal::setPlacementVersion( QgsLabelingEngineSettings::PlacementEngineVersion placementVersion )
+void Pal::setPlacementVersion( Qgis::LabelPlacementEngineVersion placementVersion )
 {
   mPlacementVersion = placementVersion;
 }

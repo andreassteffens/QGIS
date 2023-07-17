@@ -56,13 +56,13 @@ static bool _initWidgetFunction( const QString &name, QgsSymbolLayerWidgetFunc f
   QgsSymbolLayerAbstractMetadata *abstractMetadata = reg->symbolLayerMetadata( name );
   if ( !abstractMetadata )
   {
-    QgsDebugMsg( "Failed to find symbol layer's entry in registry: " + name );
+    QgsDebugError( "Failed to find symbol layer's entry in registry: " + name );
     return false;
   }
   QgsSymbolLayerMetadata *metadata = dynamic_cast<QgsSymbolLayerMetadata *>( abstractMetadata );
   if ( !metadata )
   {
-    QgsDebugMsg( "Failed to cast symbol layer's metadata: " + name );
+    QgsDebugError( "Failed to cast symbol layer's metadata: " + name );
     return false;
   }
   metadata->setWidgetFunction( f );
@@ -450,7 +450,7 @@ void QgsLayerPropertiesWidget::emitSignalChanged()
     mLayer->paintEffect()->setEnabled( false );
     paintEffectToggled = true;
   }
-  mEffectWidget->setPreviewPicture( QgsSymbolLayerUtils::symbolLayerPreviewPicture( mLayer, QgsUnitTypes::RenderMillimeters, QSize( 60, 60 ), QgsMapUnitScale(), mSymbol ? mSymbol->type() : Qgis::SymbolType::Hybrid ) );
+  mEffectWidget->setPreviewPicture( QgsSymbolLayerUtils::symbolLayerPreviewPicture( mLayer, Qgis::RenderUnit::Millimeters, QSize( 60, 60 ), QgsMapUnitScale(), mSymbol ? mSymbol->type() : Qgis::SymbolType::Hybrid ) );
   if ( paintEffectToggled )
   {
     mLayer->paintEffect()->setEnabled( true );

@@ -14,13 +14,13 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.analysis import QgsNativeAlgorithms
 from qgis.core import (
     QgsApplication,
-    QgsSettings,
-    QgsProcessingContext,
-    QgsProcessingAlgRunnerTask,
     QgsProcessingAlgorithm,
-    QgsProject,
+    QgsProcessingAlgRunnerTask,
+    QgsProcessingContext,
     QgsProcessingFeedback,
-    QgsTask
+    QgsProject,
+    QgsSettings,
+    QgsTask,
 )
 from qgis.testing import start_app, unittest
 
@@ -78,6 +78,7 @@ class TestQgsProcessingAlgRunner(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(
             "QGIS_TestPyQgsProcessingInPlace.com")

@@ -43,7 +43,10 @@ class QgsWFSDataSourceURI
     explicit QgsWFSDataSourceURI( const QString &uri );
 
     //! Copy constructor
-    QgsWFSDataSourceURI( const QgsWFSDataSourceURI& other );
+    QgsWFSDataSourceURI( const QgsWFSDataSourceURI &other );
+
+    //! Returns whether the URI is a valid one
+    bool isValid() const;
 
     //! Returns the URI, optionally with the authentication configuration expanded
     QString uri( bool expandAuthConfig = false ) const;
@@ -89,6 +92,12 @@ class QgsWFSDataSourceURI
 
     //! Sets OGC filter xml or a QGIS expression
     void setFilter( const QString &filterIn );
+
+    //! Returns whether there is a geometry type filter.
+    bool hasGeometryTypeFilter() const;
+
+    //! Gets the geometry type filter.
+    Qgis::WkbType geometryTypeFilter() const;
 
     //! Gets SQL query
     QString sql() const;

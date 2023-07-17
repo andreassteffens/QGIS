@@ -16,11 +16,7 @@
  ***************************************************************************/
 
 #include "qgsapplication.h"
-#include "qgslayout.h"
-#include "qgsmultirenderchecker.h"
-#include "qgslayoutitemmap.h"
 #include "qgsvectorlayer.h"
-#include "qgsproject.h"
 #include "qgsabstractgeopdfexporter.h"
 #include <QObject>
 #include "qgstest.h"
@@ -120,7 +116,7 @@ void TestQgsGeoPdfExport::testCollectingFeatures()
   std::unique_ptr< QgsVectorLayer > layer = std::make_unique< QgsVectorLayer >( QStringLiteral( "%1|layerName=%2" ).arg( component.sourceVectorPath, component.sourceVectorLayer ), QStringLiteral( "layer" ), QStringLiteral( "ogr" ) );
   QVERIFY( layer->isValid() );
   QCOMPARE( layer->featureCount(), 2L );
-  QCOMPARE( layer->wkbType(), QgsWkbTypes::Polygon );
+  QCOMPARE( layer->wkbType(), Qgis::WkbType::Polygon );
   QCOMPARE( layer->fields().at( 1 ).name(), QStringLiteral( "a1" ) );
   QCOMPARE( layer->fields().at( 2 ).name(), QStringLiteral( "a2" ) );
   QgsFeatureIterator it = layer->getFeatures();
@@ -146,7 +142,7 @@ void TestQgsGeoPdfExport::testCollectingFeatures()
   layer = std::make_unique< QgsVectorLayer >( QStringLiteral( "%1|layerName=%2" ).arg( component.sourceVectorPath, component.sourceVectorLayer ), QStringLiteral( "layer" ), QStringLiteral( "ogr" ) );
   QVERIFY( layer->isValid() );
   QCOMPARE( layer->featureCount(), 1L );
-  QCOMPARE( layer->wkbType(), QgsWkbTypes::LineString );
+  QCOMPARE( layer->wkbType(), Qgis::WkbType::LineString );
   QCOMPARE( layer->fields().at( 1 ).name(), QStringLiteral( "a1" ) );
   QCOMPARE( layer->fields().at( 2 ).name(), QStringLiteral( "a2" ) );
   it = layer->getFeatures();
@@ -213,7 +209,7 @@ void TestQgsGeoPdfExport::testComposition()
   details.initialLayerVisibility.insert( QStringLiteral( "layer2" ), false );
   details.layerOrder = QStringList() << QStringLiteral( "layer2" );
   QString composition = geoPdfExporter.createCompositionXml( renderedLayers, details );
-  QgsDebugMsg( composition );
+  QgsDebugMsgLevel( composition, 1 );
   QDomDocument doc;
   doc.setContent( composition );
   QDomNodeList ifLayerOnList = doc.elementsByTagName( QStringLiteral( "IfLayerOn" ) );
@@ -266,7 +262,7 @@ void TestQgsGeoPdfExport::testMetadata()
   QList< QgsAbstractGeoPdfExporter::ComponentLayerDetail > renderedLayers;
   QgsAbstractGeoPdfExporter::ExportDetails details;
   QString composition = geoPdfExporter.createCompositionXml( renderedLayers, details );
-  QgsDebugMsg( composition );
+  QgsDebugMsgLevel( composition, 1 );
   QDomDocument doc;
   doc.setContent( composition );
   QCOMPARE( doc.elementsByTagName( QStringLiteral( "Author" ) ).count(), 0 );
@@ -287,7 +283,7 @@ void TestQgsGeoPdfExport::testMetadata()
   details.keywords.insert( QStringLiteral( "k1" ), QStringList() << QStringLiteral( "v1" ) << QStringLiteral( "v2" ) );
 
   composition = geoPdfExporter.createCompositionXml( renderedLayers, details );
-  QgsDebugMsg( composition );
+  QgsDebugMsgLevel( composition, 1 );
   doc.setContent( composition );
   QCOMPARE( doc.elementsByTagName( QStringLiteral( "Author" ) ).at( 0 ).toElement().text(), QStringLiteral( "my author" ) );
   QCOMPARE( doc.elementsByTagName( QStringLiteral( "Producer" ) ).at( 0 ).toElement().text(), QStringLiteral( "my producer" ) );
@@ -307,7 +303,7 @@ void TestQgsGeoPdfExport::testGeoref()
   QList< QgsAbstractGeoPdfExporter::ComponentLayerDetail > renderedLayers;
   QgsAbstractGeoPdfExporter::ExportDetails details;
   QString composition = geoPdfExporter.createCompositionXml( renderedLayers, details );
-  QgsDebugMsg( composition );
+  QgsDebugMsgLevel( composition, 1 );
   QDomDocument doc;
   doc.setContent( composition );
   QCOMPARE( doc.elementsByTagName( QStringLiteral( "Georeferencing" ) ).count(), 0 );
@@ -323,7 +319,7 @@ void TestQgsGeoPdfExport::testGeoref()
   details.georeferencedSections << section;
 
   composition = geoPdfExporter.createCompositionXml( renderedLayers, details );
-  QgsDebugMsg( composition );
+  QgsDebugMsgLevel( composition, 1 );
   doc.setContent( composition );
   QCOMPARE( doc.elementsByTagName( QStringLiteral( "SRS" ) ).at( 0 ).toElement().text(), QStringLiteral( "EPSG:4283" ) );
   QCOMPARE( doc.elementsByTagName( QStringLiteral( "BoundingBox" ) ).at( 0 ).toElement().attribute( QStringLiteral( "x1" ) ), QStringLiteral( "0" ) );
@@ -371,7 +367,7 @@ void TestQgsGeoPdfExport::testGeorefPolygon()
   details.georeferencedSections << section;
 
   QString composition = geoPdfExporter.createCompositionXml( renderedLayers, details );
-  QgsDebugMsg( composition );
+  QgsDebugMsgLevel( composition, 1 );
   QDomDocument doc;
   doc.setContent( composition );
   QCOMPARE( doc.elementsByTagName( QStringLiteral( "SRS" ) ).at( 0 ).toElement().text(), QStringLiteral( "EPSG:4283" ) );
@@ -441,7 +437,7 @@ void TestQgsGeoPdfExport::testGroups()
   QList< QgsAbstractGeoPdfExporter::ComponentLayerDetail > renderedLayers; // no extra layers for now
   QgsAbstractGeoPdfExporter::ExportDetails details;
   QString composition = geoPdfExporter.createCompositionXml( renderedLayers, details );
-  QgsDebugMsg( composition );
+  QgsDebugMsgLevel( composition, 1 );
   QDomDocument doc;
   doc.setContent( composition );
   QDomNodeList ifLayerOnList = doc.elementsByTagName( QStringLiteral( "IfLayerOn" ) );
@@ -525,7 +521,7 @@ void TestQgsGeoPdfExport::testCustomGroups()
   details.customLayerTreeGroups.insert( QStringLiteral( "layer2" ), QStringLiteral( "my group2" ) );
 
   QString composition = geoPdfExporter.createCompositionXml( renderedLayers, details );
-  QgsDebugMsg( composition );
+  QgsDebugMsgLevel( composition, 1 );
   QDomDocument doc;
   doc.setContent( composition );
 

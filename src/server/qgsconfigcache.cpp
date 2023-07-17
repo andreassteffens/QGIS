@@ -227,106 +227,17 @@ const QgsProject *QgsConfigCache::project( const QString &path, bool* pSbJustLoa
   return entry ? entry->second.get() : nullptr;
 }
 
-QStringList *QgsConfigCache::sbProjectWarnings(const QString &path)
+QList<QgsProject *> QgsConfigCache::projects() const
 {
-  QString strPath = sbGetStandardizedPath(path);
+  QList<QgsProject *> projects;
 
-  if (mSbProjectWarnings[strPath])
-    return mSbProjectWarnings[strPath];
-
-  return NULL;
-}
-
-QgsMapSettings *QgsConfigCache::sbMapSettings(const QString &path)
-{
-  QString strPath = sbGetStandardizedPath(path);
-
-  if (mSbMapSettingsCache.contains(strPath))
-    return mSbMapSettingsCache[strPath];
-
-  return NULL;
-}
-
-void QgsConfigCache::logOldProjectVersionWarning(const QString &warning)
-{
-  if (mSbLoadingPath.isEmpty())
-    return;
-
-  if (!mSbProjectWarnings.contains(mSbLoadingPath))
-    return;
-
-  mSbProjectWarnings[mSbLoadingPath]->append("(WARNING) " + warning);
-}
-
-void QgsConfigCache::logProjectCleared()
-{
-  QgsMessageLog::logMessage(QStringLiteral("([a]tapa) Project has been cleared!"), QStringLiteral("Server"), Qgis::Info);
-}
-
-void QgsConfigCache::logLoadingLayerMessage(const QString &t1, const QList<QgsReadWriteContext::ReadWriteMessage> &listMessages)
-{
-  if (mSbLoadingPath.isEmpty())
-    return;
-
-  if (!mSbProjectWarnings.contains(mSbLoadingPath))
-    return;
-
-  for (int i = 0; i < listMessages.size(); i++)
+  const auto constKeys {  mProjectCache.keys() };
+  for ( const auto &path : std::as_const( constKeys ) )
   {
-    QString strLevel = "NOLEVEL";
-    switch (listMessages[i].level())
-    {
-      case Qgis::Warning:
-        strLevel = "WARNING";
-        break;
-      case Qgis::Info:
-        strLevel = "INFO";
-        break;
-      case Qgis::Critical:
-        strLevel = "CRITICAL";
-        break;
-      case Qgis::Success:
-        strLevel = "SUCESS";
-        break;
-      case Qgis::NoLevel:
-        strLevel = "NOLEVEL";
-        break;
-    }
-
-    QString qstrMessage = "[Layer '" + t1 + "'] (" + strLevel + ") " + listMessages[i].message();
-    mSbProjectWarnings[mSbLoadingPath]->append(qstrMessage);
+    projects << mProjectCache[path]->second.get();
   }
-}
 
-void QgsConfigCache::loadProjectCanvas(const QDomDocument &doc)
-{
-  if (mSbLoadingPath.isEmpty())
-    return;
-
-  QDomNodeList nodes = doc.elementsByTagName(QStringLiteral("mapcanvas"));
-  if (nodes.count())
-  {
-    // Search the specific MapCanvas node using the name
-    for (int i = 0; i < nodes.size(); ++i)
-    {
-      QDomElement elementNode = nodes.at(i).toElement();
-
-      if (elementNode.hasAttribute(QStringLiteral("name")) && elementNode.attribute(QStringLiteral("name")) == "theMapCanvas")
-      {
-        QDomNode node = nodes.at(i);
-
-        QgsMapSettings *settings = new QgsMapSettings();
-        settings->readXml(node);
-
-        if(mSbMapSettingsCache.contains(mSbLoadingPath))
-          mSbMapSettingsCache.remove(mSbLoadingPath);
-
-        mSbMapSettingsCache.insert(mSbLoadingPath, settings);
-
-        break;
-      }
-    }
-  }
+  return projects;
 }
 
 QDomDocument *QgsConfigCache::xmlDocument( const QString &filePath )

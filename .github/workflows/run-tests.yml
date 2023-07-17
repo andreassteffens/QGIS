@@ -52,17 +52,17 @@ jobs:
             # LD_PRELOAD: /lib/x86_64-linux-gnu/libSegFault.so
             experimental: false
 
-          - distro-version: '36'
+          - distro-version: '38'
             qt-version: 6
             run-tests: true
             docker-tag-suffix: ''
             with-qt6: ON
             with-qt5: OFF
             with-3d: ON
-            with-quick: OFF
+            with-quick: ON
             with-clazy: OFF
             with-grass7: OFF
-            with-grass8: OFF
+            with-grass8: ON
             with-compile-commands: OFF
             LD_PRELOAD: ''
             experimental: false
@@ -101,7 +101,7 @@ jobs:
 
       - name: Build Docker Container with Build Environment
         id: docker-build
-        uses: whoan/docker-build-with-cache-action@v5
+        uses: whoan/docker-build-with-cache-action@v6
         with:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
@@ -127,7 +127,7 @@ jobs:
           docker push "qgis/qgis3-build-deps:${DOCKER_TAG}"
 
       - name: Prepare build cache for pull request
-        uses: pat-s/always-upload-cache@v3.0.1
+        uses: pat-s/always-upload-cache@v3.0.11
         if: github.event_name == 'pull_request'
         with:
           path: /home/runner/QGIS/.ccache
@@ -141,7 +141,7 @@ jobs:
 
       - name: Prepare build cache for branch/tag
         # use a fork of actions/cache@v2 to upload cache even when the build or test failed
-        uses: pat-s/always-upload-cache@v3.0.1
+        uses: pat-s/always-upload-cache@v3.0.11
         if: github.event_name != 'pull_request'
         with:
           path: /home/runner/QGIS/.ccache
@@ -299,7 +299,7 @@ jobs:
             docker-target: binary-only
 
           - qt-version: 6
-            distro-version: 36
+            distro-version: 38
             docker-target: single
 
           - qt-version: 5
@@ -343,7 +343,7 @@ jobs:
 
       - name: Build Docker Container with Testing Environment
         id: docker-build
-        uses: whoan/docker-build-with-cache-action@v5
+        uses: whoan/docker-build-with-cache-action@v6
         with:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
@@ -397,6 +397,7 @@ jobs:
           echo "TEST_BATCH=$TEST_BATCH"
           echo "DOCKERFILE=$DOCKERFILE"
           mkdir -p /tmp/webdav_tests && chmod 777 /tmp/webdav_tests
+          mkdir -p /tmp/minio_tests/test_bucket && chmod -R 777 /tmp/minio_tests
           docker-compose -f .docker/$DOCKERFILE run qgis-deps /root/QGIS/.docker/docker-qgis-test.sh $TEST_BATCH
 
       - name: Archive test results report
@@ -425,7 +426,7 @@ jobs:
 
       - name: Build Docker Container with Testing Environment
         id: docker-build
-        uses: whoan/docker-build-with-cache-action@v5
+        uses: whoan/docker-build-with-cache-action@v6
         with:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}

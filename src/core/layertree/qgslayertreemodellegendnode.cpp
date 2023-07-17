@@ -37,9 +37,11 @@
 #include "qgsmarkersymbol.h"
 #include "qgsvariantutils.h"
 #include "qgslayertreelayer.h"
-#include "qgsgeometrygeneratorsymbollayer.h"
+#include "qgstextdocument.h"
+#include "qgstextdocumentmetrics.h"
 
 #include <QBuffer>
+#include <optional>
 
 QgsLayerTreeModelLegendNode::QgsLayerTreeModelLegendNode( QgsLayerTreeLayer *nodeL, QObject *parent )
   : QObject( parent )
@@ -84,17 +86,35 @@ void QgsLayerTreeModelLegendNode::setUserPatchSize( QSizeF size )
 
 QgsLayerTreeModelLegendNode::ItemMetrics QgsLayerTreeModelLegendNode::draw( const QgsLegendSettings &settings, ItemContext *ctx )
 {
-  const QFont symbolLabelFont = settings.style( QgsLegendStyle::SymbolLabel ).font();
+  const QgsTextFormat f = settings.style( QgsLegendStyle::SymbolLabel ).textFormat();
 
-  const double textHeight = settings.fontHeightCharacterMM( symbolLabelFont, QChar( '0' ) );
+  const QStringList lines = settings.evaluateItemText( data( Qt::DisplayRole ).toString(), ctx->context->expressionContext() );
+
+  const QgsTextDocument textDocument = f.allowHtmlFormatting() ? QgsTextDocument::fromHtml( lines ) : QgsTextDocument::fromPlainText( lines );
+  // cppcheck-suppress autoVariables
+  ctx->textDocument = &textDocument;
+
+  std::optional< QgsScopedRenderContextScaleToPixels > scaleToPx( *ctx->context );
+  const QgsTextDocumentMetrics textDocumentMetrics = QgsTextDocumentMetrics::calculateMetrics( textDocument, f, *ctx->context,
+      ( ctx->context->flags() & Qgis::RenderContextFlag::ApplyScalingWorkaroundForTextRendering ) ? QgsTextRenderer::FONT_WORKAROUND_SCALE : 1 );
+  // cppcheck-suppress autoVariables
+  ctx->textDocumentMetrics = &textDocumentMetrics;
+  scaleToPx.reset();
+
   // itemHeight here is not really item height, it is only for symbol
   // vertical alignment purpose, i.e. OK take single line height
   // if there are more lines, those run under the symbol
+  // also note that we explicitly use the first line cap height here, in order to match the Qgis::TextLayoutMode::RectangleCapHeightBased mode
+  // used when rendering the symbol text
+  const double textHeight = textDocumentMetrics.firstLineCapHeight() / ctx->context->scaleFactor();
   const double itemHeight = std::max( static_cast< double >( ctx && ctx->patchSize.height() > 0 ? ctx->patchSize.height() : settings.symbolSize().height() ), textHeight );
 
   ItemMetrics im;
   im.symbolSize = drawSymbol( settings, ctx, itemHeight );
   im.labelSize = drawSymbolText( settings, ctx, im.symbolSize );
+
+  ctx->textDocument = nullptr;
+  ctx->textDocumentMetrics = nullptr;
   return im;
 }
 
@@ -163,19 +183,39 @@ QJsonObject QgsLayerTreeModelLegendNode::exportSymbolToJson( const QgsLegendSett
   return json;
 }
 
-QSizeF QgsLayerTreeModelLegendNode::drawSymbolText( const QgsLegendSettings &settings, ItemContext *ctx, QSizeF symbolSize ) const
+QSizeF QgsLayerTreeModelLegendNode::drawSymbolText( const QgsLegendSettings &settings, ItemContext *ctx, QSizeF symbolSizeMM ) const
 {
-  QSizeF labelSize( 0, 0 );
+  // we need a full render context here, so make one if we don't already have one
+  std::unique_ptr< QgsRenderContext > tempContext;
+  QgsRenderContext *context = ctx ? ctx->context : nullptr;
+  if ( !context )
+  {
+    tempContext.reset( new QgsRenderContext( QgsRenderContext::fromQPainter( ctx ? ctx->painter : nullptr ) ) );
+    context = tempContext.get();
+  }
 
-  const QFont symbolLabelFont = settings.style( QgsLegendStyle::SymbolLabel ).font();
-  const double textHeight = settings.fontHeightCharacterMM( symbolLabelFont, QChar( '0' ) );
-  const double textDescent = settings.fontDescentMillimeters( symbolLabelFont );
+  const QgsTextFormat format = settings.style( QgsLegendStyle::SymbolLabel ).textFormat();
 
-  const QgsExpressionContext tempContext;
+  // TODO QGIS 4.0 -- make these all mandatory
+  std::optional< QgsTextDocument > tempDocument;
+  const QgsTextDocument *document = ctx ? ctx->textDocument : nullptr;
+  if ( !document )
+  {
+    const QStringList lines = settings.evaluateItemText( data( Qt::DisplayRole ).toString(), context->expressionContext() );
+    tempDocument.emplace( format.allowHtmlFormatting() ? QgsTextDocument::fromHtml( lines ) : QgsTextDocument::fromPlainText( lines ) );
+    document = &tempDocument.value();
+  }
 
-  const QStringList lines = settings.evaluateItemText( data( Qt::DisplayRole ).toString(), ctx && ctx->context ? ctx->context->expressionContext() : tempContext );
+  std::optional< QgsTextDocumentMetrics > tempMetrics;
+  const QgsTextDocumentMetrics *metrics = ctx ? ctx->textDocumentMetrics : nullptr;
+  if ( !metrics )
+  {
+    tempMetrics.emplace( QgsTextDocumentMetrics::calculateMetrics( *document, format, *context ) );
+    metrics = &tempMetrics.value();
+  }
 
-  labelSize.rheight() = lines.count() * textHeight + ( lines.count() - 1 ) * ( settings.lineSpacing() + textDescent );
+  const double dotsPerMM = context->scaleFactor();
+  QgsScopedRenderContextScaleToPixels scaleToPx( *context );
 
   bool bHasNonEmptyText = false;
   for (QStringList::ConstIterator itemPart = lines.constBegin(); itemPart != lines.constEnd(); ++itemPart)
@@ -184,17 +224,19 @@ QSizeF QgsLayerTreeModelLegendNode::drawSymbolText( const QgsLegendSettings &set
   if ( !bHasNonEmptyText )
     return labelSize;
 
+  const QSizeF documentSize = metrics->documentSize( Qgis::TextLayoutMode::RectangleCapHeightBased, Qgis::TextOrientation::Horizontal );
+  const QSizeF labelSizeMM( documentSize / dotsPerMM );
+
   double labelXMin = 0.0;
   double labelXMax = 0.0;
-  double labelY = 0.0;
-  if ( ctx && ctx->painter )
+  double labelYMM = 0.0;
+  if ( ctx && context->painter() )
   {
-    ctx->painter->setPen( settings.fontColor() );
     switch ( settings.symbolAlignment() )
     {
       case Qt::AlignLeft:
       default:
-        labelXMin = ctx->columnLeft + std::max( static_cast< double >( symbolSize.width() ), ctx->maxSiblingSymbolWidth )
+        labelXMin = ctx->columnLeft + std::max( static_cast< double >( symbolSizeMM.width() ), ctx->maxSiblingSymbolWidth )
                     + settings.style( QgsLegendStyle::Symbol ).margin( QgsLegendStyle::Right )
                     + settings.style( QgsLegendStyle::SymbolLabel ).margin( QgsLegendStyle::Left );
         labelXMax = ctx->columnRight;
@@ -205,53 +247,33 @@ QSizeF QgsLayerTreeModelLegendNode::drawSymbolText( const QgsLegendSettings &set
         // NOTE -- while the below calculations use the flipped margins from the style, that's only done because
         // those are the only margins we expose and use for now! (and we expose them as generic margins, not side-specific
         // ones) TODO when/if we expose other margin settings, these should be reversed...
-        labelXMax = ctx->columnRight - std::max( static_cast< double >( symbolSize.width() ), ctx->maxSiblingSymbolWidth )
+        labelXMax = ctx->columnRight - std::max( static_cast< double >( symbolSizeMM.width() ), ctx->maxSiblingSymbolWidth )
                     - settings.style( QgsLegendStyle::Symbol ).margin( QgsLegendStyle::Right )
                     - settings.style( QgsLegendStyle::SymbolLabel ).margin( QgsLegendStyle::Left );
         break;
     }
 
-    labelY = ctx->top;
+    labelYMM = ctx->top;
 
     // Vertical alignment of label with symbol
-    if ( labelSize.height() < symbolSize.height() )
-      labelY += symbolSize.height() / 2 - labelSize.height() / 2;  // label centered with symbol
-
-    labelY += textHeight;
+    if ( labelSizeMM.height() < symbolSizeMM.height() )
+      labelYMM += ( symbolSizeMM.height() - labelSizeMM.height() ) / 2;  // label centered with symbol
   }
 
-  for ( QStringList::ConstIterator itemPart = lines.constBegin(); itemPart != lines.constEnd(); ++itemPart )
+  if ( context->painter() )
   {
-    if (!itemPart->trimmed().isEmpty() )
-    {
-      const double lineWidth = settings.textWidthMillimeters(symbolLabelFont, *itemPart);
-      labelSize.rwidth() = std::max(lineWidth, double(labelSize.width()));
+    Qgis::TextHorizontalAlignment halign = settings.style( QgsLegendStyle::SymbolLabel ).alignment() == Qt::AlignLeft ? Qgis::TextHorizontalAlignment::Left :
+                                           settings.style( QgsLegendStyle::SymbolLabel ).alignment() == Qt::AlignRight ? Qgis::TextHorizontalAlignment::Right : Qgis::TextHorizontalAlignment::Center;
 
-      if (ctx && ctx->painter)
-      {
-        switch (settings.style(QgsLegendStyle::SymbolLabel).alignment())
-        {
-        case Qt::AlignLeft:
-        default:
-          settings.drawText(ctx->painter, labelXMin, labelY, *itemPart, symbolLabelFont);
-          break;
 
-        case Qt::AlignRight:
-          settings.drawText(ctx->painter, labelXMax - lineWidth, labelY, *itemPart, symbolLabelFont);
-          break;
-
-        case Qt::AlignHCenter:
-          settings.drawText(ctx->painter, labelXMin + (labelXMax - labelXMin - lineWidth) / 2.0, labelY, *itemPart, symbolLabelFont);
-          break;
-        }
-
-        if (itemPart != (lines.end() - 1))
-          labelY += textDescent + settings.lineSpacing() + textHeight;
-      }
-    }
+    QgsTextRenderer::drawDocument( QRectF( labelXMin * dotsPerMM, std::round( labelYMM * dotsPerMM ),
+                                           ( labelXMax - labelXMin )* dotsPerMM,
+                                           std::max( symbolSizeMM.height(), labelSizeMM.height() ) * dotsPerMM ),
+                                   format, *document, *metrics, *context, halign, Qgis::TextVerticalAlignment::Top,
+                                   0, Qgis::TextLayoutMode::RectangleCapHeightBased );
   }
 
-  return labelSize;
+  return labelSizeMM;
 }
 
 void QgsLayerTreeModelLegendNode::checkAllItems()
@@ -337,9 +359,9 @@ QgsSymbolLegendNode::~QgsSymbolLegendNode() = default;
 Qt::ItemFlags QgsSymbolLegendNode::flags() const
 {
   if ( mItem.isCheckable() )
-    return Qt::ItemIsEnabled | Qt::ItemIsUserCheckable;
+    return Qt::ItemIsEnabled | Qt::ItemIsUserCheckable | Qt::ItemIsSelectable;
   else
-    return Qt::ItemIsEnabled;
+    return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
 }
 
 
@@ -375,11 +397,14 @@ QSize QgsSymbolLegendNode::minimumIconSize( QgsRenderContext *context ) const
     const QSize size( mItem.symbol()->type() == Qgis::SymbolType::Marker ? maxSize : minSz.width(),
                       maxSize );
 
+    QgsScreenProperties targetScreen = model() && !model()->targetScreenProperties().isEmpty()
+                                       ? *model()->targetScreenProperties().begin() : QgsScreenProperties();
+
     minSz = QgsImageOperation::nonTransparentImageRect(
               QgsSymbolLayerUtils::symbolPreviewPixmap( symbol ? symbol.get() : mItem.symbol(), size, 0,
-                  context ).toImage(),
+                  context, false, nullptr, nullptr, targetScreen ).toImage(),
               minSz,
-              true ).size();
+              true ).size() / targetScreen.devicePixelRatio();
   }
 
   if ( !mTextOnSymbolLabel.isEmpty() && context )
@@ -478,6 +503,11 @@ QgsRenderContext *QgsLayerTreeModelLegendNode::createTemporaryRenderContext() co
   context->setFlag( Qgis::RenderContextFlag::Antialiasing, true );
   context->setFlag( Qgis::RenderContextFlag::RenderSymbolPreview, true );
 
+  if ( model() && !model()->targetScreenProperties().isEmpty() )
+  {
+    model()->targetScreenProperties().begin()->updateRenderContextForScreen( *context );
+  }
+
   QgsExpressionContext expContext;
   expContext.appendScopes( QgsExpressionContextUtils::globalProjectLayerScopes( mLayerNode ? mLayerNode->layer() : nullptr ) );
   context->setExpressionContext( expContext );
@@ -531,9 +561,11 @@ QVariant QgsSymbolLegendNode::data( int role ) const
   }
   else if ( role == Qt::DecorationRole )
   {
-    if ( mPixmap.isNull() || mPixmap.size() != mIconSize )
+    if ( mPixmap.isNull() )
     {
-      QPixmap pix;
+      QgsScreenProperties targetScreen = model() && !model()->targetScreenProperties().isEmpty()
+                                         ? *model()->targetScreenProperties().begin() : QgsScreenProperties();
+
       if ( mItem.symbol() )
       {
         std::unique_ptr<QgsRenderContext> context( createTemporaryRenderContext() );
@@ -542,11 +574,11 @@ QVariant QgsSymbolLegendNode::data( int role ) const
         double width = 0.0;
         double height = 0.0;
         const std::unique_ptr<QgsSymbol> symbol( QgsSymbolLayerUtils::restrictedSizeSymbol( mItem.symbol(), MINIMUM_SIZE, MAXIMUM_SIZE, context.get(), width, height ) );
-        pix = QgsSymbolLayerUtils::symbolPreviewPixmap( symbol ? symbol.get() : mItem.symbol(), mIconSize, 0, context.get() );
+        mPixmap = QgsSymbolLayerUtils::symbolPreviewPixmap( symbol ? symbol.get() : mItem.symbol(), mIconSize, 0, context.get(), false, nullptr, nullptr, targetScreen );
 
         if ( !mTextOnSymbolLabel.isEmpty() && context )
         {
-          QPainter painter( &pix );
+          QPainter painter( &mPixmap );
           painter.setRenderHint( QPainter::Antialiasing );
           context->setPainter( &painter );
           bool isNullSize = false;
@@ -561,11 +593,9 @@ QVariant QgsSymbolLegendNode::data( int role ) const
       }
       else
       {
-        pix = QPixmap( mIconSize );
-        pix.fill( Qt::transparent );
+        mPixmap = QPixmap( mIconSize * targetScreen.devicePixelRatio() );
+        mPixmap.fill( Qt::transparent );
       }
-
-      mPixmap = pix;
     }
     return mPixmap;
   }
@@ -619,8 +649,6 @@ bool QgsSymbolLegendNode::setData( const QVariant &value, int role )
 
   return true;
 }
-
-
 
 QSizeF QgsSymbolLegendNode::drawSymbol( const QgsLegendSettings &settings, ItemContext *ctx, double itemHeight ) const
 {
@@ -768,7 +796,7 @@ QSizeF QgsSymbolLegendNode::drawSymbol( const QgsLegendSettings &settings, ItemC
 
       context->setPainter( &imagePainter );
       imagePainter.translate( maxBleed, maxBleed );
-      s->drawPreviewIcon( &imagePainter, symbolSize, context, false, nullptr, &patchShape );
+      s->drawPreviewIcon( &imagePainter, symbolSize, context, false, nullptr, &patchShape, ctx->screenProperties );
       imagePainter.translate( -maxBleed, -maxBleed );
       context->setPainter( ctx->painter );
       //reduce opacity of image
@@ -787,12 +815,12 @@ QSizeF QgsSymbolLegendNode::drawSymbol( const QgsLegendSettings &settings, ItemC
       const QSize maxSize( symbolSize.width() + maxBleed * 2, symbolSize.height() + maxBleed * 2 );
       p->save();
       p->setClipRect( -maxBleed, -maxBleed, maxSize.width(), maxSize.height(), Qt::IntersectClip );
-      s->drawPreviewIcon( p, symbolSize, context, false, nullptr, &patchShape );
+      s->drawPreviewIcon( p, symbolSize, context, false, nullptr, &patchShape, ctx->screenProperties );
       p->restore();
     }
     else
     {
-      s->drawPreviewIcon( p, QSize( static_cast< int >( std::round( width * dotsPerMM ) ), static_cast< int >( std::round( height * dotsPerMM ) ) ), context, false, nullptr, &patchShape );
+      s->drawPreviewIcon( p, QSize( static_cast< int >( std::round( width * dotsPerMM ) ), static_cast< int >( std::round( height * dotsPerMM ) ) ), context, false, nullptr, &patchShape, ctx->screenProperties );
     }
 
     if ( !mTextOnSymbolLabel.isEmpty() )
@@ -889,6 +917,15 @@ void QgsSymbolLegendNode::invalidateMapBasedData()
   }
 }
 
+void QgsSymbolLegendNode::setIconSize( QSize sz )
+{
+  if ( mIconSize == sz )
+    return;
+
+  mIconSize = sz;
+  mPixmap = QPixmap();
+  emit dataChanged();
+}
 
 void QgsSymbolLegendNode::updateLabel()
 {
@@ -1069,9 +1106,9 @@ QgsRasterSymbolLegendNode::QgsRasterSymbolLegendNode( QgsLayerTreeLayer *nodeLay
 Qt::ItemFlags QgsRasterSymbolLegendNode::flags() const
 {
   if ( mCheckable )
-    return Qt::ItemIsEnabled | Qt::ItemIsUserCheckable;
+    return Qt::ItemIsEnabled | Qt::ItemIsUserCheckable | Qt::ItemIsSelectable;
   else
-    return Qt::ItemIsEnabled;
+    return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
 }
 
 QVariant QgsRasterSymbolLegendNode::data( int role ) const
@@ -1286,7 +1323,7 @@ QImage QgsWmsLegendNode::getLegendGraphic() const
     }
     else
     {
-      QgsDebugMsg( tr( "Failed to download legend graphics: layer is not valid." ) );
+      QgsDebugError( QStringLiteral( "Failed to download legend graphics: layer is not valid." ) );
     }
   }
 
@@ -1509,8 +1546,8 @@ QgsLayerTreeModelLegendNode::ItemMetrics QgsDataDefinedSizeLegendNode::draw( con
   }
 
   QgsDataDefinedSizeLegend ddsLegend( *mSettings );
-  ddsLegend.setFont( settings.style( QgsLegendStyle::SymbolLabel ).font() );
-  ddsLegend.setTextColor( settings.fontColor() );
+  ddsLegend.setFont( settings.style( QgsLegendStyle::SymbolLabel ).textFormat().toQFont() );
+  ddsLegend.setTextColor( settings.style( QgsLegendStyle::SymbolLabel ).textFormat().color() );
 
   QSizeF contentSize;
   double labelXOffset;

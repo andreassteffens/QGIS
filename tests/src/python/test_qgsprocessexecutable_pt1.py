@@ -33,12 +33,14 @@ class TestQgsProcessExecutablePt1(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         cls.TMP_DIR = tempfile.mkdtemp()
         # print('TMP_DIR: ' + cls.TMP_DIR)
         # subprocess.call(['open', cls.TMP_DIR])
 
     @classmethod
     def tearDownClass(cls):
+        super().tearDownClass()
         shutil.rmtree(cls.TMP_DIR, ignore_errors=True)
 
     @staticmethod
@@ -185,7 +187,7 @@ class TestQgsProcessExecutablePt1(unittest.TestCase):
 
     def testAlgorithmRunLegacy(self):
         output_file = self.TMP_DIR + '/polygon_centroid.shp'
-        rc, output, err = self.run_process(['run', '--no-python', 'native:centroids', '--INPUT={}'.format(TEST_DATA_DIR + '/polys.shp'), f'--OUTPUT={output_file}'])
+        rc, output, err = self.run_process(['run', '--no-python', 'native:centroids', f"--INPUT={TEST_DATA_DIR + '/polys.shp'}", f'--OUTPUT={output_file}'])
         self.assertFalse(self._strip_ignorable_errors(err))
         self.assertIn('0...10...20...30...40...50...60...70...80...90', output.lower())
         self.assertIn('results', output.lower())
@@ -195,7 +197,7 @@ class TestQgsProcessExecutablePt1(unittest.TestCase):
 
     def testAlgorithmRun(self):
         output_file = self.TMP_DIR + '/polygon_centroid.shp'
-        rc, output, err = self.run_process(['run', '--no-python', 'native:centroids', '--', 'INPUT={}'.format(TEST_DATA_DIR + '/polys.shp'), f'OUTPUT={output_file}'])
+        rc, output, err = self.run_process(['run', '--no-python', 'native:centroids', '--', f"INPUT={TEST_DATA_DIR + '/polys.shp'}", f'OUTPUT={output_file}'])
         self.assertFalse(self._strip_ignorable_errors(err))
         self.assertIn('0...10...20...30...40...50...60...70...80...90', output.lower())
         self.assertIn('results', output.lower())

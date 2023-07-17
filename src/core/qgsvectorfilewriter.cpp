@@ -18,26 +18,20 @@
 
 #include "qgsapplication.h"
 #include "qgsfields.h"
-#include "qgsfeature.h"
-#include "qgsfeatureiterator.h"
-#include "qgsgeometry.h"
 
+#include "qgsgdalutils.h"
 #include "qgslogger.h"
 #include "qgsmessagelog.h"
 #include "qgscoordinatereferencesystem.h"
 #include "qgsvectorfilewriter.h"
-#include "qgsrenderer.h"
-#include "qgssymbollayer.h"
-#include "qgsvectordataprovider.h"
-#include "qgsvectorlayer.h"
-#include "qgslocalec.h"
-#include "qgsexception.h"
 #include "qgssettings.h"
-#include "qgsgeometryengine.h"
+#include "qgssymbol.h"
+#include "qgssymbollayer.h"
+#include "qgslocalec.h"
+#include "qgsvectorlayer.h"
 #include "qgsproviderregistry.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgsreadwritelocker.h"
-#include "qgssymbol.h"
 
 #include <QFile>
 #include <QFileInfo>
@@ -79,13 +73,13 @@ QgsVectorFileWriter::QgsVectorFileWriter(
   const QString &vectorFileName,
   const QString &fileEncoding,
   const QgsFields &fields,
-  QgsWkbTypes::Type geometryType,
+  Qgis::WkbType geometryType,
   const QgsCoordinateReferenceSystem &srs,
   const QString &driverName,
   const QStringList &datasourceOptions,
   const QStringList &layerOptions,
   QString *newFilename,
-  SymbologyExport symbologyExport,
+  Qgis::FeatureSymbologyExport symbologyExport,
   QgsFeatureSink::SinkFlags sinkFlags,
   QString *newLayer,
   const QgsCoordinateTransformContext &transformContext,
@@ -105,13 +99,13 @@ QgsVectorFileWriter::QgsVectorFileWriter(
   const QString &vectorFileName,
   const QString &fileEncoding,
   const QgsFields &fields,
-  QgsWkbTypes::Type geometryType,
+  Qgis::WkbType geometryType,
   const QgsCoordinateReferenceSystem &srs,
   const QString &driverName,
   const QStringList &datasourceOptions,
   const QStringList &layerOptions,
   QString *newFilename,
-  QgsVectorFileWriter::SymbologyExport symbologyExport,
+  Qgis::FeatureSymbologyExport symbologyExport,
   FieldValueConverter *fieldValueConverter,
   const QString &layerName,
   ActionOnExistingFile action,
@@ -133,7 +127,7 @@ QgsVectorFileWriter::QgsVectorFileWriter(
 QgsVectorFileWriter *QgsVectorFileWriter::create(
   const QString &fileName,
   const QgsFields &fields,
-  QgsWkbTypes::Type geometryType,
+  Qgis::WkbType geometryType,
   const QgsCoordinateReferenceSystem &srs,
   const QgsCoordinateTransformContext &transformContext,
   const QgsVectorFileWriter::SaveVectorOptions &options,
@@ -164,13 +158,17 @@ bool QgsVectorFileWriter::supportsFeatureStyles( const QString &driverName )
   if ( !driverMetadata )
     return false;
 
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,7,0)
+  return CSLFetchBoolean( driverMetadata, GDAL_DCAP_FEATURE_STYLES_WRITE, false );
+#else
   return CSLFetchBoolean( driverMetadata, GDAL_DCAP_FEATURE_STYLES, false );
+#endif
 }
 
 void QgsVectorFileWriter::init( QString vectorFileName,
                                 QString fileEncoding,
                                 const QgsFields &fields,
-                                QgsWkbTypes::Type geometryType,
+                                Qgis::WkbType geometryType,
                                 QgsCoordinateReferenceSystem srs,
                                 const QString &driverName,
                                 QStringList datasourceOptions,
@@ -248,6 +246,8 @@ void QgsVectorFileWriter::init( QString vectorFileName,
     mError = ErrDriverNotFound;
     return;
   }
+
+  mOgrDriverLongName = QString( GDALGetMetadataItem( poDriver, GDAL_DMD_LONGNAME, nullptr ) );
 
   MetaData metadata;
   bool metadataFound = driverMetadata( driverName, metadata );
@@ -408,14 +408,14 @@ void QgsVectorFileWriter::init( QString vectorFileName,
   mCodec = QTextCodec::codecForName( fileEncoding.toLocal8Bit().constData() );
   if ( !mCodec )
   {
-    QgsDebugMsg( "error finding QTextCodec for " + fileEncoding );
+    QgsDebugError( "error finding QTextCodec for " + fileEncoding );
 
     QgsSettings settings;
     QString enc = settings.value( QStringLiteral( "UI/encoding" ), "System" ).toString();
     mCodec = QTextCodec::codecForName( enc.toLocal8Bit().constData() );
     if ( !mCodec )
     {
-      QgsDebugMsg( "error finding QTextCodec for " + enc );
+      QgsDebugError( "error finding QTextCodec for " + enc );
       mCodec = QTextCodec::codecForLocale();
       Q_ASSERT( mCodec );
     }
@@ -470,7 +470,7 @@ void QgsVectorFileWriter::init( QString vectorFileName,
         // See logic in GDAL ogr/ogrsf_frmts/gpx/ogrgpxdatasource.cpp ICreateLayer()
         switch ( QgsWkbTypes::flatType( geometryType ) )
         {
-          case QgsWkbTypes::Point:
+          case Qgis::WkbType::Point:
           {
             if ( !EQUAL( layerName.toUtf8().constData(), "track_points" ) &&
                  !EQUAL( layerName.toUtf8().constData(), "route_points" ) )
@@ -480,7 +480,7 @@ void QgsVectorFileWriter::init( QString vectorFileName,
           }
           break;
 
-          case QgsWkbTypes::LineString:
+          case Qgis::WkbType::LineString:
           {
             const char *pszForceGPXTrack
               = CSLFetchNameValue( options, "FORCE_GPX_TRACK" );
@@ -492,7 +492,7 @@ void QgsVectorFileWriter::init( QString vectorFileName,
           }
           break;
 
-          case QgsWkbTypes::MultiLineString:
+          case Qgis::WkbType::MultiLineString:
           {
             const char *pszForceGPXRoute
               = CSLFetchNameValue( options, "FORCE_GPX_ROUTE" );
@@ -561,6 +561,22 @@ void QgsVectorFileWriter::init( QString vectorFileName,
   QSet<int> existingIdxs;
 
   mFieldValueConverter = fieldValueConverter;
+
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,7,0)
+  if ( const char *pszCreateFieldDefnFlags = GDALGetMetadataItem( poDriver, GDAL_DMD_CREATION_FIELD_DEFN_FLAGS, nullptr ) )
+  {
+    char **papszTokens = CSLTokenizeString2( pszCreateFieldDefnFlags, " ", 0 );
+    if ( CSLFindString( papszTokens, "AlternativeName" ) >= 0 )
+    {
+      mCapabilities |= Qgis::VectorFileWriterCapability::FieldAliases;
+    }
+    if ( CSLFindString( papszTokens, "Comment" ) >= 0 )
+    {
+      mCapabilities |= Qgis::VectorFileWriterCapability::FieldComments;
+    }
+    CSLDestroy( papszTokens );
+  }
+#endif
 
   switch ( action )
   {
@@ -706,6 +722,21 @@ void QgsVectorFileWriter::init( QString vectorFileName,
             break;
           }
 
+          case QVariant::Map:
+          {
+            // handle GPKG conversion to JSON
+            const char *pszDataSubTypes = GDALGetMetadataItem( poDriver, GDAL_DMD_CREATIONFIELDDATASUBTYPES, nullptr );
+            if ( pszDataSubTypes && strstr( pszDataSubTypes, "JSON" ) )
+            {
+              ogrType = OFTString;
+              ogrSubType = OFSTJSON;
+              break;
+            }
+          }
+
+            //intentional fall-through
+          FALLTHROUGH
+
           case QVariant::List:
             // handle GPKG conversion to JSON
             if ( mOgrDriverName == QLatin1String( "GPKG" ) )
@@ -827,6 +858,13 @@ void QgsVectorFileWriter::init( QString vectorFileName,
         if ( ogrSubType != OFSTNone )
           OGR_Fld_SetSubType( fld.get(), ogrSubType );
 
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,6,0)
+        OGR_Fld_SetAlternativeName( fld.get(), mCodec->fromUnicode( attrField.alias() ).constData() );
+#endif
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,7,0)
+        OGR_Fld_SetComment( fld.get(), mCodec->fromUnicode( attrField.comment() ).constData() );
+#endif
+
         // create the field
         QgsDebugMsgLevel( "creating field " + attrField.name() +
                           " type " + QString( QVariant::typeToName( attrField.type() ) ) +
@@ -834,7 +872,7 @@ void QgsVectorFileWriter::init( QString vectorFileName,
                           " precision " + QString::number( ogrPrecision ), 2 );
         if ( OGR_L_CreateField( mLayer, fld.get(), true ) != OGRERR_NONE )
         {
-          QgsDebugMsg( "error creating field " + attrField.name() );
+          QgsDebugError( "error creating field " + attrField.name() );
           mErrorMessage = QObject::tr( "Creation of field %1 failed (OGR error: %2)" )
                           .arg( attrField.name(),
                                 QString::fromUtf8( CPLGetLastErrorMsg() ) );
@@ -851,7 +889,7 @@ void QgsVectorFileWriter::init( QString vectorFileName,
 
           if ( ogrIdx < 0 )
           {
-            QgsDebugMsg( "error creating field " + attrField.name() );
+            QgsDebugError( "error creating field " + attrField.name() );
             mErrorMessage = QObject::tr( "Created field %1 not found (OGR error: %2)" )
                             .arg( attrField.name(),
                                   QString::fromUtf8( CPLGetLastErrorMsg() ) );
@@ -905,7 +943,7 @@ void QgsVectorFileWriter::init( QString vectorFileName,
   }
 }
 
-OGRGeometryH QgsVectorFileWriter::createEmptyGeometry( QgsWkbTypes::Type wkbType )
+OGRGeometryH QgsVectorFileWriter::createEmptyGeometry( Qgis::WkbType wkbType )
 {
   return OGR_G_CreateGeometry( ogrTypeFromWkbType( wkbType ) );
 }
@@ -2508,12 +2546,12 @@ QStringList QgsVectorFileWriter::defaultLayerOptions( const QString &driverName 
   return concatenateOptions( metadata.layerOptions );
 }
 
-OGRwkbGeometryType QgsVectorFileWriter::ogrTypeFromWkbType( QgsWkbTypes::Type type )
+OGRwkbGeometryType QgsVectorFileWriter::ogrTypeFromWkbType( Qgis::WkbType type )
 {
 
   OGRwkbGeometryType ogrType = static_cast<OGRwkbGeometryType>( type );
 
-  if ( type >= QgsWkbTypes::PointZ && type <= QgsWkbTypes::GeometryCollectionZ )
+  if ( type >= Qgis::WkbType::PointZ && type <= Qgis::WkbType::GeometryCollectionZ )
   {
     ogrType = static_cast<OGRwkbGeometryType>( QgsWkbTypes::to25D( type ) );
   }
@@ -2530,9 +2568,24 @@ QString QgsVectorFileWriter::errorMessage() const
   return mErrorMessage;
 }
 
+QString QgsVectorFileWriter::driver() const
+{
+  return mOgrDriverName;
+}
+
+QString QgsVectorFileWriter::driverLongName() const
+{
+  return mOgrDriverLongName;
+}
+
+Qgis::VectorFileWriterCapabilities QgsVectorFileWriter::capabilities() const
+{
+  return mCapabilities;
+}
+
 bool QgsVectorFileWriter::addFeature( QgsFeature &feature, QgsFeatureSink::Flags )
 {
-  return addFeatureWithStyle( feature, nullptr, QgsUnitTypes::DistanceMeters );
+  return addFeatureWithStyle( feature, nullptr, Qgis::DistanceUnit::Meters );
 }
 
 bool QgsVectorFileWriter::addFeatures( QgsFeatureList &features, QgsFeatureSink::Flags )
@@ -2541,7 +2594,7 @@ bool QgsVectorFileWriter::addFeatures( QgsFeatureList &features, QgsFeatureSink:
   bool result = true;
   for ( ; fIt != features.end(); ++fIt )
   {
-    result = result && addFeatureWithStyle( *fIt, nullptr, QgsUnitTypes::DistanceMeters );
+    result = result && addFeatureWithStyle( *fIt, nullptr, Qgis::DistanceUnit::Meters );
   }
   return result;
 }
@@ -2551,7 +2604,7 @@ QString QgsVectorFileWriter::lastError() const
   return mErrorMessage;
 }
 
-bool QgsVectorFileWriter::addFeatureWithStyle( QgsFeature &feature, QgsFeatureRenderer *renderer, QgsUnitTypes::DistanceUnit outputUnit )
+bool QgsVectorFileWriter::addFeatureWithStyle( QgsFeature &feature, QgsFeatureRenderer *renderer, Qgis::DistanceUnit outputUnit )
 {
   // create the feature
   gdal::ogr_feature_unique_ptr poFeature = createFeature( feature );
@@ -2559,7 +2612,7 @@ bool QgsVectorFileWriter::addFeatureWithStyle( QgsFeature &feature, QgsFeatureRe
     return false;
 
   //add OGR feature style type
-  if ( mSymbologyExport != NoSymbology && renderer )
+  if ( mSymbologyExport != Qgis::FeatureSymbologyExport::NoSymbology && renderer )
   {
     mRenderContext.expressionContext().setFeature( feature );
     //SymbolLayerSymbology: concatenate ogr styles of all symbollayers
@@ -2585,33 +2638,49 @@ bool QgsVectorFileWriter::addFeatureWithStyle( QgsFeature &feature, QgsFeatureRe
 
         currentStyle = ( *symbolIt )->symbolLayer( i )->ogrFeatureStyle( mmsf, musf );//"@" + it.value();
 
-        if ( mSymbologyExport == FeatureSymbology )
+        switch ( mSymbologyExport )
         {
-          if ( symbolIt != symbols.constBegin() || i != 0 )
+          case Qgis::FeatureSymbologyExport::PerFeature:
           {
-            styleString.append( ';' );
+            if ( symbolIt != symbols.constBegin() || i != 0 )
+            {
+              styleString.append( ';' );
+            }
+            styleString.append( currentStyle );
+            break;
           }
-          styleString.append( currentStyle );
-        }
-        else if ( mSymbologyExport == SymbolLayerSymbology )
-        {
-          OGR_F_SetStyleString( poFeature.get(), currentStyle.toLocal8Bit().constData() );
-          if ( !writeFeature( mLayer, poFeature.get() ) )
+          case Qgis::FeatureSymbologyExport::PerSymbolLayer:
           {
-            return false;
+            OGR_F_SetStyleString( poFeature.get(), currentStyle.toLocal8Bit().constData() );
+            if ( !writeFeature( mLayer, poFeature.get() ) )
+            {
+              return false;
+            }
+            break;
           }
+
+          case Qgis::FeatureSymbologyExport::NoSymbology:
+            break;
         }
       }
     }
     OGR_F_SetStyleString( poFeature.get(), styleString.toLocal8Bit().constData() );
   }
 
-  if ( mSymbologyExport == NoSymbology || mSymbologyExport == FeatureSymbology )
+  switch ( mSymbologyExport )
   {
-    if ( !writeFeature( mLayer, poFeature.get() ) )
+    case Qgis::FeatureSymbologyExport::NoSymbology:
+    case Qgis::FeatureSymbologyExport::PerFeature:
     {
-      return false;
+      if ( !writeFeature( mLayer, poFeature.get() ) )
+      {
+        return false;
+      }
+      break;
     }
+
+    case Qgis::FeatureSymbologyExport::PerSymbolLayer:
+      break;
   }
 
   return true;
@@ -2919,6 +2988,28 @@ gdal::ogr_feature_unique_ptr QgsVectorFileWriter::createFeature( const QgsFeatur
         //intentional fall-through
         FALLTHROUGH
 
+      case QVariant::Map:
+      {
+        // handle GPKG conversion to JSON
+        const char *pszDataSubTypes = GDALGetMetadataItem( OGRGetDriverByName( mOgrDriverName.toLocal8Bit().constData() ), GDAL_DMD_CREATIONFIELDDATASUBTYPES, nullptr );
+        if ( pszDataSubTypes && strstr( pszDataSubTypes, "JSON" ) )
+        {
+          const QJsonDocument doc = QJsonDocument::fromVariant( attrValue );
+          QString jsonString;
+          if ( !doc.isNull() )
+          {
+            const QByteArray json { doc.toJson( QJsonDocument::Compact ) };
+            jsonString = QString::fromUtf8( json.data() );
+          }
+          OGR_F_SetFieldString( poFeature.get(), ogrField, mCodec->fromUnicode( jsonString.constData() ) );
+          break;
+        }
+      }
+
+        //intentional fall-through
+      FALLTHROUGH
+
+
       default:
         mErrorMessage = QObject::tr( "Invalid variant type for field %1[%2]: received %3 with type %4" )
                         .arg( mFields.at( fldIdx ).name() )
@@ -2931,7 +3022,7 @@ gdal::ogr_feature_unique_ptr QgsVectorFileWriter::createFeature( const QgsFeatur
     }
   }
 
-  if ( mWkbType != QgsWkbTypes::NoGeometry )
+  if ( mWkbType != Qgis::WkbType::NoGeometry )
   {
     if ( feature.hasGeometry() )
     {
@@ -2964,16 +3055,16 @@ gdal::ogr_feature_unique_ptr QgsVectorFileWriter::createFeature( const QgsFeatur
 
         // If requested WKB type is 25D and geometry WKB type is 3D,
         // we must force the use of 25D.
-        if ( mWkbType >= QgsWkbTypes::Point25D && mWkbType <= QgsWkbTypes::MultiPolygon25D )
+        if ( mWkbType >= Qgis::WkbType::Point25D && mWkbType <= Qgis::WkbType::MultiPolygon25D )
         {
           //ND: I suspect there's a bug here, in that this is NOT converting the geometry's WKB type,
           //so the exported WKB has a different type to what the OGRGeometry is expecting.
           //possibly this is handled already in OGR, but it should be fixed regardless by actually converting
           //geom to the correct WKB type
-          QgsWkbTypes::Type wkbType = geom.wkbType();
-          if ( wkbType >= QgsWkbTypes::PointZ && wkbType <= QgsWkbTypes::MultiPolygonZ )
+          Qgis::WkbType wkbType = geom.wkbType();
+          if ( wkbType >= Qgis::WkbType::PointZ && wkbType <= Qgis::WkbType::MultiPolygonZ )
           {
-            QgsWkbTypes::Type wkbType25d = static_cast<QgsWkbTypes::Type>( geom.wkbType() - QgsWkbTypes::PointZ + QgsWkbTypes::Point25D );
+            Qgis::WkbType wkbType25d = static_cast<Qgis::WkbType>( static_cast< quint32>( geom.wkbType() ) - static_cast< quint32>( Qgis::WkbType::PointZ ) + static_cast<quint32>( Qgis::WkbType::Point25D ) );
             mGeom2 = createEmptyGeometry( wkbType25d );
           }
         }
@@ -3100,7 +3191,7 @@ QgsVectorFileWriter::~QgsVectorFileWriter()
   {
     if ( OGRERR_NONE != OGR_L_CommitTransaction( mLayer ) )
     {
-      QgsDebugMsg( QStringLiteral( "Error while committing transaction on OGRLayer." ) );
+      QgsDebugError( QStringLiteral( "Error while committing transaction on OGRLayer." ) );
     }
   }
   mDS.reset();
@@ -3123,10 +3214,10 @@ QgsVectorFileWriter::writeAsVectorFormat( QgsVectorLayer *layer,
     const QStringList &layerOptions,
     bool skipAttributeCreation,
     QString *newFilename,
-    SymbologyExport symbologyExport,
+    Qgis::FeatureSymbologyExport symbologyExport,
     double symbologyScale,
     const QgsRectangle *filterExtent,
-    QgsWkbTypes::Type overrideGeometryType,
+    Qgis::WkbType overrideGeometryType,
     bool forceMulti,
     bool includeZ,
     const QgsAttributeList &attributes,
@@ -3170,10 +3261,10 @@ QgsVectorFileWriter::WriterError QgsVectorFileWriter::writeAsVectorFormat( QgsVe
     const QStringList &layerOptions,
     bool skipAttributeCreation,
     QString *newFilename,
-    SymbologyExport symbologyExport,
+    Qgis::FeatureSymbologyExport symbologyExport,
     double symbologyScale,
     const QgsRectangle *filterExtent,
-    QgsWkbTypes::Type overrideGeometryType,
+    Qgis::WkbType overrideGeometryType,
     bool forceMulti,
     bool includeZ,
     const QgsAttributeList &attributes,
@@ -3257,7 +3348,7 @@ QgsVectorFileWriter::WriterError QgsVectorFileWriter::prepareWriteAsVectorFormat
   }
 
   details.destWkbType = details.sourceWkbType;
-  if ( options.overrideGeometryType != QgsWkbTypes::Unknown )
+  if ( options.overrideGeometryType != Qgis::WkbType::Unknown )
   {
     details.destWkbType = QgsWkbTypes::flatType( options.overrideGeometryType );
     if ( QgsWkbTypes::hasZ( options.overrideGeometryType ) || options.includeZ )
@@ -3295,7 +3386,7 @@ QgsVectorFileWriter::WriterError QgsVectorFileWriter::prepareWriteAsVectorFormat
       }
       else
       {
-        QgsDebugMsg( QStringLiteral( "No such source field with index '%1' available." ).arg( attrIdx ) );
+        QgsDebugError( QStringLiteral( "No such source field with index '%1' available." ).arg( attrIdx ) );
       }
     }
   }
@@ -3366,7 +3457,7 @@ QgsVectorFileWriter::WriterError QgsVectorFileWriter::writeAsVectorFormat( Prepa
 
 QgsVectorFileWriter::WriterError QgsVectorFileWriter::writeAsVectorFormatV2( PreparedWriterDetails &details, const QString &fileName, const QgsCoordinateTransformContext &transformContext, const QgsVectorFileWriter::SaveVectorOptions &options, QString *newFilename, QString *newLayer, QString *errorMessage )
 {
-  QgsWkbTypes::Type destWkbType = details.destWkbType;
+  Qgis::WkbType destWkbType = details.destWkbType;
 
   int lastProgressReport = 0;
   long long total = details.featureCount;
@@ -3457,26 +3548,33 @@ QgsVectorFileWriter::WriterError QgsVectorFileWriter::writeAsVectorFormatV2( Pre
   QgsFeature fet;
 
   //create symbol table if needed
-  if ( writer->symbologyExport() != NoSymbology )
+  if ( writer->symbologyExport() != Qgis::FeatureSymbologyExport::NoSymbology )
   {
     //writer->createSymbolLayerTable( layer,  writer->mDS );
   }
 
-  if ( writer->symbologyExport() == SymbolLayerSymbology )
+  switch ( writer->symbologyExport() )
   {
-    QgsFeatureRenderer *r = details.renderer.get();
-    if ( r && r->capabilities() & QgsFeatureRenderer::SymbolLevels
-         && r->usingSymbolLevels() )
+    case Qgis::FeatureSymbologyExport::PerSymbolLayer:
     {
-      QgsVectorFileWriter::WriterError error = writer->exportFeaturesSymbolLevels( details, details.sourceFeatureIterator, options.ct, errorMessage );
-      return ( error == NoError ) ? NoError : ErrFeatureWriteFailed;
+      QgsFeatureRenderer *r = details.renderer.get();
+      if ( r && r->capabilities() & QgsFeatureRenderer::SymbolLevels
+           && r->usingSymbolLevels() )
+      {
+        QgsVectorFileWriter::WriterError error = writer->exportFeaturesSymbolLevels( details, details.sourceFeatureIterator, options.ct, errorMessage );
+        return ( error == NoError ) ? NoError : ErrFeatureWriteFailed;
+      }
+      break;
     }
+    case Qgis::FeatureSymbologyExport::NoSymbology:
+    case Qgis::FeatureSymbologyExport::PerFeature:
+      break;
   }
 
   int n = 0, errors = 0;
 
   //unit type
-  QgsUnitTypes::DistanceUnit mapUnits = details.sourceCrs.mapUnits();
+  Qgis::DistanceUnit mapUnits = details.sourceCrs.mapUnits();
   if ( options.ct.isValid() )
   {
     mapUnits = options.ct.destinationCrs().mapUnits();
@@ -3674,7 +3772,7 @@ bool QgsVectorFileWriter::deleteShapeFile( const QString &fileName )
     QFile f( dir.canonicalPath() + '/' + file );
     if ( !f.remove() )
     {
-      QgsDebugMsg( QStringLiteral( "Removing file %1 failed: %2" ).arg( file, f.errorString() ) );
+      QgsDebugError( QStringLiteral( "Removing file %1 failed: %2" ).arg( file, f.errorString() ) );
       ok = false;
     }
   }
@@ -3686,6 +3784,33 @@ void QgsVectorFileWriter::setSymbologyScale( double d )
 {
   mSymbologyScale = d;
   mRenderContext.setRendererScale( mSymbologyScale );
+}
+
+QStringList multiLayerFormats()
+{
+  QStringList driverNames;
+  const QSet< QString > multiLayerExtensions = qgis::listToSet( QgsGdalUtils::multiLayerFileExtensions() );
+
+  for ( int i = 0; i < GDALGetDriverCount(); ++i )
+  {
+    GDALDriverH driver = GDALGetDriver( i );
+    if ( !driver )
+    {
+      QgsLogger::warning( "unable to get driver " + QString::number( i ) );
+      continue;
+    }
+
+    const QString driverExtensions = GDALGetMetadataItem( driver, GDAL_DMD_EXTENSIONS, "" );
+    if ( driverExtensions.isEmpty() )
+      continue;
+
+    const QSet< QString > splitExtensions = qgis::listToSet( driverExtensions.split( ' ', Qt::SkipEmptyParts ) );
+    if ( splitExtensions.intersects( multiLayerExtensions ) )
+    {
+      driverNames << OGR_Dr_GetName( driver );
+    }
+  }
+  return driverNames;
 }
 
 QList< QgsVectorFileWriter::FilterFormatDetails > QgsVectorFileWriter::supportedFiltersAndFormats( const VectorFormatOptions options )
@@ -3705,12 +3830,20 @@ QList< QgsVectorFileWriter::FilterFormatDetails > QgsVectorFileWriter::supported
   QgsApplication::registerOgrDrivers();
   int const drvCount = OGRGetDriverCount();
 
+  const QStringList multiLayerDrivers = multiLayerFormats();
+
   for ( int i = 0; i < drvCount; ++i )
   {
     OGRSFDriverH drv = OGRGetDriver( i );
     if ( drv )
     {
-      QString drvName = OGR_Dr_GetName( drv );
+      const QString drvName = OGR_Dr_GetName( drv );
+
+      if ( options & SupportsMultipleLayers )
+      {
+        if ( !multiLayerDrivers.contains( drvName ) )
+          continue;
+      }
 
       GDALDriverH gdalDriver = GDALGetDriverByName( drvName.toLocal8Bit().constData() );
       char **metadata = nullptr;
@@ -3777,7 +3910,7 @@ QStringList QgsVectorFileWriter::supportedFormatExtensions( const VectorFormatOp
   const auto formats = supportedFiltersAndFormats( options );
   QSet< QString > extensions;
 
-  const QRegularExpression rx( QStringLiteral( "\\*\\.(.*)$" ) );
+  const thread_local QRegularExpression rx( QStringLiteral( "\\*\\.(.*)$" ) );
 
   for ( const FilterFormatDetails &format : formats )
   {
@@ -3821,13 +3954,21 @@ QList< QgsVectorFileWriter::DriverDetails > QgsVectorFileWriter::ogrDriverList( 
   QgsApplication::registerOgrDrivers();
   const int drvCount = OGRGetDriverCount();
 
+  const QStringList multiLayerDrivers = multiLayerFormats();
+
   QStringList writableDrivers;
   for ( int i = 0; i < drvCount; ++i )
   {
     OGRSFDriverH drv = OGRGetDriver( i );
     if ( drv )
     {
-      QString drvName = OGR_Dr_GetName( drv );
+      const QString drvName = OGR_Dr_GetName( drv );
+
+      if ( options & SupportsMultipleLayers )
+      {
+        if ( !multiLayerDrivers.contains( drvName ) )
+          continue;
+      }
 
       if ( options & SkipNonSpatialFormats )
       {
@@ -3973,7 +4114,7 @@ QString QgsVectorFileWriter::convertCodecNameForEncodingOption( const QString &c
   if ( codecName == QLatin1String( "System" ) )
     return QStringLiteral( "LDID/0" );
 
-  const QRegularExpression re( QRegularExpression::anchoredPattern( QString( "(CP|windows-|ISO[ -])(.+)" ) ), QRegularExpression::CaseInsensitiveOption );
+  const thread_local QRegularExpression re( QRegularExpression::anchoredPattern( QString( "(CP|windows-|ISO[ -])(.+)" ) ), QRegularExpression::CaseInsensitiveOption );
   const QRegularExpressionMatch match = re.match( codecName );
   if ( match.hasMatch() )
   {
@@ -4000,7 +4141,7 @@ void QgsVectorFileWriter::createSymbolLayerTable( QgsVectorLayer *vl,  const Qgs
   }
 
   //unit type
-  QgsUnitTypes::DistanceUnit mapUnits = vl->crs().mapUnits();
+  Qgis::DistanceUnit mapUnits = vl->crs().mapUnits();
   if ( ct.isValid() )
   {
     mapUnits = ct.destinationCrs().mapUnits();
@@ -4042,7 +4183,7 @@ QgsVectorFileWriter::WriterError QgsVectorFileWriter::exportFeaturesSymbolLevels
   QHash< QgsSymbol *, QList<QgsFeature> > features;
 
   //unit type
-  QgsUnitTypes::DistanceUnit mapUnits = details.sourceCrs.mapUnits();
+  Qgis::DistanceUnit mapUnits = details.sourceCrs.mapUnits();
   if ( ct.isValid() )
   {
     mapUnits = ct.destinationCrs().mapUnits();
@@ -4167,16 +4308,16 @@ QgsVectorFileWriter::WriterError QgsVectorFileWriter::exportFeaturesSymbolLevels
   return ( nErrors > 0 ) ? QgsVectorFileWriter::ErrFeatureWriteFailed : QgsVectorFileWriter::NoError;
 }
 
-double QgsVectorFileWriter::mmScaleFactor( double scale, QgsUnitTypes::RenderUnit symbolUnits, QgsUnitTypes::DistanceUnit mapUnits )
+double QgsVectorFileWriter::mmScaleFactor( double scale, Qgis::RenderUnit symbolUnits, Qgis::DistanceUnit mapUnits )
 {
-  if ( symbolUnits == QgsUnitTypes::RenderMillimeters )
+  if ( symbolUnits == Qgis::RenderUnit::Millimeters )
   {
     return 1.0;
   }
   else
   {
     //conversion factor map units -> mm
-    if ( mapUnits == QgsUnitTypes::DistanceMeters )
+    if ( mapUnits == Qgis::DistanceUnit::Meters )
     {
       return 1000 / scale;
     }
@@ -4185,15 +4326,15 @@ double QgsVectorFileWriter::mmScaleFactor( double scale, QgsUnitTypes::RenderUni
   return 1.0; //todo: map units
 }
 
-double QgsVectorFileWriter::mapUnitScaleFactor( double scale, QgsUnitTypes::RenderUnit symbolUnits, QgsUnitTypes::DistanceUnit mapUnits )
+double QgsVectorFileWriter::mapUnitScaleFactor( double scale, Qgis::RenderUnit symbolUnits, Qgis::DistanceUnit mapUnits )
 {
-  if ( symbolUnits == QgsUnitTypes::RenderMapUnits )
+  if ( symbolUnits == Qgis::RenderUnit::MapUnits )
   {
     return 1.0;
   }
   else
   {
-    if ( symbolUnits == QgsUnitTypes::RenderMillimeters && mapUnits == QgsUnitTypes::DistanceMeters )
+    if ( symbolUnits == Qgis::RenderUnit::Millimeters && mapUnits == Qgis::DistanceUnit::Meters )
     {
       return scale / 1000;
     }
@@ -4224,10 +4365,17 @@ void QgsVectorFileWriter::stopRender()
 
 std::unique_ptr<QgsFeatureRenderer> QgsVectorFileWriter::createSymbologyRenderer( QgsFeatureRenderer *sourceRenderer ) const
 {
-  if ( mSymbologyExport == NoSymbology )
+  switch ( mSymbologyExport )
   {
-    return nullptr;
+    case Qgis::FeatureSymbologyExport::NoSymbology:
+    {
+      return nullptr;
+    }
+    case Qgis::FeatureSymbologyExport::PerFeature:
+    case Qgis::FeatureSymbologyExport::PerSymbolLayer:
+      break;
   }
+
   if ( !sourceRenderer )
   {
     return nullptr;

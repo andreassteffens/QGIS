@@ -15,7 +15,7 @@ import tempfile
 
 import qgis  # NOQA
 from osgeo import gdal, ogr, osr
-from plugins.db_manager.db_plugins import supportedDbTypes, createDbPlugin
+from plugins.db_manager.db_plugins import createDbPlugin, supportedDbTypes
 from plugins.db_manager.db_plugins.plugin import TableField
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import QgsDataSourceUri, QgsSettings
@@ -33,6 +33,7 @@ class TestPyQgsDBManagerGpkg(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super().setUpClass()
 
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("TestPyQgsDBManagerGpkg.com")
@@ -57,6 +58,7 @@ class TestPyQgsDBManagerGpkg(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """Run after all tests"""
+        super().tearDownClass()
 
         QgsSettings().clear()
         shutil.rmtree(cls.basetestpath, True)

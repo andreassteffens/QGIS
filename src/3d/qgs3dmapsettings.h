@@ -25,25 +25,19 @@
 
 #include "qgscoordinatereferencesystem.h"
 #include "qgsmaplayerref.h"
-#include "qgsmesh3dsymbol.h"
 #include "qgsphongmaterialsettings.h"
-#include "qgspointlightsettings.h"
-#include "qgsdirectionallightsettings.h"
 #include "qgsterraingenerator.h"
 #include "qgsvector3d.h"
 #include "qgs3daxissettings.h"
 #include "qgsskyboxsettings.h"
 #include "qgsshadowsettings.h"
-#include "qgscameracontroller.h"
 #include "qgstemporalrangeobject.h"
 #include "qgsambientocclusionsettings.h"
 
 class QgsMapLayer;
 class QgsRasterLayer;
-
+class QgsLightSource;
 class QgsAbstract3DRenderer;
-
-
 class QgsReadWriteContext;
 class QgsProject;
 
@@ -73,6 +67,22 @@ class _3D_EXPORT Qgs3DMapSettings : public QObject, public QgsTemporalRangeObjec
     QDomElement writeXml( QDomDocument &doc, const QgsReadWriteContext &context ) const;
     //! Resolves references to other objects (map layers) after the call to readXml()
     void resolveReferences( const QgsProject &project );
+
+    /**
+     * Returns the 3D scene's 2D extent in project's CRS
+     * \since QGIS 3.30
+     */
+    QgsRectangle extent() const { return mExtent; }
+
+    /**
+     * Sets the 3D scene's 2D \a extent in project's CRS, while also setting the scene's origin to the extent's center
+     * This needs to be called during initialization, as terrain will only be generated
+     * within this extent and layer 3D data will only be loaded within this extent too.
+     *
+     * \see setOrigin()
+     * \since QGIS 3.30
+     */
+    void setExtent( const QgsRectangle &extent );
 
     /**
      * Sets coordinates in map CRS at which our 3D world has origin (0,0,0)
@@ -253,7 +263,7 @@ class _3D_EXPORT Qgs3DMapSettings : public QObject, public QgsTemporalRangeObjec
     float terrainElevationOffset() const { return mTerrainElevationOffset; }
 
     /**
-     * Sets terrain generator.
+     * Sets terrain generator and sets extent() as the generator's extent.
      *
      * It takes care of producing terrain tiles from the input data.
      * Takes ownership of the generator.
@@ -262,6 +272,7 @@ class _3D_EXPORT Qgs3DMapSettings : public QObject, public QgsTemporalRangeObjec
      *
      * \see terrainGenerator()
      * \see setTerrainRenderingEnabled()
+     * \see setExtent()
      */
     void setTerrainGenerator( QgsTerrainGenerator *gen SIP_TRANSFER ) SIP_SKIP;
 
@@ -327,11 +338,6 @@ class _3D_EXPORT Qgs3DMapSettings : public QObject, public QgsTemporalRangeObjec
     //
     // misc configuration
     //
-
-    //! Sets list of extra 3D renderers to use in the scene. Takes ownership of the objects.
-    void setRenderers( const QList<QgsAbstract3DRenderer *> &renderers SIP_TRANSFER );
-    //! Returns list of extra 3D renderers
-    QList<QgsAbstract3DRenderer *> renderers() const { return mRenderers; }
 
     //! Sets whether to display bounding boxes of terrain tiles (for debugging)
     void setShowTerrainBoundingBoxes( bool enabled );
@@ -483,13 +489,13 @@ class _3D_EXPORT Qgs3DMapSettings : public QObject, public QgsTemporalRangeObjec
      * Returns the navigation mode used by the camera
      * \since QGIS 3.18
      */
-    QgsCameraController::NavigationMode cameraNavigationMode() const { return mCameraNavigationMode; }
+    Qgis::NavigationMode cameraNavigationMode() const { return mCameraNavigationMode; }
 
     /**
      * Sets the navigation mode for the camera
      * \since QGIS 3.18
      */
-    void setCameraNavigationMode( QgsCameraController::NavigationMode navigationMode );
+    void setCameraNavigationMode( Qgis::NavigationMode navigationMode );
 #endif
 
     /**
@@ -669,6 +675,19 @@ class _3D_EXPORT Qgs3DMapSettings : public QObject, public QgsTemporalRangeObjec
      * \since QGIS 3.26
      */
     void setIsDebugOverlayEnabled( bool debugOverlayEnabled );
+
+    /**
+     * Returns whether the extent is displayed on the main 2D map canvas
+     * \see setShowExtentIn2DView()
+     * \since QGIS 3.32
+     */
+    bool showExtentIn2DView() const { return mShowExtentIn2DView; }
+
+    /**
+     * Sets whether the extent is displayed on the main 2D map canvas
+     * \since QGIS 3.32
+     */
+    void setShowExtentIn2DView( bool show );
 
   signals:
 
@@ -869,6 +888,20 @@ class _3D_EXPORT Qgs3DMapSettings : public QObject, public QgsTemporalRangeObjec
      */
     void debugOverlayEnabledChanged( bool debugOverlayEnabled );
 
+    /**
+     * Emitted when the 3d view's 2d extent has changed
+     * \see setExtent()
+     * \since QGIS 3.30
+     */
+    void extentChanged();
+
+    /**
+     * Emitted when the parameter to display 3d view's extent in the 2D canvas has changed
+     * \see setShowExtentIn2DView()
+     * \since QGIS 3.32
+     */
+    void showExtentIn2DViewChanged();
+
   private:
 #ifdef SIP_RUN
     Qgs3DMapSettings &operator=( const Qgs3DMapSettings & );
@@ -902,10 +935,9 @@ class _3D_EXPORT Qgs3DMapSettings : public QObject, public QgsTemporalRangeObjec
     QList< QgsLightSource * > mLightSources; //!< List of light sources in the scene (owned by the settings)
     float mFieldOfView = 45.0f; //<! Camera lens field of view value
     Qt3DRender::QCameraLens::ProjectionType mProjectionType = Qt3DRender::QCameraLens::PerspectiveProjection;  //<! Camera lens projection type
-    QgsCameraController::NavigationMode mCameraNavigationMode = QgsCameraController::NavigationMode::TerrainBasedNavigation;
+    Qgis::NavigationMode mCameraNavigationMode = Qgis::NavigationMode::TerrainBased;
     double mCameraMovementSpeed = 5.0;
     QList<QgsMapLayerRef> mLayers;   //!< Layers to be rendered
-    QList<QgsAbstract3DRenderer *> mRenderers;  //!< Extra stuff to render as 3D object
     //! Coordinate transform context
     QgsCoordinateTransformContext mTransformContext;
     QgsPathResolver mPathResolver;
@@ -940,6 +972,10 @@ class _3D_EXPORT Qgs3DMapSettings : public QObject, public QgsTemporalRangeObjec
     Qgs3DAxisSettings m3dAxisSettings; //!< 3d axis related configuration
 
     bool mIsDebugOverlayEnabled = false;
+
+    QgsRectangle mExtent; //!< 2d extent used to limit the 3d view
+
+    bool mShowExtentIn2DView = false;
 
 };
 

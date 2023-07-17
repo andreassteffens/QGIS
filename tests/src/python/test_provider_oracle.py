@@ -12,31 +12,31 @@ __copyright__ = 'Copyright 2016, The QGIS Project'
 import os
 
 import qgis  # NOQA
-from qgis.PyQt.QtCore import QDate, QTime, QDateTime, QVariant
+from qgis.PyQt.QtCore import QDate, QDateTime, QTime, QVariant
 from qgis.PyQt.QtSql import QSqlDatabase, QSqlQuery
 from qgis.core import (
-    Qgis,
-    QgsSettings,
-    QgsVectorLayer,
-    QgsFeatureRequest,
     NULL,
-    QgsProject,
-    QgsTransactionGroup,
-    QgsFeature,
-    QgsGeometry,
-    QgsWkbTypes,
+    Qgis,
+    QgsCoordinateReferenceSystem,
     QgsDataProvider,
-    QgsVectorLayerExporter,
+    QgsFeature,
+    QgsFeatureRequest,
     QgsField,
     QgsFields,
-    QgsCoordinateReferenceSystem,
+    QgsGeometry,
+    QgsProject,
     QgsProjUtils,
-    QgsProviderRegistry
+    QgsProviderRegistry,
+    QgsSettings,
+    QgsTransactionGroup,
+    QgsVectorLayer,
+    QgsVectorLayerExporter,
+    QgsWkbTypes,
 )
 from qgis.testing import start_app, unittest
 
 from providertestbase import ProviderTestCase
-from utilities import unitTestDataPath, compareWkt
+from utilities import compareWkt, unitTestDataPath
 
 start_app()
 TEST_DATA_DIR = unitTestDataPath()
@@ -47,6 +47,7 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
+        super(TestPyQgsOracleProvider, cls).setUpClass()
         cls.dbconn = "host=localhost dbname=XEPDB1 port=1521 user='QGIS' password='qgis'"
         if 'QGIS_ORACLETEST_DB' in os.environ:
             cls.dbconn = os.environ['QGIS_ORACLETEST_DB']
@@ -67,10 +68,6 @@ class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
         cls.conn.setUserName('QGIS')
         cls.conn.setPassword('qgis')
         assert cls.conn.open()
-
-    @classmethod
-    def tearDownClass(cls):
-        """Run after all tests"""
 
     def execSQLCommand(self, sql, ignore_errors=False):
         self.assertTrue(self.conn)

@@ -12,14 +12,15 @@ __copyright__ = 'Copyright 2013, The QGIS Project'
 import os
 
 import qgis  # NOQA
-from qgis.core import (QgsVectorLayer,
-                       QgsFeature,
-                       QgsRelation,
-                       QgsGeometry,
-                       QgsPointXY,
-                       QgsAttributeEditorElement,
-                       QgsProject
-                       )
+from qgis.core import (
+    QgsAttributeEditorElement,
+    QgsFeature,
+    QgsGeometry,
+    QgsPointXY,
+    QgsProject,
+    QgsRelation,
+    QgsVectorLayer,
+)
 from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath

@@ -11,19 +11,20 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 
 import qgis  # NOQA
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import (Qt,
-                              QModelIndex)
+from qgis.PyQt.QtCore import QModelIndex, Qt
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (QgsProject,
-                       QgsLayout,
-                       QgsLayoutGuide,
-                       QgsLayoutMeasurement,
-                       QgsUnitTypes,
-                       QgsReadWriteContext,
-                       QgsLayoutItemPage,
-                       QgsLayoutGuideCollection,
-                       QgsLayoutGuideProxyModel)
+from qgis.core import (
+    QgsLayout,
+    QgsLayoutGuide,
+    QgsLayoutGuideCollection,
+    QgsLayoutGuideProxyModel,
+    QgsLayoutItemPage,
+    QgsLayoutMeasurement,
+    QgsProject,
+    QgsReadWriteContext,
+    QgsUnitTypes,
+)
 from qgis.testing import start_app, unittest
 
 start_app()

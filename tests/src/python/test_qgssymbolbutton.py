@@ -13,7 +13,7 @@ import qgis  # NOQA
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.core import QgsFillSymbol, QgsMarkerSymbol, QgsSymbol
-from qgis.gui import QgsSymbolButton, QgsMapCanvas
+from qgis.gui import QgsMapCanvas, QgsSymbolButton
 from qgis.testing import start_app, unittest
 
 start_app()

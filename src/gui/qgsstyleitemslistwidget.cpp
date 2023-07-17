@@ -16,12 +16,10 @@
 
 #include "qgsstyleitemslistwidget.h"
 #include "qgsstylemanagerdialog.h"
-#include "qgsstylesavedialog.h"
 #include "qgspanelwidget.h"
 #include "qgssettings.h"
 #include "qgsgui.h"
 #include "qgswindowmanagerinterface.h"
-#include "qgsapplication.h"
 #include "qgsproject.h"
 #include "qgsprojectstylesettings.h"
 #include <QScrollBar>
@@ -253,6 +251,8 @@ void QgsStyleItemsListWidget::setStyle( QgsStyle *style )
   mModel->addDesiredIconSize( viewSymbols->iconSize() );
   mModel->addDesiredIconSize( mSymbolTreeView->iconSize() );
 
+  mModel->addTargetScreenProperties( QgsScreenProperties( screen() ) );
+
   viewSymbols->setTextElideMode( Qt::TextElideMode::ElideRight );
 
   viewSymbols->setModel( mModel );
@@ -348,7 +348,7 @@ void QgsStyleItemsListWidget::setSymbolType( Qgis::SymbolType type )
   mModel->setSymbolType( type );
 }
 
-void QgsStyleItemsListWidget::setLayerType( QgsWkbTypes::GeometryType type )
+void QgsStyleItemsListWidget::setLayerType( Qgis::GeometryType type )
 {
   mModel->setLayerType( type );
 }
