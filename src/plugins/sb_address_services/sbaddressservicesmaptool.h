@@ -25,7 +25,7 @@
 class QgsRubberBand;
 
 /**
-  \brief Map tool for capturing mouse clicks to clipboard
+*  \brief Map tool for capturing mouse clicks to clipboard
 */
 class sbAddressServicesMapTool : public QgsMapTool
 {

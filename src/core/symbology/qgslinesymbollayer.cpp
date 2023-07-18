@@ -825,7 +825,7 @@ void QgsSimpleLineSymbolLayer::drawPathWithDashPatternTweaks( QPainter *painter,
 
   double currentBufferLineLength = 0;
   auto flushBuffer = [pen, painter, &buffer, &bufferedPoints, &previousSegmentBuffer, &currentRemainingDashLength, &currentRemainingGapLength,  &currentBufferLineLength, &totalBufferLength,
-                           dashWidthDiv, &compressPattern]( QPointF * nextPoint )
+                      dashWidthDiv, &compressPattern]( QPointF * nextPoint )
   {
     if ( buffer.empty() || bufferedPoints.size() < 2 )
     {

@@ -31,14 +31,14 @@
 
 namespace QgsSb
 {
-  void writeGetServerProcessId( QgsServerInterface *serverIface, 
-                        const QString &version, const QgsServerRequest &request,
-                        QgsServerResponse &response )
+  void writeGetServerProcessId( QgsServerInterface *serverIface,
+                                const QString &version, const QgsServerRequest &request,
+                                QgsServerResponse &response )
   {
-	quint64 ulProcessId = QgsApplication::applicationPid();
-	QString strId = QString::number(ulProcessId);
+    quint64 ulProcessId = QgsApplication::applicationPid();
+    QString strId = QString::number( ulProcessId );
 
-	response.setStatusCode(200);
+    response.setStatusCode( 200 );
     response.setHeader( QStringLiteral( "Content-Type" ), QStringLiteral( "text/plain; charset=utf-8" ) );
     response.write( strId );
   }

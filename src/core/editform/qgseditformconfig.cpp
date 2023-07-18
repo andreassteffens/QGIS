@@ -45,19 +45,19 @@ QgsPropertyCollection QgsEditFormConfig::dataDefinedFieldProperties( const QStri
   return d->mDataDefinedFieldProperties.value( fieldName );
 }
 
-int QgsEditFormConfig::sbGetFieldIndex(const QString& fieldName) const
+int QgsEditFormConfig::sbGetFieldIndex( const QString &fieldName ) const
 {
-  if (d.data() == NULL)
+  if ( d.data() == NULL )
     return -1;
 
-  const QList<QgsAttributeEditorElement*> listChildren = d->mInvisibleRootContainer->children();
-  for (int iChild = 0; iChild < listChildren.count(); iChild++)
+  const QList<QgsAttributeEditorElement *> listChildren = d->mInvisibleRootContainer->children();
+  for ( int iChild = 0; iChild < listChildren.count(); iChild++ )
   {
-    if (listChildren[iChild]->type() != QgsAttributeEditorElement::AeTypeField)
+    if ( listChildren[iChild]->type() != Qgis::AttributeEditorType::Field )
       continue;
 
-    QgsAttributeEditorField* pField = (QgsAttributeEditorField*)listChildren[iChild];
-    if (pField->name().compare(fieldName) == 0)
+    QgsAttributeEditorField *pField = ( QgsAttributeEditorField * )listChildren[iChild];
+    if ( pField->name().compare( fieldName ) == 0 )
       return iChild;
   }
 

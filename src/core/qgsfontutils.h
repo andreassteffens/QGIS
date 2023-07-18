@@ -94,12 +94,12 @@ class CORE_EXPORT QgsFontUtils
      */
     static QString standardTestFontFamily();
 
-	/**
-	* Added by Ender
-	* \since QGIS 3.2
-	*/
-	static int loadLocalResourceFonts(const QString &directory);
-	
+    /**
+    * Added by Ender
+    * \since QGIS 3.2
+    */
+    static int loadLocalResourceFonts( const QString &directory );
+
     /**
      * Loads standard test fonts from filesystem or qrc resource
      * \param loadstyles List of styles to load, e.g. All, Roman, Oblique, Bold, Bold Oblique

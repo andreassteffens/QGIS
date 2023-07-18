@@ -186,8 +186,8 @@ QSizeF QgsLegendRenderer::paintAndDetermineSize( QgsRenderContext &context )
   //add title margin to size of title text
   titleSize.rwidth() += mSettings.boxSpace() * 2.0;
   double columnTop = mSettings.boxSpace();
-  if(titleSize.height() > 0)
-    columnTop += titleSize.height() + mSettings.style(QgsLegendStyle::Title).margin(QgsLegendStyle::Bottom);
+  if ( titleSize.height() > 0 )
+    columnTop += titleSize.height() + mSettings.style( QgsLegendStyle::Title ).margin( QgsLegendStyle::Bottom );
 
   noPainter.reset();
 

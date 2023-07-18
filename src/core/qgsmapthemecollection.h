@@ -321,13 +321,13 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
      */
     void writeXml( QDomDocument &doc );
 
-	/**
-	* Writes the map theme collection state to XML parent element.
-	* \param doc DOM document
-	* \see readXml
-	*/
-	void writeXmlContent( QDomElement &parent, QDomDocument &doc, bool bUseWmsNames ) SIP_SKIP;
-	
+    /**
+    * Writes the map theme collection state to XML parent element.
+    * \param doc DOM document
+    * \see readXml
+    */
+    void writeXmlContent( QDomElement &parent, QDomDocument &doc, bool bUseWmsNames ) SIP_SKIP;
+
     /**
      * Static method to create theme from the current state of layer visibilities in layer tree,
      * current style of layers and check state of legend items (from a layer tree model).

@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-//  
+//
 //  ___        __       ____                  ___      ___
 // /\_ \    __/\ \     /\  _`\              /'___\ __ /\_ \
 // \//\ \  /\_\ \ \____\ \ \L\ \_ __   ___ /\ \__//\_\\//\ \      __   _ __
@@ -241,25 +241,25 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define	_NAME_SEPARATOR_			"|"
-#define	_THREADID_NAME_SEPARATOR_	"@"
+#define _NAME_SEPARATOR_      "|"
+#define _THREADID_NAME_SEPARATOR_ "@"
 
 #define _QUOTE(x) # x
 #define QUOTE(x) _QUOTE(x)
 
 
-inline void LOG(const char *format,...)
+inline void LOG( const char *format, ... )
 {
-    va_list ptr_arg;
-    va_start( ptr_arg, format );
+  va_list ptr_arg;
+  va_start( ptr_arg, format );
 
-    static char tmps[1024];
-    vsprintf( tmps, format, ptr_arg );
+  static char tmps[1024];
+  vsprintf( tmps, format, ptr_arg );
 
-	
-    LIB_PROFILER_PRINTF( tmps );
-    
-    va_end(ptr_arg);
+
+  LIB_PROFILER_PRINTF( tmps );
+
+  va_end( ptr_arg );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -270,85 +270,85 @@ inline void LOG(const char *format,...)
 // Critical Section
 #if IS_OS_WINDOWS
 typedef CRITICAL_SECTION ZCriticalSection_t;
-inline char* ZGetCurrentDirectory(int bufLength, char *pszDest)
+inline char *ZGetCurrentDirectory( int bufLength, char *pszDest )
 {
-    return (char*)GetCurrentDirectoryA(bufLength, pszDest);
+  return ( char * )GetCurrentDirectoryA( bufLength, pszDest );
 }
 
 #elif IS_OS_LINUX
 #include <pthread.h>
 typedef pthread_mutex_t ZCriticalSection_t;
-inline char* ZGetCurrentDirectory(int bufLength, char *pszDest)
+inline char *ZGetCurrentDirectory( int bufLength, char *pszDest )
 {
-    return getcwd(pszDest, bufLength);
+  return getcwd( pszDest, bufLength );
 }
 
 #elif IS_OS_MACOSX
 #import <CoreServices/CoreServices.h>
 typedef MPCriticalRegionID ZCriticalSection_t;
-inline char* ZGetCurrentDirectory(int bufLength, char *pszDest)
+inline char *ZGetCurrentDirectory( int bufLength, char *pszDest )
 {
-    return getcwd(pszDest, bufLength);
+  return getcwd( pszDest, bufLength );
 }
 #endif
 
 
-__inline ZCriticalSection_t* NewCriticalSection()
+__inline ZCriticalSection_t *NewCriticalSection()
 {
 #if IS_OS_LINUX
-	ZCriticalSection_t *cs = new pthread_mutex_t;
-	//(*cs) = PTHREAD_MUTEX_INITIALIZER;
-	pthread_mutex_init (cs, NULL);
-	return cs;
+  ZCriticalSection_t *cs = new pthread_mutex_t;
+  //(*cs) = PTHREAD_MUTEX_INITIALIZER;
+  pthread_mutex_init( cs, NULL );
+  return cs;
 #elif IS_OS_MACOSX
-	MPCriticalRegionID* criticalRegion = new MPCriticalRegionID;
-	OSStatus err = MPCreateCriticalRegion (criticalRegion);
-	if (err != 0)
-	{
-		delete criticalRegion;
-		criticalRegion = NULL;
-	}
-	
-	return criticalRegion;
+  MPCriticalRegionID *criticalRegion = new MPCriticalRegionID;
+  OSStatus err = MPCreateCriticalRegion( criticalRegion );
+  if ( err != 0 )
+  {
+    delete criticalRegion;
+    criticalRegion = NULL;
+  }
+
+  return criticalRegion;
 #elif IS_OS_WINDOWS
-	CRITICAL_SECTION *cs = new CRITICAL_SECTION;
-	InitializeCriticalSection(cs);
-	return cs;
+  CRITICAL_SECTION *cs = new CRITICAL_SECTION;
+  InitializeCriticalSection( cs );
+  return cs;
 #endif
 }
 
-__inline void DestroyCriticalSection(ZCriticalSection_t *cs)
+__inline void DestroyCriticalSection( ZCriticalSection_t *cs )
 {
 #if IS_OS_LINUX
-	delete cs;
+  delete cs;
 #elif IS_OS_MACOSX
-	MPDeleteCriticalRegion(*cs);
+  MPDeleteCriticalRegion( *cs );
 #elif IS_OS_WINDOWS
-	DeleteCriticalSection(cs);
-	delete cs;
+  DeleteCriticalSection( cs );
+  delete cs;
 #endif
 }
 
-__inline void LockCriticalSection(ZCriticalSection_t *cs)
+__inline void LockCriticalSection( ZCriticalSection_t *cs )
 {
 #if IS_OS_LINUX
-	pthread_mutex_lock( cs );
+  pthread_mutex_lock( cs );
 #elif IS_OS_MACOSX
-	MPEnterCriticalRegion(*cs, kDurationForever);
+  MPEnterCriticalRegion( *cs, kDurationForever );
 #elif IS_OS_WINDOWS
-	EnterCriticalSection(cs);
+  EnterCriticalSection( cs );
 #endif
 }
 
-__inline void UnLockCriticalSection(ZCriticalSection_t *cs)
+__inline void UnLockCriticalSection( ZCriticalSection_t *cs )
 {
 #if IS_OS_LINUX
-	pthread_mutex_unlock( cs );
+  pthread_mutex_unlock( cs );
 #elif IS_OS_MACOSX
-	MPExitCriticalRegion(*cs);
+  MPExitCriticalRegion( *cs );
 #elif IS_OS_WINDOWS
-	LeaveCriticalSection(cs);
-#endif 
+  LeaveCriticalSection( cs );
+#endif
 }
 
 
@@ -382,56 +382,56 @@ using namespace std;
 
 void TimerInit();
 //#if defined(WIN32)
-double	startHighResolutionTimer( void );
+double  startHighResolutionTimer( void );
 /*
  #elif defined(_MAC_)
- void	startHighResolutionTimer(unsigned long time[2]);
+ void startHighResolutionTimer(unsigned long time[2]);
  #else
- void	startHighResolutionTimer(unsigned long time[2]);
+ void startHighResolutionTimer(unsigned long time[2]);
  #endif
  */
-//unsigned long	endHighResolutionTimer(unsigned long time[2]);
+//unsigned long endHighResolutionTimer(unsigned long time[2]);
 
 
 #if IS_OS_WINDOWS
 // Create A Structure For The Timer Information
 extern struct stTimer
 {
-    __int64			frequency;									// Timer Frequency
-    float			resolution;									// Timer Resolution
-    unsigned long	mm_timer_start;								// Multimedia Timer Start Value
-    unsigned long	mm_timer_elapsed;							// Multimedia Timer Elapsed Time
-    bool			performance_timer;							// Using The Performance Timer?
-    __int64			performance_timer_start;					// Performance Timer Start Value
-    __int64			performance_timer_elapsed;					// Performance Timer Elapsed Time
-} timer;														// Structure Is Named timer
+  __int64     frequency;                  // Timer Frequency
+  float     resolution;                 // Timer Resolution
+  unsigned long mm_timer_start;               // Multimedia Timer Start Value
+  unsigned long mm_timer_elapsed;             // Multimedia Timer Elapsed Time
+  bool      performance_timer;              // Using The Performance Timer?
+  __int64     performance_timer_start;          // Performance Timer Start Value
+  __int64     performance_timer_elapsed;          // Performance Timer Elapsed Time
+} timer;                            // Structure Is Named timer
 
 #endif  //  IS_OS_WINDOWS
 
 
 typedef struct stGenProfilerData
 {
-    double			totalTime;
-    double			averageTime;
-    double			minTime;
-    double			maxTime;
-    double			lastTime;				// Time of the previous passage
-    double			elapsedTime;			// Elapsed Time
-    unsigned long	nbCalls;				// Numbers of calls
-    char			szBunchCodeName[1024];	// temporary.
+  double      totalTime;
+  double      averageTime;
+  double      minTime;
+  double      maxTime;
+  double      lastTime;       // Time of the previous passage
+  double      elapsedTime;      // Elapsed Time
+  unsigned long nbCalls;        // Numbers of calls
+  char      szBunchCodeName[1024];  // temporary.
 } tdstGenProfilerData;
 
 //  Hold the call stack
 typedef std::vector<tdstGenProfilerData> tdCallStackType;
 
-//	Hold the sequence of profiler_starts
+//  Hold the sequence of profiler_starts
 extern std::map<std::string, tdstGenProfilerData> mapProfilerGraph;
 
 // Hold profiler data vector in function of the thread
 extern map<unsigned long, tdCallStackType> mapCallsByThread;
 
 // Critical section
-extern ZCriticalSection_t	*gProfilerCriticalSection;
+extern ZCriticalSection_t *gProfilerCriticalSection;
 
 
 // Critical section functions

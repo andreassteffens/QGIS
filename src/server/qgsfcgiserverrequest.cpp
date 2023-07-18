@@ -106,18 +106,18 @@ QgsFcgiServerRequest::QgsFcgiServerRequest()
       // Get post/put data
       readData();
     }
-    catch (QgsServerException &ex)
+    catch ( QgsServerException &ex )
     {
-      QgsMessageLog::logMessage(QStringLiteral("QgsServerException: %1").arg(ex.what()), QStringLiteral("Server"), Qgis::Critical);
+      QgsMessageLog::logMessage( QStringLiteral( "QgsServerException: %1" ).arg( ex.what() ), QStringLiteral( "Server" ), Qgis::Critical );
     }
-    catch (QgsException &ex)
+    catch ( QgsException &ex )
     {
       // Internal server error
-      QgsMessageLog::logMessage(QStringLiteral("QgsServerException: %1").arg(ex.what()), QStringLiteral("Server"), Qgis::Critical);
+      QgsMessageLog::logMessage( QStringLiteral( "QgsServerException: %1" ).arg( ex.what() ), QStringLiteral( "Server" ), Qgis::Critical );
     }
-    catch (...)
+    catch ( ... )
     {
-      QgsMessageLog::logMessage(QStringLiteral("Unknown exception"), QStringLiteral("Server"), Qgis::Critical);
+      QgsMessageLog::logMessage( QStringLiteral( "Unknown exception" ), QStringLiteral( "Server" ), Qgis::Critical );
     }
   }
 
@@ -216,14 +216,14 @@ void QgsFcgiServerRequest::readData()
     }
     else
     {
-      QgsMessageLog::logMessage( QStringLiteral("fcgi: Failed to parse CONTENT_LENGTH"),
+      QgsMessageLog::logMessage( QStringLiteral( "fcgi: Failed to parse CONTENT_LENGTH" ),
                                  QStringLiteral( "Server" ), Qgis::MessageLevel::Critical );
       mHasError = true;
     }
   }
   else
   {
-    QgsMessageLog::logMessage( QStringLiteral("fcgi: No POST data") );
+    QgsMessageLog::logMessage( QStringLiteral( "fcgi: No POST data" ) );
   }
 }
 

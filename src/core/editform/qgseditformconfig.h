@@ -318,6 +318,8 @@ class CORE_EXPORT QgsEditFormConfig
      */
     QgsPropertyCollection dataDefinedFieldProperties( const QString &fieldName ) const;
 
+    int sbGetFieldIndex( const QString &fieldName ) const;
+
     /**
      * Returns data defined property definitions.
      * \since QGIS 3.14

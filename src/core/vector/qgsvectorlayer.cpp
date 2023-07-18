@@ -319,7 +319,7 @@ QgsVectorLayer *QgsVectorLayer::clone() const
   layer->setFeatureBlendMode( featureBlendMode() );
   layer->setReadExtentFromXml( readExtentFromXml() );
 
-  layer->sbSetRenderSelectionOnly(sbRenderSelectionOnly());
+  layer->sbSetRenderSelectionOnly( sbRenderSelectionOnly() );
 
   const auto constActions = actions()->actions();
   for ( const QgsAction &action : constActions )
@@ -623,7 +623,7 @@ void QgsVectorLayer::selectByIds( const QgsFeatureIds &ids, Qgis::SelectBehavior
 
   QgsFeatureIds newSelection;
 
-  if (ids.count() == 0 && mSelectedFeatureIds.count() == 0)
+  if ( ids.count() == 0 && mSelectedFeatureIds.count() == 0 )
     return;
 
   switch ( behavior )
@@ -633,13 +633,13 @@ void QgsVectorLayer::selectByIds( const QgsFeatureIds &ids, Qgis::SelectBehavior
       break;
 
     case Qgis::SelectBehavior::AddToSelection:
-      if(ids.count() == 0)
+      if ( ids.count() == 0 )
         return;
       newSelection = mSelectedFeatureIds + ids;
       break;
 
     case Qgis::SelectBehavior::RemoveFromSelection:
-      if(ids.count() == 0)
+      if ( ids.count() == 0 )
         return;
       newSelection = mSelectedFeatureIds - ids;
       break;
@@ -656,7 +656,7 @@ void QgsVectorLayer::selectByIds( const QgsFeatureIds &ids, Qgis::SelectBehavior
   emit selectionChanged( newSelection, deselectedFeatures, true );
 }
 
-void QgsVectorLayer::sbSetRenderSelectionOnly(bool bRenderSelectionOnly)
+void QgsVectorLayer::sbSetRenderSelectionOnly( bool bRenderSelectionOnly )
 {
   mSbRenderSelectionOnly = bRenderSelectionOnly;
 }
@@ -1781,18 +1781,18 @@ bool QgsVectorLayer::readXml( const QDomNode &layer_node, QgsReadWriteContext &c
     mProviderKey = QStringLiteral( "ogr" );
   }
 
-  if (mProviderKey.compare(QStringLiteral("spatialite"), Qt::CaseInsensitive) == 0)
+  if ( mProviderKey.compare( QStringLiteral( "spatialite" ), Qt::CaseInsensitive ) == 0 )
   {
-    readCustomProperties(layer_node, QStringLiteral("SB_"));
+    readCustomProperties( layer_node, QStringLiteral( "SB_" ) );
 
-    QDomElement metadataElem = layer_node.firstChildElement(QStringLiteral("resourceMetadata"));
-    QDomNodeList nodesConstraints = metadataElem.elementsByTagName("constraints");
-    for (int iNode = 0; iNode < nodesConstraints.length(); iNode++)
+    QDomElement metadataElem = layer_node.firstChildElement( QStringLiteral( "resourceMetadata" ) );
+    QDomNodeList nodesConstraints = metadataElem.elementsByTagName( "constraints" );
+    for ( int iNode = 0; iNode < nodesConstraints.length(); iNode++ )
     {
-      QDomNode node = nodesConstraints.at(iNode);
-      QString strType = node.toElement().attribute(QStringLiteral("type"));
+      QDomNode node = nodesConstraints.at( iNode );
+      QString strType = node.toElement().attribute( QStringLiteral( "type" ) );
       QString strValue = node.toElement().text();
-      mSbConstraints.append(QgsLayerMetadata::Constraint(strValue, strType));
+      mSbConstraints.append( QgsLayerMetadata::Constraint( strValue, strType ) );
     }
   }
 
@@ -2060,67 +2060,67 @@ bool QgsVectorLayer::setDataProvider( QString const &provider, const QgsDataProv
   else
     mDataProvider = qobject_cast<QgsVectorDataProvider *>( QgsProviderRegistry::instance()->createProvider( provider, mDataSource, options, flags ) );
 
-  if (provider.compare(QLatin1String("spatialite")) == 0)
+  if ( provider.compare( QLatin1String( "spatialite" ) ) == 0 )
   {
-    QgsDataSourceUri uri(mDataSource);
+    QgsDataSourceUri uri( mDataSource );
 
-    if (mSbConstraints.length() > 0)
+    if ( mSbConstraints.length() > 0 )
     {
       QStringList qlistPragmas;
 
-      for (int i = 0; i < mSbConstraints.length(); i++)
+      for ( int i = 0; i < mSbConstraints.length(); i++ )
       {
-        if (mSbConstraints[i].type.compare("sb:SQLITE_PRAGMA", Qt::CaseInsensitive))
+        if ( mSbConstraints[i].type.compare( "sb:SQLITE_PRAGMA", Qt::CaseInsensitive ) )
           qlistPragmas << mSbConstraints[i].constraint;
       }
 
-      uri.setParam(QStringLiteral("pragma"), qlistPragmas);
-      mDataSource = uri.uri(false);
+      uri.setParam( QStringLiteral( "pragma" ), qlistPragmas );
+      mDataSource = uri.uri( false );
     }
 
-    if (mSbConstraints.length() > 0)
+    if ( mSbConstraints.length() > 0 )
     {
       bool bUseCachedMetadata = false;
 
-      for (int i = 0; i < mSbConstraints.length(); i++)
+      for ( int i = 0; i < mSbConstraints.length(); i++ )
       {
-        if (mSbConstraints[i].type.compare("sb:USE_CACHED_METADATA", Qt::CaseInsensitive) == 0)
+        if ( mSbConstraints[i].type.compare( "sb:USE_CACHED_METADATA", Qt::CaseInsensitive ) == 0 )
         {
-          if (mSbConstraints[i].constraint.compare(QStringLiteral("true"), Qt::CaseInsensitive) == 0)
+          if ( mSbConstraints[i].constraint.compare( QStringLiteral( "true" ), Qt::CaseInsensitive ) == 0 )
             bUseCachedMetadata = true;
         }
       }
 
-      if (bUseCachedMetadata)
+      if ( bUseCachedMetadata )
       {
-        QVariant qvarFeatureCount = customProperty("SB_CACHED_FEATURE_COUNT", QVariant((qlonglong)-1));
-        QVariant qvarFeatureExtent = customProperty("SB_CACHED_FEATURE_EXTENT", QVariant(""));
+        QVariant qvarFeatureCount = customProperty( "SB_CACHED_FEATURE_COUNT", QVariant( ( qlonglong ) - 1 ) );
+        QVariant qvarFeatureExtent = customProperty( "SB_CACHED_FEATURE_EXTENT", QVariant( "" ) );
 
         qlonglong lFeatureCount = qvarFeatureCount.toLongLong();
         QString strExtent = qvarFeatureExtent.toString();
-        if (lFeatureCount >= 0 && !strExtent.isEmpty())
+        if ( lFeatureCount >= 0 && !strExtent.isEmpty() )
         {
-          uri.setParam(QStringLiteral("SB_CACHED_FEATURE_COUNT"), QStringLiteral("%1").arg(lFeatureCount));
-          uri.setParam(QStringLiteral("SB_CACHED_FEATURE_EXTENT"), strExtent);
-          mDataSource = uri.uri(false);
+          uri.setParam( QStringLiteral( "SB_CACHED_FEATURE_COUNT" ), QStringLiteral( "%1" ).arg( lFeatureCount ) );
+          uri.setParam( QStringLiteral( "SB_CACHED_FEATURE_EXTENT" ), strExtent );
+          mDataSource = uri.uri( false );
         }
       }
     }
 
-    if (mSbConstraints.length() > 0)
+    if ( mSbConstraints.length() > 0 )
     {
       QString strValue;
 
-      for (int i = 0; i < mSbConstraints.length(); i++)
+      for ( int i = 0; i < mSbConstraints.length(); i++ )
       {
-        if (mSbConstraints[i].type.compare("sb:SKIP_METADATA_CHECK", Qt::CaseInsensitive))
+        if ( mSbConstraints[i].type.compare( "sb:SKIP_METADATA_CHECK", Qt::CaseInsensitive ) )
           strValue = mSbConstraints[i].constraint;
       }
 
-      if (!(strValue.isNull() || strValue.isEmpty()))
+      if ( !( strValue.isNull() || strValue.isEmpty() ) )
       {
-        uri.setParam(QStringLiteral("SB_SKIP_METADATA_CHECK"), strValue);
-        mDataSource = uri.uri(false);
+        uri.setParam( QStringLiteral( "SB_SKIP_METADATA_CHECK" ), strValue );
+        mDataSource = uri.uri( false );
       }
     }
   }
@@ -2935,7 +2935,7 @@ bool QgsVectorLayer::writeSymbology( QDomNode &node, QDomDocument &doc, QString 
       switch ( rel.type() )
       {
         case Qgis::RelationshipType::Normal:
-        QgsWeakRelation::writeXml( this, QgsWeakRelation::Referencing, rel, referencedLayersElement, doc );
+          QgsWeakRelation::writeXml( this, QgsWeakRelation::Referencing, rel, referencedLayersElement, doc );
           break;
         case Qgis::RelationshipType::Generated:
           break;
@@ -2952,7 +2952,7 @@ bool QgsVectorLayer::writeSymbology( QDomNode &node, QDomDocument &doc, QString 
       switch ( rel.type() )
       {
         case Qgis::RelationshipType::Normal:
-        QgsWeakRelation::writeXml( this, QgsWeakRelation::Referenced, rel, referencingLayersElement, doc );
+          QgsWeakRelation::writeXml( this, QgsWeakRelation::Referenced, rel, referencingLayersElement, doc );
           break;
         case Qgis::RelationshipType::Generated:
           break;
@@ -3273,19 +3273,19 @@ bool QgsVectorLayer::writeSld( QDomNode &node, QDomDocument &doc, QString &error
   return true;
 }
 
-bool QgsVectorLayer::writeSldLabeling(QDomNode &node, const QVariantMap &props) const
+bool QgsVectorLayer::writeSldLabeling( QDomNode &node, const QVariantMap &props ) const
 {
-  QVariantMap localProps = QVariantMap(props);
-  if (hasScaleBasedVisibility())
+  QVariantMap localProps = QVariantMap( props );
+  if ( hasScaleBasedVisibility() )
   {
-    QgsSymbolLayerUtils::mergeScaleDependencies(maximumScale(), minimumScale(), localProps);
+    QgsSymbolLayerUtils::mergeScaleDependencies( maximumScale(), minimumScale(), localProps );
   }
 
-  if (isSpatial())
+  if ( isSpatial() )
   {
-    if (labelsEnabled())
+    if ( labelsEnabled() )
     {
-      mLabeling->toSld(node, localProps);
+      mLabeling->toSld( node, localProps );
     }
   }
 
@@ -3677,27 +3677,27 @@ bool QgsVectorLayer::deleteFeatureCascade( QgsFeatureId fid, QgsVectorLayer::Del
         {
           case Qgis::RelationshipStrength::Composition:
           {
-          //get features connected over this relation
-          QgsFeatureIterator relatedFeaturesIt = relation.getRelatedFeatures( getFeature( fid ) );
-          QgsFeatureIds childFeatureIds;
-          QgsFeature childFeature;
-          while ( relatedFeaturesIt.nextFeature( childFeature ) )
-          {
-            childFeatureIds.insert( childFeature.id() );
-          }
-          if ( childFeatureIds.count() > 0 )
-          {
-            relation.referencingLayer()->startEditing();
-            relation.referencingLayer()->deleteFeatures( childFeatureIds, context );
-          }
+            //get features connected over this relation
+            QgsFeatureIterator relatedFeaturesIt = relation.getRelatedFeatures( getFeature( fid ) );
+            QgsFeatureIds childFeatureIds;
+            QgsFeature childFeature;
+            while ( relatedFeaturesIt.nextFeature( childFeature ) )
+            {
+              childFeatureIds.insert( childFeature.id() );
+            }
+            if ( childFeatureIds.count() > 0 )
+            {
+              relation.referencingLayer()->startEditing();
+              relation.referencingLayer()->deleteFeatures( childFeatureIds, context );
+            }
             break;
-        }
+          }
 
           case Qgis::RelationshipStrength::Association:
             break;
+        }
       }
     }
-  }
   }
 
   if ( mJoinBuffer->containsJoins() )

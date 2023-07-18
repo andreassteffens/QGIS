@@ -17,12 +17,13 @@
 
 namespace QgsSb
 {
+
   /**
    * Output GetLayerMetadata response
    */
   void writeGetLayerMetadata( QgsServerInterface *serverIface, const QgsProject *project,
-                             const QString &version, const QgsServerRequest &request,
-                             QgsServerResponse &response, const QString &layerName);
+                              const QString &version, const QgsServerRequest &request,
+                              QgsServerResponse &response, const QString &layerName );
 
 
 } // namespace QgsSb

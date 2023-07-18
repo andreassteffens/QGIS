@@ -30,12 +30,12 @@ typedef struct _sbJoinedToggleLayerSettings
     activateWithReference = deactivateWithReference = invertBehavior = false;
   }
 
-  _sbJoinedToggleLayerSettings( const _sbJoinedToggleLayerSettings& s )
-        : layerId( s.layerId )
-        , referencedLayerId( s.referencedLayerId )
-        , activateWithReference( s.activateWithReference )
-        , deactivateWithReference( s.deactivateWithReference )
-        , invertBehavior( s.invertBehavior )
+  _sbJoinedToggleLayerSettings( const _sbJoinedToggleLayerSettings &s )
+    : layerId( s.layerId )
+    , referencedLayerId( s.referencedLayerId )
+    , activateWithReference( s.activateWithReference )
+    , deactivateWithReference( s.deactivateWithReference )
+    , invertBehavior( s.invertBehavior )
   {
     // nothing to be done here for now
   }
@@ -56,34 +56,34 @@ class CORE_EXPORT sbJoinedToggleUtils
     /**
      *
      */
-    static void removeJoinedToggleLayer ( QgsMapLayer *pJoinedLayer );
+    static void removeJoinedToggleLayer( QgsMapLayer *pJoinedLayer );
 
     /**
      *
      */
-    static QList< sbJoinedToggleLayerSettings > getJoinedToggleLayers( QgsMapLayer* pReferencedLayer );
+    static QList< sbJoinedToggleLayerSettings > getJoinedToggleLayers( QgsMapLayer *pReferencedLayer );
 
     /**
      *
      */
-    static sbJoinedToggleLayerSettings getReferencedLayer( QgsMapLayer* pLayer );
+    static sbJoinedToggleLayerSettings getReferencedLayer( QgsMapLayer *pLayer );
 
   private:
 
     /**
      *
      */
-    static void sanitizeJoinedToggleLayers( QgsProject* pProject );
+    static void sanitizeJoinedToggleLayers( QgsProject *pProject );
 
     /**
      *
      */
-    static void removeJoinedToggleLayer( QgsMapLayer* pReferencedLayer, QgsMapLayer* pJoinedLayer );
+    static void removeJoinedToggleLayer( QgsMapLayer *pReferencedLayer, QgsMapLayer *pJoinedLayer );
 
     /**
      *
      */
-    static void removeJoinedToggleLayer( QgsMapLayer* pReferencedLayer, QString strJoinedLayerId );
+    static void removeJoinedToggleLayer( QgsMapLayer *pReferencedLayer, QString strJoinedLayerId );
 };
 
 #endif SBJOINEDTOGGLEUTILS_H

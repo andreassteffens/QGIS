@@ -59,9 +59,9 @@ namespace QgsWms
    */
   QUrl serviceUrl( const QgsServerRequest &request, const QgsProject *project, const QgsServerSettings &settings );
 
-  QString sbGetLayerMetadataUrl(const QgsServerRequest &request, const QgsProject *project, const QString &layer);
+  QString sbGetLayerMetadataUrl( const QgsServerRequest &request, const QgsProject *project, const QString &layer );
 
-  void sbProfilerOutput(const char *pszOut);
+  void sbProfilerOutput( const char *pszOut );
 
   /**
    * Parse image format parameter
@@ -74,10 +74,10 @@ namespace QgsWms
    */
   void writeImage( QgsServerResponse &response, QImage &img, const QString &formatStr,
                    int imageQuality = -1 );
-  QUrlQuery buildUrlQuery(const QString &url);
+  QUrlQuery buildUrlQuery( const QString &url );
 
-  QString extractUrlBase(const QString &url);
-  
+  QString extractUrlBase( const QString &url );
+
 } // namespace QgsWms
 
 #endif

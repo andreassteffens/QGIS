@@ -445,49 +445,49 @@ QString QgsWmsProvider::getLegendGraphicUrl() const
 QStringList QgsWmsProvider::getLegendGraphicUrls() const
 {
   QStringList qlistUrls;
-  
-  for (int i = 0; i < mCaps.mLayersSupported.size(); i++)
+
+  for ( int i = 0; i < mCaps.mLayersSupported.size(); i++ )
   {
     QString url;
-  
+
     const QgsWmsLayerProperty &l = mCaps.mLayersSupported[i];
 
-    for (int j = 0; j < mSettings.mActiveSubLayers.size(); j++)
+    for ( int j = 0; j < mSettings.mActiveSubLayers.size(); j++ )
     {
-      if (l.name == mSettings.mActiveSubLayers[j])
+      if ( l.name == mSettings.mActiveSubLayers[j] )
       {
-        if (!mSettings.mActiveSubStyles[j].isEmpty() && mSettings.mActiveSubStyles[j] != QLatin1String("default"))
+        if ( !mSettings.mActiveSubStyles[j].isEmpty() && mSettings.mActiveSubStyles[j] != QLatin1String( "default" ) )
         {
-          const QgsWmsStyleProperty *s = searchStyle(l.style, mSettings.mActiveSubStyles[j]);
-          if (s)
-            url = pickLegend(*s);
+          const QgsWmsStyleProperty *s = searchStyle( l.style, mSettings.mActiveSubStyles[j] );
+          if ( s )
+            url = pickLegend( *s );
         }
         else
         {
           // QGIS wants the default style, but GetCapabilities doesn't give us a
           // way to know what is the default style. So we look for the onlineResource
           // only if there is a single style available or if there is a style called "default".
-          if (l.style.size() == 1)
+          if ( l.style.size() == 1 )
           {
-            url = pickLegend(l.style[0]);
+            url = pickLegend( l.style[0] );
           }
           else
           {
-            const QgsWmsStyleProperty *s = searchStyle(l.style, QStringLiteral("default"));
-            if (s)
-              url = pickLegend(*s);
+            const QgsWmsStyleProperty *s = searchStyle( l.style, QStringLiteral( "default" ) );
+            if ( s )
+              url = pickLegend( *s );
           }
         }
-  
-        if (url.isEmpty() && !mCaps.mCapabilities.capability.request.getLegendGraphic.dcpType.isEmpty())
+
+        if ( url.isEmpty() && !mCaps.mCapabilities.capability.request.getLegendGraphic.dcpType.isEmpty() )
           url = mCaps.mCapabilities.capability.request.getLegendGraphic.dcpType.front().http.get.onlineResource.xlinkHref;
-  
-        if (!url.isEmpty())
-          qlistUrls.append(prepareUri(url));
+
+        if ( !url.isEmpty() )
+          qlistUrls.append( prepareUri( url ) );
       }
     }
   }
-  
+
   return qlistUrls;
 }
 
@@ -2261,35 +2261,35 @@ QStringList QgsWmsProvider::subLayerStyles() const
   return mSettings.mActiveSubStyles;
 }
 
-bool QgsWmsProvider::getMinMaxScale(double &dMin, double &dMax)
+bool QgsWmsProvider::getMinMaxScale( double &dMin, double &dMax )
 {
   dMin = dMax = -1;
   bool bRes = false;
 
-  if (mSettings.mTiled)
+  if ( mSettings.mTiled )
     return bRes;
 
   dMin = DBL_MAX;
   dMax = -1;
 
-  for(const QString &strLayer : mSettings.mActiveSubLayers)
+  for ( const QString &strLayer : mSettings.mActiveSubLayers )
   {
     const QgsWmsLayerProperty *layerProperty = nullptr;
-    for(const QgsWmsLayerProperty &toplevelLayer : mCaps.mCapabilities.capability.layers)
+    for ( const QgsWmsLayerProperty &toplevelLayer : mCaps.mCapabilities.capability.layers )
     {
-      layerProperty = _findNestedLayerProperty(strLayer, &toplevelLayer);
-      if (layerProperty)
+      layerProperty = _findNestedLayerProperty( strLayer, &toplevelLayer );
+      if ( layerProperty )
         break;
     }
 
-    if (layerProperty)
+    if ( layerProperty )
     {
-      if (layerProperty->maximumScaleDenominator >= 1 && 
-        layerProperty->maximumScaleDenominator > layerProperty->minimumScaleDenominator && 
-        !isnan(layerProperty->minimumScaleDenominator) &&
-        !isnan(layerProperty->maximumScaleDenominator) &&
-        !isinf(layerProperty->minimumScaleDenominator) &&
-        !isinf(layerProperty->maximumScaleDenominator)) 
+      if ( layerProperty->maximumScaleDenominator >= 1 &&
+           layerProperty->maximumScaleDenominator > layerProperty->minimumScaleDenominator &&
+           !isnan( layerProperty->minimumScaleDenominator ) &&
+           !isnan( layerProperty->maximumScaleDenominator ) &&
+           !isinf( layerProperty->minimumScaleDenominator ) &&
+           !isinf( layerProperty->maximumScaleDenominator ) )
       {
         //dMin = std::min(dMin, layerProperty->minimumScaleDenominator);
         //dMax = std::max(dMax, layerProperty->maximumScaleDenominator);

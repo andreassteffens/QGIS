@@ -26,28 +26,28 @@ class sbElevationServicesGui : public QWidget, private Ui::sbElevationServicesGu
     Q_OBJECT
 
   public:
-    sbElevationServicesGui(QgisInterface *pQgisIface, QWidget *parent = nullptr, Qt::WindowFlags fl = nullptr);
+    sbElevationServicesGui( QgisInterface *pQgisIface, QWidget *parent = nullptr, Qt::WindowFlags fl = nullptr );
     ~sbElevationServicesGui();
 
   public slots:
     void onDestinationCrsChanged();
 
-    void onMapToolMouseClicked(const QgsPointXY &point);
+    void onMapToolMouseClicked( const QgsPointXY &point );
 
-    void onSettingsTextChanged(const QString &text);
+    void onSettingsTextChanged( const QString &text );
     void onClearResultsBtnPressed();
-    
-    void onActivateInfoBtnToggled(bool checked);
 
-    void onMapToolSet(QgsMapTool* newTool, QgsMapTool* oldTool);
+    void onActivateInfoBtnToggled( bool checked );
+
+    void onMapToolSet( QgsMapTool *newTool, QgsMapTool *oldTool );
 
     void onNetworkReplyFinished();
 
     void onClearedProject();
-    
+
   private:
-    QgisInterface*            mpQgisIface      = nullptr;
-    
+    QgisInterface            *mpQgisIface      = nullptr;
+
     QNetworkAccessManager        mNetworkManager;
     QPointer<QNetworkReply>        mpNetworkReply;
 
@@ -55,9 +55,9 @@ class sbElevationServicesGui : public QWidget, private Ui::sbElevationServicesGu
     QPointer<sbElevationServicesMapTool>  mpMapTool      = nullptr;
     QgsCoordinateTransform        mTransform;
 
-    void doInfo(const QgsPointXY& point);
-    void doGoogleInfo(const QgsPointXY& point);
-    bool processGoogleInfoReply(const QString& strReply);
+    void doInfo( const QgsPointXY &point );
+    void doGoogleInfo( const QgsPointXY &point );
+    bool processGoogleInfoReply( const QString &strReply );
 };
 
 #endif

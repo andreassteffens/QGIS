@@ -469,26 +469,26 @@ namespace QgsWms
     const QgsWmsParameter pFilterGeom( QgsWmsParameter::FILTER_GEOM );
     save( pFilterGeom );
 
-    const QgsWmsParameter pSbRules(QgsWmsParameter::SBRULES);
-    save(pSbRules);
+    const QgsWmsParameter pSbRules( QgsWmsParameter::SBRULES );
+    save( pSbRules );
 
-    const QgsWmsParameter pSbLabels(QgsWmsParameter::SBLABELS);
-    save(pSbLabels);
+    const QgsWmsParameter pSbLabels( QgsWmsParameter::SBLABELS );
+    save( pSbLabels );
 
-    const QgsWmsParameter pSbQuerySubstitutions(QgsWmsParameter::SBQUERYSUBSTITUTIONS);
-    save(pSbQuerySubstitutions);
+    const QgsWmsParameter pSbQuerySubstitutions( QgsWmsParameter::SBQUERYSUBSTITUTIONS );
+    save( pSbQuerySubstitutions );
 
-    const QgsWmsParameter pSbKey(QgsWmsParameter::SBKEY);
-    save(pSbKey);
+    const QgsWmsParameter pSbKey( QgsWmsParameter::SBKEY );
+    save( pSbKey );
 
-   const QgsWmsParameter pSbAlwaysRenderSelection(QgsWmsParameter::SBALWAYSRENDERSELECTION);
-   save(pSbAlwaysRenderSelection);
+    const QgsWmsParameter pSbAlwaysRenderSelection( QgsWmsParameter::SBALWAYSRENDERSELECTION );
+    save( pSbAlwaysRenderSelection );
 
-    const QgsWmsParameter pSbWithLabel(QgsWmsParameter::SBWITHLABEL);
-    save(pSbWithLabel);
+    const QgsWmsParameter pSbWithLabel( QgsWmsParameter::SBWITHLABEL );
+    save( pSbWithLabel );
 
-    const QgsWmsParameter pSbAllowUnsafe(QgsWmsParameter::SBALLOWUNSAFE);
-    save(pSbAllowUnsafe);
+    const QgsWmsParameter pSbAllowUnsafe( QgsWmsParameter::SBALLOWUNSAFE );
+    save( pSbAllowUnsafe );
 
     const QgsWmsParameter pPolygTol( QgsWmsParameter::FI_POLYGON_TOLERANCE,
                                      QVariant::Double,
@@ -1470,7 +1470,7 @@ namespace QgsWms
   QStringList QgsWmsParameters::sbQuerySubstitutions() const
   {
     const QString strQuerySubstitutions = mWmsParameters.value( QgsWmsParameter::SBQUERYSUBSTITUTIONS ).toString();
-    QStringList listLayerTerms = strQuerySubstitutions.split(';');
+    QStringList listLayerTerms = strQuerySubstitutions.split( ';' );
 
     return listLayerTerms;
   }
@@ -1478,17 +1478,17 @@ namespace QgsWms
   QStringList QgsWmsParameters::sbLabels() const
   {
     const QString strLabels = mWmsParameters.value( QgsWmsParameter::SBLABELS ).toString();
-    QStringList listLayerTerms = strLabels.split(';');
+    QStringList listLayerTerms = strLabels.split( ';' );
 
     return listLayerTerms;
   }
 
   QStringList QgsWmsParameters::sbRules() const
   {
-     const QString strRules = mWmsParameters.value( QgsWmsParameter::SBRULES ).toString();
-     QStringList listLayerTerms = strRules.split(';');
+    const QString strRules = mWmsParameters.value( QgsWmsParameter::SBRULES ).toString();
+    QStringList listLayerTerms = strRules.split( ';' );
 
-     return listLayerTerms;
+    return listLayerTerms;
   }
 
   QString QgsWmsParameters::sbKey() const
@@ -1502,10 +1502,10 @@ namespace QgsWms
   {
     const QString strKey = mWmsParameters.value( QgsWmsParameter::SBWITHLABEL ).toString();
 
-    if (strKey.isEmpty())
+    if ( strKey.isEmpty() )
       return false;
 
-    if (strKey.compare("true", Qt::CaseInsensitive) == 0)
+    if ( strKey.compare( "true", Qt::CaseInsensitive ) == 0 )
       return true;
 
     return false;
@@ -1515,10 +1515,10 @@ namespace QgsWms
   {
     const QString strKey = mWmsParameters.value( QgsWmsParameter::SBALWAYSRENDERSELECTION ).toString();
 
-    if (strKey.isEmpty())
+    if ( strKey.isEmpty() )
       return false;
 
-    if (strKey.compare("true", Qt::CaseInsensitive) == 0)
+    if ( strKey.compare( "true", Qt::CaseInsensitive ) == 0 )
       return true;
 
     return false;
@@ -1528,10 +1528,10 @@ namespace QgsWms
   {
     const QString strKey = mWmsParameters.value( QgsWmsParameter::SBALLOWUNSAFE ).toString();
 
-    if (strKey.isEmpty())
+    if ( strKey.isEmpty() )
       return false;
 
-    if (strKey.compare("true", Qt::CaseInsensitive) == 0)
+    if ( strKey.compare( "true", Qt::CaseInsensitive ) == 0 )
       return true;
 
     return false;
@@ -1693,41 +1693,41 @@ namespace QgsWms
     return noMText;
   }
 
-  QStringList QgsWmsParameters::sbLayerQuerySubstitutions(const QString &layer) const
+  QStringList QgsWmsParameters::sbLayerQuerySubstitutions( const QString &layer ) const
   {
     const QStringList listLayerTerms = sbQuerySubstitutions();
 
     QStringList substitutions;
 
-    for (int iTerm = 0; iTerm < listLayerTerms.count(); iTerm++)
+    for ( int iTerm = 0; iTerm < listLayerTerms.count(); iTerm++ )
     {
       QString strTerm = listLayerTerms[iTerm];
 
-      if (!strTerm.contains(':'))
+      if ( !strTerm.contains( ':' ) )
         continue;
 
-      QStringList listLayerParts = strTerm.split(':');
-      if (listLayerParts.count() < 2)
+      QStringList listLayerParts = strTerm.split( ':' );
+      if ( listLayerParts.count() < 2 )
         continue;
 
       QString strLayer = listLayerParts[0];
-      if (strLayer.compare(layer, Qt::CaseInsensitive) != 0)
+      if ( strLayer.compare( layer, Qt::CaseInsensitive ) != 0 )
         continue;
 
       QString strValue = "";
-      for (int iPart = 1; iPart < listLayerParts.count(); iPart++)
+      for ( int iPart = 1; iPart < listLayerParts.count(); iPart++ )
       {
-        if (strValue.length() > 0)
+        if ( strValue.length() > 0 )
           strValue += ":";
 
         strValue += listLayerParts[iPart];
       }
 
-      QStringList listLayerSubstitutionTerms = strValue.split(',');
-      for (int iSubstitution = 0; iSubstitution < listLayerSubstitutionTerms.count(); iSubstitution++)
+      QStringList listLayerSubstitutionTerms = strValue.split( ',' );
+      for ( int iSubstitution = 0; iSubstitution < listLayerSubstitutionTerms.count(); iSubstitution++ )
       {
         QString strSubstitution = listLayerSubstitutionTerms[iSubstitution];
-        substitutions.append(strSubstitution);
+        substitutions.append( strSubstitution );
       }
     }
 
@@ -1736,34 +1736,34 @@ namespace QgsWms
 
   QMultiMap<QString, bool> QgsWmsParameters::sbAllLayerLabels() const
   {
-    QMultiMap<QString, bool> mapLabels = sbLayerLabels(allLayersNickname());
+    QMultiMap<QString, bool> mapLabels = sbLayerLabels( allLayersNickname() );
     return mapLabels;
   }
 
-  QMultiMap<QString, bool> QgsWmsParameters::sbLayerLabels(const QStringList &layers) const
+  QMultiMap<QString, bool> QgsWmsParameters::sbLayerLabels( const QStringList &layers ) const
   {
     const QStringList listLayerTerms = sbLabels();
     QMultiMap<QString, bool> mapLabels;
 
-    for (int iTerm = 0; iTerm < listLayerTerms.count(); iTerm++)
+    for ( int iTerm = 0; iTerm < listLayerTerms.count(); iTerm++ )
     {
       QString strTerm = listLayerTerms[iTerm];
-      if (!strTerm.contains(':'))
+      if ( !strTerm.contains( ':' ) )
         continue;
 
-      QStringList listLayerParts = strTerm.split(':');
-      if (listLayerParts.count() != 2)
+      QStringList listLayerParts = strTerm.split( ':' );
+      if ( listLayerParts.count() != 2 )
         continue;
 
       QString strLayer = listLayerParts[0];
-      if (!layers.contains(strLayer))
+      if ( !layers.contains( strLayer ) )
         continue;
 
-      bool bState = listLayerParts[1].compare("true", Qt::CaseInsensitive) == 0;
-      if (mapLabels.contains(strLayer))
-        mapLabels.remove(strLayer);
+      bool bState = listLayerParts[1].compare( "true", Qt::CaseInsensitive ) == 0;
+      if ( mapLabels.contains( strLayer ) )
+        mapLabels.remove( strLayer );
 
-      mapLabels.insert(strLayer, bState);
+      mapLabels.insert( strLayer, bState );
     }
 
     return mapLabels;
@@ -1771,57 +1771,57 @@ namespace QgsWms
 
   QMultiMap<QString, QgsWmsParametersRules> QgsWmsParameters::sbAllLayerRules() const
   {
-    QMultiMap<QString, QgsWmsParametersRules> mapRules = sbLayerRules(allLayersNickname());
+    QMultiMap<QString, QgsWmsParametersRules> mapRules = sbLayerRules( allLayersNickname() );
     return mapRules;
   }
 
-  QMultiMap<QString, QgsWmsParametersRules> QgsWmsParameters::sbLayerRules(const QStringList &layers) const
+  QMultiMap<QString, QgsWmsParametersRules> QgsWmsParameters::sbLayerRules( const QStringList &layers ) const
   {
     const QStringList listLayerTerms = sbRules();
     QMultiMap<QString, QgsWmsParametersRules> mapRules;
 
-    for (int iTerm = 0; iTerm < listLayerTerms.count(); iTerm++)
+    for ( int iTerm = 0; iTerm < listLayerTerms.count(); iTerm++ )
     {
       QString strTerm = listLayerTerms[iTerm];
-      if (!strTerm.contains(':'))
+      if ( !strTerm.contains( ':' ) )
         continue;
 
-      QStringList listLayerParts = strTerm.split(':');
-      if (listLayerParts.count() != 2)
+      QStringList listLayerParts = strTerm.split( ':' );
+      if ( listLayerParts.count() != 2 )
         continue;
 
       QString strLayer = listLayerParts[0];
-      if (!layers.contains(strLayer))
+      if ( !layers.contains( strLayer ) )
         continue;
 
-      if (!mapRules.contains(strLayer))
-        mapRules.insert(strLayer, QgsWmsParametersRules());
+      if ( !mapRules.contains( strLayer ) )
+        mapRules.insert( strLayer, QgsWmsParametersRules() );
 
-      QMultiMap<QString, QgsWmsParametersRules>::iterator it = mapRules.find(strLayer);
+      QMultiMap<QString, QgsWmsParametersRules>::iterator it = mapRules.find( strLayer );
 
-      QStringList listLayerRuleTerms = listLayerParts[1].split(',');
-      for (int iRule = 0; iRule < listLayerRuleTerms.count(); iRule++)
+      QStringList listLayerRuleTerms = listLayerParts[1].split( ',' );
+      for ( int iRule = 0; iRule < listLayerRuleTerms.count(); iRule++ )
       {
         QString strRuleTerm = listLayerRuleTerms[iRule];
 
-        QStringList listRuleParts = strRuleTerm.split('=');
-        if (listRuleParts.count() != 2)
+        QStringList listRuleParts = strRuleTerm.split( '=' );
+        if ( listRuleParts.count() != 2 )
           continue;
 
         QString strRule = listRuleParts[0];
-        bool bState = listRuleParts[1].compare("true", Qt::CaseInsensitive) == 0;
+        bool bState = listRuleParts[1].compare( "true", Qt::CaseInsensitive ) == 0;
 
-        it->mRules.append(QPair<QString, bool>(strRule, bState));
+        it->mRules.append( QPair<QString, bool>( strRule, bState ) );
       }
     }
 
     return mapRules;
   }
 
-  void QgsWmsParameters::sbAddRenderSelectionOnlyLayer(QString& strLayer)
+  void QgsWmsParameters::sbAddRenderSelectionOnlyLayer( QString &strLayer )
   {
-    if (!mSbRenderSelectionOnlyLayers.contains(strLayer))
-      mSbRenderSelectionOnlyLayers.insert(strLayer, strLayer);
+    if ( !mSbRenderSelectionOnlyLayers.contains( strLayer ) )
+      mSbRenderSelectionOnlyLayers.insert( strLayer, strLayer );
   }
 
   QList<QgsWmsParametersLayer> QgsWmsParameters::layersParameters() const
@@ -1831,8 +1831,8 @@ namespace QgsWms
     const QStringList selection = selections();
     const QList<int> opacities = opacitiesAsInt();
     const QMultiMap<QString, QgsWmsParametersFilter> filters = layerFilters( layers );
-    const QMultiMap<QString, QgsWmsParametersRules> rules = sbLayerRules(layers);
-    const QMultiMap<QString, bool> labels = sbLayerLabels(layers);
+    const QMultiMap<QString, QgsWmsParametersRules> rules = sbLayerRules( layers );
+    const QMultiMap<QString, bool> labels = sbLayerLabels( layers );
 
     // selection format: "LayerName:id0,id1;LayerName2:id0,id1;..."
     // several filters can be defined for one layer
@@ -1883,21 +1883,21 @@ namespace QgsWms
           }
         }
 
-        if (rules.contains(layer))
+        if ( rules.contains( layer ) )
         {
-          QMultiMap<QString, QgsWmsParametersRules>::const_iterator it = rules.find(layer);
+          QMultiMap<QString, QgsWmsParametersRules>::const_iterator it = rules.find( layer );
           param.mRules = it->mRules;
         }
 
         param.mLabelsPresent = false;
-        if (labels.contains(layer))
+        if ( labels.contains( layer ) )
         {
           param.mLabelsPresent = true;
-          QMultiMap<QString, bool>::const_iterator it = labels.find(layer);
+          QMultiMap<QString, bool>::const_iterator it = labels.find( layer );
           param.mLabels = it.value();
         }
 
-        param.mQuerySubstitutions = sbLayerQuerySubstitutions(layer);
+        param.mQuerySubstitutions = sbLayerQuerySubstitutions( layer );
 
         if ( layerSelections.contains( layer ) )
         {
@@ -1910,7 +1910,7 @@ namespace QgsWms
           }
         }
 
-        param.mRenderSelectionOnly = mSbRenderSelectionOnlyLayers.contains(param.mNickname);
+        param.mRenderSelectionOnly = mSbRenderSelectionOnlyLayers.contains( param.mNickname );
       }
 
       parameters.append( param );

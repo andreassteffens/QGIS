@@ -17,12 +17,13 @@
 
 namespace QgsSb
 {
+
   /**
    * Output SetPreloadProjects response
    */
-  void writeSetPreloadProjects(QgsServerInterface *serverIface, const QgsProject *project,
-			  const QString &version, const QgsServerRequest &request,
-			  QgsServerResponse &response, const QString &projects);
+  void writeSetPreloadProjects( QgsServerInterface *serverIface, const QgsProject *project,
+                                const QString &version, const QgsServerRequest &request,
+                                QgsServerResponse &response, const QString &projects );
 
 
 } // namespace QgsSb

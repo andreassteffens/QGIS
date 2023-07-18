@@ -108,7 +108,7 @@ namespace QgsWfs
   {
     QgsFeatureRequest request;
 
-    request.sbSetPassThroughQgisFilterExpression(wfsParameters.sbPassThroughQgisFilterExpression());
+    request.sbSetPassThroughQgisFilterExpression( wfsParameters.sbPassThroughQgisFilterExpression() );
 
     QDomNodeList fidNodes = filterElem.elementsByTagName( QStringLiteral( "FeatureId" ) );
     QDomNodeList goidNodes = filterElem.elementsByTagName( QStringLiteral( "GmlObjectId" ) );

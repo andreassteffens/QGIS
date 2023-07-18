@@ -981,8 +981,6 @@ class CORE_EXPORT QgsMarkerSymbolLayer : public QgsSymbolLayer
      */
     virtual QRectF bounds( QPointF point, QgsSymbolRenderContext &context ) = 0;
 
-    virtual double sbPainterSize(QgsSymbolRenderContext &context) const SIP_SKIP;
-
   protected:
 
     /**

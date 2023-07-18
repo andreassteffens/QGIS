@@ -783,50 +783,50 @@ void TestQgsCoordinateReferenceSystem::fromProjObjectKnownCrs()
 {
   // test creating a QgsCoordinateReferenceSystem from a proj object which is known crs
   const QString crsWkt = QStringLiteral( R"""(
-PROJCRS["GDA94 / Vicgrid",
-    BASEGEOGCRS["GDA94",
-        DATUM["Geocentric Datum of Australia 1994",
-            ELLIPSOID["GRS 1980",6378137,298.257222101,
-                LENGTHUNIT["metre",1]]],
-        PRIMEM["Greenwich",0,
-            ANGLEUNIT["degree",0.0174532925199433]],
-        ID["EPSG",4283]],
-    CONVERSION["Vicgrid",
-        METHOD["Lambert Conic Conformal (2SP)",
-            ID["EPSG",9802]],
-        PARAMETER["Latitude of false origin",-37,
-            ANGLEUNIT["degree",0.0174532925199433],
-            ID["EPSG",8821]],
-        PARAMETER["Longitude of false origin",145,
-            ANGLEUNIT["degree",0.0174532925199433],
-            ID["EPSG",8822]],
-        PARAMETER["Latitude of 1st standard parallel",-36,
-            ANGLEUNIT["degree",0.0174532925199433],
-            ID["EPSG",8823]],
-        PARAMETER["Latitude of 2nd standard parallel",-38,
-            ANGLEUNIT["degree",0.0174532925199433],
-            ID["EPSG",8824]],
-        PARAMETER["Easting at false origin",2500000,
-            LENGTHUNIT["metre",1],
-            ID["EPSG",8826]],
-        PARAMETER["Northing at false origin",2500000,
-            LENGTHUNIT["metre",1],
-            ID["EPSG",8827]]],
-    CS[Cartesian,2],
-        AXIS["(E)",east,
-            ORDER[1],
-            LENGTHUNIT["metre",1]],
-        AXIS["(N)",north,
-            ORDER[2],
-            LENGTHUNIT["metre",1]],
-    USAGE[
-        SCOPE["State-wide spatial data management."],
-        AREA["Australia - Victoria."],
-        BBOX[-39.2,140.96,-33.98,150.04]],
-    ID["EPSG",3111]]
-          )""" );
+                                         PROJCRS["GDA94 / Vicgrid",
+                                             BASEGEOGCRS["GDA94",
+                                                 DATUM["Geocentric Datum of Australia 1994",
+                                                     ELLIPSOID["GRS 1980",6378137,298.257222101,
+                                                         LENGTHUNIT["metre",1]]],
+                                                 PRIMEM["Greenwich",0,
+                                                     ANGLEUNIT["degree",0.0174532925199433]],
+                                                 ID["EPSG",4283]],
+                                             CONVERSION["Vicgrid",
+                                                 METHOD["Lambert Conic Conformal (2SP)",
+                                                     ID["EPSG",9802]],
+                                                 PARAMETER["Latitude of false origin",-37,
+                                                     ANGLEUNIT["degree",0.0174532925199433],
+                                                     ID["EPSG",8821]],
+                                                 PARAMETER["Longitude of false origin",145,
+                                                     ANGLEUNIT["degree",0.0174532925199433],
+                                                     ID["EPSG",8822]],
+                                                 PARAMETER["Latitude of 1st standard parallel",-36,
+                                                     ANGLEUNIT["degree",0.0174532925199433],
+                                                     ID["EPSG",8823]],
+                                                 PARAMETER["Latitude of 2nd standard parallel",-38,
+                                                     ANGLEUNIT["degree",0.0174532925199433],
+                                                     ID["EPSG",8824]],
+                                                 PARAMETER["Easting at false origin",2500000,
+                                                     LENGTHUNIT["metre",1],
+                                                     ID["EPSG",8826]],
+                                                 PARAMETER["Northing at false origin",2500000,
+                                                     LENGTHUNIT["metre",1],
+                                                     ID["EPSG",8827]]],
+                                             CS[Cartesian,2],
+                                             AXIS["(E)",east,
+                                                 ORDER[1],
+                                                 LENGTHUNIT["metre",1]],
+                                             AXIS["(N)",north,
+                                                 ORDER[2],
+                                                 LENGTHUNIT["metre",1]],
+                                             USAGE[
+                                                 SCOPE["State-wide spatial data management."],
+                                                 AREA["Australia - Victoria."],
+                                                 BBOX[-39.2,140.96,-33.98,150.04]],
+                                             ID["EPSG",3111]]
+                                       )""" );
 
-  const QgsProjUtils::proj_pj_unique_ptr pj( proj_create_from_wkt( QgsProjContext::get(), crsWkt.toUtf8().constData(), nullptr, nullptr, nullptr ) );
+                         const QgsProjUtils::proj_pj_unique_ptr pj( proj_create_from_wkt( QgsProjContext::get(), crsWkt.toUtf8().constData(), nullptr, nullptr, nullptr ) );
   QVERIFY( pj.get() );
 
   QgsCoordinateReferenceSystem crs = QgsCoordinateReferenceSystem::fromProjObject( pj.get() );
@@ -1441,19 +1441,19 @@ void TestQgsCoordinateReferenceSystem::isDynamic()
   QVERIFY( !crs.isDynamic() );
 
   QVERIFY( crs.createFromWkt( QStringLiteral( R"""(GEOGCS["WGS 84",
-      DATUM["WGS_1984",
-          SPHEROID["WGS 84",6378137,298.257223563,
-              AUTHORITY["EPSG","7030"]],
-          AUTHORITY["EPSG","6326"]],
-      PRIMEM["Greenwich",0,
-          AUTHORITY["EPSG","8901"]],
-      UNIT["degree",0.0174532925199433,
-          AUTHORITY["EPSG","9122"]],
-      AXIS["Latitude",NORTH],
-      AXIS["Longitude",EAST],
-      AUTHORITY["EPSG","4326"]])""" ) ) );
-  QVERIFY( crs.isValid() );
-  QVERIFY( crs.isDynamic() );
+                              DATUM["WGS_1984",
+                                    SPHEROID["WGS 84",6378137,298.257223563,
+                                        AUTHORITY["EPSG","7030"]],
+                                    AUTHORITY["EPSG","6326"]],
+                              PRIMEM["Greenwich",0,
+                                     AUTHORITY["EPSG","8901"]],
+                              UNIT["degree",0.0174532925199433,
+                                   AUTHORITY["EPSG","9122"]],
+                              AXIS["Latitude",NORTH],
+                              AXIS["Longitude",EAST],
+                              AUTHORITY["EPSG","4326"]])""" ) ) );
+           QVERIFY( crs.isValid() );
+           QVERIFY( crs.isDynamic() );
 }
 
 void TestQgsCoordinateReferenceSystem::celestialBody()

@@ -403,7 +403,7 @@ long long QgsWFSFeatureHitsRequest::getFeatureCount( const QString &WFSVersion,
   const QString typeName = mUri.typeName();
 
   QUrl getFeatureUrl( mUri.requestUrl( QStringLiteral( "GetFeature" ) ) );
-  
+
   QUrlQuery query( getFeatureUrl );
   query.addQueryItem( QStringLiteral( "VERSION" ),  WFSVersion );
   if ( WFSVersion.startsWith( QLatin1String( "2.0" ) ) )
@@ -484,7 +484,7 @@ QgsWFSSingleFeatureRequest::QgsWFSSingleFeatureRequest( const QgsWFSSharedData *
 QgsRectangle QgsWFSSingleFeatureRequest::getExtent()
 {
   QUrl getFeatureUrl( mUri.requestUrl( QStringLiteral( "GetFeature" ) ) );
-  
+
   QUrlQuery query( getFeatureUrl );
   query.addQueryItem( QStringLiteral( "VERSION" ),  mShared->mWFSVersion );
   if ( mShared->mWFSVersion .startsWith( QLatin1String( "2.0" ) ) )

@@ -29,25 +29,25 @@
 namespace QgsSb
 {
   void writeSetPreloadProjects( QgsServerInterface *serverIface, const QgsProject *project,
-                             const QString &version, const QgsServerRequest &request,
-                             QgsServerResponse &response, const QString &projects )
+                                const QString &version, const QgsServerRequest &request,
+                                QgsServerResponse &response, const QString &projects )
   {
-	  Q_UNUSED(version);
+    Q_UNUSED( version );
 
-	  QString strPreloadConfig = QDir(serverIface->serverSettings()->cacheDirectory()).filePath("preload_" + serverIface->sbTenant());
-	  
-	  QFile fileConfig(strPreloadConfig);
-	  if (!fileConfig.open(QIODevice::WriteOnly | QIODevice::Text))
-		return;
+    QString strPreloadConfig = QDir( serverIface->serverSettings()->cacheDirectory() ).filePath( "preload_" + serverIface->sbTenant() );
 
-	  QStringList listProjects = projects.split(",");
+    QFile fileConfig( strPreloadConfig );
+    if ( !fileConfig.open( QIODevice::WriteOnly | QIODevice::Text ) )
+      return;
 
-	  QTextStream streamOut(&fileConfig);
-	  for (int i = 0; i < listProjects.count(); i++)
-		streamOut << listProjects[i] +"\n";
+    QStringList listProjects = projects.split( "," );
 
-	  response.setStatusCode(200);
-	  response.setHeader(QStringLiteral("Content-Type"), QStringLiteral("text/plain; charset=utf-8"));
-	  response.write("ok");
+    QTextStream streamOut( &fileConfig );
+    for ( int i = 0; i < listProjects.count(); i++ )
+      streamOut << listProjects[i] + "\n";
+
+    response.setStatusCode( 200 );
+    response.setHeader( QStringLiteral( "Content-Type" ), QStringLiteral( "text/plain; charset=utf-8" ) );
+    response.write( "ok" );
   }
 } // namespace QgsSb

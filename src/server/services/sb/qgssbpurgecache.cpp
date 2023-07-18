@@ -36,44 +36,44 @@ namespace QgsSb
                         QgsServerResponse &response )
   {
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
-	  QgsServerCacheManager *cacheManager = serverIface->cacheManager();
-	  if (cacheManager)
-	  {
-		  QgsServerRequest::Parameters params = request.parameters();
-		  QString strDocumentsParam = params.value("documents");
-		  QString strImagesParam = params.value("images");
+    QgsServerCacheManager *cacheManager = serverIface->cacheManager();
+    if ( cacheManager )
+    {
+      QgsServerRequest::Parameters params = request.parameters();
+      QString strDocumentsParam = params.value( "documents" );
+      QString strImagesParam = params.value( "images" );
 
-		  if (!strDocumentsParam.isEmpty() || !strImagesParam.isEmpty())
-		  {
-			  bool bDeleteDocuments = false;
-			  bool bDeleteImages = false;
+      if ( !strDocumentsParam.isEmpty() || !strImagesParam.isEmpty() )
+      {
+        bool bDeleteDocuments = false;
+        bool bDeleteImages = false;
 
-			  if (!strDocumentsParam.isEmpty())
-			  {
-				  if (strDocumentsParam.compare("true", Qt::CaseInsensitive) == 0)
-					  bDeleteDocuments = true;
-			  }
+        if ( !strDocumentsParam.isEmpty() )
+        {
+          if ( strDocumentsParam.compare( "true", Qt::CaseInsensitive ) == 0 )
+            bDeleteDocuments = true;
+        }
 
-			  if (!strImagesParam.isEmpty())
-			  {
-				  if (strImagesParam.compare("true", Qt::CaseInsensitive) == 0)
-					  bDeleteImages = true;
-			  }
+        if ( !strImagesParam.isEmpty() )
+        {
+          if ( strImagesParam.compare( "true", Qt::CaseInsensitive ) == 0 )
+            bDeleteImages = true;
+        }
 
-			  if(bDeleteDocuments)
-				  cacheManager->deleteCachedDocuments(project);
-			  if(bDeleteImages)
-				  cacheManager->deleteCachedImages(project);
-		  }
-		  else
-		  {
-			  cacheManager->deleteCachedDocuments(project);
-			  cacheManager->deleteCachedImages(project);
-		  }
-	  }
+        if ( bDeleteDocuments )
+          cacheManager->deleteCachedDocuments( project );
+        if ( bDeleteImages )
+          cacheManager->deleteCachedImages( project );
+      }
+      else
+      {
+        cacheManager->deleteCachedDocuments( project );
+        cacheManager->deleteCachedImages( project );
+      }
+    }
 #endif
 
-	response.setStatusCode(200);
+    response.setStatusCode( 200 );
     response.setHeader( QStringLiteral( "Content-Type" ), QStringLiteral( "text/plain; charset=utf-8" ) );
     response.write( "ok" );
   }

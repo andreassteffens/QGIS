@@ -133,9 +133,9 @@ class SERVER_EXPORT QgsServerSettings
     void logSummary() const;
 
     /**
-	   * Return settings in the format param=value.
-	   */
-	  QStringList getSettings() const;
+     * Return settings in the format param=value.
+     */
+    QStringList getSettings() const;
 
     /**
      * Returns the ini file loaded by QSetting.
@@ -155,11 +155,11 @@ class SERVER_EXPORT QgsServerSettings
      */
     int maxThreads() const;
 
-	  /**
-	   * Returns the interval [ms] to sleep between checks of the unload projects file.
-	   * \returns interval [ms].
-	   */
-	  int sbUnloadWatcherInterval() const;
+    /**
+     * Returns the interval [ms] to sleep between checks of the unload projects file.
+     * \returns interval [ms].
+     */
+    int sbUnloadWatcherInterval() const;
 
     /**
      * Returns the log level.
@@ -222,15 +222,15 @@ class SERVER_EXPORT QgsServerSettings
     bool showGroupSeparator() const;
 
     /**
-	   * Returns the directory the server is to search for additional fonts in.
-	   * \returns the directory.
-	   */
-	  QString fontsDirectory() const;
+     * Returns the directory the server is to search for additional fonts in.
+     * \returns the directory.
+     */
+    QString fontsDirectory() const;
 
-	  /**
-	   * Returns if internal sb server cache shall be used.
-	   */
-	  bool sbUseCache() const;
+    /**
+     * Returns if internal sb server cache shall be used.
+     */
+    bool sbUseCache() const;
 
     /**
     * Returns if FORWARDED-FOR header should be ignored when building service URLs

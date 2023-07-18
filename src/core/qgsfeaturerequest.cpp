@@ -31,7 +31,7 @@ QgsFeatureRequest::QgsFeatureRequest()
   mSbScaleFactor = 0;
   mSbMapUnitsPerPixel = 0;
   mSbCurrentScale = 0;
-  mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
+  mSbGeometryType = Qgis::GeometryType::Unknown;
   mSbRenderMinPixelSizeSourceFiltering = false;
   mSbRenderMinPixelSizeDebug = false;
   mSbPassThroughQgisFilterExpression = false;
@@ -48,7 +48,7 @@ QgsFeatureRequest::QgsFeatureRequest( QgsFeatureId fid )
   mSbScaleFactor = 0;
   mSbMapUnitsPerPixel = 0;
   mSbCurrentScale = 0;
-  mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
+  mSbGeometryType = Qgis::GeometryType::Unknown;
   mSbRenderMinPixelSizeSourceFiltering = false;
   mSbRenderMinPixelSizeDebug = false;
   mSbPassThroughQgisFilterExpression = false;
@@ -63,7 +63,7 @@ QgsFeatureRequest::QgsFeatureRequest( const QgsFeatureIds &fids )
   mSbScaleFactor = 0;
   mSbMapUnitsPerPixel = 0;
   mSbCurrentScale = 0;
-  mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
+  mSbGeometryType = Qgis::GeometryType::Unknown;
   mSbRenderMinPixelSizeSourceFiltering = false;
   mSbRenderMinPixelSizeDebug = false;
   mSbPassThroughQgisFilterExpression = false;
@@ -78,7 +78,7 @@ QgsFeatureRequest::QgsFeatureRequest( const QgsRectangle &rect )
   mSbScaleFactor = 0;
   mSbMapUnitsPerPixel = 0;
   mSbCurrentScale = 0;
-  mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
+  mSbGeometryType = Qgis::GeometryType::Unknown;
   mSbRenderMinPixelSizeSourceFiltering = false;
   mSbRenderMinPixelSizeDebug = false;
   mSbPassThroughQgisFilterExpression = false;
@@ -94,7 +94,7 @@ QgsFeatureRequest::QgsFeatureRequest( const QgsExpression &expr, const QgsExpres
   mSbScaleFactor = 0;
   mSbMapUnitsPerPixel = 0;
   mSbCurrentScale = 0;
-  mSbGeometryType = QgsWkbTypes::GeometryType::UnknownGeometry;
+  mSbGeometryType = Qgis::GeometryType::Unknown;
   mSbRenderMinPixelSizeSourceFiltering = false;
   mSbRenderMinPixelSizeDebug = false;
   mSbPassThroughQgisFilterExpression = false;
@@ -207,7 +207,7 @@ QgsFeatureRequest &QgsFeatureRequest::setFilterFids( const QgsFeatureIds &fids )
   return *this;
 }
 
-void QgsFeatureRequest::sbSetQuerySubstitutions(const QStringList &substitutions)
+void QgsFeatureRequest::sbSetQuerySubstitutions( const QStringList &substitutions )
 {
   mSbQuerySubstitutions = substitutions;
 }
@@ -371,7 +371,7 @@ QgsFeatureRequest &QgsFeatureRequest::setTransformErrorCallback( const std::func
   return *this;
 }
 
-void QgsFeatureRequest::sbSetPassThroughQgisFilterExpression(bool bPassThrough)
+void QgsFeatureRequest::sbSetPassThroughQgisFilterExpression( bool bPassThrough )
 {
   mSbPassThroughQgisFilterExpression = bPassThrough;
 }
@@ -381,7 +381,7 @@ bool QgsFeatureRequest::sbGetPassThroughQgisFilterExpression() const
   return mSbPassThroughQgisFilterExpression;
 }
 
-void QgsFeatureRequest::sbSetRenderMinPixelSizeFilter(double dRenderMinPixelSize, int iRenderMinPixelSizeMaxScale, double dScaleFactor, double dMapUnitsPerPixel, double dCurrentScale, QgsWkbTypes::GeometryType geometryType, bool bRenderMinPixelSizeSourceFiltering, bool bRenderMinPixelSizeDebug)
+void QgsFeatureRequest::sbSetRenderMinPixelSizeFilter( double dRenderMinPixelSize, int iRenderMinPixelSizeMaxScale, double dScaleFactor, double dMapUnitsPerPixel, double dCurrentScale, Qgis::GeometryType geometryType, bool bRenderMinPixelSizeSourceFiltering, bool bRenderMinPixelSizeDebug )
 {
   mSbRenderMinPixelSize = dRenderMinPixelSize;
   mSbRenderMinPixelSizeMaxScale = iRenderMinPixelSizeMaxScale;
@@ -393,7 +393,7 @@ void QgsFeatureRequest::sbSetRenderMinPixelSizeFilter(double dRenderMinPixelSize
   mSbRenderMinPixelSizeSourceFiltering = bRenderMinPixelSizeSourceFiltering;
 }
 
-void QgsFeatureRequest::sbGetRenderMinPixelSizeFilterValue(double* pdRenderMinPixelSize, int* piRenderMinPixelSizeMaxScale, double* pdScaleFactor, double* pdMapUnitsPerPixel, double* pdCurrentScale, QgsWkbTypes::GeometryType* pgeometryType, bool* pbRenderMinPixelSizeDebug) const
+void QgsFeatureRequest::sbGetRenderMinPixelSizeFilterValue( double *pdRenderMinPixelSize, int *piRenderMinPixelSizeMaxScale, double *pdScaleFactor, double *pdMapUnitsPerPixel, double *pdCurrentScale, Qgis::GeometryType *pgeometryType, bool *pbRenderMinPixelSizeDebug ) const
 {
   *pdRenderMinPixelSize = mSbRenderMinPixelSize;
   *piRenderMinPixelSizeMaxScale = mSbRenderMinPixelSizeMaxScale;
@@ -406,26 +406,26 @@ void QgsFeatureRequest::sbGetRenderMinPixelSizeFilterValue(double* pdRenderMinPi
 
 bool QgsFeatureRequest::sbHasRenderMinPixelSizeFilter() const
 {
-  return (mSbRenderMinPixelSize > 0 && mSbRenderMinPixelSizeMaxScale > 0 && mSbCurrentScale > mSbRenderMinPixelSizeMaxScale);
+  return ( mSbRenderMinPixelSize > 0 && mSbRenderMinPixelSizeMaxScale > 0 && mSbCurrentScale > mSbRenderMinPixelSizeMaxScale );
 }
 
-bool QgsFeatureRequest::sbTestRenderMinPixelSizeFilter(const QgsFeature& f) const
+bool QgsFeatureRequest::sbTestRenderMinPixelSizeFilter( const QgsFeature &f ) const
 {
-  if (mSbRenderMinPixelSize > 0 && mSbRenderMinPixelSizeMaxScale > 0 && !mSbRenderMinPixelSizeSourceFiltering)
+  if ( mSbRenderMinPixelSize > 0 && mSbRenderMinPixelSizeMaxScale > 0 && !mSbRenderMinPixelSizeSourceFiltering )
   {
-    if (mSbGeometryType == QgsWkbTypes::GeometryType::LineGeometry || mSbGeometryType == QgsWkbTypes::GeometryType::PolygonGeometry)
+    if ( mSbGeometryType == Qgis::GeometryType::Line || mSbGeometryType == Qgis::GeometryType::Polygon )
     {
-      if (!f.hasGeometry() || f.geometry().isEmpty())
+      if ( !f.hasGeometry() || f.geometry().isEmpty() )
         return false;
 
-      if (mSbCurrentScale > mSbRenderMinPixelSizeMaxScale)
+      if ( mSbCurrentScale > mSbRenderMinPixelSizeMaxScale )
       {
         QgsRectangle rectBoundsSource = f.geometry().boundingBox();
 
-        double dWidth = ((rectBoundsSource.xMaximum() - rectBoundsSource.xMinimum()) * mSbScaleFactor) / mSbMapUnitsPerPixel;
-        double dHeight = ((rectBoundsSource.yMaximum() - rectBoundsSource.yMinimum()) * mSbScaleFactor) / mSbMapUnitsPerPixel;
+        double dWidth = ( ( rectBoundsSource.xMaximum() - rectBoundsSource.xMinimum() ) * mSbScaleFactor ) / mSbMapUnitsPerPixel;
+        double dHeight = ( ( rectBoundsSource.yMaximum() - rectBoundsSource.yMinimum() ) * mSbScaleFactor ) / mSbMapUnitsPerPixel;
 
-        if (dWidth < mSbRenderMinPixelSize && dHeight < mSbRenderMinPixelSize)
+        if ( dWidth < mSbRenderMinPixelSize && dHeight < mSbRenderMinPixelSize )
           return false;
       }
     }

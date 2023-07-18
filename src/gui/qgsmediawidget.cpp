@@ -200,10 +200,10 @@ void QgsMediaWidget::mediaStatusChanged( QMediaPlayer::MediaStatus status )
 #if QT_VERSION < QT_VERSION_CHECK( 6, 0, 0 )
     case QMediaPlayer::UnknownMediaStatus:
 #endif
-      {
-        setControlsEnabled( false );
-        mDurationLabel->setText( QStringLiteral( "-" ) );
-        break;
-      }
+    {
+      setControlsEnabled( false );
+      mDurationLabel->setText( QStringLiteral( "-" ) );
+      break;
+    }
   }
 }

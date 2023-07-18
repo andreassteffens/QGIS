@@ -162,16 +162,16 @@ namespace QgsWms
       void setLayerOpacity( QgsMapLayer *layer, int opacity ) const;
 
       // Set layer display rules
-      void sbSetLayerRules(QgsMapLayer *layer, const QList<QPair<QString, bool>> &rules);
+      void sbSetLayerRules( QgsMapLayer *layer, const QList<QPair<QString, bool>> &rules );
 
       // Set layer label visibility
-      void sbSetLayerLabels(QgsMapLayer *layer, bool bState);
+      void sbSetLayerLabels( QgsMapLayer *layer, bool bState );
 
       // Set layer filter and dimension
       void setLayerFilter( QgsMapLayer *layer, const QList<QgsWmsParametersFilter> &filters );
 
-     // Set layer query substitutions
-     void sbSetLayerQuerySubstitutions(QgsMapLayer *layer, const QStringList &substitution);
+      // Set layer query substitutions
+      void sbSetLayerQuerySubstitutions( QgsMapLayer *layer, const QStringList &substitution );
 
       QStringList dimensionFilter( QgsVectorLayer *layer ) const;
 
@@ -336,7 +336,7 @@ namespace QgsWms
        *\param atlasPrint true if atlas is used for printing
        *\returns true in case of success
        */
-      bool configurePrintLayout( QgsPrintLayout *c, const QgsMapSettings &mapSettings, double* pdScale, bool atlasPrint = false );
+      bool configurePrintLayout( QgsPrintLayout *c, const QgsMapSettings &mapSettings, double *pdScale, bool atlasPrint = false );
 
       void removeTemporaryLayers();
 

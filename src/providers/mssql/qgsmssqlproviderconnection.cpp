@@ -117,37 +117,37 @@ void QgsMssqlProviderConnection::dropTablePrivate( const QString &schema, const 
 {
   // Drop all constraints and delete the table
   const QString sql { QStringLiteral( R"raw(
-  DECLARE @database nvarchar(50)
-  DECLARE @table nvarchar(50)
-  DECLARE @schema nvarchar(50)
+                                      DECLARE @database nvarchar(50)
+                                      DECLARE @table nvarchar(50)
+                                      DECLARE @schema nvarchar(50)
 
-  set @database = N%1
-  set @table = N%2
-  set @schema = N%3
+                                      set @database = N%1
+                                          set @table = N%2
+                                              set @schema = N%3
 
-  DECLARE @sql nvarchar(255)
-  WHILE EXISTS(select * from INFORMATION_SCHEMA.TABLE_CONSTRAINTS where CONSTRAINT_CATALOG = @database and TABLE_NAME = @table AND TABLE_SCHEMA = @schema )
-  BEGIN
-      select    @sql = 'ALTER TABLE ' + @table + ' DROP CONSTRAINT ' + CONSTRAINT_NAME
-      from    INFORMATION_SCHEMA.TABLE_CONSTRAINTS
-      where    constraint_catalog = @database and
-              table_name = @table and table_schema = @schema
-      exec    sp_executesql @sql
-  END
+                                                  DECLARE @sql nvarchar(255)
+                                                  WHILE EXISTS(select * from INFORMATION_SCHEMA.TABLE_CONSTRAINTS where CONSTRAINT_CATALOG = @database and TABLE_NAME = @table AND TABLE_SCHEMA = @schema )
+                                                  BEGIN
+                                                  select    @sql = 'ALTER TABLE ' + @table + ' DROP CONSTRAINT ' + CONSTRAINT_NAME
+                                                      from    INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+                                                      where    constraint_catalog = @database and
+                                                          table_name = @table and table_schema = @schema
+                                                              exec    sp_executesql @sql
+                                                              END
 
-  DROP TABLE %5.%4
+                                                              DROP TABLE %5.%4
 
-  if exists (select * from INFORMATION_SCHEMA.TABLES where TABLE_NAME = 'geometry_columns' )
-     DELETE FROM geometry_columns WHERE f_table_schema = @schema AND f_table_name = @table
+                                                              if exists (select * from INFORMATION_SCHEMA.TABLES where TABLE_NAME = 'geometry_columns' )
+                                                              DELETE FROM geometry_columns WHERE f_table_schema = @schema AND f_table_name = @table
 
-  )raw" )
+                                    )raw" )
                       .arg( QgsMssqlProvider::quotedValue( QStringLiteral( "master" ) ),  // in my testing docker, it is 'master' instead of QgsMssqlProvider::quotedValue( QgsDataSourceUri( uri() ).database() ),
                             QgsMssqlProvider::quotedValue( name ),
                             QgsMssqlProvider::quotedValue( schema ),
                             QgsMssqlProvider::quotedIdentifier( name ),
                             QgsMssqlProvider::quotedIdentifier( schema ) ) };
 
-  executeSqlPrivate( sql );
+executeSqlPrivate( sql );
 }
 
 void QgsMssqlProviderConnection::createVectorTable( const QString &schema,
@@ -389,18 +389,18 @@ QList<QgsMssqlProviderConnection::TableProperty> QgsMssqlProviderConnection::tab
   {
     query += QStringLiteral( R"raw(
                              sys.schemas.name, sys.objects.name, sys.columns.name, null, 'GEOMETRY', CASE WHEN sys.objects.type = 'V' THEN 1 ELSE 0 END
-                              FROM sys.columns
-                                JOIN sys.types
-                                  ON sys.columns.system_type_id = sys.types.system_type_id AND sys.columns.user_type_id = sys.types.user_type_id
-                                JOIN sys.objects
-                                  ON sys.objects.object_id = sys.columns.object_id
-                                JOIN sys.schemas
-                                  ON sys.objects.schema_id = sys.schemas.schema_id
-                                WHERE
-                                  sys.schemas.name = N%1
-                                  AND (sys.types.name = 'geometry' OR sys.types.name = 'geography')
-                                  AND (sys.objects.type = 'U' OR sys.objects.type = 'V')
-                             )raw" )
+                                 FROM sys.columns
+                                 JOIN sys.types
+                                 ON sys.columns.system_type_id = sys.types.system_type_id AND sys.columns.user_type_id = sys.types.user_type_id
+                                     JOIN sys.objects
+                                     ON sys.objects.object_id = sys.columns.object_id
+                                         JOIN sys.schemas
+                                         ON sys.objects.schema_id = sys.schemas.schema_id
+                                             WHERE
+                                             sys.schemas.name = N%1
+                                                 AND (sys.types.name = 'geometry' OR sys.types.name = 'geography')
+                                                 AND (sys.objects.type = 'U' OR sys.objects.type = 'V')
+                           )raw" )
              .arg( QgsMssqlProvider::quotedValue( schema ) );
   }
 
@@ -408,19 +408,19 @@ QList<QgsMssqlProviderConnection::TableProperty> QgsMssqlProviderConnection::tab
   {
     query += QStringLiteral( R"raw(
                              UNION ALL SELECT sys.schemas.name, sys.objects.name, null, null, 'NONE',
-                               CASE WHEN sys.objects.type = 'V' THEN 1 ELSE 0 END
-                             FROM sys.objects
-                               JOIN sys.schemas
-                                  ON sys.objects.schema_id = sys.schemas.schema_id
-                             WHERE
-                               sys.schemas.name = N%1
-                               AND NOT EXISTS
-                                (SELECT *
-                                  FROM sys.columns sc1 JOIN sys.types ON sc1.system_type_id = sys.types.system_type_id
-                                  WHERE (sys.types.name = 'geometry' OR sys.types.name = 'geography')
-                                    AND sys.objects.object_id = sc1.object_id )
-                               AND (sys.objects.type = 'U' OR sys.objects.type = 'V')
-                             )raw" )
+                             CASE WHEN sys.objects.type = 'V' THEN 1 ELSE 0 END
+                                 FROM sys.objects
+                                 JOIN sys.schemas
+                                 ON sys.objects.schema_id = sys.schemas.schema_id
+                                     WHERE
+                                     sys.schemas.name = N%1
+                                         AND NOT EXISTS
+                                         (SELECT *
+                                          FROM sys.columns sc1 JOIN sys.types ON sc1.system_type_id = sys.types.system_type_id
+                                              WHERE (sys.types.name = 'geometry' OR sys.types.name = 'geography')
+                                              AND sys.objects.object_id = sc1.object_id )
+                                         AND (sys.objects.type = 'U' OR sys.objects.type = 'V')
+                           )raw" )
              .arg( QgsMssqlProvider::quotedValue( schema ) );
   }
 
@@ -449,11 +449,11 @@ QList<QgsMssqlProviderConnection::TableProperty> QgsMssqlProviderConnection::tab
       {
         QStringLiteral( R"raw(
                         SELECT %4 UPPER( %1.STGeometryType()), %1.STSrid,
-                            %1.HasZ, %1.HasM
+                        %1.HasZ, %1.HasM
                         FROM %2.%3
                         WHERE %1 IS NOT NULL
                         GROUP BY %1.STGeometryType(), %1.STSrid, %1.HasZ, %1.HasM
-                        )raw" )
+                      )raw" )
         .arg( QgsMssqlProvider::quotedIdentifier( table.geometryColumn() ),
               QgsMssqlProvider::quotedIdentifier( table.schema() ),
               QgsMssqlProvider::quotedIdentifier( table.tableName() ),
@@ -516,14 +516,14 @@ QStringList QgsMssqlProviderConnection::schemas( ) const
   {
     QStringLiteral(
       R"raw(
-    SELECT s.name AS schema_name,
-        s.schema_id,
-        u.name AS schema_owner
-    FROM sys.schemas s
-        INNER JOIN sys.sysusers u
-            ON u.uid = s.principal_id
-     WHERE u.issqluser = 1
-        AND u.name NOT IN ('sys', 'guest', 'INFORMATION_SCHEMA')
+      SELECT s.name AS schema_name,
+      s.schema_id,
+      u.name AS schema_owner
+      FROM sys.schemas s
+      INNER JOIN sys.sysusers u
+      ON u.uid = s.principal_id
+      WHERE u.issqluser = 1
+      AND u.name NOT IN ('sys', 'guest', 'INFORMATION_SCHEMA')
     )raw" )
   };
 

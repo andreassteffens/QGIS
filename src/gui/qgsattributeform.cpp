@@ -1089,20 +1089,6 @@ void QgsAttributeForm::onAttributeChanged( const QVariant &value, const QVariant
     formEditorWidget->editorWidget()->blockSignals( false );
   }
 
-  // Update other widgets pointing to the same field
-  const QList<QgsAttributeFormEditorWidget *> formEditorWidgets = mFormEditorWidgets.values( eww->fieldIdx() );
-  for ( QgsAttributeFormEditorWidget *formEditorWidget : formEditorWidgets )
-  {
-    if ( formEditorWidget->editorWidget() == eww )
-      continue;
-
-    // formEditorWidget and eww points to the same field, so block signals
-    // as there is no need to handle valueChanged again for each duplicate
-    formEditorWidget->editorWidget()->blockSignals( true );
-    formEditorWidget->editorWidget()->setValue( value );
-    formEditorWidget->editorWidget()->blockSignals( false );
-  }
-
   if ( !signalEmitted )
   {
     Q_NOWARN_DEPRECATED_PUSH

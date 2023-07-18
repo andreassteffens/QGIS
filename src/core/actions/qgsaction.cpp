@@ -167,17 +167,17 @@ void QgsAction::handleFormSubmitAction( const QString &expandedAction ) const
 
             // Deal with ill formed headers with unquoted file names
             if ( header.find( R"(filename=")" ) != std::string::npos )
-            {
-              pos++;
-            }
+          {
+            pos++;
+          }
 
-            const size_t len = pos + q1.size();
+          const size_t len = pos + q1.size();
 
-            const std::string q2 { R"(")" };
-            if ( size_t pos = header.find( q2, len ); pos != std::string::npos )
-            {
-              bool escaped = false;
-              while ( pos != std::string::npos && header[pos - 1] == '\\' )
+                             const std::string q2 { R"(")" };
+                             if ( size_t pos = header.find( q2, len ); pos != std::string::npos )
+          {
+            bool escaped = false;
+            while ( pos != std::string::npos && header[pos - 1] == '\\' )
               {
                 pos = header.find( q2, pos + 1 );
                 escaped = true;
@@ -441,14 +441,14 @@ QString QgsAction::html() const
     }
   }
   return { QObject::tr( R"html(
-<h2>Action Details</h2>
-<p>
-   <b>Description:</b> %1<br>
-   <b>Short title:</b> %2<br>
-   <b>Type:</b> %3<br>
-   <b>Scope:</b> %4<br>
-   <b>Action:</b><br>
-   <pre>%6</pre>
-</p>
-  )html" ).arg( mDescription, mShortTitle, typeText, actionScopes().values().join( QLatin1String( ", " ) ), mCommand )};
-};
+                        <h2>Action Details</h2>
+                        <p>
+                        <b>Description:</b> %1<br>
+                        <b>Short title:</b> %2<br>
+                        <b>Type:</b> %3<br>
+                        <b>Scope:</b> %4<br>
+                        <b>Action:</b><br>
+                        <pre>%6</pre>
+                        </p>
+                      )html" ).arg( mDescription, mShortTitle, typeText, actionScopes().values().join( QLatin1String( ", " ) ), mCommand )};
+         };

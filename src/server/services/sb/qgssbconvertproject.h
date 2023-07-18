@@ -17,12 +17,13 @@
 
 namespace QgsSb
 {
+
   /**
    * Output ConvertProject response
    */
-  void writeConvertProject(QgsServerInterface *serverIface, const QgsProject *project,
-			  const QString &version, const QgsServerRequest &request,
-			  QgsServerResponse &response, const QString &outputFilename);
+  void writeConvertProject( QgsServerInterface *serverIface, const QgsProject *project,
+                            const QString &version, const QgsServerRequest &request,
+                            QgsServerResponse &response, const QString &outputFilename );
 
 
 } // namespace QgsSb

@@ -623,9 +623,9 @@ bool QgsWmsCapabilities::parseCapabilitiesDom( const QByteArray &xml, QgsWmsCapa
         QgsDebugMsgLevel( QStringLiteral( "  Contents." ), 2 );
         parseWMTSContents( element );
       }
-      else if ( element.tagName() == QLatin1String( "ServiceMetadataURL" ))
+      else if ( element.tagName() == QLatin1String( "ServiceMetadataURL" ) )
       {
-        capabilitiesProperty.wmtsServiceMetadataUrl = QUrl::fromEncoded(element.attribute(QStringLiteral("xlink:href")).toUtf8()).toString();
+        capabilitiesProperty.wmtsServiceMetadataUrl = QUrl::fromEncoded( element.attribute( QStringLiteral( "xlink:href" ) ).toUtf8() ).toString();
       }
     }
     node = node.nextSibling();

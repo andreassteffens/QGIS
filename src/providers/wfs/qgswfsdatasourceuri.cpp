@@ -355,7 +355,7 @@ QString QgsWFSDataSourceURI::typeName() const
   return mURI.param( QgsWFSConstants::URI_PARAM_TYPENAME );
 }
 
-void QgsWFSDataSourceURI::sbSetFallbackGeometryType( const QString& type )
+void QgsWFSDataSourceURI::sbSetFallbackGeometryType( const QString &type )
 {
   mURI.removeParam( QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE );
   mURI.setParam( QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE, type );
@@ -366,7 +366,7 @@ QString QgsWFSDataSourceURI::sbFallbackGeometryType() const
   return mURI.param( QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE );
 }
 
-void QgsWFSDataSourceURI::sbSetFallbackGeometryName( const QString& name )
+void QgsWFSDataSourceURI::sbSetFallbackGeometryName( const QString &name )
 {
   mURI.removeParam( QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_NAME );
   mURI.setParam( QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_NAME, name );

@@ -7,7 +7,7 @@
   copyright            : (C) 2021 by Andreas Steffens
   email                : a dot steffens at gds dash team dot de
  ***************************************************************************/
-                           
+
 /***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -26,16 +26,16 @@
 #include <qstring.h>
 
 
-inline QString sbGetStandardizedPath(const QString &strPath)
+inline QString sbGetStandardizedPath( const QString &strPath )
 {
-	QString strStandardizedPath = strPath;
-	strStandardizedPath = strStandardizedPath.replace(QStringLiteral("\\"), QStringLiteral("/"));
+  QString strStandardizedPath = strPath;
+  strStandardizedPath = strStandardizedPath.replace( QStringLiteral( "\\" ), QStringLiteral( "/" ) );
 
 #ifdef Q_OS_WIN
-	strStandardizedPath = strStandardizedPath.toLower();
+  strStandardizedPath = strStandardizedPath.toLower();
 #endif
 
-	return strStandardizedPath;
+  return strStandardizedPath;
 }
 
 #endif // SBUTILS_H

@@ -214,7 +214,7 @@ class GUI_EXPORT QgsMetadataWidget : public QWidget, private Ui::QgsMetadataWidg
     void addHistory();
     void removeSelectedHistory();
     void sbKeywordsCellChanged( int row, int column );
-    void sbContraintsItemChanged( QStandardItem* item );
+    void sbContraintsItemChanged( QStandardItem *item );
 
   private:
 

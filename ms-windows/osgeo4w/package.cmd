@@ -100,6 +100,7 @@ if exist qgsversion.h del qgsversion.h
 
 if exist CMakeCache.txt if exist skipcmake goto skipcmake
 
+REM copy /b %SRCDIR%\CMakeLists.txt +,,
 touch %SRCDIR%\CMakeLists.txt
 
 echo CMAKE: %DATE% %TIME%
@@ -284,6 +285,7 @@ if errorlevel 1 (echo creation of grass common preremove failed & goto error)
 sed -e 's/@package@/%PACKAGENAME%/g' -e 's/@version@/%VERSION%/g' postinstall-grass-plugin-common.bat >%OSGEO4W_ROOT%\etc\postinstall\%PACKAGENAME%-grass-plugin-common.bat
 if errorlevel 1 (echo creation of grass common postinstall failed & goto error)
 
+REM copy /b exclude +,,
 touch exclude
 if exist ..\skipbuild (echo skip build & goto skipbuild)
 

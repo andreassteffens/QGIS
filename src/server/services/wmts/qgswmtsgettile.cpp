@@ -38,29 +38,29 @@ namespace QgsWmts
     const QUrlQuery query = translateWmtsParamToWmsQueryItem( QStringLiteral( "GetMap" ), params, project, serverIface );
 
     QString strCacheMaxAge;
-    if (!params.layer().isEmpty())
+    if ( !params.layer().isEmpty() )
     {
       QString strLayer = params.layer();
-      if(!strLayer.isEmpty())
+      if ( !strLayer.isEmpty() )
       {
         // Use layer ids
-        bool useLayerIds = QgsServerProjectUtils::wmsUseLayerIds(*project);
+        bool useLayerIds = QgsServerProjectUtils::wmsUseLayerIds( *project );
 
-        for (QgsMapLayer *layer : project->mapLayers(true))
+        for ( QgsMapLayer *layer : project->mapLayers( true ) )
         {
           QString name = layer->name();
-          if (useLayerIds)
+          if ( useLayerIds )
             name = layer->id();
-          else if (!layer->shortName().isEmpty())
+          else if ( !layer->shortName().isEmpty() )
             name = layer->shortName();
 
-          if (strLayer.compare(name, Qt::CaseInsensitive) != 0)
+          if ( strLayer.compare( name, Qt::CaseInsensitive ) != 0 )
             continue;
 
           QList<QgsLayerMetadata::Constraint> qlistConstraints = layer->metadata().constraints();
-          for (int iMeta = 0; iMeta < qlistConstraints.length(); iMeta++)
+          for ( int iMeta = 0; iMeta < qlistConstraints.length(); iMeta++ )
           {
-            if ( qlistConstraints[iMeta].type.compare( "sb:CACHE_MAX_AGE" , Qt::CaseInsensitive ) == 0 )
+            if ( qlistConstraints[iMeta].type.compare( "sb:CACHE_MAX_AGE", Qt::CaseInsensitive ) == 0 )
             {
               strCacheMaxAge = qlistConstraints[iMeta].constraint;
               break;
@@ -71,10 +71,10 @@ namespace QgsWmts
         }
       }
 
-      if (strCacheMaxAge.isEmpty())
+      if ( strCacheMaxAge.isEmpty() )
       {
         QStringList qlistMetadata = project->metadata().keywords( "sb:CACHE_MAX_AGE" );
-        if (qlistMetadata.count() > 0)
+        if ( qlistMetadata.count() > 0 )
           strCacheMaxAge = qlistMetadata[0];
       }
     }
@@ -108,7 +108,7 @@ namespace QgsWmts
         response.setHeader( QStringLiteral( "Content-Type" ), contentType );
         image->save( response.io(), qPrintable( saveFormat ) );
 
-        if (!strCacheMaxAge.isEmpty())
+        if ( !strCacheMaxAge.isEmpty() )
           response.setHeader( QStringLiteral( "Cache-Control" ), QStringLiteral( "public, max-age=%1" ).arg( strCacheMaxAge ) );
 
         response.setHeader( QStringLiteral( "X-QGIS-FROM-CACHE" ), QStringLiteral( "true" ) );
@@ -132,7 +132,7 @@ namespace QgsWmts
     }
 #endif
 
-    if (!strCacheMaxAge.isEmpty())
+    if ( !strCacheMaxAge.isEmpty() )
       response.setHeader( QStringLiteral( "Cache-Control" ), QStringLiteral( "public, max-age=%1" ).arg( strCacheMaxAge ) );
 
     response.setHeader( QStringLiteral( "X-QGIS-FROM-CACHE" ), QStringLiteral( "false" ) );

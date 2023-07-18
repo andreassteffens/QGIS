@@ -152,14 +152,14 @@ class QgsWFSDataSourceURI
     //! Whether the initial GetFeature request, used to determine if gml:description/name/identifiers are used, should be skipped
     bool skipInitialGetFeature() const;
 
-    void sbSetFallbackGeometryType( const QString& type ); 
+    void sbSetFallbackGeometryType( const QString &type );
     QString sbFallbackGeometryType() const;
 
-    void sbSetFallbackGeometryName( const QString& name );
+    void sbSetFallbackGeometryName( const QString &name );
     QString sbFallbackGeometryName() const;
 
     //! Assignment operator
-    QgsWFSDataSourceURI& operator=( const QgsWFSDataSourceURI &other );
+    QgsWFSDataSourceURI &operator=( const QgsWFSDataSourceURI &other );
 
   private:
     QgsDataSourceUri    mURI;

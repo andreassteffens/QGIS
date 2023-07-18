@@ -70,7 +70,7 @@ const char *QgsMacNative::currentAppLocalizedName()
 void QgsMacNative::currentAppActivateIgnoringOtherApps()
 {
   [[NSRunningApplication currentApplication] activateWithOptions:
-                                             ( NSApplicationActivateAllWindows | NSApplicationActivateIgnoringOtherApps )];
+   ( NSApplicationActivateAllWindows | NSApplicationActivateIgnoringOtherApps )];
 }
 
 void QgsMacNative::openFileExplorerAndSelectFile( const QString &path )

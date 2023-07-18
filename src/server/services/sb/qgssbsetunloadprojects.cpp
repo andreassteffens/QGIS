@@ -33,39 +33,39 @@
 namespace QgsSb
 {
   void writeSetUnloadProjects( QgsServerInterface *serverIface, const QString &version, const QgsServerRequest &request,
-                        QgsServerResponse &response, const QString &projects )
+                               QgsServerResponse &response, const QString &projects )
   {
-	  QString strUnloadConfig = QDir(serverIface->serverSettings()->cacheDirectory()).filePath("unload_" + serverIface->sbTenant());
-	  
-	  QFile fileConfig(strUnloadConfig);
-	  if (!fileConfig.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
-		return;
+    QString strUnloadConfig = QDir( serverIface->serverSettings()->cacheDirectory() ).filePath( "unload_" + serverIface->sbTenant() );
 
-	  SimpleCrypt crypto(Q_UINT64_C(0x0c2ad4a4acb9f023)); //some random number
+    QFile fileConfig( strUnloadConfig );
+    if ( !fileConfig.open( QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate ) )
+      return;
 
-	  if (!projects.isEmpty())
-	  {
-		  QStringList listProjects = projects.split(",");
+    SimpleCrypt crypto( Q_UINT64_C( 0x0c2ad4a4acb9f023 ) ); //some random number
 
-		  QTextStream streamOut(&fileConfig);
-		  for (int i = 0; i < listProjects.count(); i++)
-		  {
-			  QString strPath = listProjects[i];
-			  bool bClearName = strPath.contains(".qgs", Qt::CaseInsensitive) || strPath.contains(".qgz", Qt::CaseInsensitive);
-			  if (!bClearName)
-				  strPath = crypto.sbDecryptFromBase64String(strPath);
+    if ( !projects.isEmpty() )
+    {
+      QStringList listProjects = projects.split( "," );
 
-			  strPath = sbGetStandardizedPath(strPath);
+      QTextStream streamOut( &fileConfig );
+      for ( int i = 0; i < listProjects.count(); i++ )
+      {
+        QString strPath = listProjects[i];
+        bool bClearName = strPath.contains( ".qgs", Qt::CaseInsensitive ) || strPath.contains( ".qgz", Qt::CaseInsensitive );
+        if ( !bClearName )
+          strPath = crypto.sbDecryptFromBase64String( strPath );
 
-			  streamOut << strPath + "\n";
-		  }
-	  }
+        strPath = sbGetStandardizedPath( strPath );
 
-	  fileConfig.close();
-	  
-	  response.setStatusCode(200);
-	  response.setHeader(QStringLiteral("Content-Type"), QStringLiteral("text/plain; charset=utf-8"));
-	  response.write("ok");
+        streamOut << strPath + "\n";
+      }
+    }
+
+    fileConfig.close();
+
+    response.setStatusCode( 200 );
+    response.setHeader( QStringLiteral( "Content-Type" ), QStringLiteral( "text/plain; charset=utf-8" ) );
+    response.write( "ok" );
   }
 
 } // namespace QgsWms

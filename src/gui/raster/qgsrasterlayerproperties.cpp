@@ -382,12 +382,12 @@ QgsRasterLayerProperties::QgsRasterLayerProperties( QgsMapLayer *lyr, QgsMapCanv
   layout->addWidget( mMetadataWidget );
   metadataFrame->setLayout( layout );
 
-  layout = new QVBoxLayout(joinedToggleFrame);
-  layout->setContentsMargins(0, 0, 0, 0);
-  mSbJoinedToggleWidget = new sbJoinedToggleWidget(this, mRasterLayer);
-  mSbJoinedToggleWidget->layout()->setContentsMargins(0, 0, 0, 0);
-  layout->addWidget(mSbJoinedToggleWidget);
-  joinedToggleFrame->setLayout(layout);
+  layout = new QVBoxLayout( joinedToggleFrame );
+  layout->setContentsMargins( 0, 0, 0, 0 );
+  mSbJoinedToggleWidget = new sbJoinedToggleWidget( this, mRasterLayer );
+  mSbJoinedToggleWidget->layout()->setContentsMargins( 0, 0, 0, 0 );
+  layout->addWidget( mSbJoinedToggleWidget );
+  joinedToggleFrame->setLayout( layout );
 
   QVBoxLayout *temporalLayout = new QVBoxLayout( temporalFrame );
   temporalLayout->setContentsMargins( 0, 0, 0, 0 );

@@ -1,19 +1,19 @@
 /***************************************************************************
-					  qgsfeaturefilter.cpp
-					  --------------------
+            qgsfeaturefilter.cpp
+            --------------------
   begin                : 26-10-2017
   copyright            : (C) 2017 by Patrick Valsecchi
   email                : patrick dot valsecchi at camptocamp dot com
  ***************************************************************************/
 
- /***************************************************************************
-  *                                                                         *
-  *   This program is free software; you can redistribute it and/or modify  *
-  *   it under the terms of the GNU General Public License as published by  *
-  *   the Free Software Foundation; either version 2 of the License, or     *
-  *   (at your option) any later version.                                   *
-  *                                                                         *
-  ***************************************************************************/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "qgsfeaturefilter.h"
 #include "qgsfeaturerequest.h"
@@ -21,14 +21,14 @@
 #include "qgsexpression.h"
 #include "qgsmessagelog.h"
 
-void QgsFeatureFilter::filterFeatures(const QgsVectorLayer *layer, QgsFeatureRequest &filterFeatures) const
+void QgsFeatureFilter::filterFeatures( const QgsVectorLayer *layer, QgsFeatureRequest &filterFeatures ) const
 {
-	const QString expr = mFilters[layer->id()];
-	if (!expr.isEmpty())
-		filterFeatures.setFilterExpression(expr);
+  const QString expr = mFilters[layer->id()];
+  if ( !expr.isEmpty() )
+    filterFeatures.setFilterExpression( expr );
 
-	if (mSbQuerySubstitutions.contains(layer->id()))
-		filterFeatures.sbSetQuerySubstitutions(mSbQuerySubstitutions[layer->id()]);
+  if ( mSbQuerySubstitutions.contains( layer->id() ) )
+    filterFeatures.sbSetQuerySubstitutions( mSbQuerySubstitutions[layer->id()] );
 }
 
 QStringList QgsFeatureFilter::layerAttributes( const QgsVectorLayer *, const QStringList &attributes ) const
@@ -39,18 +39,18 @@ QStringList QgsFeatureFilter::layerAttributes( const QgsVectorLayer *, const QSt
 
 QgsFeatureFilterProvider *QgsFeatureFilter::clone() const
 {
-	auto result = new QgsFeatureFilter();
-	result->mFilters = mFilters;
-	result->mSbQuerySubstitutions = mSbQuerySubstitutions;
-	return result;
+  auto result = new QgsFeatureFilter();
+  result->mFilters = mFilters;
+  result->mSbQuerySubstitutions = mSbQuerySubstitutions;
+  return result;
 }
 
-void QgsFeatureFilter::setFilter(const QgsVectorLayer *layer, const QgsExpression &filter)
+void QgsFeatureFilter::setFilter( const QgsVectorLayer *layer, const QgsExpression &filter )
 {
-	mFilters[layer->id()] = filter.dump();
+  mFilters[layer->id()] = filter.dump();
 }
 
-void QgsFeatureFilter::sbSetQuerySubstitutions(const QgsVectorLayer *layer, const QStringList &substitutions)
+void QgsFeatureFilter::sbSetQuerySubstitutions( const QgsVectorLayer *layer, const QStringList &substitutions )
 {
-	mSbQuerySubstitutions[layer->id()] = substitutions;
+  mSbQuerySubstitutions[layer->id()] = substitutions;
 }

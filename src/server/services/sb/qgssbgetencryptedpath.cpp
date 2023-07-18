@@ -29,15 +29,15 @@
 namespace QgsSb
 {
   void writeGetEncryptedPath( QgsServerInterface *serverIface, const QgsProject *project,
-                             const QString &version, const QgsServerRequest &request,
-                             QgsServerResponse &response, const QString &path )
+                              const QString &version, const QgsServerRequest &request,
+                              QgsServerResponse &response, const QString &path )
   {
-	  Q_UNUSED(version);
+    Q_UNUSED( version );
 
-	  SimpleCrypt crypto(Q_UINT64_C(0x0c2ad4a4acb9f023)); //some random number
-	  QString qstrEncrypted = crypto.sbEncryptToBase64String(path);
+    SimpleCrypt crypto( Q_UINT64_C( 0x0c2ad4a4acb9f023 ) ); //some random number
+    QString qstrEncrypted = crypto.sbEncryptToBase64String( path );
 
-	  response.setHeader(QStringLiteral("Content-Type"), QStringLiteral("text/plain; charset=utf-8"));
-	  response.write(qstrEncrypted);
+    response.setHeader( QStringLiteral( "Content-Type" ), QStringLiteral( "text/plain; charset=utf-8" ) );
+    response.write( qstrEncrypted );
   }
 } // namespace QgsSb

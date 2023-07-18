@@ -41,9 +41,9 @@ class APP_EXPORT QgsLayerCapabilitiesModel : public QSortFilterProxyModel
       SearchableColumn,
       RequiredColumn,
       PrivateColumn,
-	  sbNavigableColumn,
-	  sbSelectableColumn,
-	  sbSnappableColumn
+      sbNavigableColumn,
+      sbSelectableColumn,
+      sbSnappableColumn
     };
 
     QgsLayerCapabilitiesModel( QgsProject *project, QObject *parent = nullptr );
@@ -56,8 +56,8 @@ class APP_EXPORT QgsLayerCapabilitiesModel : public QSortFilterProxyModel
     bool readOnly( QgsMapLayer *layer ) const;
     bool searchable( QgsMapLayer *layer ) const;
     bool sbNavigable( QgsMapLayer *layer ) const;
-    bool sbSelectable(QgsMapLayer *layer) const;
-    bool sbSnappable(QgsMapLayer *layer) const;
+    bool sbSelectable( QgsMapLayer *layer ) const;
+    bool sbSnappable( QgsMapLayer *layer ) const;
     QgsMapLayer *mapLayer( const QModelIndex &idx ) const;
     void setShowSpatialLayersOnly( bool only );
 

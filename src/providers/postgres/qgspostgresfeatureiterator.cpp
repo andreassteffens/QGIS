@@ -511,33 +511,33 @@ QString QgsPostgresFeatureIterator::whereClauseRect()
        mSource->mTopoLayerInfo.layerLevel == 0 )
   {
     whereClause = QStringLiteral( R"SQL(
-      id(%1) in (
-        WITH elems AS (
+                                  id(%1) in (
+                                    WITH elems AS (
 
-          SELECT n.node_id id, 1 typ
-          FROM %3.node n
-          WHERE %5 in (1,4) AND n.geom && %2
+                                      SELECT n.node_id id, 1 typ
+                                      FROM %3.node n
+                                      WHERE %5 in (1,4) AND n.geom && %2
 
-            UNION ALL
+                                      UNION ALL
 
-          SELECT edge_id, 2
-          FROM %3.edge
-          WHERE %5 in (2,4) AND geom && %2
+                                      SELECT edge_id, 2
+                                      FROM %3.edge
+                                      WHERE %5 in (2,4) AND geom && %2
 
-            UNION ALL
+                                      UNION ALL
 
-          SELECT face_id, 3
-          FROM %3.face
-          WHERE %5 in (3,4) AND mbr && %2
+                                      SELECT face_id, 3
+                                      FROM %3.face
+                                      WHERE %5 in (3,4) AND mbr && %2
 
-        )
-        select r.topogeo_id
-        FROM %3.relation r, elems e
-        WHERE r.layer_id = %4
-          AND r.element_type = e.typ
-          AND r.element_id = e.id
-      )
-    )SQL" )
+                                    )
+                                    select r.topogeo_id
+                                    FROM %3.relation r, elems e
+                                    WHERE r.layer_id = %4
+                                        AND r.element_type = e.typ
+                                            AND r.element_id = e.id
+                                  )
+                                )SQL" )
                   // Should we bother with mBoundingBoxColumn ?
                   .arg(
                     QgsPostgresConn::quotedIdentifier( mSource->mGeometryColumn ),

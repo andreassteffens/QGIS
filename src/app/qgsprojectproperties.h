@@ -104,9 +104,9 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
     //! Let the user load scales from file
     void pbnExportScales_clicked();
 
-	void pbnSbOsmScales_clicked();
+    void pbnSbOsmScales_clicked();
 
-	void pbnSbAutoScales_clicked();
+    void pbnSbAutoScales_clicked();
 
     //! A scale in the list of project scales changed
     void scaleItemChanged( QListWidgetItem *changedScaleItem );
@@ -159,9 +159,9 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
      */
     void pbnLaunchOWSChecker_clicked();
 
-	/**
-     * Slots to set all layer short names automagically
-     */
+    /**
+       * Slots to set all layer short names automagically
+       */
     void pbnSbFillLayerShortNames_clicked();
 
     /**
@@ -262,19 +262,19 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
     void addWmtsGrid( const QString &crsStr );
     //! Check OWS configuration
     void checkOWS( QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &listOwsNames, QStringList &encodingMessages, QStringList &serviceSourceMessages, QStringList &toolInconsistencyMessages );
-	
-	//! Fill layer short names
-	void sbResolveLayerPath(QgsLayerTreeNode *pNode, QString &rstrPath);
-	void sbCollectLayerShortNames(QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapShortNames);
-	void sbFillLayerShortNames(QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QPair<QString, QString>> &mapShortNames, bool bSynchronizeTreeAndWmsTitles);
-	QString sbDetermineShortName(QString strTitle, QString strPath, QMultiMap<QString, QPair<QString, QString>> &mapShortNames);
 
-	//! Ensure consistent layer settings
-	void sbCollectWfsToolLayerIds(QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapLayerIds);
+    //! Fill layer short names
+    void sbResolveLayerPath( QgsLayerTreeNode *pNode, QString &rstrPath );
+    void sbCollectLayerShortNames( QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapShortNames );
+    void sbFillLayerShortNames( QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QPair<QString, QString>> &mapShortNames, bool bSynchronizeTreeAndWmsTitles );
+    QString sbDetermineShortName( QString strTitle, QString strPath, QMultiMap<QString, QPair<QString, QString>> &mapShortNames );
 
-	//! Precalculate layer metadata
-	void sbBuildLayerPath(QgsLayerTreeNode* node, QString &path);
-	void sbPrecalculateLayerMetadata(QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapLayerMetadata);
+    //! Ensure consistent layer settings
+    void sbCollectWfsToolLayerIds( QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapLayerIds );
+
+    //! Precalculate layer metadata
+    void sbBuildLayerPath( QgsLayerTreeNode *node, QString &path );
+    void sbPrecalculateLayerMetadata( QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapLayerMetadata );
 
     //! Populates list with ellipsoids from Sqlite3 db
     void populateEllipsoidList();

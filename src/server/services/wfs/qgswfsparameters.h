@@ -29,7 +29,7 @@ namespace QgsWfs
 {
   struct QgsWfsParametersRules
   {
-	  QList<QPair<QString, bool>> mRules;
+    QList<QPair<QString, bool>> mRules;
   };
 
   /**
@@ -293,10 +293,10 @@ namespace QgsWfs
        */
       QStringList expFilters() const;
 
-     /**
-       * Returns the list of display rules found in SBRULES parameter.
-       * \returns the list of rules
-       */
+      /**
+        * Returns the list of display rules found in SBRULES parameter.
+        * \returns the list of rules
+        */
       QStringList sbRules() const;
 
       /**
@@ -310,7 +310,7 @@ namespace QgsWfs
       bool sbWithMapTip() const;
       bool sbPassThroughQgisFilterExpression() const;
 
-      QMultiMap<QString, QgsWfsParametersRules> sbLayerRules(const QStringList &layers) const;
+      QMultiMap<QString, QgsWfsParametersRules> sbLayerRules( const QStringList &layers ) const;
 
     private:
       bool loadParameter( const QString &key, const QString &value ) override;

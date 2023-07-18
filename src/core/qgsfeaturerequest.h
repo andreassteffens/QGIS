@@ -478,7 +478,7 @@ class CORE_EXPORT QgsFeatureRequest
      */
     const QgsFeatureIds &filterFids() const { return mFilterFids; }
 
-    void sbSetQuerySubstitutions(const QStringList &substitutions);
+    void sbSetQuerySubstitutions( const QStringList &substitutions );
     const QStringList &sbQuerySubstitutions() const { return mSbQuerySubstitutions; }
 
     /**
@@ -836,13 +836,13 @@ class CORE_EXPORT QgsFeatureRequest
      */
     std::function< void( const QgsFeature & ) > transformErrorCallback() const { return mTransformErrorCallback; } SIP_SKIP
 
-    void sbSetPassThroughQgisFilterExpression(bool bPassThrough) SIP_SKIP;
+    void sbSetPassThroughQgisFilterExpression( bool bPassThrough ) SIP_SKIP;
     bool sbGetPassThroughQgisFilterExpression() const SIP_SKIP;
 
-    void sbSetRenderMinPixelSizeFilter(double dRenderMinPixelSize, int iRenderMinPixelSizeMaxScale, double dScaleFactor, double dMapUnitsPerPixel, double dCurrentScale, QgsWkbTypes::GeometryType geometryType, bool bRenderMinPixelSizeSourceFiltering, bool bRenderMinPixelSizeDebug) SIP_SKIP;
+    void sbSetRenderMinPixelSizeFilter( double dRenderMinPixelSize, int iRenderMinPixelSizeMaxScale, double dScaleFactor, double dMapUnitsPerPixel, double dCurrentScale, Qgis::GeometryType geometryType, bool bRenderMinPixelSizeSourceFiltering, bool bRenderMinPixelSizeDebug ) SIP_SKIP;
     bool sbHasRenderMinPixelSizeFilter() const SIP_SKIP;
-    void sbGetRenderMinPixelSizeFilterValue(double* pdRenderMinPixelSize, int* piRenderMinPixelSizeMaxScale, double* pdScaleFactor, double* pdMapUnitsPerPixel, double* pdCurrentScale, QgsWkbTypes::GeometryType* pgeometryType, bool *pbRenderMinPixelSizeDebug) const SIP_SKIP;
-    bool sbTestRenderMinPixelSizeFilter(const QgsFeature& f) const SIP_SKIP;
+    void sbGetRenderMinPixelSizeFilterValue( double *pdRenderMinPixelSize, int *piRenderMinPixelSizeMaxScale, double *pdScaleFactor, double *pdMapUnitsPerPixel, double *pdCurrentScale, Qgis::GeometryType *pgeometryType, bool *pbRenderMinPixelSizeDebug ) const SIP_SKIP;
+    bool sbTestRenderMinPixelSizeFilter( const QgsFeature &f ) const SIP_SKIP;
 
     /**
      * Check if a feature is accepted by this requests filter
@@ -1010,7 +1010,7 @@ class CORE_EXPORT QgsFeatureRequest
     double mSbScaleFactor;
     double mSbMapUnitsPerPixel;
     double mSbCurrentScale;
-    QgsWkbTypes::GeometryType mSbGeometryType;
+    Qgis::GeometryType mSbGeometryType;
     bool mSbRenderMinPixelSizeSourceFiltering;
     bool mSbPassThroughQgisFilterExpression;
 };

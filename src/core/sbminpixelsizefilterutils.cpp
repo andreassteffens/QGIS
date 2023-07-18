@@ -5,7 +5,7 @@
     copyright            : (C) 2023 by Andreas Steffens
     email                : a dot steffens at gds dash team dot de
  ***************************************************************************/
- 
+
 #include "sbminpixelsizefilterutils.h"
 #include "qgsmaplayer.h"
 
@@ -22,7 +22,7 @@ void sbMinPixelSizeFilterUtils::setFilterProperties( QgsMapLayer *pLayer, bool b
   pLayer->setCustomProperty( MIN_PIXEL_SIZE_FILTER_DEBUG_KEY, QVariant( bDebug ) );
 }
 
-void sbMinPixelSizeFilterUtils::getFilterProperties( QgsMapLayer *pLayer, bool* pbEnabled, double* pdMinPixelSize, double *pdMaxScale, bool* pbDebug )
+void sbMinPixelSizeFilterUtils::getFilterProperties( QgsMapLayer *pLayer, bool *pbEnabled, double *pdMinPixelSize, double *pdMaxScale, bool *pbDebug )
 {
   *pbEnabled = false;
   *pdMinPixelSize = 0;
@@ -33,11 +33,11 @@ void sbMinPixelSizeFilterUtils::getFilterProperties( QgsMapLayer *pLayer, bool* 
   if ( varEnabled.isValid() && varEnabled.type() == QVariant::Type::Bool )
     *pbEnabled = varEnabled.toBool();
 
-  QVariant varMinPixelSize = pLayer->customProperty( MIN_PIXEL_SIZE_FILTER_SIZE_KEY, QVariant( (double)2 ) );
+  QVariant varMinPixelSize = pLayer->customProperty( MIN_PIXEL_SIZE_FILTER_SIZE_KEY, QVariant( ( double )2 ) );
   if ( varMinPixelSize.isValid() && varMinPixelSize.type() == QVariant::Type::Double )
     *pdMinPixelSize = varMinPixelSize.toDouble();
 
-  QVariant varMaxScale = pLayer->customProperty( MIN_PIXEL_SIZE_FILTER_MAX_SCALE_KEY, QVariant( (double)5000 ) );
+  QVariant varMaxScale = pLayer->customProperty( MIN_PIXEL_SIZE_FILTER_MAX_SCALE_KEY, QVariant( ( double )5000 ) );
   if ( varMaxScale.isValid() && varMaxScale.type() == QVariant::Type::Double )
     *pdMaxScale = varMaxScale.toDouble();
 

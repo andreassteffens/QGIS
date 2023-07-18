@@ -65,31 +65,31 @@ class QgsPointXY;
 */
 class sbElevationServicesPlugin: public QObject, public QgisPlugin
 {
-  Q_OBJECT
-  
+    Q_OBJECT
+
   public:
     explicit sbElevationServicesPlugin( QgisInterface *interface );
 
   public slots:
     //! init the gui
     void initGui() override;
-    
+
     //! unload the plugin
     void unload() override;
-    
+
     //! Show/hide the dockwidget
     void showOrHide();
-    
+
     //! show the help document
     void help();
-    
+
   private:
     //! Container for the coordinate info
     QPointer<QgsDockWidget> mpDockWidget;
 
     //! Pointer to the QGIS interface object
-    QgisInterface* mpQgisIface = nullptr;
-    
+    QgisInterface *mpQgisIface = nullptr;
+
     //!pointer to the qaction for this plugin
     QPointer<QAction> mpQActionPointer = nullptr;
 };

@@ -251,7 +251,7 @@ class QgsWmsProvider final: public QgsRasterDataProvider
 
     bool isValid() const override;
 
-    bool getMinMaxScale(double &dMin, double &dMax);
+    bool getMinMaxScale( double &dMin, double &dMax );
 
 #if 0
 
@@ -304,7 +304,6 @@ class QgsWmsProvider final: public QgsRasterDataProvider
     int bandCount() const override;
     QString htmlMetadata() override;
     QgsRasterIdentifyResult identify( const QgsPointXY &point, Qgis::RasterIdentifyFormat format, const QgsRectangle &boundingBox = QgsRectangle(), int width = 0, int height = 0, int dpi = 96 ) override;
-    double sample( const QgsPointXY &point, int band, bool *ok = nullptr, const QgsRectangle &boundingBox = QgsRectangle(), int width = 0, int height = 0, int dpi = 96 ) override;
     double sample( const QgsPointXY &point, int band, bool *ok = nullptr, const QgsRectangle &boundingBox = QgsRectangle(), int width = 0, int height = 0, int dpi = 96 ) override;
     QString lastErrorTitle() override;
     QString lastError() override;
@@ -453,7 +452,7 @@ class QgsWmsProvider final: public QgsRasterDataProvider
     void setSRSQueryItem( QUrlQuery &url );
 
     bool ignoreExtents() const override;
-	
+
     QString mServiceMetadataURL;
 
   private:

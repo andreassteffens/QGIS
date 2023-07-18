@@ -245,12 +245,12 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
   metadataFrame->setLayout( metadataLayout );
 
   // Joined Toggle tab
-  QVBoxLayout* toggleLayout = new QVBoxLayout(joinedToggleFrame);
-  toggleLayout->setContentsMargins(0, 0, 0, 0);
-  mSbJoinedToggleWidget = new sbJoinedToggleWidget(this, mLayer);
-  mSbJoinedToggleWidget->layout()->setContentsMargins(0, 0, 0, 0);
-  toggleLayout->addWidget(mSbJoinedToggleWidget);
-  joinedToggleFrame->setLayout(toggleLayout);
+  QVBoxLayout *toggleLayout = new QVBoxLayout( joinedToggleFrame );
+  toggleLayout->setContentsMargins( 0, 0, 0, 0 );
+  mSbJoinedToggleWidget = new sbJoinedToggleWidget( this, mLayer );
+  mSbJoinedToggleWidget->layout()->setContentsMargins( 0, 0, 0, 0 );
+  toggleLayout->addWidget( mSbJoinedToggleWidget );
+  joinedToggleFrame->setLayout( toggleLayout );
 
   QVBoxLayout *temporalLayout = new QVBoxLayout( temporalFrame );
   temporalLayout->setContentsMargins( 0, 0, 0, 0 );
@@ -872,7 +872,7 @@ void QgsVectorLayerProperties::apply()
   double minPixelSizeFilterMaxScale = mMinPixelSizeMaxScaleWidget->scale();
   bool minPixelSizeFilterDebugMode = mMinPixelSizeDebugCheck->isChecked();
   sbMinPixelSizeFilterUtils::setFilterProperties( mLayer, minPixelSizeFilterEnabled, minPixelSizeFilterSize, minPixelSizeFilterMaxScale, minPixelSizeFilterDebugMode );
-  
+
   if ( mLayer->renderer() )
   {
     mLayer->renderer()->setForceRasterRender( mForceRasterCheckBox->isChecked() );

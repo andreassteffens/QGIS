@@ -24,7 +24,7 @@ QgsBufferServerRequest::QgsBufferServerRequest( const QString &url, Method metho
   : QgsServerRequest( url, method, headers )
 {
   // Store the URL before the server rewrite that could have been set in QUERY_STRING
-  setOriginalUrl(url);
+  setOriginalUrl( url );
 
   if ( data )
   {
@@ -36,7 +36,7 @@ QgsBufferServerRequest::QgsBufferServerRequest( const QUrl &url, Method method, 
   : QgsServerRequest( url, method, headers )
 {
   // Store the URL before the server rewrite that could have been set in QUERY_STRING
-  setOriginalUrl(url.toString());
+  setOriginalUrl( url.toString() );
 
   if ( data )
   {

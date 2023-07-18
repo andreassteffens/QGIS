@@ -65,8 +65,8 @@ class QgsPointXY;
 */
 class sbAddressServicesPlugin: public QObject, public QgisPlugin
 {
-  Q_OBJECT
-  
+    Q_OBJECT
+
   public:
     explicit sbAddressServicesPlugin( QgisInterface *interface );
 
@@ -88,7 +88,7 @@ class sbAddressServicesPlugin: public QObject, public QgisPlugin
     QPointer<QgsDockWidget> mpDockWidget;
 
     //! Pointer to the QGIS interface object
-    QgisInterface* mpQgisIface = nullptr;
+    QgisInterface *mpQgisIface = nullptr;
 
     //!pointer to the qaction for this plugin
     QPointer<QAction> mpQActionPointer = nullptr;
@@ -96,12 +96,12 @@ class sbAddressServicesPlugin: public QObject, public QgisPlugin
 
 static const QString sName = QApplication::translate( "sbAddressServicesPlugin", "[a]tapa Address Services" );
 static const QString sDescription = QApplication::translate( "sbAddressServicesPlugin", "Forward and reverse address search based on Google and OSM services" );
-static const QString sCategory = QApplication::translate( "sbAddressServicesPlugin", "Geocoding");
+static const QString sCategory = QApplication::translate( "sbAddressServicesPlugin", "Geocoding" );
 static const QString sPluginVersion = QApplication::translate( "sbAddressServicesPlugin", "Version 1.2" );
-static const QString sPluginIcon = QStringLiteral(":/sbaddressservices/icons/sb_address_services.png");
+static const QString sPluginIcon = QStringLiteral( ":/sbaddressservices/icons/sb_address_services.png" );
 static const QgisPlugin::PluginType sPluginType = QgisPlugin::UI;
-static const QString sExperimental = QStringLiteral("false");
-static const QString sCreateDate = QStringLiteral("2018-12-16T08:00:00");
-static const QString sUpdateDate = QStringLiteral("2022-07-22T08:00:00");
+static const QString sExperimental = QStringLiteral( "false" );
+static const QString sCreateDate = QStringLiteral( "2018-12-16T08:00:00" );
+static const QString sUpdateDate = QStringLiteral( "2022-07-22T08:00:00" );
 
 #endif //SBADDRESSSERVICESPLUGIN_H

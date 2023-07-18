@@ -67,33 +67,33 @@ sbAddressServicesPlugin::sbAddressServicesPlugin( QgisInterface *qgisInterface )
 void sbAddressServicesPlugin::initGui()
 {
   QSettings s;
-  Qt::CheckState stateDebug = (Qt::CheckState)s.value("sbAddressServices/DebugMode", (int)Qt::CheckState::Checked).toInt();
-  if(stateDebug == Qt::Checked)
-    QgsMessageLog::logMessage(QStringLiteral("Plugin's initGui method has been called!"), QApplication::translate("sbAddressServicesPlugin", "[a]tapa Address Services"), Qgis::MessageLevel::Info);
+  Qt::CheckState stateDebug = ( Qt::CheckState )s.value( "sbAddressServices/DebugMode", ( int )Qt::CheckState::Checked ).toInt();
+  if ( stateDebug == Qt::Checked )
+    QgsMessageLog::logMessage( QStringLiteral( "Plugin's initGui method has been called!" ), QApplication::translate( "sbAddressServicesPlugin", "[a]tapa Address Services" ), Qgis::MessageLevel::Info );
 
   //create the dock widget
-  mpDockWidget = new QgsDockWidget( tr(qPrintable(sName)), mpQgisIface->mainWindow() );
+  mpDockWidget = new QgsDockWidget( tr( qPrintable( sName ) ), mpQgisIface->mainWindow() );
   mpDockWidget->setObjectName( QStringLiteral( "sbAddressServices" ) );
   mpDockWidget->setAllowedAreas( Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea );
   mpQgisIface->addDockWidget( Qt::LeftDockWidgetArea, mpDockWidget );
 
   // Create the action for tool
-  mpQActionPointer = new QAction( QIcon(), tr(qPrintable(sName)), this );
+  mpQActionPointer = new QAction( QIcon(), tr( qPrintable( sName ) ), this );
   mpQActionPointer->setObjectName( QStringLiteral( "mpQActionPointer" ) );
-  mpQActionPointer->setIcon(QIcon(":/sbaddressservices/icons/sb_address_services.png"));
+  mpQActionPointer->setIcon( QIcon( ":/sbaddressservices/icons/sb_address_services.png" ) );
   mpQActionPointer->setCheckable( true );
   mpQActionPointer->setChecked( mpDockWidget->isVisible() );
-  mpQActionPointer->setWhatsThis( tr(qPrintable(sDescription)) );
-  
+  mpQActionPointer->setWhatsThis( tr( qPrintable( sDescription ) ) );
+
   connect( mpQActionPointer, &QAction::triggered, this, &sbAddressServicesPlugin::showOrHide );
   mpQgisIface->addPluginToVectorMenu( QString(), mpQActionPointer );
   mpQgisIface->addVectorToolBarIcon( mpQActionPointer );
 
-  sbAddressServicesGui *pGui = new sbAddressServicesGui(mpQgisIface, sName);
-  mpDockWidget->setWidget(pGui);
-  
-  connect(mpDockWidget.data(), SIGNAL(visibilityChanged), mpQActionPointer, SLOT(setChecked));
-  connect(mpDockWidget.data(), &QDockWidget::visibilityChanged, mpQActionPointer, &QAction::setChecked);
+  sbAddressServicesGui *pGui = new sbAddressServicesGui( mpQgisIface, sName );
+  mpDockWidget->setWidget( pGui );
+
+  connect( mpDockWidget.data(), SIGNAL( visibilityChanged ), mpQActionPointer, SLOT( setChecked ) );
+  connect( mpDockWidget.data(), &QDockWidget::visibilityChanged, mpQActionPointer, &QAction::setChecked );
 }
 
 //method defined in interface
@@ -114,18 +114,18 @@ void sbAddressServicesPlugin::showOrHide()
 void sbAddressServicesPlugin::unload()
 {
   // remove the GUI
-  if (mpQgisIface)
+  if ( mpQgisIface )
   {
-    mpQgisIface->vectorMenu()->removeAction(mpQActionPointer);
-    mpQgisIface->removeVectorToolBarIcon(mpQActionPointer);
+    mpQgisIface->vectorMenu()->removeAction( mpQActionPointer );
+    mpQgisIface->removeVectorToolBarIcon( mpQActionPointer );
 
     mpQgisIface = nullptr;
   }
-  
-  if (mpDockWidget)
+
+  if ( mpDockWidget )
     delete mpDockWidget;
-  
-  if(mpQActionPointer)
+
+  if ( mpQActionPointer )
     delete mpQActionPointer;
 }
 

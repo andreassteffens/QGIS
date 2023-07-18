@@ -46,8 +46,8 @@ const QString QgsWFSConstants::URI_PARAM_GEOMETRY_TYPE_FILTER( QStringLiteral( "
 const QString QgsWFSConstants::URI_PARAM_SQL( QStringLiteral( "sql" ) );
 const QString QgsWFSConstants::URI_PARAM_SQL( QStringLiteral( "sql" ) );
 
-const QString QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE("sbFallbackGeometryType");
-const QString QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_NAME("sbFallbackGeometryName");
+const QString QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE( "sbFallbackGeometryType" );
+const QString QgsWFSConstants::URI_PARAM_SB_FALLBACK_GEOMETRY_NAME( "sbFallbackGeometryName" );
 
 const QString QgsWFSConstants::VERSION_AUTO( QStringLiteral( "auto" ) );
 

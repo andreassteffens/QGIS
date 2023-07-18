@@ -728,7 +728,7 @@ QgsSqliteHandle *QgsSqliteHandle::openDb( const QString &dbPath, bool shared, bo
       return nullptr;
     }
   }
-  
+
 
   // add REGEXP function
   sqlite3_create_function( database.get(), "REGEXP", 2, SQLITE_UTF8, nullptr, fcnRegexp, nullptr, nullptr );

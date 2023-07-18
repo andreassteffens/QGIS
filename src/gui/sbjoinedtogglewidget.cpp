@@ -21,16 +21,16 @@ sbJoinedToggleWidget::sbJoinedToggleWidget( QWidget *pParent, QgsMapLayer *pLaye
     mpLayer( pLayer )
 {
   setupUi( this );
-  
-  QList<QgsMapLayer*> listExcluded;
+
+  QList<QgsMapLayer *> listExcluded;
   listExcluded.append( pLayer );
 
   mComboReferenceLayer->setExceptedLayerList( listExcluded );
 
   sbJoinedToggleLayerSettings settings = sbJoinedToggleUtils::getReferencedLayer( pLayer );
-  if( !settings.layerId.isEmpty() )
+  if ( !settings.layerId.isEmpty() )
   {
-    QgsMapLayer* layerReference = pLayer->project()->mapLayer( settings.referencedLayerId );
+    QgsMapLayer *layerReference = pLayer->project()->mapLayer( settings.referencedLayerId );
     if ( layerReference != NULL )
       mComboReferenceLayer->setLayer( layerReference );
     else
@@ -41,14 +41,14 @@ sbJoinedToggleWidget::sbJoinedToggleWidget( QWidget *pParent, QgsMapLayer *pLaye
     mCheckInvert->setCheckState( settings.invertBehavior ? Qt::CheckState::Checked : Qt::CheckState::Unchecked );
   }
   else
-    mComboReferenceLayer->setLayer(NULL);
+    mComboReferenceLayer->setLayer( NULL );
 }
 
 void sbJoinedToggleWidget::applyToLayer()
 {
   sbJoinedToggleUtils::removeJoinedToggleLayer( mpLayer );
 
-  QgsMapLayer* pLayer = mComboReferenceLayer->currentLayer();
-  if (pLayer)
+  QgsMapLayer *pLayer = mComboReferenceLayer->currentLayer();
+  if ( pLayer )
     sbJoinedToggleUtils::addJoinedToggleLayer( pLayer, mpLayer, mCheckActivate->checkState() == Qt::Checked, mCheckDeactivate->checkState() == Qt::Checked, mCheckInvert->checkState() == Qt::Checked );
 }

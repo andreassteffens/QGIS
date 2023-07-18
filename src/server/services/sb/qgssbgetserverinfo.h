@@ -17,12 +17,13 @@
 
 namespace QgsSb
 {
+
   /**
    * Output GetServerInfo response
    */
   void writeGetServerInfo( QgsServerInterface *serverIface, const QgsProject *project,
-                             const QString &version, const QgsServerRequest &request,
-                             QgsServerResponse &response );
+                           const QString &version, const QgsServerRequest &request,
+                           QgsServerResponse &response );
 
 
 } // namespace QgsSb

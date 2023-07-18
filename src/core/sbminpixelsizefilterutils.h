@@ -30,7 +30,7 @@ class CORE_EXPORT sbMinPixelSizeFilterUtils
     /**
      *
      */
-    static void getFilterProperties( QgsMapLayer *pLayer, bool* pbEnabled, double* pdMinPixelSize, double *pdMaxScale, bool* pbDebug );
+    static void getFilterProperties( QgsMapLayer *pLayer, bool *pbEnabled, double *pdMinPixelSize, double *pdMaxScale, bool *pbDebug );
 };
 
 #endif

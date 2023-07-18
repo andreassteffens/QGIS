@@ -2109,17 +2109,17 @@ bool QgsProject::readProjectFile( const QString &filename, Qgis::ProjectReadFlag
     // (default implementation ignores them, there's also a GUI handler that lets user choose correct path)
     mBadLayerHandler->handleBadLayers( brokenNodes );
 
-    for (const QDomNode &layer : brokenNodes)
+    for ( const QDomNode &layer : brokenNodes )
     {
-      QDomNode dataSourceNode = layer.namedItem(QStringLiteral("datasource"));
-      if (!dataSourceNode.isNull())
+      QDomNode dataSourceNode = layer.namedItem( QStringLiteral( "datasource" ) );
+      if ( !dataSourceNode.isNull() )
       {
         QString strLayerName = dataSourceNode.toElement().text();
 
         QList<QgsReadWriteContext::ReadWriteMessage> listMessages;
-        listMessages.append(QgsReadWriteContext::ReadWriteMessage("Bad layer dismissed!"));
+        listMessages.append( QgsReadWriteContext::ReadWriteMessage( "Bad layer dismissed!" ) );
 
-   	    emit loadingLayerMessageReceived(strLayerName, listMessages);
+        emit loadingLayerMessageReceived( strLayerName, listMessages );
       }
     }
   }

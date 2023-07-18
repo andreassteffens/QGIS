@@ -56,26 +56,26 @@ bool QgsAbstractFeatureIterator::nextFeature( QgsFeature &f )
   }
   else
   {
-    while (true)
+    while ( true )
     {
       switch ( mRequest.filterType() )
       {
         case QgsFeatureRequest::FilterExpression:
           dataOk = nextFeatureFilterExpression( f );
           break;
-  
+
         case QgsFeatureRequest::FilterFids:
           dataOk = nextFeatureFilterFids( f );
           break;
-  
+
         default:
           dataOk = fetchFeature( f );
           break;
       }
 
-      if (dataOk)
+      if ( dataOk )
       {
-        if (mRequest.sbTestRenderMinPixelSizeFilter(f))
+        if ( mRequest.sbTestRenderMinPixelSizeFilter( f ) )
           break;
       }
       else

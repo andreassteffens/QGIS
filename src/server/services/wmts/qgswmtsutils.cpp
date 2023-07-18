@@ -411,24 +411,24 @@ namespace QgsWmts
         pLayer.wgs84BoundingRect = QgsRectangle( -180, -90, 180, 90 );
       }
 
-      QStringList wmtsGridConfigList = project->readListEntry(QStringLiteral("WMTSGrids"), QStringLiteral("Config"));
-      for (const QString &c : wmtsGridConfigList)
+      QStringList wmtsGridConfigList = project->readListEntry( QStringLiteral( "WMTSGrids" ), QStringLiteral( "Config" ) );
+      for ( const QString &c : wmtsGridConfigList )
       {
-        QStringList config = c.split(',');
+        QStringList config = c.split( ',' );
         QString crsStr = config[0];
 
-        if (!fixedTileMatrixInfoMap.contains(crsStr))
+        if ( !fixedTileMatrixInfoMap.contains( crsStr ) )
         {
-          QgsCoordinateReferenceSystem gridCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs(crsStr);
-          QgsCoordinateTransform gridTransform = QgsCoordinateTransform(projCrs, gridCrs, project);
+          QgsCoordinateReferenceSystem gridCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( crsStr );
+          QgsCoordinateTransform gridTransform = QgsCoordinateTransform( projCrs, gridCrs, project );
 
           try
           {
-            QgsRectangle gridRect = gridTransform.transformBoundingBox(projRect);
-            if(!pLayer.sbCrsBoundingRects.contains(gridCrs.authid()))
-              pLayer.sbCrsBoundingRects.insert(gridCrs.authid(), gridRect);
+            QgsRectangle gridRect = gridTransform.transformBoundingBox( projRect );
+            if ( !pLayer.sbCrsBoundingRects.contains( gridCrs.authid() ) )
+              pLayer.sbCrsBoundingRects.insert( gridCrs.authid(), gridRect );
           }
-          catch (const QgsCsException &)
+          catch ( const QgsCsException & )
           {
             // nothing to be done here for now
           }
@@ -500,27 +500,27 @@ namespace QgsWmts
             wgs84BoundingRect.combineExtentWith( QgsRectangle( -180, -90, 180, 90 ) );
           }
 
-          QStringList wmtsGridConfigList = project->readListEntry(QStringLiteral("WMTSGrids"), QStringLiteral("Config"));
-          for (const QString &c : wmtsGridConfigList)
+          QStringList wmtsGridConfigList = project->readListEntry( QStringLiteral( "WMTSGrids" ), QStringLiteral( "Config" ) );
+          for ( const QString &c : wmtsGridConfigList )
           {
-            QStringList config = c.split(',');
+            QStringList config = c.split( ',' );
             QString crsStr = config[0];
 
-            if (!fixedTileMatrixInfoMap.contains(crsStr))
+            if ( !fixedTileMatrixInfoMap.contains( crsStr ) )
             {
-              QgsCoordinateReferenceSystem gridCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs(crsStr);
-              QgsCoordinateTransform gridTransform = QgsCoordinateTransform(layerCrs, gridCrs, project);
+              QgsCoordinateReferenceSystem gridCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( crsStr );
+              QgsCoordinateTransform gridTransform = QgsCoordinateTransform( layerCrs, gridCrs, project );
 
               try
               {
-                QgsRectangle gridRect = gridTransform.transformBoundingBox(l->extent());
+                QgsRectangle gridRect = gridTransform.transformBoundingBox( l->extent() );
 
-                if (pLayer.sbCrsBoundingRects.contains(gridCrs.authid()))
-                  pLayer.sbCrsBoundingRects[gridCrs.authid()].combineExtentWith(gridRect);
+                if ( pLayer.sbCrsBoundingRects.contains( gridCrs.authid() ) )
+                  pLayer.sbCrsBoundingRects[gridCrs.authid()].combineExtentWith( gridRect );
                 else
-                  pLayer.sbCrsBoundingRects.insert(gridCrs.authid(), gridRect);
+                  pLayer.sbCrsBoundingRects.insert( gridCrs.authid(), gridRect );
               }
-              catch (const QgsCsException &)
+              catch ( const QgsCsException & )
               {
                 // nothing to be done here for now
               }
@@ -600,24 +600,24 @@ namespace QgsWmts
         pLayer.wgs84BoundingRect = QgsRectangle( -180, -90, 180, 90 );
       }
 
-      QStringList wmtsGridConfigList = project->readListEntry(QStringLiteral("WMTSGrids"), QStringLiteral("Config"));
-      for (const QString &c : wmtsGridConfigList)
+      QStringList wmtsGridConfigList = project->readListEntry( QStringLiteral( "WMTSGrids" ), QStringLiteral( "Config" ) );
+      for ( const QString &c : wmtsGridConfigList )
       {
-        QStringList config = c.split(',');
+        QStringList config = c.split( ',' );
         QString crsStr = config[0];
 
-        if (!fixedTileMatrixInfoMap.contains(crsStr))
+        if ( !fixedTileMatrixInfoMap.contains( crsStr ) )
         {
-          QgsCoordinateReferenceSystem gridCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs(crsStr);
-          QgsCoordinateTransform gridTransform = QgsCoordinateTransform(layerCrs, gridCrs, project);
+          QgsCoordinateReferenceSystem gridCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( crsStr );
+          QgsCoordinateTransform gridTransform = QgsCoordinateTransform( layerCrs, gridCrs, project );
 
           try
           {
-            QgsRectangle gridRect = gridTransform.transformBoundingBox(l->extent());
-            if (!pLayer.sbCrsBoundingRects.contains(gridCrs.authid()))
-              pLayer.sbCrsBoundingRects.insert(gridCrs.authid(), gridRect);
+            QgsRectangle gridRect = gridTransform.transformBoundingBox( l->extent() );
+            if ( !pLayer.sbCrsBoundingRects.contains( gridCrs.authid() ) )
+              pLayer.sbCrsBoundingRects.insert( gridCrs.authid(), gridRect );
           }
-          catch (const QgsCsException &)
+          catch ( const QgsCsException & )
           {
             // nothing to be done here for now
           }
@@ -658,8 +658,8 @@ namespace QgsWmts
     if ( tms.ref != QLatin1String( "EPSG:4326" ) )
     {
       const QgsCoordinateReferenceSystem crs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( tms.ref );
-      
-      if (layer.sbCrsBoundingRects.contains(crs.authid()))
+
+      if ( layer.sbCrsBoundingRects.contains( crs.authid() ) )
       {
         rect = layer.sbCrsBoundingRects[crs.authid()];
       }

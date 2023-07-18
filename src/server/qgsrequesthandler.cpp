@@ -22,7 +22,6 @@
 #include "qgsmessagelog.h"
 #include "qgsserverrequest.h"
 #include "qgsserverresponse.h"
-#include "qgsmessagelog.h"
 #include <QByteArray>
 #include <QDomDocument>
 #include <QUrl>
@@ -211,23 +210,23 @@ void QgsRequestHandler::parseInput()
 
       bool bProcessAsQueryString = false;
 
-      QString qstrFormat = parameter("SBPOSTFORMAT");
-      if (!qstrFormat.isNull())
+      QString qstrFormat = parameter( "SBPOSTFORMAT" );
+      if ( !qstrFormat.isNull() )
       {
-        if (!qstrFormat.isEmpty())
-          bProcessAsQueryString = qstrFormat.startsWith("QUERYSTRING", Qt::CaseSensitivity::CaseInsensitive);
+        if ( !qstrFormat.isEmpty() )
+          bProcessAsQueryString = qstrFormat.startsWith( "QUERYSTRING", Qt::CaseSensitivity::CaseInsensitive );
       }
 
-      if (!bProcessAsQueryString)
+      if ( !bProcessAsQueryString )
       {
-        bProcessAsQueryString = !doc.setContent(inputString, true, &errorMsg, &line, &column);
+        bProcessAsQueryString = !doc.setContent( inputString, true, &errorMsg, &line, &column );
 
         // XXX Output error but continue processing request ?
-        QgsMessageLog::logMessage(QStringLiteral("Warning: error parsing post data as XML: at line %1, column %2: %3. Assuming urlencoded query string sent in the post body.")
-          .arg(line).arg(column).arg(errorMsg), QStringLiteral("Server"), Qgis::Warning);
+        QgsMessageLog::logMessage( QStringLiteral( "Warning: error parsing post data as XML: at line %1, column %2: %3. Assuming urlencoded query string sent in the post body." )
+                                   .arg( line ).arg( column ).arg( errorMsg ), QStringLiteral( "Server" ), Qgis::Warning );
       }
 
-      if (bProcessAsQueryString)
+      if ( bProcessAsQueryString )
       {
         // Process input string as a simple query text
         try
@@ -238,15 +237,15 @@ void QgsRequestHandler::parseInput()
           for ( const pair_t &pair : items )
           {
             // QUrl::fromPercentEncoding doesn't replace '+' with space
-            const QString key = QUrl::fromPercentEncoding(QString(pair.first).replace('+', ' ').toUtf8());
-            const QString value = QUrl::fromPercentEncoding(QString(pair.second).replace('+', ' ').toUtf8());
+            const QString key = QUrl::fromPercentEncoding( QString( pair.first ).replace( '+', ' ' ).toUtf8() );
+            const QString value = QUrl::fromPercentEncoding( QString( pair.second ).replace( '+', ' ' ).toUtf8() );
             mRequest.setParameter( pair.first, pair.second );
           }
           setupParameters();
         }
-        catch (...)
+        catch ( ... )
         {
-          QgsMessageLog::logMessage(QStringLiteral("!!! Exception while parsing query string! !!!"), QStringLiteral("Server"), Qgis::Critical);
+          QgsMessageLog::logMessage( QStringLiteral( "!!! Exception while parsing query string! !!!" ), QStringLiteral( "Server" ), Qgis::Critical );
         }
       }
       else

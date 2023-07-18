@@ -88,14 +88,14 @@ QString QgsRasterAttributeTableModel::headerTooltip( const int section ) const
   }
 
   return QStringLiteral( R"HTML(
-            <dl>
-                <dt>Role</dt><dd>%1</dd>
-                <dt>Type</dt><dd>%2</dd>
-                <dt>Description</dt><dd>%3</dd>
-            </dl>
-            )HTML" ).arg( QgsRasterAttributeTable::usageName( field.usage ),
-                             QVariant::typeToName( field.type ),
-                             QgsRasterAttributeTable::usageInformation().value( field.usage ).description ) ;
+                         <dl>
+                         <dt>Role</dt><dd>%1</dd>
+                         <dt>Type</dt><dd>%2</dd>
+                         <dt>Description</dt><dd>%3</dd>
+                         </dl>
+                       )HTML" ).arg( QgsRasterAttributeTable::usageName( field.usage ),
+         QVariant::typeToName( field.type ),
+         QgsRasterAttributeTable::usageInformation().value( field.usage ).description ) ;
 }
 
 bool QgsRasterAttributeTableModel::isValid( QString *errorMessage )

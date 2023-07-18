@@ -3395,7 +3395,7 @@ QgsExpressionNodeBinaryOperator *QgsOgcUtilsExpressionFromFilter::nodeBinaryOper
     op = QgsExpressionNodeBinaryOperator::boILike;
   }
 
-  if (op == QgsExpressionNodeBinaryOperator::boNotLike && element.hasAttribute( QStringLiteral( "matchCase" ) ) && element.attribute( QStringLiteral( "matchCase" ) ) == QLatin1String( "false" ) )
+  if ( op == QgsExpressionNodeBinaryOperator::boNotLike && element.hasAttribute( QStringLiteral( "matchCase" ) ) && element.attribute( QStringLiteral( "matchCase" ) ) == QLatin1String( "false" ) )
   {
     op = QgsExpressionNodeBinaryOperator::boNotILike;
   }
