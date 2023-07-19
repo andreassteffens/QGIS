@@ -1,7 +1,0 @@
-<RCC>
-    <qresource prefix="/sbelevationservices/" >
-        <file>./icons/sb_elevation_services.png</file>
-        <file>./icons/close.svg</file>
-		<file>./icons/info-circle.svg</file>
-    </qresource>
-</RCC>
