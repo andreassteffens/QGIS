@@ -61,7 +61,7 @@ sbElevationServicesGui::sbElevationServicesGui( QgisInterface *pQgisIface, QWidg
   // general
   connect( mPbtnClearResults, &QPushButton::pressed, this, &sbElevationServicesGui::onClearResultsBtnPressed );
 
-  mpRubberBand = new QgsRubberBand( mpQgisIface->mapCanvas(), QgsWkbTypes::PointGeometry );
+  mpRubberBand = new QgsRubberBand( mpQgisIface->mapCanvas(), Qgis::GeometryType::Point );
   mpRubberBand->setColor( Qt::blue );
   mpRubberBand->setWidth( 1 );
   mpRubberBand->setIcon( QgsRubberBand::ICON_CIRCLE );
@@ -126,7 +126,7 @@ void sbElevationServicesGui::onClearResultsBtnPressed()
 {
   mPteResult->clear();
 
-  mpRubberBand->reset( QgsWkbTypes::PointGeometry );
+  mpRubberBand->reset( Qgis::GeometryType::Point );
 }
 
 void sbElevationServicesGui::onActivateInfoBtnToggled( bool checked )
@@ -228,7 +228,7 @@ bool sbElevationServicesGui::processGoogleInfoReply( const QString &strReply )
   QJsonObject jsonObject = jsonResponse.object();
 
   mPteResult->clear();
-  mpRubberBand->reset( QgsWkbTypes::PointGeometry );
+  mpRubberBand->reset( Qgis::GeometryType::Point );
 
   if ( !jsonObject.isEmpty() )
   {

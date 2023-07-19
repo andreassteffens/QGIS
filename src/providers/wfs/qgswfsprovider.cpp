@@ -256,12 +256,10 @@ void QgsWFSProvider::issueInitialGetFeature()
               mShared->mFields.indexOf( QLatin1String( "gmlName" ) ) < 0 ||
               mShared->mFields.indexOf( QLatin1String( "gmlDescription" ) ) < 0 ) )
   {
-    const QgsWkbTypes::Type initialGeometryType = mShared->mWKBType;
-
-    // try first without a BBOX, because some servers exhibit very poor
-    // performance when being requested on a large extent
-    GetGeometryTypeFromOneFeature( false );
-    if ( initialGeometryType == QgsWkbTypes::Unknown )
+    // Try to see if gml:description, gml:identifier, gml:name attributes are
+    // present. So insert them temporarily in mShared->mFields so that the
+    // GML parser can detect them.
+    const auto addGMLFields = [ = ]( bool forceAdd )
     {
       if ( mShared->mFields.indexOf( QLatin1String( "description" ) ) < 0  && ( forceAdd || mSampleFeatureHasDescription ) )
         mShared->mFields.append( QgsField( QStringLiteral( "description" ), QVariant::String, QStringLiteral( "xsd:string" ) ) );
@@ -270,27 +268,6 @@ void QgsWFSProvider::issueInitialGetFeature()
       if ( mShared->mFields.indexOf( QLatin1String( "name" ) ) < 0  && ( forceAdd || mSampleFeatureHasName ) )
         mShared->mFields.append( QgsField( QStringLiteral( "name" ), QVariant::String, QStringLiteral( "xsd:string" ) ) );
     };
-
-    // If we still didn't get the geometry type, and have a filter, temporarily
-    // disable the filter.
-    // See https://github.com/qgis/QGIS/issues/43950
-    if ( mShared->mWKBType == QgsWkbTypes::Unknown && !mSubsetString.isEmpty() )
-    {
-      const QString oldFilter = mShared->setWFSFilter( QString() );
-      GetGeometryTypeFromOneFeature( false );
-      if ( mShared->mWKBType == QgsWkbTypes::NoGeometry )
-      {
-        noGeometryFound = true;
-        mShared->mWKBType = QgsWkbTypes::Unknown;
-      }
-      if ( mShared->mWKBType == QgsWkbTypes::Unknown )
-        GetGeometryTypeFromOneFeature( true );
-      mShared->setWFSFilter( oldFilter );
-    }
-    else if ( mShared->mWKBType == QgsWkbTypes::Unknown )
-      GetGeometryTypeFromOneFeature( true );
-
-    TryToDetectGeometryType();
 
     const QgsFields fieldsBackup = mShared->mFields;
     addGMLFields( true );
@@ -304,7 +281,6 @@ void QgsWFSProvider::issueInitialGetFeature()
     for ( const QgsField &field : fieldsBackup )
       mShared->mFields.append( field );
   }
-}
 }
 
 QgsWFSProvider::~QgsWFSProvider()
@@ -1531,7 +1507,6 @@ bool QgsWFSProvider::describeFeatureType( QString &geometryAttribute, QgsFields 
 
   QDomDocument describeFeatureDocument;
   QString errorMsg;
-
   if ( !describeFeatureDocument.setContent( response, true, &errorMsg ) )
   {
     QgsDebugMsgLevel( response, 4 );
@@ -1595,12 +1570,10 @@ bool QgsWFSProvider::readAttributesFromSchema( QDomDocument &schemaDoc,
         // e.g http://afnemers.ruimtelijkeplannen.nl/afnemers2012/services?SERVICE=WFS&REQUEST=DescribeFeatureType&VERSION=2.0.0&TYPENAME=app:Bouwvlak
         complexTypeElement = elementElement.firstChildElement( QStringLiteral( "complexType" ) );
       }
-
       break;
     }
     elementElement = elementElement.nextSiblingElement( QStringLiteral( "element" ) );
   }
-
   // Try to get a complex type whose name contains the unprefixed typename
   if ( elementTypeString.isEmpty() && complexTypeElement.isNull() )
   {
@@ -1614,7 +1587,6 @@ bool QgsWFSProvider::readAttributesFromSchema( QDomDocument &schemaDoc,
       }
     }
   }
-
   // Give up :(
   if ( elementTypeString.isEmpty() && complexTypeElement.isNull() )
   {
@@ -1762,26 +1734,26 @@ bool QgsWFSProvider::readAttributesFromSchema( QDomDocument &schemaDoc,
     {
       foundGeometryAttribute = true;
       geometryAttribute = name;
-      geomType = QgsWkbTypes::Polygon;
+      geomType = Qgis::WkbType::Polygon;
     }
     else if ( ! foundGeometryAttribute && ( type.indexOf( QRegularExpression( "(.*):OrientedPointGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0
                                             || type.indexOf( QRegularExpression( "(.*):TextPointGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0 ) )
     {
       foundGeometryAttribute = true;
       geometryAttribute = name;
-      geomType = QgsWkbTypes::Point;
+      geomType = Qgis::WkbType::Point;
     }
     else if ( ! foundGeometryAttribute && type.indexOf( QRegularExpression( "(.*):PolylineGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0 )
     {
       foundGeometryAttribute = true;
       geometryAttribute = name;
-      geomType = QgsWkbTypes::LineString;
+      geomType = Qgis::WkbType::LineString;
     }
     else if ( ! foundGeometryAttribute && type.indexOf( QRegularExpression( "(.*):CompositePolylineGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0 )
     {
       foundGeometryAttribute = true;
       geometryAttribute = name;
-      geomType = QgsWkbTypes::MultiLineString;
+      geomType = Qgis::WkbType::MultiLineString;
     }
     // gmgml: is Geomedia Web Server
     else if ( ! foundGeometryAttribute && type == QLatin1String( "gmgml:Polygon_Surface_MultiSurface_CompositeSurfacePropertyType" ) )
@@ -1860,8 +1832,8 @@ bool QgsWFSProvider::readAttributesFromSchema( QDomDocument &schemaDoc,
 
     if ( !mShared->mURI.sbFallbackGeometryName().isEmpty() && !mShared->mURI.sbFallbackGeometryType().isEmpty() )
     {
-      QgsWkbTypes::Type fallbackType = QgsWkbTypes::parseType( mShared->mURI.sbFallbackGeometryType() );
-      if ( fallbackType != QgsWkbTypes::Type::Unknown )
+      Qgis::WkbType fallbackType = QgsWkbTypes::parseType( mShared->mURI.sbFallbackGeometryType() );
+      if ( fallbackType != Qgis::WkbType::Unknown )
       {
         geometryAttribute = mShared->mURI.sbFallbackGeometryName();
         geomType = fallbackType;

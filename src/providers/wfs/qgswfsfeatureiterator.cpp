@@ -107,7 +107,6 @@ QString QgsWFSFeatureDownloaderImpl::sanitizeFilter( QString filter )
 QUrl QgsWFSFeatureDownloaderImpl::buildURL( qint64 startIndex, long long maxFeatures, bool forHits )
 {
   QUrl getFeatureUrl( mShared->mURI.requestUrl( QStringLiteral( "GetFeature" ) ) );
-
   QUrlQuery query( getFeatureUrl );
   query.addQueryItem( QStringLiteral( "VERSION" ),  mShared->mWFSVersion );
 
@@ -324,7 +323,6 @@ QUrl QgsWFSFeatureDownloaderImpl::buildURL( qint64 startIndex, long long maxFeat
 
   getFeatureUrl.setQuery( query );
   QgsDebugMsgLevel( QStringLiteral( "WFS GetFeature URL: %1" ).arg( getFeatureUrl.toDisplayString( ) ), 2 );
-
   return getFeatureUrl;
 }
 

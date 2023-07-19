@@ -182,7 +182,7 @@ sbAddressServicesGui::sbAddressServicesGui( QgisInterface *pQgisIface, const QSt
   connect( mPbtnNavigateToResult, &QPushButton::pressed, this, &sbAddressServicesGui::onNavigateToResultBtnPressed );
   connect( mTabsServices, &QTabWidget::currentChanged, this, &sbAddressServicesGui::onCurrentTabChanged );
 
-  mpRubberBand = new QgsRubberBand( mpQgisIface->mapCanvas(), QgsWkbTypes::PolygonGeometry );
+  mpRubberBand = new QgsRubberBand( mpQgisIface->mapCanvas(), Qgis::GeometryType::Polygon );
   mpRubberBand->setColor( Qt::blue );
   mpRubberBand->setWidth( 2 );
   mpRubberBand->setFillColor( QColor::fromRgba( qRgba( 255, 0, 0, 128 ) ) );
@@ -293,7 +293,7 @@ void sbAddressServicesGui::onClearResultsBtnPressed()
   mComboResults->clear();
   mPteResult->clear();
 
-  mpRubberBand->reset( QgsWkbTypes::PolygonGeometry );
+  mpRubberBand->reset( Qgis::GeometryType::Polygon );
 }
 
 void sbAddressServicesGui::onSearchTextReturnPressed()
@@ -331,7 +331,7 @@ void sbAddressServicesGui::onResultsComboIndexChanged( int index )
     {
       QgsRectangle rcBoundsTransformed = mTransform.transformBoundingBox( rcBounds, Qgis::TransformDirection::Reverse );
 
-      mpRubberBand->reset( QgsWkbTypes::PolygonGeometry );
+      mpRubberBand->reset( Qgis::GeometryType::Polygon );
       mpRubberBand->addGeometry( QgsGeometry::fromRect( rcBoundsTransformed ), mTransform.sourceCrs() );
       mpRubberBand->show();
     }

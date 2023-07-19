@@ -485,8 +485,6 @@ Returns ``True`` if a ``font`` is a fixed pitch font.
 
     virtual bool eventFilter( QObject *watched, QEvent *event );
 
-    virtual bool eventFilter( QObject * watched, QEvent * event );
-
 
     virtual void initializeLexer();
 %Docstring
