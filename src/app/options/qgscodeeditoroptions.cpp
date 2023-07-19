@@ -213,7 +213,7 @@ QgsCodeEditorOptionsWidget::QgsCodeEditorOptionsWidget( QWidget *parent )
                                  expression:=centroid($geometry), /* a comment */
                                  filter:="region_name" = attribute(@parent,'name') + 55
                                )
-    )""");
+    )""" );
 
     mSQLPreview->setText( R"""(CREATE TABLE "my_table" (
                           "pk" serial NOT NULL PRIMARY KEY,
@@ -223,20 +223,20 @@ QgsCodeEditorOptionsWidget::QgsCodeEditorOptionsWidget( QWidget *parent )
 
     -- Retrieve values
     SELECT count(*) FROM "my_table" WHERE "a_field" > 'a value';
-    )""");
+    )""" );
 
-    mHtmlPreview->setText(R"""(<html>
-                          <head>
-                          <title>QGIS</title>
-                          </head>
-                          <body>
-                          <h1>QGIS Rocks!</h1>
-                          <img src="qgis.png" style="width: 100px" />
-                                   <!--Sample comment-->
-                                   <p>Sample paragraph</p>
-                                   </body>
-                                   </html>
-                         )""");
+    mHtmlPreview->setText( R"""(<html>
+                           <head>
+                           <title>QGIS</title>
+                           </head>
+                           <body>
+                           <h1>QGIS Rocks!</h1>
+                           <img src="qgis.png" style="width: 100px" />
+                                    <!--Sample comment-->
+                                    <p>Sample paragraph</p>
+                                    </body>
+                                    </html>
+                         )""" );
 
     mCssPreview->setText( R"""(@import url(print.css);
 
@@ -296,22 +296,22 @@ text-decoration: underline;
   {
     return(x^y)
   }
-                    )""");
+                    )""" );
 
 
-  mBashPreview->setText(R"""(#!/bin/bash
+  mBashPreview->setText( R"""(#!/bin/bash
 
 # This script takes two arguments: a directory and a file extension.
 # It finds all the files in the directory that have the given extension
 # and prints out their names and sizes.
 
-                        [ $# -ne 2 ] && { echo "Usage: $0 <directory> <file_extension>"; exit 1; }
+                         [ $# -ne 2 ] && { echo "Usage: $0 <directory> <file_extension>"; exit 1; }
 
-                        [ ! -d "$1" ] && { echo "Error: $1 does not exist or is not a directory."; exit 1; }
+                         [ ! -d "$1" ] && { echo "Error: $1 does not exist or is not a directory."; exit 1; }
 
-                        echo "Files with extension .$2 in $1:"
+                         echo "Files with extension .$2 in $1:"
 
-                        for file in "$1"/*."$2"; do
+                         for file in "$1"/*."$2"; do
   size=$(stat -c %s "$file")
   echo "$(basename "$file"): $((size / 1024)) KB"
 done
