@@ -33,6 +33,7 @@ class QgsMeshLayer3DRendererWidget;
 class QgsMeshStaticDatasetWidget;
 class QgsMapLayerConfigWidgetFactory;
 class QgsMetadataWidget;
+class sbJoinedToggleWidget;
 
 /**
  * \ingroup gui
@@ -144,6 +145,7 @@ class GUI_EXPORT QgsMeshLayerProperties : public QgsOptionsDialogBase, private U
 
     QgsMapCanvas *mCanvas = nullptr;
     QgsMetadataWidget *mMetadataWidget = nullptr;
+    sbJoinedToggleWidget *mSbJoinedToggleWidget = nullptr;
 
     bool mIsMapSettingsTemporal = false;
 

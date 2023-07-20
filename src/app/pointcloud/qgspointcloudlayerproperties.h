@@ -29,6 +29,7 @@ class QgsMapLayer;
 class QgsMapCanvas;
 class QgsMessageBar;
 class QgsPointCloudLayer;
+class sbJoinedToggleWidget;
 class QgsMetadataWidget;
 class QgsMapLayerConfigWidgetFactory;
 class QgsMapLayerConfigWidget;
@@ -155,6 +156,7 @@ class QgsPointCloudLayerProperties : public QgsOptionsDialogBase, private Ui::Qg
 
     QgsMapCanvas *mMapCanvas = nullptr;
     QgsMetadataWidget *mMetadataWidget = nullptr;
+    sbJoinedToggleWidget *mSbJoinedToggleWidget = nullptr;
 
     /**
      * Previous layer style. Used to reset style to previous state if new style
