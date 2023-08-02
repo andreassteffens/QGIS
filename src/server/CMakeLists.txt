@@ -203,5 +203,5 @@ install(FILES
   DESTINATION ${QGIS_CGIBIN_DIR}
 )
 add_custom_target(qgis_server_full
-  DEPENDS qgis_mapserv.fcgi wms wfs wcs wfs3 wmts qgis_server landingpage
+  DEPENDS qgis_mapserv.fcgi wms wfs wcs wfs3 wmts qgis_server
 )
