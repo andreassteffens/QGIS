@@ -136,18 +136,6 @@
          </item>
          <item>
           <property name="text">
-           <string>Joined Toggle</string>
-          </property>
-          <property name="toolTip">
-           <string>([a]tapa) Joined Visibility Toggle Settings</string>
-          </property>
-          <property name="icon">
-           <iconset resource="../../images/images.qrc">
-            <normaloff>:/images/themes/default/sb_joinedtoggle.svg</normaloff>:/images/themes/default/sb_joinedtoggle.svg</iconset>
-          </property>
-         </item>
-         <item>
-          <property name="text">
            <string>Rendering</string>
           </property>
           <property name="toolTip">
@@ -156,6 +144,18 @@
           <property name="icon">
            <iconset resource="../../../images/images.qrc">
             <normaloff>:/images/themes/default/propertyicons/rendering.svg</normaloff>:/images/themes/default/propertyicons/rendering.svg</iconset>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Joined Toggle</string>
+          </property>
+          <property name="toolTip">
+           <string>([a]tapa) Joined Visibility Toggle Settings</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../images/images.qrc">
+            <normaloff>:/images/themes/default/sb_joinedtoggle.svg</normaloff>:/images/themes/default/sb_joinedtoggle.svg</iconset>
           </property>
          </item>
          <item>

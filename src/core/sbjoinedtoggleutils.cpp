@@ -53,12 +53,14 @@ void sbJoinedToggleUtils::addJoinedToggleLayer( QgsMapLayer *pReferencedLayer, Q
 void sbJoinedToggleUtils::removeJoinedToggleLayer( QgsMapLayer *pJoinedLayer )
 {
   QgsProject *pProject = pJoinedLayer->project();
+  if ( !pProject )
+    return;
 
   QMap< QString, QgsMapLayer * > mapLayers = pProject->mapLayers();
   for ( QMap< QString, QgsMapLayer * >::const_iterator iter = mapLayers.constBegin(); iter != mapLayers.constEnd(); iter++ )
     removeJoinedToggleLayer( iter.value(), pJoinedLayer );
 
-  sanitizeJoinedToggleLayers( pJoinedLayer->project() );
+  sanitizeJoinedToggleLayers( pProject );
 }
 
 void sbJoinedToggleUtils::removeJoinedToggleLayer( QgsMapLayer *pReferencedLayer, QgsMapLayer *pJoinedLayer )
@@ -160,7 +162,11 @@ sbJoinedToggleLayerSettings sbJoinedToggleUtils::getReferencedLayer( QgsMapLayer
 {
   sbJoinedToggleLayerSettings settings;
 
-  QMap< QString, QgsMapLayer * > mapLayers = pLayer->project()->mapLayers();
+  QgsProject *pProject = pLayer->project();
+  if ( !pProject )
+    return settings;
+
+  QMap< QString, QgsMapLayer * > mapLayers = pProject->mapLayers();
   for ( QMap< QString, QgsMapLayer * >::const_iterator iter = mapLayers.constBegin(); iter != mapLayers.constEnd(); iter++ )
   {
     QList< sbJoinedToggleLayerSettings > listSettings = getJoinedToggleLayers( iter.value() );
