@@ -133,6 +133,10 @@ namespace QgsWmts
       const QByteArray content = response.data();
       if ( !content.isEmpty() )
         cacheManager->setCachedImage( &content, project, request, accessControl );
+
+      QString cacheId = cacheManager->sbGetProjectCacheId( project );
+      if ( !cacheId.isEmpty() )
+        response.setHeader( QStringLiteral( "X-QGIS-CACHE-ID" ), cacheId );
     }
 #endif
 
@@ -140,10 +144,6 @@ namespace QgsWmts
       response.setHeader( QStringLiteral( "Cache-Control" ), QStringLiteral( "public, max-age=%1" ).arg( strCacheMaxAge ) );
 
     response.setHeader( QStringLiteral( "X-QGIS-FROM-CACHE" ), QStringLiteral( "false" ) );
-
-    QString cacheId = cacheManager->sbGetProjectCacheId( project );
-    if ( !cacheId.isEmpty() )
-      response.setHeader( QStringLiteral( "X-QGIS-CACHE-ID" ), cacheId );
   }
 
 } // namespace QgsWmts

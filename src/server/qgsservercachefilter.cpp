@@ -26,7 +26,7 @@ QgsServerCacheFilter::QgsServerCacheFilter( const QgsServerInterface *serverInte
   Q_UNUSED( serverInterface )
 }
 
-QByteArray QgsServerCacheFilter::getCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
+QByteArray QgsServerCacheFilter::getCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key )
 {
   Q_UNUSED( project )
   Q_UNUSED( request )
@@ -34,7 +34,7 @@ QByteArray QgsServerCacheFilter::getCachedDocument( const QgsProject *project, c
   return QByteArray();
 }
 
-bool QgsServerCacheFilter::setCachedDocument( const QDomDocument *doc, const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
+bool QgsServerCacheFilter::setCachedDocument( const QDomDocument *doc, const QgsProject *project, const QgsServerRequest &request, const QString &key )
 {
   Q_UNUSED( doc )
   Q_UNUSED( project )
@@ -43,7 +43,7 @@ bool QgsServerCacheFilter::setCachedDocument( const QDomDocument *doc, const Qgs
   return false;
 }
 
-bool QgsServerCacheFilter::deleteCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
+bool QgsServerCacheFilter::deleteCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key )
 {
   Q_UNUSED( project )
   Q_UNUSED( request )
@@ -51,13 +51,13 @@ bool QgsServerCacheFilter::deleteCachedDocument( const QgsProject *project, cons
   return false;
 }
 
-bool QgsServerCacheFilter::deleteCachedDocuments( const QgsProject *project ) const
+bool QgsServerCacheFilter::deleteCachedDocuments( const QgsProject *project )
 {
   Q_UNUSED( project )
   return false;
 }
 
-QByteArray QgsServerCacheFilter::getCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
+QByteArray QgsServerCacheFilter::getCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key )
 {
   Q_UNUSED( project )
   Q_UNUSED( request )
@@ -65,7 +65,7 @@ QByteArray QgsServerCacheFilter::getCachedImage( const QgsProject *project, cons
   return QByteArray();
 }
 
-bool QgsServerCacheFilter::setCachedImage( const QByteArray *img, const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
+bool QgsServerCacheFilter::setCachedImage( const QByteArray *img, const QgsProject *project, const QgsServerRequest &request, const QString &key )
 {
   Q_UNUSED( img )
   Q_UNUSED( project )
@@ -74,7 +74,7 @@ bool QgsServerCacheFilter::setCachedImage( const QByteArray *img, const QgsProje
   return false;
 }
 
-bool QgsServerCacheFilter::deleteCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
+bool QgsServerCacheFilter::deleteCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key )
 {
   Q_UNUSED( project )
   Q_UNUSED( request )
@@ -82,13 +82,13 @@ bool QgsServerCacheFilter::deleteCachedImage( const QgsProject *project, const Q
   return false;
 }
 
-bool QgsServerCacheFilter::deleteCachedImages( const QgsProject *project ) const
+bool QgsServerCacheFilter::deleteCachedImages( const QgsProject *project )
 {
   Q_UNUSED( project )
   return false;
 }
 
-QString QgsServerCacheFilter::sbGetProjectCacheId( const QgsProject *project ) const
+QString QgsServerCacheFilter::sbGetProjectCacheId( const QgsProject *project )
 {
   Q_UNUSED( project )
   return "";

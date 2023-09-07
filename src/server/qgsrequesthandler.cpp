@@ -183,11 +183,14 @@ void QgsRequestHandler::setupParameters()
       {
         formatString = QStringLiteral( "PDF" );
       }
+      else if ( formatString.contains( QLatin1String( "image/webp" ), Qt::CaseInsensitive ) || formatString.contains( QLatin1String( "webp" ), Qt::CaseInsensitive ) )
+      {
+        formatString = QStringLiteral( "WEBP" );
+      }
 
       mFormat = formatString;
     }
   }
-
 }
 
 void QgsRequestHandler::parseInput()

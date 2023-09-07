@@ -40,7 +40,7 @@ sbServerCacheFilter::~sbServerCacheFilter()
   // nothing to be done here for now
 }
 
-QString sbServerCacheFilter::initializeProjectDirectory( const QgsProject *project ) const
+QString sbServerCacheFilter::initializeProjectDirectory( const QgsProject *project )
 {
   QString strEncrypted = sbGetProjectCacheId( project );
 
@@ -77,7 +77,7 @@ QString sbServerCacheFilter::getCacheKey( const QgsServerRequest &request ) cons
   return strKey;
 }
 
-QByteArray sbServerCacheFilter::getCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
+QByteArray sbServerCacheFilter::getCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key )
 {
   if ( !m_bInitialized )
     return QByteArray();
@@ -101,7 +101,7 @@ QByteArray sbServerCacheFilter::getCachedDocument( const QgsProject *project, co
   return arrDocument;
 }
 
-bool sbServerCacheFilter::setCachedDocument( const QDomDocument *doc, const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
+bool sbServerCacheFilter::setCachedDocument( const QDomDocument *doc, const QgsProject *project, const QgsServerRequest &request, const QString &key )
 {
   if ( !m_bInitialized )
     return false;
@@ -122,7 +122,7 @@ bool sbServerCacheFilter::setCachedDocument( const QDomDocument *doc, const QgsP
   return true;
 }
 
-bool sbServerCacheFilter::deleteCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
+bool sbServerCacheFilter::deleteCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key )
 {
   if ( !m_bInitialized )
     return false;
@@ -138,7 +138,7 @@ bool sbServerCacheFilter::deleteCachedDocument( const QgsProject *project, const
   return true;
 }
 
-bool sbServerCacheFilter::deleteCachedDocuments( const QgsProject *project ) const
+bool sbServerCacheFilter::deleteCachedDocuments( const QgsProject *project )
 {
   if ( !m_bInitialized )
     return false;
@@ -156,7 +156,7 @@ bool sbServerCacheFilter::deleteCachedDocuments( const QgsProject *project ) con
   return true;
 }
 
-QByteArray sbServerCacheFilter::getCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
+QByteArray sbServerCacheFilter::getCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key )
 {
   if ( !m_bInitialized )
     return false;
@@ -176,7 +176,7 @@ QByteArray sbServerCacheFilter::getCachedImage( const QgsProject *project, const
   return arrImage;
 }
 
-bool sbServerCacheFilter::setCachedImage( const QByteArray *img, const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
+bool sbServerCacheFilter::setCachedImage( const QByteArray *img, const QgsProject *project, const QgsServerRequest &request, const QString &key )
 {
   if ( !m_bInitialized )
     return false;
@@ -195,7 +195,7 @@ bool sbServerCacheFilter::setCachedImage( const QByteArray *img, const QgsProjec
   return true;
 }
 
-bool sbServerCacheFilter::deleteCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const
+bool sbServerCacheFilter::deleteCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key )
 {
   if ( !m_bInitialized )
     return false;
@@ -211,7 +211,7 @@ bool sbServerCacheFilter::deleteCachedImage( const QgsProject *project, const Qg
   return true;
 }
 
-bool sbServerCacheFilter::deleteCachedImages( const QgsProject *project ) const
+bool sbServerCacheFilter::deleteCachedImages( const QgsProject *project )
 {
   if ( !m_bInitialized )
     return false;
@@ -229,7 +229,14 @@ bool sbServerCacheFilter::deleteCachedImages( const QgsProject *project ) const
   return true;
 }
 
-QString sbServerCacheFilter::sbGetProjectCacheId( const QgsProject *project ) const
+QString sbServerCacheFilter::sbGetProjectCacheId( const QgsProject *project )
 {
-  return QString( QCryptographicHash::hash( ( project->absoluteFilePath().toLower().toUtf8() ), QCryptographicHash::Md5 ).toHex() );
+  QString strKey = project->absoluteFilePath().toLower().toUtf8();
+  if ( !m_mapProjectIds.contains( strKey ) )
+  {
+    QString strId = QString( QCryptographicHash::hash ( ( project->absoluteFilePath().toLower().toUtf8() ), QCryptographicHash::Md5 ).toHex() );
+    m_mapProjectIds[strKey] = strId;
+  }
+
+  return m_mapProjectIds[strKey];
 }

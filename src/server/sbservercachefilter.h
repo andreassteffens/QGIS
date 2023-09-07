@@ -23,29 +23,31 @@
 #define SIP_NO_FILE
 
 #include "qgsservercachefilter.h"
+#include "qmap.h"
 
 class sbServerCacheFilter : public QgsServerCacheFilter
 {
   private:
-    QString   m_strDirectory;
-    bool    m_bInitialized;
+    QString                m_strDirectory;
+    bool                   m_bInitialized;
+    QMap<QString, QString> m_mapProjectIds;
 
-    QString   initializeProjectDirectory( const QgsProject *project ) const;
+    QString   initializeProjectDirectory( const QgsProject *project );
     QString   getCacheKey( const QgsServerRequest &request ) const;
 
   public:
     sbServerCacheFilter( const QgsServerInterface *serverInterface, const QString &strDirectory );
     virtual   ~sbServerCacheFilter();
 
-    virtual   QByteArray getCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
-    virtual   bool setCachedDocument( const QDomDocument *doc, const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
-    virtual   bool deleteCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
-    virtual   bool deleteCachedDocuments( const QgsProject *project ) const;
-    virtual   QByteArray getCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
-    virtual   bool setCachedImage( const QByteArray *img, const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
-    virtual   bool deleteCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
-    virtual   bool deleteCachedImages( const QgsProject *project ) const;
-    virtual   QString sbGetProjectCacheId( const QgsProject *project ) const;
+    virtual   QByteArray getCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key );
+    virtual   bool       setCachedDocument( const QDomDocument *doc, const QgsProject *project, const QgsServerRequest &request, const QString &key );
+    virtual   bool       deleteCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key );
+    virtual   bool       deleteCachedDocuments( const QgsProject *project );
+    virtual   QByteArray getCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key );
+    virtual   bool       setCachedImage( const QByteArray *img, const QgsProject *project, const QgsServerRequest &request, const QString &key );
+    virtual   bool       deleteCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key );
+    virtual   bool       deleteCachedImages( const QgsProject *project );
+    virtual   QString    sbGetProjectCacheId( const QgsProject *project );
 };
 
 #endif // SBSERVERCACHEFILTER_H
