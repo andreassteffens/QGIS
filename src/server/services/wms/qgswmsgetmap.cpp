@@ -107,6 +107,10 @@ namespace QgsWms
 
               response.setHeader( QStringLiteral( "X-QGIS-FROM-CACHE" ), QStringLiteral( "true" ) );
 
+              QString cacheId = cacheManager->sbGetProjectCacheId( project );
+              if ( !cacheId.isEmpty() )
+                response.setHeader( QStringLiteral( "X-QGIS-CACHE-ID" ), cacheId );
+
               return;
             }
           }
@@ -155,6 +159,10 @@ namespace QgsWms
           response.setHeader( QStringLiteral( "Cache-Control" ), QStringLiteral( "public, max-age=%1" ).arg( strCacheMaxAge ) );
 
         response.setHeader( QStringLiteral( "X-QGIS-FROM-CACHE" ), QStringLiteral( "false" ) );
+
+        QString cacheId = cacheManager->sbGetProjectCacheId( project );
+        if ( !cacheId.isEmpty() )
+          response.setHeader( QStringLiteral( "X-QGIS-CACHE-ID" ), cacheId );
       }
     }
     else

@@ -113,6 +113,10 @@ namespace QgsWmts
 
         response.setHeader( QStringLiteral( "X-QGIS-FROM-CACHE" ), QStringLiteral( "true" ) );
 
+        QString cacheId = cacheManager->sbGetProjectCacheId( project );
+        if ( !cacheId.isEmpty() )
+          response.setHeader( QStringLiteral( "X-QGIS-CACHE-ID" ), cacheId );
+
         return;
       }
     }
@@ -129,6 +133,10 @@ namespace QgsWmts
       const QByteArray content = response.data();
       if ( !content.isEmpty() )
         cacheManager->setCachedImage( &content, project, request, accessControl );
+
+      QString cacheId = cacheManager->sbGetProjectCacheId( project );
+      if ( !cacheId.isEmpty() )
+        response.setHeader( QStringLiteral( "X-QGIS-CACHE-ID" ), cacheId );
     }
 #endif
 

@@ -60,7 +60,7 @@ class SERVER_EXPORT QgsServerCacheFilter
      * \param key the key provided by the access control to identify different documents for the same request
      * \returns QByteArray of the cached document or an empty one if no corresponding document found
      */
-    virtual QByteArray getCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
+    virtual QByteArray getCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key );
 
     /**
      * Updates or inserts the document in cache like capabilities
@@ -70,7 +70,7 @@ class SERVER_EXPORT QgsServerCacheFilter
      * \param key the key provided by the access control to identify different documents for the same request
      * \returns TRUE if the document has been cached
      */
-    virtual bool setCachedDocument( const QDomDocument *doc, const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
+    virtual bool setCachedDocument( const QDomDocument *doc, const QgsProject *project, const QgsServerRequest &request, const QString &key );
 
     /**
      * Deletes the cached document
@@ -79,14 +79,14 @@ class SERVER_EXPORT QgsServerCacheFilter
      * \param key the key provided by the access control to identify different documents for the same request
      * \returns TRUE if the document has been deleted
      */
-    virtual bool deleteCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
+    virtual bool deleteCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key );
 
     /**
      * Deletes all cached documents for a QGIS project
      * \param project the project used to generate the documents to provide path
      * \returns TRUE if the documents have been deleted
      */
-    virtual bool deleteCachedDocuments( const QgsProject *project ) const;
+    virtual bool deleteCachedDocuments( const QgsProject *project );
 
     /**
      * Returns cached image (or 0 if document not in cache) like tiles
@@ -95,7 +95,7 @@ class SERVER_EXPORT QgsServerCacheFilter
      * \param key the key provided by the access control to identify different images for the same request
      * \returns QByteArray of the cached image or an empty one if no corresponding image found
      */
-    virtual QByteArray getCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
+    virtual QByteArray getCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key );
 
     /**
      * Updates or inserts the image in cache like tiles
@@ -105,7 +105,7 @@ class SERVER_EXPORT QgsServerCacheFilter
      * \param key the key provided by the access control to identify different images for the same request
      * \returns TRUE if the image has been cached
      */
-    virtual bool setCachedImage( const QByteArray *img, const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
+    virtual bool setCachedImage( const QByteArray *img, const QgsProject *project, const QgsServerRequest &request, const QString &key );
 
     /**
      * Deletes the cached image
@@ -114,15 +114,16 @@ class SERVER_EXPORT QgsServerCacheFilter
      * \param key the key provided by the access control to identify different images for the same request
      * \returns TRUE if the image has been deleted
      */
-    virtual bool deleteCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
+    virtual bool deleteCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key );
 
     /**
      * Deletes all cached images for a QGIS project
      * \param project the project used to generate the images to provide path
      * \returns TRUE if the images have been deleted
      */
-    virtual bool deleteCachedImages( const QgsProject *project ) const;
+    virtual bool deleteCachedImages( const QgsProject *project );
 
+    QString sbGetProjectCacheId( const QgsProject *project ) SIP_SKIP;
 };
 
 //! The registry definition

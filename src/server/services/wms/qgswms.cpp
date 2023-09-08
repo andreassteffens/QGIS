@@ -84,7 +84,7 @@ namespace QgsWms
         {
           try
           {
-            writeGetCapabilities( mServerIface, project, wmsRequest, response, sbJustLoaded );
+            writeGetCapabilities( mServerIface, project, wmsRequest, response, false, sbJustLoaded );
           }
           catch ( QgsServerException &ex )
           {
@@ -115,7 +115,7 @@ namespace QgsWms
         {
           try
           {
-            writeGetCapabilities( mServerIface, project, request, response, sbJustLoaded, true );
+            writeGetCapabilities( mServerIface, project, request, response, true, sbJustLoaded );
           }
           catch ( QgsServerException &ex )
           {
