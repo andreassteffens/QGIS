@@ -5135,6 +5135,9 @@ class TestQgsGeometry(unittest.TestCase):
         result = extended.asWkt()
         self.assertTrue(compareWkt(result, exp, 0.00001),
                         f"Extend line: mismatch Expected:\n{exp}\nGot:\n{result}\n")
+        expbb = QgsRectangle(-1, 0, 1, 3)
+        bb = extended.boundingBox()
+        self.assertEqual(expbb, bb, f"Extend line: bbox Expected:\n{expbb.toString()}\nGot:\n{bb.toString()}\n")
 
         # multilinestring
         multilinestring = QgsGeometry.fromWkt('MultiLineString((0 0, 1 0, 1 1),(11 11, 11 10, 10 10))')
@@ -5142,7 +5145,10 @@ class TestQgsGeometry(unittest.TestCase):
         exp = 'MultiLineString((-1 0, 1 0, 1 3),(11 12, 11 10, 8 10))'
         result = extended.asWkt()
         self.assertTrue(compareWkt(result, exp, 0.00001),
-                        f"Extend line: mismatch Expected:\n{exp}\nGot:\n{result}\n")
+                        f"Extend multiline: mismatch Expected:\n{exp}\nGot:\n{result}\n")
+        expbb = QgsRectangle(-1, 0, 11, 12)
+        bb = extended.boundingBox()
+        self.assertEqual(expbb, bb, f"Extend multiline: bbox Expected:\n{expbb.toString()}\nGot:\n{bb.toString()}\n")
 
     def testRemoveRings(self):
         empty = QgsGeometry()
@@ -5973,6 +5979,9 @@ class TestQgsGeometry(unittest.TestCase):
                 0.00000001],
             ["CurvePolygon (CompoundCurve (CircularString (2613627 1178798, 2613639 1178805, 2613648 1178794),(2613648 1178794, 2613627 1178798)))",
              "CurvePolygon (CompoundCurve (CircularString (2613627 1178798, 2613639 1178805, 2613648 1178794),(2613648 1178794, 2613627 1178798)))",
+             0.00000001, 0.000000001],
+            ["CurvePolygon (CompoundCurve ((2653264.45800000010058284 1213405.36899999994784594, 2653279.07700000004842877 1213383.28700000001117587, 2653278.33142686076462269 1213384.25132044195197523, 2653277.59772348683327436 1213385.22470247372984886, 2653276.87600000016391277 1213386.20699999993667006))",
+             "CurvePolygon (CompoundCurve ((2653264.45800000010058284 1213405.36899999994784594, 2653279.07700000004842877 1213383.28700000001117587),CircularString (2653279.07700000004842877 1213383.28700000001117587, 2653278.33142686076462269 1213384.25132044195197523, 2653276.87600000016391277 1213386.20699999993667006)))",
              0.00000001, 0.000000001]
         ]
         for t in tests:
