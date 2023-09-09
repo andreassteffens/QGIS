@@ -123,7 +123,7 @@ class SERVER_EXPORT QgsServerCacheFilter
      */
     virtual bool deleteCachedImages( const QgsProject *project );
 
-    QString sbGetProjectCacheId( const QgsProject *project ) SIP_SKIP;
+    virtual QString sbGetProjectCacheId( const QgsProject *project ) SIP_SKIP;
 };
 
 //! The registry definition

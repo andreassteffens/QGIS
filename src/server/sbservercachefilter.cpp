@@ -231,12 +231,16 @@ bool sbServerCacheFilter::deleteCachedImages( const QgsProject *project )
 
 QString sbServerCacheFilter::sbGetProjectCacheId(const QgsProject* project)
 {
+  QString strId = "";
+
   QString strKey = project->absoluteFilePath().toLower().toUtf8();
-  if (!m_mapProjectIds.contains(strKey))
+  if ( !m_mapProjectIds.contains( strKey ) )
   {
-    QString strId = QString(QCryptographicHash::hash((project->absoluteFilePath().toLower().toUtf8()), QCryptographicHash::Md5).toHex());
+    strId = QString( QCryptographicHash::hash( (project->absoluteFilePath().toLower().toUtf8() ), QCryptographicHash::Md5 ).toHex() );
     m_mapProjectIds[strKey] = strId;
   }
+  else
+    strId = m_mapProjectIds[strKey];
 
-  return m_mapProjectIds[strKey];
+  return strId;
 }

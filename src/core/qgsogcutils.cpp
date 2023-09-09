@@ -3560,8 +3560,6 @@ QgsExpressionNode *QgsOgcUtilsExpressionFromFilter::nodeLiteralFromOgcFilter( co
     return root.release();
   }
 
-  //QgsMessageLog::logMessage(QStringLiteral("BLAH one possible starting point for modification"), QStringLiteral("Server"), Qgis::Critical);
-
   // the literal content can have more children (e.g. CDATA section, text, ...)
   QDomNode childNode = element.firstChild();
   while ( !childNode.isNull() )

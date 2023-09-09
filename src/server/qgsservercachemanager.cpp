@@ -18,7 +18,6 @@
 
 #include "qgsservercachemanager.h"
 #include "qgsserverprojectutils.h"
-#include "qgsmessagelog.h"
 #include "qgis.h"
 
 QgsServerCacheManager::QgsServerCacheManager( const QgsServerSettings &settings ):
@@ -210,13 +209,10 @@ QString QgsServerCacheManager::sbGetProjectCacheId( const QgsProject *project ) 
   {
     QString id = scIterator.value()->sbGetProjectCacheId( project );
     if ( !id.isEmpty() )
-    {
       return id;
-    }
   }
-  return "";
+  return "EMPTY";
 }
-
 
 void QgsServerCacheManager::registerServerCache( QgsServerCacheFilter *serverCache, int priority )
 {

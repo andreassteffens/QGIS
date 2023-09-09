@@ -87,6 +87,11 @@ namespace QgsWms
             strSaveFormat = QStringLiteral( "PNG" );
             image = std::make_unique<QImage>( iWidth, iHeight, QImage::Format_ARGB32_Premultiplied );
             break;
+          case ImageOutputFormat::WEBP:
+            strContentType = QStringLiteral( "image/webp" );
+            strSaveFormat = QStringLiteral( "WEBP" );
+            image = std::make_unique<QImage>( iWidth, iHeight, QImage::Format_ARGB32_Premultiplied );
+            break;
           default:
             bTiled = false;
             break;
