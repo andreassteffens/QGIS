@@ -94,9 +94,14 @@ QJsonObject QgsLegendRenderer::exportLegendToJson( const QgsRenderContext &conte
       const QModelIndex idx = mLegendModel->node2index( nodeGroup );
       const QString text = mLegendModel->data( idx, Qt::DisplayRole ).toString();
 
+      QString name = nodeGroup->customProperty( QStringLiteral( "wmsShortName" ) ).toString();
+      if ( name.isEmpty() )
+        name = nodeGroup->name();
+
       QJsonObject group = exportLegendToJson( context, nodeGroup );
       group[ QStringLiteral( "type" ) ] = QStringLiteral( "group" );
       group[ QStringLiteral( "title" ) ] = text;
+      group[ QStringLiteral( "name" ) ] = name;
       nodes.append( group );
     }
     else if ( QgsLayerTree::isLayer( node ) )
@@ -115,16 +120,22 @@ QJsonObject QgsLegendRenderer::exportLegendToJson( const QgsRenderContext &conte
       if ( legendNodes.isEmpty() && mLegendModel->legendFilterMapSettings() )
         continue;
 
+      QString name = nodeLayer->customProperty( QStringLiteral( "wmsShortName" ) ).toString();
+      if ( name.isEmpty() )
+        name = nodeLayer->name();
+
       if ( legendNodes.count() == 1 )
       {
         QJsonObject group = legendNodes.at( 0 )->exportToJson( mSettings, context );
         group[ QStringLiteral( "type" ) ] = QStringLiteral( "layer" );
+        group[ QStringLiteral( "name" ) ] = name;
         nodes.append( group );
       }
       else if ( legendNodes.count() > 1 )
       {
         QJsonObject group;
         group[ QStringLiteral( "type" ) ] = QStringLiteral( "layer" );
+        group[ QStringLiteral( "name" ) ] = name;
         group[ QStringLiteral( "title" ) ] = text;
 
         QJsonArray symbols;

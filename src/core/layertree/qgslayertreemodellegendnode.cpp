@@ -103,6 +103,11 @@ QJsonObject QgsLayerTreeModelLegendNode::exportToJson( const QgsLegendSettings &
   QJsonObject json = exportSymbolToJson( settings, context );
   const QString text = data( Qt::DisplayRole ).toString();
   json[ QStringLiteral( "title" ) ] = text;
+
+  const QString ruleKey = data ( RuleKeyRole ).toString();
+  if ( !ruleKey.isEmpty() )
+    json[ QStringLiteral( "name" ) ] = ruleKey;
+
   return json;
 }
 
