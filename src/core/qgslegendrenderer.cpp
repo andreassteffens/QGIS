@@ -118,9 +118,9 @@ QJsonObject QgsLegendRenderer::exportLegendToJson( const QgsRenderContext &conte
       if ( legendNodes.isEmpty() && mLegendModel->legendFilterMapSettings() )
         continue;
 
-      QString name = nodeGroup->customProperty( QStringLiteral( "wmsShortName" ) ).toString();
+      QString name = nodeLayer->customProperty( QStringLiteral( "wmsShortName" ) ).toString();
       if ( name.isEmpty() )
-        name = nodeGroup->name();
+        name = nodeLayer->name();
 
       if ( legendNodes.count() == 1 )
       {
@@ -141,6 +141,7 @@ QJsonObject QgsLegendRenderer::exportLegendToJson( const QgsRenderContext &conte
         {
           QgsLayerTreeModelLegendNode *legendNode = legendNodes.at( j );
           QJsonObject symbol = legendNode->exportToJson( mSettings, context );
+          
           symbols.append( symbol );
         }
         group[ QStringLiteral( "symbols" ) ] = symbols;
