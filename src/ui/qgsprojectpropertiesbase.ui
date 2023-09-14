@@ -298,8 +298,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>640</width>
-                <height>971</height>
+                <width>454</width>
+                <height>643</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout">
@@ -1070,8 +1070,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>340</width>
-                <height>57</height>
+                <width>231</width>
+                <height>43</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_7">
@@ -1135,8 +1135,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>634</width>
-                <height>90</height>
+                <width>420</width>
+                <height>66</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -1207,8 +1207,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>344</width>
-                <height>817</height>
+                <width>281</width>
+                <height>606</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_12" stretch="0,0,1,1">
@@ -1247,7 +1247,7 @@
                    </widget>
                   </item>
                   <item row="3" column="0">
-                   <widget class="QSvgWidget" name="pixStyleColorRamp">
+                   <widget class="QSvgWidget" name="pixStyleColorRamp" native="true">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                       <horstretch>0</horstretch>
@@ -1381,7 +1381,7 @@
                    </widget>
                   </item>
                   <item row="4" column="0">
-                   <widget class="QSvgWidget" name="pixStyleTextFormat">
+                   <widget class="QSvgWidget" name="pixStyleTextFormat" native="true">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                       <horstretch>0</horstretch>
@@ -1880,8 +1880,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>176</width>
-                <height>45</height>
+                <width>125</width>
+                <height>28</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_17">
@@ -1962,9 +1962,9 @@
               <property name="geometry">
                <rect>
                 <x>0</x>
-                <y>0</y>
-                <width>679</width>
-                <height>1515</height>
+                <y>-401</y>
+                <width>667</width>
+                <height>1195</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -3269,7 +3269,7 @@
                       <property name="minimumSize">
                        <size>
                         <width>0</width>
-                        <height>0</height>
+                        <height>200</height>
                        </size>
                       </property>
                       <property name="acceptDrops">
@@ -3391,7 +3391,7 @@
             </spacer>
            </item>
           </layout>
-         </widget>        
+         </widget>
         </widget>
        </item>
       </layout>
