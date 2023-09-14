@@ -20,6 +20,7 @@
 #include "qgslayertreelayer.h"
 #include "qgsprojectservervalidator.h"
 #include "qgsvectorlayer.h"
+#include "qgsrenderer.h"
 
 #include <QRegularExpression>
 
@@ -49,11 +50,13 @@ QString QgsProjectServerValidator::displayValidationError( QgsProjectServerValid
       return QObject::tr( "The layer has been marked to be used in a WebGIS tool that requires accessing the layer's features through WFS ... but access is not granted through WFS!" );
     case QgsProjectServerValidator::sbVectorLayerSearchNotDefined:
       return QObject::tr( "The layer has been marked searchable ... but no search expression has been defined!" );
+    case QgsProjectServerValidator::sbVectorLayerDuplicateRuleKey:
+      return "";
   }
   return QString();
 }
 
-void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &owsNames, QStringList &encodingMessages, QStringList &checkLegendMessages, QStringList &insecureSourceMessages, QStringList &tiledSourceMessages, QStringList &clientSidePublishingMessages, QStringList &missingWfsLayerMessages, QStringList &missingSearchTermMessages )
+void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &owsNames, QStringList &encodingMessages, QStringList &checkLegendMessages, QStringList &insecureSourceMessages, QStringList &tiledSourceMessages, QStringList &clientSidePublishingMessages, QStringList &missingWfsLayerMessages, QStringList &missingSearchTermMessages, QStringList &duplicateRuleKeyMessages )
 {
   const QList< QgsLayerTreeNode * > treeGroupChildren = treeGroup->children();
   for ( int i = 0; i < treeGroupChildren.size(); ++i )
@@ -71,7 +74,7 @@ void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTr
       else
         owsNames.append( QPair<QString, QString>( shortName, strPath ) );
 
-      browseLayerTree( project, treeGroupChild, owsNames, encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages );
+      browseLayerTree( project, treeGroupChild, owsNames, encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages, duplicateRuleKeyMessages );
     }
     else
     {
@@ -96,9 +99,40 @@ void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTr
           if ( vl->dataProvider() && vl->dataProvider()->encoding() == QLatin1String( "System" ) )
           {
             if ( !strPath.isEmpty() )
-              encodingMessages << layer->name();
+              encodingMessages << layer->name() + " (" + strPath + ")";
             else
               encodingMessages << layer->name();
+          }
+
+          if ( vl->isSpatial() )
+          {
+            QgsFeatureRenderer* renderer = vl->renderer();
+            if (renderer != NULL)
+            {
+              QMap<QString, QString> mapRuleIds;
+              QgsLegendSymbolList listSymbols = renderer->legendSymbolItems();
+              for ( int iSymbol = 0; iSymbol < listSymbols.count(); iSymbol++ )
+              {
+                QgsLegendSymbolItem& legendItem = listSymbols[iSymbol];
+                QString strKey = legendItem.ruleKey();
+                if ( strKey.isEmpty() )
+                  continue;
+
+                if ( mapRuleIds.contains(strKey) )
+                {
+                  QString strLabel = "unnamed";
+                  if ( !legendItem.label().isEmpty() )
+                    strLabel = legendItem.label();
+
+                  if ( !strPath.isEmpty() )
+                    duplicateRuleKeyMessages << layer->name() + " (" + strPath + "): " + strLabel + " (" + strKey + ")";
+                  else
+                    duplicateRuleKeyMessages << layer->name() + ": " + strLabel + " (" + strKey + ")";
+                }
+                else
+                  mapRuleIds.insert( strKey, strKey );
+              }
+            }
           }
         }
         else if ( layer->type() == QgsMapLayerType::RasterLayer )
@@ -202,8 +236,8 @@ bool QgsProjectServerValidator::validate( QgsProject *project, QList<QgsProjectS
     return false;
 
   QList<QPair<QString, QString>> owsNames;
-  QStringList encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages;
-  browseLayerTree( project, project->layerTreeRoot(), owsNames, encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages );
+  QStringList encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages, duplicateRuleKeyMessages;
+  browseLayerTree( project, project->layerTreeRoot(), owsNames, encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages, duplicateRuleKeyMessages );
 
   QStringList duplicateNames, regExpMessages;
   const QRegularExpression snRegExp = QgsApplication::shortNameRegularExpression();
@@ -297,6 +331,14 @@ bool QgsProjectServerValidator::validate( QgsProject *project, QList<QgsProjectS
 
     for ( int i = 0; i < missingSearchTermMessages.count(); i++ )
       results << ValidationResult( QgsProjectServerValidator::sbVectorLayerSearchNotDefined, missingSearchTermMessages[i] );
+  }
+
+  if ( !duplicateRuleKeyMessages.empty() )
+  {
+    result = false;
+
+    for ( int i = 0; i < duplicateRuleKeyMessages.count(); i++ )
+      results << ValidationResult( QgsProjectServerValidator::sbVectorLayerDuplicateRuleKey, duplicateRuleKeyMessages[i] );
   }
 
   // Determine the root layername

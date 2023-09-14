@@ -2359,6 +2359,22 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
   strMessage = "";
   for ( int iResult = 0; iResult < validationResults.count(); iResult++ )
   {
+    if ( validationResults[iResult].error == QgsProjectServerValidator::sbVectorLayerDuplicateRuleKey )
+    {
+      strMessage += "<li><b>" + validationResults[iResult].identifier.toString() + "</b></li>";
+    }
+  }
+  if (!strMessage.isEmpty())
+  {
+    strMessage = "<h3 style='color: #f00;'>" + tr( "Some layers contain styling rules with duplicate rule keys:" ) + "</h3><ul>" + strMessage + "</ul>";
+    strContent += strMessage;
+  }
+  else
+    strContent += "<h3>" + tr( "All layers have unique styling rule keys" ) + "</h3>";
+
+  strMessage = "";
+  for ( int iResult = 0; iResult < validationResults.count(); iResult++ )
+  {
     if ( validationResults[iResult].error == QgsProjectServerValidator::sbRequiredWfsNotEnabled )
       strMessage += "<li><b>" + validationResults[iResult].identifier.toString() + ":</b> " + QgsProjectServerValidator::displayValidationError( validationResults[iResult].error ) + "</li>";
     else if ( validationResults[iResult].error == QgsProjectServerValidator::sbVectorLayerSearchNotDefined )
@@ -2366,7 +2382,7 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
   }
   if ( !strMessage.isEmpty() )
   {
-    strMessage = "<h3 style='color: #f00;'>" + tr( "([a]tapa) Some inconsistent settings with regard to [a]tapa tools have to be reviewed:" ) + "</h3><ul>" + strMessage + "</ul>";
+    strMessage = "<h3 style='color: #f00;'>" + tr( "([a]tapa) Some inconsistent settings with regard to Atlas tools have to be reviewed:" ) + "</h3><ul>" + strMessage + "</ul>";
     strContent += strMessage;
   }
   else
@@ -2389,10 +2405,10 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
     strContent += strMessage;
   }
   else
-    strContent += "<h3>" + tr( "[Atlas] All Atlas related tool settings are consistent" ) + "</h3>";
+    strContent += "<h3>" + tr( "([a]tapa) All Atlas related raster layer settings are consistent" ) + "</h3>";
 
   strContent += "<hr>";
-  strContent += "<h1>" + tr( "[Atlas] QGIS Server check done! Hat still on?" ) + "</h1>";
+  strContent += "<h1>" + tr( "([a]tapa) QGIS Server check done! Hat still on?" ) + "</h1>";
 
   teOWSChecker->setHtml( strContent );
 }

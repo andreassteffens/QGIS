@@ -55,7 +55,8 @@ class CORE_EXPORT QgsProjectServerValidator
       sbRasterLayerPublishedSourceNotSecure = 7,
       sbRasterLayerCheckEnabledLegend = 8,
       sbRequiredWfsNotEnabled = 9,
-      sbVectorLayerSearchNotDefined = 10
+      sbVectorLayerSearchNotDefined = 10,
+      sbVectorLayerDuplicateRuleKey = 11
     };
 
     /**
@@ -101,7 +102,7 @@ class CORE_EXPORT QgsProjectServerValidator
     static bool validate( QgsProject *project, QList< QgsProjectServerValidator::ValidationResult > &results SIP_OUT );
 
   private:
-    static void browseLayerTree( QgsProject *project, QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &owsNames, QStringList &encodingMessages, QStringList &checkLegendMessages, QStringList &insecureSourceMessages, QStringList &tiledSourceMessages, QStringList &clientSidePublishingMessages, QStringList &missingWfsLayerMessages, QStringList &missingSearchTermMessages );
+    static void browseLayerTree( QgsProject *project, QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &owsNames, QStringList &encodingMessages, QStringList &checkLegendMessages, QStringList &insecureSourceMessages, QStringList &tiledSourceMessages, QStringList &clientSidePublishingMessages, QStringList &missingWfsLayerMessages, QStringList &missingSearchTermMessages, QStringList& duplicateRuleKeyMessages );
 
     static void sbResolveLayerPath( QgsLayerTreeNode *pNode, QString &rstrPath );
 };

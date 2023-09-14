@@ -298,8 +298,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>457</width>
-                <height>642</height>
+                <width>454</width>
+                <height>643</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout">
@@ -317,7 +317,7 @@
                  <property name="title">
                   <string>General Settings</string>
                  </property>
-                 <property name="syncGroup" stdset="0">
+                 <property name="syncGroup">
                   <string notr="true">projgeneral</string>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_26">
@@ -578,7 +578,7 @@
                  <property name="title">
                   <string>Measurements</string>
                  </property>
-                 <property name="syncGroup" stdset="0">
+                 <property name="syncGroup">
                   <string notr="true">projgeneral</string>
                  </property>
                  <layout class="QGridLayout" name="gridLayoutMeasureTool">
@@ -647,7 +647,7 @@
                  <property name="title">
                   <string>Coordinate and Bearing Display</string>
                  </property>
-                 <property name="syncGroup" stdset="0">
+                 <property name="syncGroup">
                   <string notr="true">projgeneral</string>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_18">
@@ -797,7 +797,7 @@
                    </widget>
                   </item>
                   <item row="1" column="1">
-                   <widget class="QgsProjectionSelectionWidget" name="mCoordinateCrs" native="true">
+                   <widget class="QgsProjectionSelectionWidget" name="mCoordinateCrs">
                     <property name="enabled">
                      <bool>false</bool>
                     </property>
@@ -901,7 +901,7 @@
              <property name="checked">
               <bool>false</bool>
              </property>
-             <property name="syncGroup" stdset="0">
+             <property name="syncGroup">
               <string notr="true">projgeneral</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_7">
@@ -1018,7 +1018,7 @@
               <string>If checked the preset extent will be used as the full extent of the project. If unchecked, the project's full extent will be calculated using the full extent of all layers in the project.</string>
              </property>
              <property name="title">
-              <string>Set Project Full Extent</string>
+              <string>Extent (current: none)</string>
              </property>
              <property name="checkable">
               <bool>true</bool>
@@ -1070,8 +1070,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>243</width>
-                <height>61</height>
+                <width>231</width>
+                <height>43</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_7">
@@ -1135,8 +1135,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>424</width>
-                <height>86</height>
+                <width>420</width>
+                <height>66</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -1207,8 +1207,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>242</width>
-                <height>466</height>
+                <width>297</width>
+                <height>606</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_12" stretch="0,0,1,1">
@@ -1229,7 +1229,7 @@
                  <property name="title">
                   <string>Default Symbols</string>
                  </property>
-                 <property name="syncGroup" stdset="0">
+                 <property name="syncGroup">
                   <string notr="true">projstyles</string>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_11">
@@ -1451,7 +1451,7 @@
                  <property name="title">
                   <string>Options</string>
                  </property>
-                 <property name="syncGroup" stdset="0">
+                 <property name="syncGroup">
                   <string notr="true">projstyles</string>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_18">
@@ -1465,7 +1465,7 @@
                      </widget>
                     </item>
                     <item>
-                     <widget class="QgsOpacityWidget" name="mDefaultOpacityWidget" native="true">
+                     <widget class="QgsOpacityWidget" name="mDefaultOpacityWidget">
                       <property name="focusPolicy">
                        <enum>Qt::StrongFocus</enum>
                       </property>
@@ -1612,7 +1612,7 @@
                  <property name="checked">
                   <bool>false</bool>
                  </property>
-                 <property name="syncGroup" stdset="0">
+                 <property name="syncGroup">
                   <string notr="true">projgeneral</string>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_20">
@@ -1910,8 +1910,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>136</width>
-                <height>47</height>
+                <width>684</width>
+                <height>794</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_17">
@@ -1992,9 +1992,9 @@
               <property name="geometry">
                <rect>
                 <x>0</x>
-                <y>0</y>
-                <width>679</width>
-                <height>1023</height>
+                <y>-378</y>
+                <width>667</width>
+                <height>1172</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -2048,13 +2048,13 @@
                        <property name="checked">
                         <bool>false</bool>
                        </property>
-                       <property name="collapsed" stdset="0">
+                       <property name="collapsed">
                         <bool>false</bool>
                        </property>
-                       <property name="syncGroup" stdset="0">
+                       <property name="syncGroup">
                         <string notr="true">projowsserver</string>
                        </property>
-                       <property name="saveCollapsedState" stdset="0">
+                       <property name="saveCollapsedState">
                         <bool>true</bool>
                        </property>
                        <layout class="QGridLayout" name="gridLayout_6">
@@ -2375,10 +2375,10 @@
                        <property name="checked">
                         <bool>false</bool>
                        </property>
-                       <property name="collapsed" stdset="0">
+                       <property name="collapsed">
                         <bool>false</bool>
                        </property>
-                       <property name="saveCollapsedState" stdset="0">
+                       <property name="saveCollapsedState">
                         <bool>true</bool>
                        </property>
                        <layout class="QGridLayout" name="gridLayout">
@@ -2454,10 +2454,10 @@
                        <property name="checked">
                         <bool>false</bool>
                        </property>
-                       <property name="collapsed" stdset="0">
+                       <property name="collapsed">
                         <bool>false</bool>
                        </property>
-                       <property name="saveCollapsedState" stdset="0">
+                       <property name="saveCollapsedState">
                         <bool>true</bool>
                        </property>
                        <layout class="QGridLayout" name="gridLayout_10">
@@ -2519,10 +2519,10 @@
                        <property name="checked">
                         <bool>false</bool>
                        </property>
-                       <property name="collapsed" stdset="0">
+                       <property name="collapsed">
                         <bool>false</bool>
                        </property>
-                       <property name="saveCollapsedState" stdset="0">
+                       <property name="saveCollapsedState">
                         <bool>true</bool>
                        </property>
                        <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -2857,10 +2857,10 @@
                        <property name="checked">
                         <bool>false</bool>
                        </property>
-                       <property name="collapsed" stdset="0">
+                       <property name="collapsed">
                         <bool>false</bool>
                        </property>
-                       <property name="saveCollapsedState" stdset="0">
+                       <property name="saveCollapsedState">
                         <bool>true</bool>
                        </property>
                        <layout class="QGridLayout" name="gridLayout_5">
@@ -3238,6 +3238,12 @@
                  </item>
                  <item row="1" column="0">
                   <widget class="QGroupBox" name="testlayout">
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>0</height>
+                    </size>
+                   </property>
                    <property name="title">
                     <string>Test Configuration</string>
                    </property>
@@ -3292,7 +3298,7 @@
                       <property name="minimumSize">
                        <size>
                         <width>0</width>
-                        <height>0</height>
+                        <height>200</height>
                        </size>
                       </property>
                       <property name="acceptDrops">
@@ -3465,9 +3471,48 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>QgsScrollArea</class>
-   <extends>QScrollArea</extends>
-   <header>qgsscrollarea.h</header>
+   <class>QgsCollapsibleGroupBox</class>
+   <extends>QGroupBox</extends>
+   <header>qgscollapsiblegroupbox.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QgsColorButton</class>
+   <extends>QToolButton</extends>
+   <header>qgscolorbutton.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QgsDateTimeEdit</class>
+   <extends>QDateTimeEdit</extends>
+   <header>qgsdatetimeedit.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsExtentGroupBox</class>
+   <extends>QgsCollapsibleGroupBox</extends>
+   <header>qgsextentgroupbox.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QgsFilterLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>qgsfilterlineedit.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsFontButton</class>
+   <extends>QToolButton</extends>
+   <header>qgsfontbutton.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsOpacityWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsopacitywidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QgsProjectionSelectionWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsprojectionselectionwidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
@@ -3481,26 +3526,20 @@
    <header>qgsspinbox.h</header>
   </customwidget>
   <customwidget>
-   <class>QgsCollapsibleGroupBox</class>
-   <extends>QGroupBox</extends>
-   <header>qgscollapsiblegroupbox.h</header>
-   <container>1</container>
+   <class>QgsSymbolButton</class>
+   <extends>QToolButton</extends>
+   <header>qgssymbolbutton.h</header>
   </customwidget>
   <customwidget>
-   <class>QgsFilterLineEdit</class>
-   <extends>QLineEdit</extends>
-   <header>qgsfilterlineedit.h</header>
+   <class>QgsScrollArea</class>
+   <extends>QScrollArea</extends>
+   <header>qgsscrollarea.h</header>
+   <container>1</container>
   </customwidget>
   <customwidget>
    <class>QgsVariableEditorWidget</class>
    <extends>QWidget</extends>
    <header location="global">qgsvariableeditorwidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>QgsColorButton</class>
-   <extends>QToolButton</extends>
-   <header>qgscolorbutton.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
@@ -3516,23 +3555,6 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>QgsExtentGroupBox</class>
-   <extends>QgsCollapsibleGroupBox</extends>
-   <header>qgsextentgroupbox.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>QgsDateTimeEdit</class>
-   <extends>QDateTimeEdit</extends>
-   <header>qgsdatetimeedit.h</header>
-  </customwidget>
-  <customwidget>
-   <class>QgsOpacityWidget</class>
-   <extends>QWidget</extends>
-   <header>qgsopacitywidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
    <class>QgsProjectionSelectionTreeWidget</class>
    <extends>QWidget</extends>
    <header>qgsprojectionselectiontreewidget.h</header>
@@ -3545,25 +3567,9 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>QgsSymbolButton</class>
-   <extends>QToolButton</extends>
-   <header>qgssymbolbutton.h</header>
-  </customwidget>
-  <customwidget>
    <class>QgsColorRampButton</class>
    <extends>QToolButton</extends>
    <header>qgscolorrampbutton.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>QgsFontButton</class>
-   <extends>QToolButton</extends>
-   <header>qgsfontbutton.h</header>
-  </customwidget>
-  <customwidget>
-   <class>QgsProjectionSelectionWidget</class>
-   <extends>QWidget</extends>
-   <header>qgsprojectionselectionwidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
