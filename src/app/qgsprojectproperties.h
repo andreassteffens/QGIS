@@ -264,7 +264,6 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
     void checkOWS( QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &listOwsNames, QStringList &encodingMessages, QStringList &serviceSourceMessages, QStringList &toolInconsistencyMessages );
 
     //! Fill layer short names
-    void sbResolveLayerPath( QgsLayerTreeNode *pNode, QString &rstrPath );
     void sbCollectLayerShortNames( QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapShortNames );
     void sbFillLayerShortNames( QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QPair<QString, QString>> &mapShortNames, bool bSynchronizeTreeAndWmsTitles );
     QString sbDetermineShortName( QString strTitle, QString strPath, QMultiMap<QString, QPair<QString, QString>> &mapShortNames );

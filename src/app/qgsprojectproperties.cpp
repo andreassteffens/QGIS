@@ -2216,21 +2216,6 @@ void QgsProjectProperties::pbnWCSLayersDeselectAll_clicked()
   }
 }
 
-void QgsProjectProperties::sbResolveLayerPath( QgsLayerTreeNode *pNode, QString &rstrPath )
-{
-  if ( !pNode )
-  {
-    if ( rstrPath.endsWith( "/" ) )
-      rstrPath.truncate( rstrPath.length() - 1 );
-
-    return;
-  }
-
-  rstrPath = pNode->name() + "/" + rstrPath;
-
-  sbResolveLayerPath( pNode->parent(), rstrPath );
-}
-
 void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
 {
   QList<QgsProjectServerValidator::ValidationResult> validationResults;
@@ -2271,7 +2256,7 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
     QString strPath = "";
     QgsLayerTreeLayer *pTreeLayer = QgsProject::instance()->layerTreeRoot()->findLayer( ( *iter )->id() );
     if ( pTreeLayer )
-      sbResolveLayerPath( pTreeLayer, strPath );
+      QgisApp::instance()->sbResolveLayerPath( pTreeLayer, strPath );
 
     bool bSearchable = mLayerCapabilitiesModel->searchable( ( *iter ) );
     if ( bSearchable )
@@ -2526,7 +2511,7 @@ void QgsProjectProperties::sbFillLayerShortNames( QgsLayerTreeGroup *treeGroup, 
         continue;
 
       QString strPath;
-      sbResolveLayerPath( treeNode, strPath );
+      QgisApp::instance()->sbResolveLayerPath( treeNode, strPath );
 
       QString strTitle = treeGroupChild->name().trimmed();
       strShortName = sbDetermineShortName( strTitle, strPath, mapShortNames );
@@ -2552,7 +2537,7 @@ void QgsProjectProperties::sbFillLayerShortNames( QgsLayerTreeGroup *treeGroup, 
           continue;
 
         QString strPath;
-        sbResolveLayerPath( treeNode, strPath );
+        QgisApp::instance()->sbResolveLayerPath( treeNode, strPath );
 
         QString strTitle = l->title();
         if ( strTitle.isEmpty() || bSynchronizeTreeAndWmsTitles )
@@ -2668,7 +2653,7 @@ void QgsProjectProperties::sbCollectWfsToolLayerIds( QgsLayerTreeGroup *treeGrou
         if ( bNeedsWfs )
         {
           QString strPath = "";
-          sbResolveLayerPath( treeNode, strPath );
+          QgisApp::instance()->sbResolveLayerPath( treeNode, strPath );
           mapLayerIds.insert( l->id(), strPath );
         }
       }
