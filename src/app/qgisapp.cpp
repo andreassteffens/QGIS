@@ -10537,24 +10537,9 @@ void QgisApp::sbCopyLayerPath()
   if ( currentLayer && currentNode )
   {
     QString layerPath;
-    sbResolveLayerPath( currentNode, layerPath );
+    currentNode->sbResolveLayerPath( layerPath );
     QApplication::clipboard()->setText( layerPath );
   }
-}
-
-void QgisApp::sbResolveLayerPath( QgsLayerTreeNode *pNode, QString &rstrPath )
-{
-  if ( !pNode )
-  {
-    if ( rstrPath.endsWith( "/" ) )
-      rstrPath.truncate( rstrPath.length() - 1 );
-
-    return;
-  }
-
-  rstrPath = pNode->name() + "/" + rstrPath;
-
-  sbResolveLayerPath( pNode->parent(), rstrPath );
 }
 
 void QgisApp::copyFeatures( QgsFeatureStore &featureStore )

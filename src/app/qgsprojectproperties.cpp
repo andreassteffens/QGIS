@@ -2256,7 +2256,7 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
     QString strPath = "";
     QgsLayerTreeLayer *pTreeLayer = QgsProject::instance()->layerTreeRoot()->findLayer( ( *iter )->id() );
     if ( pTreeLayer )
-      QgisApp::instance()->sbResolveLayerPath( pTreeLayer, strPath );
+      pTreeLayer->sbResolveLayerPath( strPath );
 
     bool bSearchable = mLayerCapabilitiesModel->searchable( ( *iter ) );
     if ( bSearchable )
@@ -2511,7 +2511,7 @@ void QgsProjectProperties::sbFillLayerShortNames( QgsLayerTreeGroup *treeGroup, 
         continue;
 
       QString strPath;
-      QgisApp::instance()->sbResolveLayerPath( treeNode, strPath );
+      treeNode->sbResolveLayerPath( strPath );
 
       QString strTitle = treeGroupChild->name().trimmed();
       strShortName = sbDetermineShortName( strTitle, strPath, mapShortNames );
@@ -2537,7 +2537,7 @@ void QgsProjectProperties::sbFillLayerShortNames( QgsLayerTreeGroup *treeGroup, 
           continue;
 
         QString strPath;
-        QgisApp::instance()->sbResolveLayerPath( treeNode, strPath );
+        treeNode->sbResolveLayerPath( strPath );
 
         QString strTitle = l->title();
         if ( strTitle.isEmpty() || bSynchronizeTreeAndWmsTitles )
@@ -2653,7 +2653,7 @@ void QgsProjectProperties::sbCollectWfsToolLayerIds( QgsLayerTreeGroup *treeGrou
         if ( bNeedsWfs )
         {
           QString strPath = "";
-          QgisApp::instance()->sbResolveLayerPath( treeNode, strPath );
+          treeNode->sbResolveLayerPath( strPath );
           mapLayerIds.insert( l->id(), strPath );
         }
       }

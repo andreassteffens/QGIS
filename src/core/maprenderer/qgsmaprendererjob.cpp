@@ -49,6 +49,7 @@
 #include "qgselevationmap.h"
 #include "qgssettingsentryimpl.h"
 #include "qgssettingstree.h"
+#include "qgslayertree.h"
 
 const QgsSettingsEntryBool *QgsMapRendererJob::settingsLogCanvasRefreshEvent = new QgsSettingsEntryBool( QStringLiteral( "logCanvasRefreshEvent" ), QgsSettingsTree::sTreeMap, false );
 
@@ -1346,10 +1347,53 @@ void QgsMapRendererJob::logRenderingTime( const std::vector< LayerRenderJob > &j
     return;
 
   QMultiMap<int, QString> elapsed;
-  for ( const LayerRenderJob &job : jobs )
-    elapsed.insert( job.renderingTime, job.layerId );
+  for ( const LayerRenderJob& job : jobs )
+  {
+    QString layerId = job.layerId;
+
+    if ( job.layer )
+    {
+      if ( job.layer->project() )
+      {
+        if ( job.layer->project()->layerTreeRoot() )
+        {
+          QgsLayerTreeLayer* treeLayer = job.layer->project()->layerTreeRoot()->findLayer( job.layerId );
+          if ( treeLayer )
+          {
+            QString path;
+            treeLayer->sbResolveLayerPath( path );
+            layerId = path;
+          }
+        }
+      }
+    }
+
+    elapsed.insert( job.renderingTime, layerId );
+  }
+
   for ( const LayerRenderJob &job : secondPassJobs )
-    elapsed.insert( job.renderingTime, job.layerId + QString( " (second pass)" ) );
+  {
+    QString layerId = job.layerId + QString( " (second pass)" );
+
+    if ( job.layer )
+    {
+      if ( job.layer->project() )
+      {
+        if ( job.layer->project()->layerTreeRoot() )
+        {
+          QgsLayerTreeLayer* treeLayer = job.layer->project()->layerTreeRoot()->findLayer( job.layerId );
+          if ( treeLayer )
+          {
+            QString path;
+            treeLayer->sbResolveLayerPath( path );
+            layerId = path + QString(" (second pass)" );
+          }
+        }
+      }
+    }
+
+    elapsed.insert( job.renderingTime, layerId );
+  }
 
   elapsed.insert( labelJob.renderingTime, tr( "Labeling" ) );
 
@@ -1357,7 +1401,7 @@ void QgsMapRendererJob::logRenderingTime( const std::vector< LayerRenderJob > &j
   std::sort( tt.begin(), tt.end(), std::greater<int>() );
   for ( int t : std::as_const( tt ) )
   {
-    QgsMessageLog::logMessage( tr( "%1 ms: %2" ).arg( t ).arg( QStringList( elapsed.values( t ) ).join( QLatin1String( ", " ) ) ), tr( "Rendering" ) );
+    QgsMessageLog::logMessage( tr( "%1 ms: %2" ).arg( t ).arg( QStringList( elapsed.values( t ) ).join( QLatin1String( "\r\n   " ) ) ), tr( "Rendering" ) );
   }
   QgsMessageLog::logMessage( QStringLiteral( "---" ), tr( "Rendering" ) );
 }

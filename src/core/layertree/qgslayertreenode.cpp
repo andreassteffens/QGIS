@@ -183,6 +183,19 @@ QList<QgsMapLayer *> QgsLayerTreeNode::checkedLayers() const
   return layers;
 }
 
+void QgsLayerTreeNode::sbResolveLayerPath( QString &rstrPath ) const
+{
+  rstrPath = name() + "/" + rstrPath;
+
+  if( !mParent )
+  {
+    if ( rstrPath.endsWith("/") )
+      rstrPath.truncate( rstrPath.length() - 1 );
+  }
+  else
+    mParent->sbResolveLayerPath( rstrPath );
+}
+
 int QgsLayerTreeNode::depth() const
 {
   int depth = 0;
