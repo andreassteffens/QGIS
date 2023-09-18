@@ -10385,6 +10385,18 @@ void QgisApp::pasteLayer()
   }
 }
 
+void QgisApp::sbCopyLayerPath()
+{
+  QgsMapLayer* currentLayer = activeLayer();
+  QgsLayerTreeNode* currentNode = mLayerTreeView->currentNode();
+  if ( currentLayer && currentNode )
+  {
+    QString layerPath;
+    currentNode->sbResolveLayerPath( layerPath );
+    QApplication::clipboard()->setText( layerPath );
+  }
+}
+
 void QgisApp::copyFeatures( QgsFeatureStore &featureStore )
 {
   clipboard()->replaceWithCopyOf( featureStore );

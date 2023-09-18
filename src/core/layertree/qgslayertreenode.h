@@ -226,6 +226,8 @@ class CORE_EXPORT QgsLayerTreeNode : public QObject
      */
     QList< QgsMapLayer * > checkedLayers() const;
 
+    void sbResolveLayerPath( QString &rstrPath ) const SIP_SKIP;
+    
     /**
      * Returns the depth of this node, i.e. the number of its ancestors
      * \since QGIS 3.14

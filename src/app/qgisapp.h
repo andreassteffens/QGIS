@@ -1045,6 +1045,8 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     //! pastes group or layer from the clipboard to layer tree
     void pasteLayer();
 
+    void sbCopyLayerPath();
+    
     //! Apply the same style to selected layers or to current legend group
     void applyStyleToGroup();
 

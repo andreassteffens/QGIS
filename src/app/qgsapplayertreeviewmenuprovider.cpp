@@ -769,6 +769,10 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
 
       if ( layer && QgsProject::instance()->layerIsEmbedded( layer->id() ).isEmpty() )
         menu->addAction( tr( "&Properties…" ), QgisApp::instance(), &QgisApp::layerProperties );
+
+      menu->addSeparator();
+
+      menu->addAction( tr( "([a]tapa) Copy Layer Path" ), QgisApp::instance(), &QgisApp::sbCopyLayerPath );
     }
   }
   else if ( QgsLayerTreeModelLegendNode *node = mView->index2legendNode( idx ) )
