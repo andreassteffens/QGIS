@@ -1842,20 +1842,24 @@ void QgsProjectProperties::twWmtsItemChanged( QTreeWidgetItem *item, int column 
   {
     item->setCheckState( 2, Qt::Unchecked );
     item->setCheckState( 3, Qt::Unchecked );
+    item->setCheckState( 4, Qt::Unchecked );
   }
   else if ( column == 1 && item->checkState( 1 ) &&
-            !item->checkState( 2 ) && !item->checkState( 3 ) )
+            !item->checkState( 2 ) && !item->checkState( 3 ) && !item->checkState( 4 ) )
   {
     item->setCheckState( 2, Qt::Checked );
     item->setCheckState( 3, Qt::Checked );
+    item->setCheckState( 4, Qt::Checked );
   }
   else if ( ( column == 2 && item->checkState( 2 ) ) ||
-            ( column == 3 && item->checkState( 3 ) ) )
+            ( column == 3 && item->checkState( 3 ) ) ||
+            ( column == 4 && item->checkState( 4 ) ) )
   {
     item->setCheckState( 1, Qt::Checked );
   }
-  else if ( ( column == 2 && !item->checkState( 2 ) && !item->checkState( 3 ) ) ||
-            ( column == 3 && !item->checkState( 2 ) && !item->checkState( 3 ) ) )
+  else if ( ( column == 2 && !item->checkState( 2 ) && !item->checkState( 3 ) && !item->checkState( 4 ) ) ||
+            ( column == 3 && !item->checkState( 2 ) && !item->checkState( 3 ) && !item->checkState( 4 ) ) ||
+            ( column == 4 && !item->checkState( 2 ) && !item->checkState( 3 ) && !item->checkState( 4 ) ) )
   {
     item->setCheckState( 1, Qt::Unchecked );
   }
