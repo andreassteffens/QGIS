@@ -2962,6 +2962,11 @@
                             <string>JPEG</string>
                            </property>
                           </column>
+                          <column>
+                           <property name="text">
+                            <string>([a]tapa) WEBP</string>
+                           </property>
+                          </column>
                          </widget>
                         </item>
                        </layout>
