@@ -442,6 +442,9 @@ namespace QgsWmts
       const bool wmtsJpegProject = project->readBoolEntry( QStringLiteral( "WMTSJpegLayers" ), QStringLiteral( "Project" ) );
       if ( wmtsJpegProject )
         pLayer.formats << QStringLiteral( "image/jpeg" );
+      const bool wmtsWebpProject = project->readBoolEntry( QStringLiteral( "WMTSWebpLayers" ), QStringLiteral( "Project" ) );
+      if ( wmtsWebpProject )
+        pLayer.formats << QStringLiteral( "image/webp" );
 
       // Project is not queryable in WMS
       //pLayer.queryable = ( nonIdentifiableLayers.count() != project->count() );
@@ -457,6 +460,7 @@ namespace QgsWmts
 
       const QStringList wmtsPngGroupNameList = project->readListEntry( QStringLiteral( "WMTSPngLayers" ), QStringLiteral( "Group" ) );
       const QStringList wmtsJpegGroupNameList = project->readListEntry( QStringLiteral( "WMTSJpegLayers" ), QStringLiteral( "Group" ) );
+      const QStringList wmtsWebpGroupNameList = project->readListEntry( QStringLiteral( "WMTSWebpLayers" ), QStringLiteral( "Group" ) );
 
       for ( const QString &gName : wmtsGroupNameList )
       {
@@ -556,6 +560,8 @@ namespace QgsWmts
           pLayer.formats << QStringLiteral( "image/png" );
         if ( wmtsJpegGroupNameList.contains( gName ) )
           pLayer.formats << QStringLiteral( "image/jpeg" );
+        if ( wmtsWebpGroupNameList.contains( gName ) )
+          pLayer.formats << QStringLiteral( "image/webp" );
 
         wmtsLayers.append( pLayer );
       }
@@ -564,6 +570,7 @@ namespace QgsWmts
     const QStringList wmtsLayerIdList = project->readListEntry( QStringLiteral( "WMTSLayers" ), QStringLiteral( "Layer" ) );
     const QStringList wmtsPngLayerIdList = project->readListEntry( QStringLiteral( "WMTSPngLayers" ), QStringLiteral( "Layer" ) );
     const QStringList wmtsJpegLayerIdList = project->readListEntry( QStringLiteral( "WMTSJpegLayers" ), QStringLiteral( "Layer" ) );
+    const QStringList wmtsWebpLayerIdList = project->readListEntry( QStringLiteral( "WMTSWebpLayers" ), QStringLiteral( "Layer" ) );
 
     for ( const QString &lId : wmtsLayerIdList )
     {
