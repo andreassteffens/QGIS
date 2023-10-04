@@ -2407,7 +2407,7 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
   }
   if ( !strMessage.isEmpty() )
   {
-    strMessage = "<h3 style='color: #f00;'>" + tr( "[Atlas] The publishing settings for some layers need to be reviewed:" ) + "</h3><ul>" + strMessage + "</ul>";
+    strMessage = "<h3 style='color: #f00;'>" + tr( "([a]tlas) The publishing settings for some layers need to be reviewed:" ) + "</h3><ul>" + strMessage + "</ul>";
     strContent += strMessage;
   }
   else
