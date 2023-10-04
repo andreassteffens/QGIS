@@ -815,7 +815,7 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
   projItem->setCheckState( 1, wmtsProject ? Qt::Checked : Qt::Unchecked );
   projItem->setCheckState( 2, wmtsPngProject ? Qt::Checked : Qt::Unchecked );
   projItem->setCheckState( 3, wmtsJpegProject ? Qt::Checked : Qt::Unchecked );
-  projItem->setCheckState( 3, wmtsWebpProject ? Qt::Checked : Qt::Unchecked );
+  projItem->setCheckState( 4, wmtsWebpProject ? Qt::Checked : Qt::Unchecked );
   projItem->setData( 0, Qt::UserRole, QStringLiteral( "project" ) );
   twWmtsLayers->addTopLevelItem( projItem );
   populateWmtsTree( QgsProject::instance()->layerTreeRoot(), projItem );
@@ -1633,7 +1633,7 @@ void QgsProjectProperties::apply()
       wmtsProject = true;
       wmtsPngProject = item->checkState( 2 );
       wmtsJpegProject = item->checkState( 3 );
-      wmtsJpegProject = item->checkState( 4 );
+      wmtsWebpProject = item->checkState( 4 );
     }
     else if ( itemType == QLatin1String( "group" ) )
     {
@@ -1882,13 +1882,14 @@ void QgsProjectProperties::twWmtsItemChanged( QTreeWidgetItem *item, int column 
     item->setCheckState( 4, Qt::Checked );
   }
   else if ( ( column == 2 && item->checkState( 2 ) ) ||
-            ( column == 3 && item->checkState( 3 ) ) )
+            ( column == 3 && item->checkState( 3 ) ) ||
+            ( column == 4 && item->checkState( 4 ) ) )
   {
     item->setCheckState( 1, Qt::Checked );
   }
   else if ( ( column == 2 && !item->checkState( 2 ) && !item->checkState( 3 ) && !item->checkState( 4 ) ) ||
             ( column == 3 && !item->checkState( 2 ) && !item->checkState( 3 ) && !item->checkState( 4 ) ) ||
-            ( column == 3 && !item->checkState( 2 ) && !item->checkState( 3 ) && !item->checkState( 4 ) ) )
+            ( column == 4 && !item->checkState( 2 ) && !item->checkState( 3 ) && !item->checkState( 4 ) ) )
   {
     item->setCheckState( 1, Qt::Unchecked );
   }
