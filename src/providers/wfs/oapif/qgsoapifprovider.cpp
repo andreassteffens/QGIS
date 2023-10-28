@@ -193,8 +193,16 @@ bool QgsOapifProvider::init()
     QgsCoordinateTransform ct( collectionRequest->collection().mBboxCrs, mShared->mSourceCrs, transformContext() );
     ct.setBallparkTransformsAreAppropriate( true );
     QgsDebugMsgLevel( "before ext:" + mShared->mCapabilityExtent.toString(), 4 );
-    mShared->mCapabilityExtent = ct.transformBoundingBox( mShared->mCapabilityExtent );
-    QgsDebugMsgLevel( "after ext:" + mShared->mCapabilityExtent.toString(), 4 );
+    try
+    {
+      mShared->mCapabilityExtent = ct.transformBoundingBox( mShared->mCapabilityExtent );
+      QgsDebugMsgLevel( "after ext:" + mShared->mCapabilityExtent.toString(), 4 );
+    }
+    catch ( const QgsCsException &e )
+    {
+      QgsMessageLog::logMessage( tr( "Cannot compute layer extent: %1" ).arg( e.what() ), tr( "OAPIF" ) );
+      mShared->mCapabilityExtent = QgsRectangle();
+    }
   }
 
   // Merge contact info from /api
@@ -224,6 +232,29 @@ bool QgsOapifProvider::init()
   if ( mShared->mCapabilityExtent.isNull() )
   {
     mShared->mCapabilityExtent = itemsRequest.bbox();
+    if ( !mShared->mCapabilityExtent.isNull() )
+    {
+      QgsCoordinateReferenceSystem defaultCrs =
+        QgsCoordinateReferenceSystem::fromOgcWmsCrs(
+          QgsOapifProvider::OAPIF_PROVIDER_DEFAULT_CRS );
+      if ( defaultCrs != mShared->mSourceCrs )
+      {
+        QgsCoordinateTransform ct( defaultCrs, mShared->mSourceCrs, transformContext() );
+        ct.setBallparkTransformsAreAppropriate( true );
+        QgsDebugMsgLevel( "before ext:" + mShared->mCapabilityExtent.toString(), 4 );
+        try
+        {
+          mShared->mCapabilityExtent = ct.transformBoundingBox( mShared->mCapabilityExtent );
+          QgsDebugMsgLevel( "after ext:" + mShared->mCapabilityExtent.toString(), 4 );
+        }
+        catch ( const QgsCsException &e )
+        {
+          QgsMessageLog::logMessage( tr( "Cannot compute layer extent: %1" ).arg( e.what() ), tr( "OAPIF" ) );
+          mShared->mCapabilityExtent = QgsRectangle();
+        }
+      }
+    }
+
   }
 
   mShared->mFields = itemsRequest.fields();
@@ -254,6 +285,34 @@ QgsWkbTypes::Type QgsOapifProvider::wkbType() const
 
 long long QgsOapifProvider::featureCount() const
 {
+  // If no filter is set try the fast way of retrieving the feature count
+  if ( mSubsetString.isEmpty() )
+  {
+    QString url = mShared->mItemsUrl;
+    url += QLatin1String( "?limit=1" );
+    url = mShared->appendExtraQueryParameters( url );
+
+    if ( !mShared->mServerFilter.isEmpty() )
+    {
+      url += QLatin1Char( '&' );
+      url += mShared->mServerFilter;
+    }
+
+    QgsOapifItemsRequest itemsRequest( mShared->mURI.uri(), url );
+    if ( !itemsRequest.request( true, false ) )
+      return -1;
+    if ( itemsRequest.errorCode() != QgsBaseNetworkRequest::NoError )
+      return -1;
+
+    const long long featureCount = itemsRequest.numberMatched();
+    if ( featureCount >= 0 )
+    {
+      mShared->setFeatureCount( featureCount, true );
+      return featureCount;
+    }
+  }
+
+  // Retry the slow way by active filter or numberMatched parameter not sent from server
   if ( mUpdateFeatureCountAtNextFeatureCountRequest )
   {
     mUpdateFeatureCountAtNextFeatureCountRequest = false;
@@ -261,12 +320,14 @@ long long QgsOapifProvider::featureCount() const
     QgsFeature f;
     QgsFeatureRequest request;
     request.setNoAttributes();
+    constexpr int MAX_FEATURES = 1000;
+    request.setLimit( MAX_FEATURES + 1 );
     auto iter = getFeatures( request );
     long long count = 0;
     bool countExact = true;
     while ( iter.nextFeature( f ) )
     {
-      if ( count == 1000 ) // to avoid too long processing time
+      if ( count == MAX_FEATURES ) // to avoid too long processing time
       {
         countExact = false;
         break;

@@ -116,6 +116,7 @@
 #include "options/qgsrasterrenderingoptions.h"
 #include "options/qgsrenderingoptions.h"
 #include "options/qgsvectorrenderingoptions.h"
+#include "qgsbrowserdockwidget_p.h"
 
 #include "raster/qgsrasterelevationpropertieswidget.h"
 #include "vector/qgsvectorelevationpropertieswidget.h"
@@ -785,6 +786,7 @@ void QgisApp::annotationItemTypeAdded( int id )
   action->setCheckable( true );
   action->setData( id );
   action->setIcon( QgsGui::annotationItemGuiRegistry()->itemMetadata( id )->creationIcon() );
+  action->setObjectName( QStringLiteral( "mAction%1" ).arg( name.replace( " ", "" ) ) );
 
   mMapToolGroup->addAction( action );
 
@@ -1980,6 +1982,13 @@ QgisApp::~QgisApp()
 
   deleteLayoutDesigners();
   removeAnnotationItems();
+
+  // these need to be gracefully cleaned up before QgsApplication::exitQgis()
+  const QList<QgsBrowserPropertiesDialog *> browserPropertyDialogs = findChildren< QgsBrowserPropertiesDialog * >();
+  for ( QgsBrowserPropertiesDialog *widget : browserPropertyDialogs )
+  {
+    delete widget;
+  }
 
   // cancel request for FileOpen events
   QgsApplication::setFileOpenEventReceiver( nullptr );

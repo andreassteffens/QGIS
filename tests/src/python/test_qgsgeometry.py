@@ -7106,6 +7106,30 @@ class TestQgsGeometry(unittest.TestCase):
         self.assertTrue(poly.boundingBox().intersects(bbox))
         self.assertTrue(poly.intersects(bbox))  # was failing here!
 
+    def testSplitGeometry(self):
+
+        square = QgsGeometry.fromWkt("Polygon ((0 0, 0 2, 2 2, 2 0, 0 0))")
+        lineXY = [QgsPointXY(1, -1), QgsPointXY(1, 3)]
+
+        r1 = QgsGeometry.fromWkt("Polygon ((1 2, 1 0, 0 0, 0 2, 1 2))")
+        r2 = QgsGeometry.fromWkt("Polygon ((1 0, 1 2, 2 2, 2 0, 1 0))")
+
+        (result, parts, topo) = square.splitGeometry(lineXY, False)
+        self.assertEqual(result, Qgis.GeometryOperationResult.Success)
+        self.assertGeometriesEqual(square, r2)
+        self.assertEqual(len(parts), 1)
+        self.assertGeometriesEqual(parts[0], r1)
+
+        multilinestring = QgsGeometry.fromWkt("MultiLinestring((0 1, 1 0),(0 2, 2 0))")
+        blade = QgsCompoundCurve()
+        blade.addCurve(QgsLineString([QgsPointXY(0.8, 0.8), QgsPointXY(1.2, 1.2)]))
+        result, parts, _ = multilinestring.splitGeometry(blade, False, False, False)
+        self.assertEqual(result, Qgis.GeometryOperationResult.Success)
+        self.assertEqual(len(parts), 3)
+        self.assertTrue(compareWkt(parts[0].asWkt(), 'MultiLineString ((0 2, 1 1))'))
+        self.assertTrue(compareWkt(parts[1].asWkt(), 'MultiLineString ((1 1, 2 0))'))
+        self.assertTrue(compareWkt(parts[2].asWkt(), 'MultiLineString ((0 1, 1 0))'))
+
 
 if __name__ == '__main__':
     unittest.main()
