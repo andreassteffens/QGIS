@@ -27,6 +27,7 @@
 #include "qgssymbol.h"
 #include "qgsgeometryengine.h"
 #include "qgsdbquerylog.h"
+#include "qgsmessagelog.h"
 
 #include <sqlite3.h>
 
@@ -342,27 +343,77 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
       break;
   }
 
+  QString strMinPixelSizeExpression;
+  if ( request.sbHasRenderMinPixelSizeFilter() )
+  {
+    QString strGeometryColumn = OGR_L_GetGeometryColumn( mOgrLayer );
+    if ( !strGeometryColumn.isEmpty() )
+    {
+      double dRenderMinPixelSize;
+      bool bRenderMinPixelSizeDebug;
+      int iRenderMinPixelSizeMaxScale;
+      double dScaleFactor;
+      double dMapUnitsPerPixel;
+      double dCurrentScale;
+      Qgis::GeometryType geometryType;
+      request.sbGetRenderMinPixelSizeFilterValue( &dRenderMinPixelSize, &iRenderMinPixelSizeMaxScale, &dScaleFactor, &dMapUnitsPerPixel, &dCurrentScale, &geometryType, &bRenderMinPixelSizeDebug );
+
+      if ( geometryType == Qgis::GeometryType::Line || geometryType == Qgis::GeometryType::Polygon )
+      {
+        strMinPixelSizeExpression = "(((ST_MaxX(" + strGeometryColumn + ") - ST_MinX(" + strGeometryColumn + ")) * " + QString::number( dScaleFactor / dMapUnitsPerPixel ) + ") > " + QString::number( dRenderMinPixelSize ) + ") OR (((ST_MaxY(" + strGeometryColumn + ") - ST_MinY(" + strGeometryColumn + ")) * " + QString::number( dScaleFactor / dMapUnitsPerPixel ) + ") > " + QString::number( dRenderMinPixelSize ) + ")";
+
+        if ( bRenderMinPixelSizeDebug )
+          QgsMessageLog::logMessage( QStringLiteral( "Setting render min pixel size filter on layer %1: %2" ).arg( mSource->mDataSource ).arg( strMinPixelSizeExpression ), QStringLiteral( "" ), Qgis::Critical );
+      }
+    }
+  }
+
   if ( request.filterType() == QgsFeatureRequest::FilterExpression && !filterExpressionAlreadyTakenIntoAccount )
   {
-    QgsSqlExpressionCompiler *compiler = nullptr;
-    if ( source->mDriverName == QLatin1String( "SQLite" ) || source->mDriverName == QLatin1String( "GPKG" ) )
+    QString whereClause;
+    QgsSqlExpressionCompiler::Result result;
+
+    if ( request.sbGetPassThroughQgisFilterExpression() )
     {
-      compiler = new QgsSQLiteExpressionCompiler( source->mFields, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
+      whereClause = request.filterExpression()->dump();
+      result = QgsSqlExpressionCompiler::Complete;
     }
     else
     {
-      compiler = new QgsOgrExpressionCompiler( source, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
+      QgsSqlExpressionCompiler *compiler = nullptr;
+      if ( source->mDriverName == QLatin1String( "SQLite" ) || source->mDriverName == QLatin1String( "GPKG" ) )
+      {
+        compiler = new QgsSQLiteExpressionCompiler( source->mFields, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
+      }
+      else
+      {
+        compiler = new QgsOgrExpressionCompiler( source, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
+      }
+
+      result = compiler->compile( request.filterExpression() );
+      if ( result == QgsSqlExpressionCompiler::Complete || result == QgsSqlExpressionCompiler::Partial )
+        whereClause = compiler->result();
+
+      delete compiler;
     }
 
-    QgsSqlExpressionCompiler::Result result = compiler->compile( request.filterExpression() );
     if ( result == QgsSqlExpressionCompiler::Complete || result == QgsSqlExpressionCompiler::Partial )
     {
-      QString whereClause = compiler->result();
       if ( !mSource->mSubsetString.isEmpty() && mOgrLayer == mOgrLayerOri )
       {
-        whereClause = QStringLiteral( "(" ) + mSource->mSubsetString +
-                      QStringLiteral( ") AND (" ) + whereClause +
-                      QStringLiteral( ")" );
+        if ( strMinPixelSizeExpression.isEmpty() )
+        {
+          whereClause = QStringLiteral( "(" ) + mSource->mSubsetString +
+                        QStringLiteral( ") AND (" ) + whereClause +
+                        QStringLiteral( ")" );
+        }
+        else
+        {
+          whereClause = QStringLiteral( "(" ) + mSource->mSubsetString +
+                        QStringLiteral( ") AND (" ) + whereClause +
+                        QStringLiteral( ") AND (" ) + strMinPixelSizeExpression +
+                        QStringLiteral( ")" );
+        }
       }
 
       if ( mAllowResetReading )
@@ -379,18 +430,27 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
           OGR_L_SetAttributeFilter( mOgrLayer, mSource->mEncoding->fromUnicode( mSource->mSubsetString ).constData() );
         }
       }
-
     }
     else if ( mSource->mSubsetString.isEmpty() && mAllowResetReading )
     {
-      OGR_L_SetAttributeFilter( mOgrLayer, nullptr );
+      if ( strMinPixelSizeExpression.isEmpty() )
+        OGR_L_SetAttributeFilter( mOgrLayer, nullptr );
+      else
+      {
+        if ( OGR_L_SetAttributeFilter( mOgrLayer, mSource->mEncoding->fromUnicode( strMinPixelSizeExpression ).constData() ) != OGRERR_NONE )
+          QgsMessageLog::logMessage( QStringLiteral( "([a]tapa) Error setting min pixel size filter: %1" ).arg( strMinPixelSizeExpression ), QStringLiteral( "" ), Qgis::Critical );
+      }
     }
-
-    delete compiler;
   }
   else if ( mSource->mSubsetString.isEmpty() && mAllowResetReading )
   {
-    OGR_L_SetAttributeFilter( mOgrLayer, nullptr );
+    if ( strMinPixelSizeExpression.isEmpty() )
+      OGR_L_SetAttributeFilter( mOgrLayer, nullptr );
+    else
+    {
+      if ( OGR_L_SetAttributeFilter( mOgrLayer, mSource->mEncoding->fromUnicode( strMinPixelSizeExpression ).constData() ) != OGRERR_NONE )
+        QgsMessageLog::logMessage( QStringLiteral( "([a]tapa) Error setting min pixel size filter: %1" ).arg( strMinPixelSizeExpression ), QStringLiteral( "" ), Qgis::Critical );
+    }
   }
 
   if ( mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes )
@@ -430,7 +490,6 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
 #endif
   //start with first feature
   rewind();
-
 }
 
 QgsOgrFeatureIterator::~QgsOgrFeatureIterator()

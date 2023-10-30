@@ -1,0 +1,1381 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>sbAddressServicesGuiBase</class>
+ <widget class="QWidget" name="sbAddressServicesGuiBase">
+  <property name="enabled">
+   <bool>true</bool>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>608</width>
+    <height>521</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>0</width>
+    <height>40</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>[a]tapa Address Services</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_4">
+   <item row="0" column="0">
+    <widget class="QSplitter" name="mSplitPlugin">
+     <property name="styleSheet">
+      <string notr="true"/>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::NoFrame</enum>
+     </property>
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="opaqueResize">
+      <bool>true</bool>
+     </property>
+     <widget class="QTabWidget" name="mTabsServices">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>140</height>
+       </size>
+      </property>
+      <property name="currentIndex">
+       <number>3</number>
+      </property>
+      <widget class="QWidget" name="mTabSearch">
+       <attribute name="title">
+        <string>Address Search</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="mLeSearch">
+          <property name="placeholderText">
+           <string>Enter address or place here...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="mLblSearch">
+          <property name="text">
+           <string>Search</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="2">
+         <widget class="QToolButton" name="mTbtnSearch">
+          <property name="text">
+           <string>...</string>
+          </property>
+          <property name="icon">
+           <iconset resource="sbaddressservicesplugin.qrc">
+            <normaloff>:/sbaddressservices/icons/search.svg</normaloff>:/sbaddressservices/icons/search.svg</iconset>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <spacer name="verticalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="1" column="1">
+         <widget class="QCheckBox" name="mCheckRestrictSearchBounds">
+          <property name="text">
+           <string>Restrict to current view bounds</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="mTabInfo">
+       <attribute name="title">
+        <string>Address Info</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <item>
+         <widget class="QPushButton" name="mPbtnActivateInfo">
+          <property name="text">
+           <string>Activate</string>
+          </property>
+          <property name="icon">
+           <iconset resource="sbaddressservicesplugin.qrc">
+            <normaloff>:/sbaddressservices/icons/info-circle.svg</normaloff>:/sbaddressservices/icons/info-circle.svg</iconset>
+          </property>
+          <property name="checkable">
+           <bool>true</bool>
+          </property>
+          <property name="checked">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QFrame" name="frame">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>40</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>40</height>
+           </size>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::NoFrame</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Raised</enum>
+          </property>
+          <property name="lineWidth">
+           <number>0</number>
+          </property>
+          <layout class="QFormLayout" name="formLayout_6">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item row="0" column="0">
+            <widget class="QLabel" name="mLblNominatimQueryLevel">
+             <property name="text">
+              <string>Query Level</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QComboBox" name="mComboNominatimQueryLevel"/>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer_3">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="mTabFunny">
+       <attribute name="title">
+        <string>Funny Places</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_3" columnstretch="0,0">
+        <item row="1" column="1">
+         <spacer name="verticalSpacer_4">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="0" column="0" colspan="2">
+         <widget class="QComboBox" name="mComboFunnyPlaces">
+          <property name="currentIndex">
+           <number>-1</number>
+          </property>
+          <property name="placeholderText">
+           <string>Please choose...</string>
+          </property>
+          <item>
+           <property name="text">
+            <string>Aha</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Anschiessing</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Antwort</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Arresting</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Atzenhausen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Aua</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Barby</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Betteldorf</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Blasendorf</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Blödsheim</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Bösenhausen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Busenberg</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Busendorf</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Busenhausen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Busenweiler</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Daheim</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Darmstadt-Wixhausen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Deppendorf</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Deppenhausen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Dissen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Dovenkamp</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Drogen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Dümmer</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Dummersdorf</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Eichelhardt</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Einöd</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Eismannsdorf</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Eiterberg</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Ekelsdorf</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Elend</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Ende</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Fegefeuer</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Feucht</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Fickmühle</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Fickmühlen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Fögeln</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Frankenstein</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Freiheit</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Freudeneck</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Fuchsschwanz</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Gabe Gottes</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Galgen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Gammelsdorf</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Gänheim</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Geilenkirchen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Geilhausen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Geilsheim</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Gifthof</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Grab</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Halbhusten</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Hanf</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Hanfgarten</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Himelsthür</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Himmelreich</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Hodenhagen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Hölle</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Hundeluft</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Husten</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Irrendorf</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Katzenhirn</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Killer</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Kloschwitz</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Knochenmühle</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Kotzen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Kotzenaurach</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Kotzendorf</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Kotzfeld</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Krankenhagen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Krätze</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Kuhfraß</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Lachen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Lachheim</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Langweiler</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Lederhose</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Leichendorf</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Leverkusen-Fettehenne</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Loch</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Luderbach</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Luschendorf</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Mackendorf</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Mausdorf</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Meinkot</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Mordberg</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Möse</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Mösing</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Müdesheim</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Nackterwäldchen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Narrenstetten</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Niederreißen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Notschrei</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Oberbillig</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Oberhäslich</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Oberkaka</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Oedeme</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Oha</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Opferbaum</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Ort</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Ostereistedt</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Ottosau</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Papierfabrik</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Pech</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Petting</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Petze</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Pforzheim</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Pinkler</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Pissen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Pixel</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Pomologie</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Poppenbüll</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Poppenhausen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Poppenreut</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Poritz</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Prügel</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Puffthal</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Pups</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Quaal</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Quälhof</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Rambow</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Rammelsbach</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Sack</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Saurasen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Schabernack</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Scheide</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Scheideweg</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Schieben</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Schmerz</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Schnarchenreuth</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Schwarzer Kater</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Schweinlang</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Schweinschied</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Sexau</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Siehdichum</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Sklavenhaus</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Sommerloch</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Spalt</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Tittenkofen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Tittmoning</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Titz</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Tuntenhausen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Tussenhausen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Umweg</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Unterkaka</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Ursulapoppenricht</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Vögelsen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Warzen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Weitewelt</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Wichsenstein</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Witzwort</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Zweifelsheim</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="mTabSettings">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <attribute name="title">
+        <string>Settings</string>
+       </attribute>
+       <layout class="QFormLayout" name="formLayout">
+        <item row="0" column="0" colspan="2">
+         <widget class="QScrollArea" name="scrollArea">
+          <property name="horizontalScrollBarPolicy">
+           <enum>Qt::ScrollBarAlwaysOff</enum>
+          </property>
+          <property name="widgetResizable">
+           <bool>true</bool>
+          </property>
+          <widget class="QWidget" name="scrollAreaWidgetContents">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>-209</y>
+             <width>547</width>
+             <height>548</height>
+            </rect>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_2">
+            <item>
+             <widget class="QGroupBox" name="mGrpGoogleSettings">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>110</height>
+               </size>
+              </property>
+              <property name="baseSize">
+               <size>
+                <width>0</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="title">
+               <string>Google</string>
+              </property>
+              <layout class="QFormLayout" name="formLayout_2">
+               <item row="2" column="0">
+                <widget class="QLabel" name="mLblGoogleKey">
+                 <property name="text">
+                  <string>API Key</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="0">
+                <widget class="QLabel" name="mLblGoogleQueryOptions">
+                 <property name="text">
+                  <string>Query Options</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="1">
+                <widget class="QLineEdit" name="mLeGoogleQueryOptions"/>
+               </item>
+               <item row="2" column="1">
+                <widget class="QgsPasswordLineEdit" name="mPleGoogleKey"/>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="mLblGoogleActive">
+                 <property name="text">
+                  <string>Active</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QCheckBox" name="mCheckGoogleActive">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="mGrpNominatimSettings">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>110</height>
+               </size>
+              </property>
+              <property name="title">
+               <string>OpenStreetMap</string>
+              </property>
+              <layout class="QFormLayout" name="formLayout_4">
+               <item row="1" column="0">
+                <widget class="QLabel" name="mLblNominatimAddress">
+                 <property name="text">
+                  <string>Nominatim URL</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QLineEdit" name="mLeNominatimService"/>
+               </item>
+               <item row="2" column="0">
+                <widget class="QLabel" name="mLblNominatimQueryOptions">
+                 <property name="text">
+                  <string>Query Options</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QLineEdit" name="mLeNominatimQueryOptions"/>
+               </item>
+               <item row="0" column="0">
+                <widget class="QLabel" name="mLblNominatimActive">
+                 <property name="text">
+                  <string>Active</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QCheckBox" name="mCheckNominatimActive">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="mGrpPhotonSettings">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>110</height>
+               </size>
+              </property>
+              <property name="title">
+               <string>Photon</string>
+              </property>
+              <layout class="QFormLayout" name="formLayout_7">
+               <item row="1" column="0">
+                <widget class="QLabel" name="mLblPhotonAddress">
+                 <property name="text">
+                  <string>Service URL</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QLineEdit" name="mLePhotonService"/>
+               </item>
+               <item row="2" column="0">
+                <widget class="QLabel" name="mLblPhotonQueryOptions">
+                 <property name="text">
+                  <string>Query Options</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QLineEdit" name="mLePhotonQueryOptions"/>
+               </item>
+               <item row="0" column="0">
+                <widget class="QLabel" name="mLblPhotonActive">
+                 <property name="text">
+                  <string>Active</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QCheckBox" name="mCheckPhotonActive">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="mGrpPeliasSettings">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>110</height>
+               </size>
+              </property>
+              <property name="title">
+               <string>Pelias</string>
+              </property>
+              <layout class="QFormLayout" name="formLayout_8">
+               <item row="1" column="0">
+                <widget class="QLabel" name="mLblPeliasAddress">
+                 <property name="text">
+                  <string>Service URL</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QLineEdit" name="mLePeliasService"/>
+               </item>
+               <item row="2" column="0">
+                <widget class="QLabel" name="mLblPeliasQueryOptions">
+                 <property name="text">
+                  <string>Query Options</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QLineEdit" name="mLePeliasQueryOptions"/>
+               </item>
+               <item row="0" column="0">
+                <widget class="QLabel" name="mLblPeliasActive">
+                 <property name="text">
+                  <string>Active</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QCheckBox" name="mCheckPeliasActive">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="mGrpGeneralSettings">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>60</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>60</height>
+               </size>
+              </property>
+              <property name="title">
+               <string>General</string>
+              </property>
+              <layout class="QFormLayout" name="formLayout_5">
+               <item row="0" column="0">
+                <widget class="QLabel" name="mLblDebugMode">
+                 <property name="text">
+                  <string>Debug Mode</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QCheckBox" name="mCheckDebugMode">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <spacer name="verticalSpacer">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+     <widget class="QFrame" name="mFrmResults">
+      <property name="frameShape">
+       <enum>QFrame::NoFrame</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Raised</enum>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <property name="leftMargin">
+        <number>4</number>
+       </property>
+       <property name="topMargin">
+        <number>4</number>
+       </property>
+       <property name="rightMargin">
+        <number>4</number>
+       </property>
+       <property name="bottomMargin">
+        <number>4</number>
+       </property>
+       <item>
+        <layout class="QFormLayout" name="formLayout_3">
+         <item row="0" column="0">
+          <widget class="QLabel" name="mLblSearchResults">
+           <property name="text">
+            <string>Results</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QComboBox" name="mComboResults">
+           <property name="contextMenuPolicy">
+            <enum>Qt::DefaultContextMenu</enum>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QPlainTextEdit" name="mPteResult">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>40</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="lineWrapMode">
+          <enum>QPlainTextEdit::WidgetWidth</enum>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <item>
+          <widget class="QPushButton" name="mPbtnNavigateToResult">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="text">
+            <string>Navigate to result</string>
+           </property>
+           <property name="icon">
+            <iconset resource="sbaddressservicesplugin.qrc">
+             <normaloff>:/sbaddressservices/icons/map-marker.svg</normaloff>:/sbaddressservices/icons/map-marker.svg</iconset>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="mPbtnClearResults">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="text">
+            <string>Clear results</string>
+           </property>
+           <property name="icon">
+            <iconset resource="sbaddressservicesplugin.qrc">
+             <normaloff>:/sbaddressservices/icons/close.svg</normaloff>:/sbaddressservices/icons/close.svg</iconset>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QgsPasswordLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>qgspasswordlineedit.h</header>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>mLeSearch</tabstop>
+  <tabstop>mTbtnSearch</tabstop>
+  <tabstop>mPbtnClearResults</tabstop>
+  <tabstop>mTabsServices</tabstop>
+  <tabstop>mPbtnActivateInfo</tabstop>
+  <tabstop>mComboFunnyPlaces</tabstop>
+ </tabstops>
+ <resources>
+  <include location="sbaddressservicesplugin.qrc"/>
+ </resources>
+ <connections/>
+</ui>

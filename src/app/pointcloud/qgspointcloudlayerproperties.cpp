@@ -24,6 +24,7 @@
 #include "qgspointcloudattributemodel.h"
 #include "qgsdatumtransformdialog.h"
 #include "qgspointcloudquerybuilder.h"
+#include "sbjoinedtogglewidget.h"
 
 #include <QFileDialog>
 #include <QMenu>
@@ -67,6 +68,14 @@ QgsPointCloudLayerProperties::QgsPointCloudLayerProperties( QgsPointCloudLayer *
   mOptsPage_Metadata->setContentsMargins( 0, 0, 0, 0 );
 
   setMetadataWidget( mMetadataWidget, mOptsPage_Metadata );
+
+  // Joined Toggle tab
+  QVBoxLayout *toggleLayout = new QVBoxLayout( joinedToggleFrame );
+  toggleLayout->setContentsMargins( 0, 0, 0, 0 );
+  mSbJoinedToggleWidget = new sbJoinedToggleWidget( this, mLayer );
+  mSbJoinedToggleWidget->layout()->setContentsMargins( 0, 0, 0, 0 );
+  toggleLayout->addWidget( mSbJoinedToggleWidget );
+  joinedToggleFrame->setLayout( toggleLayout );
 
   // update based on lyr's current state
   syncToLayer();
@@ -144,6 +153,9 @@ void QgsPointCloudLayerProperties::apply()
   mLayer->setScaleBasedVisibility( chkUseScaleDependentRendering->isChecked() );
   mLayer->setMinimumScale( mScaleRangeWidget->minimumScale() );
   mLayer->setMaximumScale( mScaleRangeWidget->maximumScale() );
+
+  if ( mSbJoinedToggleWidget )
+    mSbJoinedToggleWidget->applyToLayer();
 
   mBackupCrs = mLayer->crs();
 

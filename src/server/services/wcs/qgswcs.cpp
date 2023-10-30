@@ -51,7 +51,7 @@ namespace QgsWcs
       QString version() const override { return implementationVersion(); }
 
       void executeRequest( const QgsServerRequest &request, QgsServerResponse &response,
-                           const QgsProject *project ) override
+                           const QgsProject *project, bool sbJustLoaded ) override
       {
         Q_UNUSED( project )
 

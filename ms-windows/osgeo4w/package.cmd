@@ -100,19 +100,25 @@ if exist qgsversion.h del qgsversion.h
 
 if exist CMakeCache.txt if exist skipcmake goto skipcmake
 
+REM copy /b %SRCDIR%\CMakeLists.txt +,,
 touch %SRCDIR%\CMakeLists.txt
 
 echo CMAKE: %DATE% %TIME%
 if errorlevel 1 goto error
 
-if "%CMAKEGEN%"=="" set CMAKEGEN=Ninja
+if "%CMAKEGEN%"=="" set CMAKEGEN=Visual Studio 16 2019
+if "%ARCH%"=="x86" (
+	set CMAKEARCH=x86
+) else (
+	set CMAKEARCH=x64
+)
 if "%CC%"=="" set CC="%CMAKE_COMPILER_PATH:\=/%/cl.exe"
 if "%CXX%"=="" set CXX="%CMAKE_COMPILER_PATH:\=/%/cl.exe"
 if "%OSGEO4W_CXXFLAGS%"=="" set OSGEO4W_CXXFLAGS=/MD /Z7 /MP /O2 /Ob2 /D NDEBUG
 
 for %%i in (%PYTHONHOME%) do set PYVER=%%~ni
 
-cmake -G "%CMAKEGEN%" ^
+cmake -G "%CMAKEGEN%" -A %CMAKEARCH% ^
 	-D CMAKE_CXX_COMPILER="%CXX:\=/%" ^
 	-D CMAKE_C_COMPILER="%CC:\=/%" ^
 	-D CMAKE_LINKER="%CMAKE_COMPILER_PATH:\=/%/link.exe" ^
@@ -127,13 +133,19 @@ cmake -G "%CMAKEGEN%" ^
 	-D WITH_QSPATIALITE=TRUE ^
 	-D WITH_SERVER=TRUE ^
 	-D WITH_HANA=TRUE ^
-	-D SERVER_SKIP_ECW=TRUE ^
+	-D WITH_PDAL=TRUE ^
+	-D WITH_SERVER_PLUGINS=TRUE ^
+	-D SERVER_SKIP_ECW=FALSE ^
 	-D WITH_GRASS=TRUE ^
 	-D WITH_3D=TRUE ^
-	-D WITH_GRASS7=TRUE ^
+	-D WITH_GRASS7=FALSE ^
+	-D WITH_GRASS8=TRUE ^
 	-D GRASS_PREFIX7=%GRASS_PREFIX:\=/% ^
+	-D GRASS_PREFIX8=%GRASS_PREFIX:\=/% ^
 	-D WITH_ORACLE=TRUE ^
 	-D WITH_CUSTOM_WIDGETS=TRUE ^
+	-D ENABLE_TESTS=FALSE ^
+	-D ENABLE_TESTING=FALSE ^
 	-D CMAKE_BUILD_TYPE=%BUILDCONF% ^
 	-D CMAKE_CONFIGURATION_TYPES=%BUILDCONF% ^
 	-D SETUPAPI_LIBRARY="%SETUPAPI_LIBRARY%" ^
@@ -160,10 +172,10 @@ if errorlevel 1 (echo cmake failed & goto error)
 if "%CONFIGONLY%"=="1" (echo Exiting after configuring build directory: %CD% & goto end)
 
 :skipcmake
-if exist ..\noclean (echo skip clean & goto skipclean)
-echo CLEAN: %DATE% %TIME%
-cmake --build %BUILDDIR% --target clean --config %BUILDCONF%
-if errorlevel 1 (echo clean failed & goto error)
+REM if exist ..\noclean (echo skip clean & goto skipclean)
+REM echo CLEAN: %DATE% %TIME%
+REM cmake --build %BUILDDIR% --target clean --config %BUILDCONF%
+REM if errorlevel 1 (echo clean failed & goto error)
 
 :skipclean
 if exist ..\skipbuild (echo skip build & goto skipbuild)
@@ -273,6 +285,7 @@ if errorlevel 1 (echo creation of grass common preremove failed & goto error)
 sed -e 's/@package@/%PACKAGENAME%/g' -e 's/@version@/%VERSION%/g' postinstall-grass-plugin-common.bat >%OSGEO4W_ROOT%\etc\postinstall\%PACKAGENAME%-grass-plugin-common.bat
 if errorlevel 1 (echo creation of grass common postinstall failed & goto error)
 
+REM copy /b exclude +,,
 touch exclude
 if exist ..\skipbuild (echo skip build & goto skipbuild)
 
@@ -291,27 +304,27 @@ for %%i in (%packages%) do (
 	"apps/%PACKAGENAME%/bin/qgis_native.dll" ^
 	"apps/%PACKAGENAME%/bin/qgis_process.exe" ^
 	"apps/%PACKAGENAME%/doc/" ^
-  "apps/%PACKAGENAME%/plugins/authmethod_basic.dll" ^
-  "apps/%PACKAGENAME%/plugins/provider_delimitedtext.dll" ^
-  "apps/%PACKAGENAME%/plugins/authmethod_esritoken.dll" ^
-  "apps/%PACKAGENAME%/plugins/provider_gpx.dll" ^
-  "apps/%PACKAGENAME%/plugins/authmethod_identcert.dll" ^
-  "apps/%PACKAGENAME%/plugins/provider_mssql.dll" ^
-  "apps/%PACKAGENAME%/plugins/authmethod_pkcs12.dll" ^
-  "apps/%PACKAGENAME%/plugins/authmethod_pkipaths.dll" ^
-  "apps/%PACKAGENAME%/plugins/provider_postgres.dll" ^
-  "apps/%PACKAGENAME%/plugins/provider_postgresraster.dll" ^
-  "apps/%PACKAGENAME%/plugins/provider_spatialite.dll" ^
-  "apps/%PACKAGENAME%/plugins/provider_virtuallayer.dll" ^
-  "apps/%PACKAGENAME%/plugins/provider_wcs.dll" ^
-  "apps/%PACKAGENAME%/plugins/provider_wfs.dll" ^
-  "apps/%PACKAGENAME%/plugins/provider_wms.dll" ^
-  "apps/%PACKAGENAME%/plugins/provider_arcgismapserver.dll" ^
-  "apps/%PACKAGENAME%/plugins/provider_arcgisfeatureserver.dll" ^
-  "apps/%PACKAGENAME%/plugins/provider_mdal.dll" ^
-  "apps/%PACKAGENAME%/plugins/provider_hana.dll" ^
-  "apps/%PACKAGENAME%/plugins/authmethod_oauth2.dll" ^
-  "apps/%PACKAGENAME%/plugins/authmethod_maptilerhmacsha256.dll" ^
+	"apps/%PACKAGENAME%/plugins/authmethod_basic.dll" ^
+	"apps/%PACKAGENAME%/plugins/provider_delimitedtext.dll" ^
+	"apps/%PACKAGENAME%/plugins/authmethod_esritoken.dll" ^
+	"apps/%PACKAGENAME%/plugins/provider_gpx.dll" ^
+	"apps/%PACKAGENAME%/plugins/authmethod_identcert.dll" ^
+	"apps/%PACKAGENAME%/plugins/provider_mssql.dll" ^
+	"apps/%PACKAGENAME%/plugins/authmethod_pkcs12.dll" ^
+	"apps/%PACKAGENAME%/plugins/authmethod_pkipaths.dll" ^
+	"apps/%PACKAGENAME%/plugins/provider_postgres.dll" ^
+	"apps/%PACKAGENAME%/plugins/provider_postgresraster.dll" ^
+	"apps/%PACKAGENAME%/plugins/provider_spatialite.dll" ^
+	"apps/%PACKAGENAME%/plugins/provider_virtuallayer.dll" ^
+	"apps/%PACKAGENAME%/plugins/provider_wcs.dll" ^
+	"apps/%PACKAGENAME%/plugins/provider_wfs.dll" ^
+	"apps/%PACKAGENAME%/plugins/provider_wms.dll" ^
+	"apps/%PACKAGENAME%/plugins/provider_arcgismapserver.dll" ^
+	"apps/%PACKAGENAME%/plugins/provider_arcgisfeatureserver.dll" ^
+	"apps/%PACKAGENAME%/plugins/provider_mdal.dll" ^
+	"apps/%PACKAGENAME%/plugins/provider_hana.dll" ^
+	"apps/%PACKAGENAME%/plugins/authmethod_oauth2.dll" ^
+	"apps/%PACKAGENAME%/plugins/authmethod_maptilerhmacsha256.dll" ^
 	"apps/%PACKAGENAME%/resources/qgis.db" ^
 	"apps/%PACKAGENAME%/resources/spatialite.db" ^
 	"apps/%PACKAGENAME%/resources/srs.db" ^
@@ -450,7 +463,7 @@ for %%g IN (%GRASS_VERSIONS%) do (
 )
 
 %TAR% -C %OSGEO4W_ROOT% -cjf %ARCH%/release/qgis/%PACKAGENAME%-oracle-provider/%PACKAGENAME%-oracle-provider-%VERSION%-%PACKAGE%.tar.bz2 ^
-	"apps/%PACKAGENAME%/plugins/oracleprovider.dll" ^
+	"apps/%PACKAGENAME%/plugins/provider_oracle.dll" ^
 	"apps/%PACKAGENAME%/qtplugins/sqldrivers/qsqlocispatial.dll"
 if errorlevel 1 (echo tar oracle-provider failed & goto error)
 

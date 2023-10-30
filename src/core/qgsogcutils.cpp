@@ -1761,6 +1761,7 @@ Q_GLOBAL_STATIC_WITH_ARGS( IntMap, BINARY_OPERATORS_TAG_NAMES_MAP, (
   {  QLatin1String( "PropertyIsLessThan" ), QgsExpressionNodeBinaryOperator::boLT },
   {  QLatin1String( "PropertyIsGreaterThan" ), QgsExpressionNodeBinaryOperator::boGT },
   {  QLatin1String( "PropertyIsLike" ), QgsExpressionNodeBinaryOperator::boLike },
+  {  QLatin1String( "PropertyIsNotLike" ), QgsExpressionNodeBinaryOperator::boNotLike },
   // arithmetic
   {  QLatin1String( "Add" ), QgsExpressionNodeBinaryOperator::boPlus },
   {  QLatin1String( "Sub" ), QgsExpressionNodeBinaryOperator::boMinus },
@@ -2151,6 +2152,20 @@ QDomElement QgsOgcUtilsExprToFilter::expressionBinaryOperatorToOgcFilter( const 
       boElem.setAttribute( QStringLiteral( "matchCase" ), QStringLiteral( "false" ) );
 
     // setup wildCards to <ogc:PropertyIsLike>
+    boElem.setAttribute( QStringLiteral( "wildCard" ), QStringLiteral( "%" ) );
+    boElem.setAttribute( QStringLiteral( "singleChar" ), QStringLiteral( "_" ) );
+    if ( mFilterVersion == QgsOgcUtils::FILTER_OGC_1_0 )
+      boElem.setAttribute( QStringLiteral( "escape" ), QStringLiteral( "\\" ) );
+    else
+      boElem.setAttribute( QStringLiteral( "escapeChar" ), QStringLiteral( "\\" ) );
+  }
+
+  if ( op == QgsExpressionNodeBinaryOperator::boNotLike || op == QgsExpressionNodeBinaryOperator::boNotILike )
+  {
+    if ( op == QgsExpressionNodeBinaryOperator::boNotILike )
+      boElem.setAttribute( QStringLiteral( "matchCase" ), QStringLiteral( "false" ) );
+
+    // setup wildCards to <ogc:PropertyIsNotLike>
     boElem.setAttribute( QStringLiteral( "wildCard" ), QStringLiteral( "%" ) );
     boElem.setAttribute( QStringLiteral( "singleChar" ), QStringLiteral( "_" ) );
     if ( mFilterVersion == QgsOgcUtils::FILTER_OGC_1_0 )
@@ -2633,6 +2648,10 @@ QDomElement QgsOgcUtilsSQLStatementToFilter::toOgcFilter( const QgsSQLStatement:
     opText = QStringLiteral( "PropertyIsLike" );
   else if ( op == QgsSQLStatement::boILike )
     opText = QStringLiteral( "PropertyIsLike" );
+  else if ( op == QgsSQLStatement::boNotLike )
+    opText = QStringLiteral( "PropertyIsNotLike" );
+  else if ( op == QgsSQLStatement::boNotILike )
+    opText = QStringLiteral( "PropertyIsNotLike" );
 
   if ( opText.isEmpty() )
   {
@@ -2649,6 +2668,20 @@ QDomElement QgsOgcUtilsSQLStatementToFilter::toOgcFilter( const QgsSQLStatement:
       boElem.setAttribute( QStringLiteral( "matchCase" ), QStringLiteral( "false" ) );
 
     // setup wildCards to <ogc:PropertyIsLike>
+    boElem.setAttribute( QStringLiteral( "wildCard" ), QStringLiteral( "%" ) );
+    boElem.setAttribute( QStringLiteral( "singleChar" ), QStringLiteral( "_" ) );
+    if ( mFilterVersion == QgsOgcUtils::FILTER_OGC_1_0 )
+      boElem.setAttribute( QStringLiteral( "escape" ), QStringLiteral( "\\" ) );
+    else
+      boElem.setAttribute( QStringLiteral( "escapeChar" ), QStringLiteral( "\\" ) );
+  }
+
+  if ( op == QgsSQLStatement::boNotLike || op == QgsSQLStatement::boNotILike )
+  {
+    if ( op == QgsSQLStatement::boNotILike )
+      boElem.setAttribute( QStringLiteral( "matchCase" ), QStringLiteral( "false" ) );
+
+    // setup wildCards to <ogc:PropertyIsNotLike>
     boElem.setAttribute( QStringLiteral( "wildCard" ), QStringLiteral( "%" ) );
     boElem.setAttribute( QStringLiteral( "singleChar" ), QStringLiteral( "_" ) );
     if ( mFilterVersion == QgsOgcUtils::FILTER_OGC_1_0 )
@@ -3360,6 +3393,11 @@ QgsExpressionNodeBinaryOperator *QgsOgcUtilsExpressionFromFilter::nodeBinaryOper
   if ( op == QgsExpressionNodeBinaryOperator::boLike && element.hasAttribute( QStringLiteral( "matchCase" ) ) && element.attribute( QStringLiteral( "matchCase" ) ) == QLatin1String( "false" ) )
   {
     op = QgsExpressionNodeBinaryOperator::boILike;
+  }
+
+  if ( op == QgsExpressionNodeBinaryOperator::boNotLike && element.hasAttribute( QStringLiteral( "matchCase" ) ) && element.attribute( QStringLiteral( "matchCase" ) ) == QLatin1String( "false" ) )
+  {
+    op = QgsExpressionNodeBinaryOperator::boNotILike;
   }
 
   QDomElement operandElem = element.firstChildElement();

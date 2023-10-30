@@ -34,6 +34,8 @@
 #include "qgsmapcanvas.h"
 #include "qgsmaplayerstyleguiutils.h"
 #include "qgsmetadatawidget.h"
+#include "sbjoinedtogglewidget.h"
+#include "sbminpixelsizefilterutils.h"
 #include "qgsmetadataurlitemdelegate.h"
 #include "qgsproject.h"
 #include "qgsvectorlayer.h"
@@ -232,6 +234,14 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
   mMetadataWidget->setMapCanvas( mCanvas );
   metadataLayout->addWidget( mMetadataWidget );
   metadataFrame->setLayout( metadataLayout );
+
+  // Joined Toggle tab
+  QVBoxLayout *toggleLayout = new QVBoxLayout( joinedToggleFrame );
+  toggleLayout->setContentsMargins( 0, 0, 0, 0 );
+  mSbJoinedToggleWidget = new sbJoinedToggleWidget( this, mLayer );
+  mSbJoinedToggleWidget->layout()->setContentsMargins( 0, 0, 0, 0 );
+  toggleLayout->addWidget( mSbJoinedToggleWidget );
+  joinedToggleFrame->setLayout( toggleLayout );
 
   QVBoxLayout *temporalLayout = new QVBoxLayout( temporalFrame );
   temporalLayout->setContentsMargins( 0, 0, 0, 0 );
@@ -587,6 +597,16 @@ void QgsVectorLayerProperties::syncToLayer()
   else if ( mCanvas )
     mReferenceScaleWidget->setScale( mCanvas->scale() );
 
+  bool minPixelSizeFilterEnabled;
+  double minPixelSizeFilterSize;
+  double minPixelSizeFilterMaxScale;
+  bool minPixelSizeFilterDebugMode;
+  sbMinPixelSizeFilterUtils::getFilterProperties( mLayer, &minPixelSizeFilterEnabled, &minPixelSizeFilterSize, &minPixelSizeFilterMaxScale, &minPixelSizeFilterDebugMode );
+  mUseMinPixelSizeFilter->setChecked( minPixelSizeFilterEnabled );
+  mMinPixelSizeSpinBox->setValue( minPixelSizeFilterSize );
+  mMinPixelSizeMaxScaleWidget->setScale( minPixelSizeFilterMaxScale );
+  mMinPixelSizeDebugCheck->setChecked( minPixelSizeFilterDebugMode );
+
   // get simplify drawing configuration
   const QgsVectorSimplifyMethod &simplifyMethod = mLayer->simplifyMethod();
   mSimplifyDrawingGroupBox->setChecked( simplifyMethod.simplifyHints() != QgsVectorSimplifyMethod::NoSimplification );
@@ -736,6 +756,9 @@ void QgsVectorLayerProperties::apply()
   // save metadata
   mMetadataWidget->acceptMetadata();
   mMetadataFilled = false;
+
+  if ( mSbJoinedToggleWidget )
+    mSbJoinedToggleWidget->applyToLayer();
 
   // save masking settings
   if ( mMaskingWidget && mMaskingWidget->hasBeenPopulated() )
@@ -888,6 +911,12 @@ void QgsVectorLayerProperties::apply()
   simplifyMethod.setForceLocalOptimization( !mSimplifyDrawingAtProvider->isChecked() );
   simplifyMethod.setMaximumScale( mSimplifyMaximumScaleComboBox->scale() );
   mLayer->setSimplifyMethod( simplifyMethod );
+
+  bool minPixelSizeFilterEnabled = mUseMinPixelSizeFilter->isChecked();
+  double minPixelSizeFilterSize = mMinPixelSizeSpinBox->value();
+  double minPixelSizeFilterMaxScale = mMinPixelSizeMaxScaleWidget->scale();
+  bool minPixelSizeFilterDebugMode = mMinPixelSizeDebugCheck->isChecked();
+  sbMinPixelSizeFilterUtils::setFilterProperties( mLayer, minPixelSizeFilterEnabled, minPixelSizeFilterSize, minPixelSizeFilterMaxScale, minPixelSizeFilterDebugMode );
 
   if ( mLayer->renderer() )
   {

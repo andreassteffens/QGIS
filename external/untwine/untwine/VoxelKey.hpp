@@ -13,7 +13,7 @@
 #include <string>
 #include <cstdint>
 #include <algorithm>
-
+#include <cstdint>
 #pragma once
 
 namespace untwine

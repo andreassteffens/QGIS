@@ -34,7 +34,7 @@ struct CORE_EXPORT QgsVertexId
    * Constructor for QgsVertexId.
    */
   explicit QgsVertexId( int _part = -1, int _ring = -1, int _vertex = -1, Qgis::VertexType _type = Qgis::VertexType::Segment ) SIP_HOLDGIL
-: part( _part )
+    : part( _part )
   , ring( _ring )
   , vertex( _vertex )
   , type( _type )

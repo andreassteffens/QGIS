@@ -48,14 +48,14 @@ namespace Qt3DCore
  * \since QGIS 3.16
  */
 enum class QgsMaterialSettingsRenderingTechnique SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsAbstractMaterialSettings, RenderingTechnique ): int
-  {
-  Triangles, //!< Triangle based rendering (default)
-  Lines, //!< Line based rendering, requires line data
-  InstancedPoints, //!< Instanced based rendering, requiring triangles and point data
-  Points, //!< Point based rendering, requires point data
-  TrianglesWithFixedTexture, //!< Triangle based rendering, using a fixed, non-user-configurable texture (e.g. for terrain rendering)
-  TrianglesFromModel, //!< Triangle based rendering, using a model object source
-  TrianglesDataDefined, //!< Triangle based rendering with possibility of datadefined color \since QGIS 3.18
+{
+    Triangles, //!< Triangle based rendering (default)
+    Lines, //!< Line based rendering, requires line data
+    InstancedPoints, //!< Instanced based rendering, requiring triangles and point data
+    Points, //!< Point based rendering, requires point data
+    TrianglesWithFixedTexture, //!< Triangle based rendering, using a fixed, non-user-configurable texture (e.g. for terrain rendering)
+    TrianglesFromModel, //!< Triangle based rendering, using a model object source
+    TrianglesDataDefined, //!< Triangle based rendering with possibility of datadefined color \since QGIS 3.18
 };
 
 

@@ -17,6 +17,7 @@
 #include "qgsexpressioncontextutils.h"
 #include "qgsfeedback.h"
 #include "qgslogger.h"
+#include "qgsvectortilebasicrenderer.h"
 #include "qgsvectortilemvtdecoder.h"
 #include "qgsvectortilelayer.h"
 #include "qgsvectortileloader.h"

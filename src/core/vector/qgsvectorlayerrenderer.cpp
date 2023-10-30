@@ -42,6 +42,8 @@
 #include "qgssettingsentryimpl.h"
 #include "qgsruntimeprofiler.h"
 #include "qgsapplication.h"
+#include "qgsproject.h"
+#include "sbminpixelsizefilterutils.h"
 
 #include <QPicture>
 #include <QTimer>
@@ -115,6 +117,25 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
   }
 
   mSelectedFeatureIds = layer->selectedFeatureIds();
+
+  mSbRenderSelectionOnly = layer->sbRenderSelectionOnly();
+
+  bool bRenderMinPixelSizeFilter;
+  mSbRenderMinPixelSize = -1;
+  mSbRenderMinPixelSizeMaxScale = -1;
+  mSbRenderMinPixelSizeDebug = false;
+  mSbRenderMinPixelSizeSourceFiltering = layer->providerType().compare( "ogr", Qt::CaseInsensitive ) == 0;
+
+  sbMinPixelSizeFilterUtils::getFilterProperties( mLayer, &bRenderMinPixelSizeFilter, &mSbRenderMinPixelSize, &mSbRenderMinPixelSizeMaxScale, &mSbRenderMinPixelSizeDebug );
+  if ( !bRenderMinPixelSizeFilter )
+    mSbRenderMinPixelSize = mSbRenderMinPixelSizeMaxScale = -1;
+
+  if ( mLayer->extent().isFinite() && !mLayer->extent().isNull() )
+    mSbScaleFactor = context.coordinateTransform().scaleFactor( mLayer->extent() );
+  else
+    mSbScaleFactor = 1;
+
+  mSbMapUnitsPerPixel = context.mapToPixel().mapUnitsPerPixel();
 
   mDrawVertexMarkers = nullptr != layer->editBuffer();
 
@@ -347,6 +368,9 @@ bool QgsVectorLayerRenderer::renderInternal( QgsFeatureRenderer *renderer, int r
                                      .setFilterRect( requestExtent )
                                      .setSubsetOfAttributes( mAttrNames, mFields )
                                      .setExpressionContext( context.expressionContext() );
+
+  featureRequest.sbSetRenderMinPixelSizeFilter( mSbRenderMinPixelSize, mSbRenderMinPixelSizeMaxScale, mSbScaleFactor, mSbMapUnitsPerPixel, renderContext()->rendererScale(), mGeometryType, mSbRenderMinPixelSizeSourceFiltering, mSbRenderMinPixelSizeDebug );
+
   if ( renderer->orderByEnabled() )
   {
     featureRequest.setOrderBy( renderer->orderBy() );
@@ -532,6 +556,12 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
       if ( !fet.hasGeometry() || fet.geometry().isEmpty() )
         continue; // skip features without geometry
 
+      if ( mSbRenderSelectionOnly )
+      {
+        if ( !mSelectedFeatureIds.contains( fet.id() ) )
+          continue;
+      }
+
       if ( clipEngine && !clipEngine->intersects( fet.geometry().constGet() ) )
         continue; // skip features outside of clipping region
 
@@ -715,6 +745,12 @@ void QgsVectorLayerRenderer::drawRendererLevels( QgsFeatureRenderer *renderer, Q
 
     if ( !fet.hasGeometry() )
       continue; // skip features without geometry
+
+    if ( mSbRenderSelectionOnly )
+    {
+      if ( !mSelectedFeatureIds.contains( fet.id() ) )
+        continue;
+    }
 
     if ( clipEngine && !clipEngine->intersects( fet.geometry().constGet() ) )
       continue; // skip features outside of clipping region

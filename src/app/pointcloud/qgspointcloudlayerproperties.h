@@ -29,6 +29,7 @@ class QgsMapLayer;
 class QgsMapCanvas;
 class QgsMessageBar;
 class QgsPointCloudLayer;
+class sbJoinedToggleWidget;
 class QgsMetadataWidget;
 class QgsMapLayerConfigWidgetFactory;
 class QgsMapLayerConfigWidget;
@@ -113,6 +114,7 @@ class APP_EXPORT QgsPointCloudLayerProperties : public QgsLayerPropertiesDialog,
     QAction *mActionSaveMetadataAs = nullptr;
 
     QgsMetadataWidget *mMetadataWidget = nullptr;
+    sbJoinedToggleWidget *mSbJoinedToggleWidget = nullptr;
 
     QgsCoordinateReferenceSystem mBackupCrs;
 

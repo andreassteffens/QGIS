@@ -28,6 +28,7 @@ class QgsRendererMeshPropertiesWidget;
 class QgsMeshLayer3DRendererWidget;
 class QgsMeshStaticDatasetWidget;
 class QgsMetadataWidget;
+class sbJoinedToggleWidget;
 
 /**
  * \ingroup gui
@@ -106,6 +107,7 @@ class GUI_EXPORT QgsMeshLayerProperties : public QgsLayerPropertiesDialog, priva
     QAction *mActionSaveMetadataAs = nullptr;
 
     QgsMetadataWidget *mMetadataWidget = nullptr;
+    sbJoinedToggleWidget *mSbJoinedToggleWidget = nullptr;
 
     bool mIsMapSettingsTemporal = false;
 

@@ -297,6 +297,23 @@ class TestQgsWmsProvider: public QgsTest
       QCOMPARE( candidates.at( candidateIndex ).layerTypes(), QList< Qgis::LayerType >() << Qgis::LayerType::Raster );
     }
 
+    void testMBTilesSample()
+    {
+      QString dataDir( TEST_DATA_DIR );
+      QUrlQuery uq;
+      uq.addQueryItem( "type", "mbtiles" );
+      uq.addQueryItem( "interpretation", "maptilerterrain" );
+      uq.addQueryItem( "url", QUrl::fromLocalFile( dataDir + "/isle_of_man.mbtiles" ).toString() );
+
+      QgsRasterLayer layer( uq.toString(), "isle_of_man", "wms" );
+      QVERIFY( layer.isValid() );
+
+      bool ok = false;
+      const double value = layer.dataProvider()->sample( QgsPointXY( -496419, 7213350 ), 1, &ok );
+      QVERIFY( ok );
+      QCOMPARE( value, 1167617.375 );
+    }
+
     void testDpiDependentData()
     {
       QString dataDir( TEST_DATA_DIR );

@@ -1,6 +1,6 @@
 /***************************************************************************
-                      qgsfeaturefilter.cpp
-                      --------------------
+            qgsfeaturefilter.cpp
+            --------------------
   begin                : 26-10-2017
   copyright            : (C) 2017 by Patrick Valsecchi
   email                : patrick dot valsecchi at camptocamp dot com
@@ -19,14 +19,16 @@
 #include "qgsfeaturerequest.h"
 #include "qgsvectorlayer.h"
 #include "qgsexpression.h"
+#include "qgsmessagelog.h"
 
 void QgsFeatureFilter::filterFeatures( const QgsVectorLayer *layer, QgsFeatureRequest &filterFeatures ) const
 {
   const QString expr = mFilters[layer->id()];
   if ( !expr.isEmpty() )
-  {
     filterFeatures.setFilterExpression( expr );
-  }
+
+  if ( mSbQuerySubstitutions.contains( layer->id() ) )
+    filterFeatures.sbSetQuerySubstitutions( mSbQuerySubstitutions[layer->id()] );
 }
 
 QStringList QgsFeatureFilter::layerAttributes( const QgsVectorLayer *, const QStringList &attributes ) const
@@ -39,10 +41,16 @@ QgsFeatureFilterProvider *QgsFeatureFilter::clone() const
 {
   auto result = new QgsFeatureFilter();
   result->mFilters = mFilters;
+  result->mSbQuerySubstitutions = mSbQuerySubstitutions;
   return result;
 }
 
 void QgsFeatureFilter::setFilter( const QgsVectorLayer *layer, const QgsExpression &filter )
 {
   mFilters[layer->id()] = filter.dump();
+}
+
+void QgsFeatureFilter::sbSetQuerySubstitutions( const QgsVectorLayer *layer, const QStringList &substitutions )
+{
+  mSbQuerySubstitutions[layer->id()] = substitutions;
 }

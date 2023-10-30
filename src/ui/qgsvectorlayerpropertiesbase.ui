@@ -134,6 +134,18 @@
          </item>
          <item>
           <property name="text">
+           <string>Joined Toggle</string>
+          </property>
+          <property name="toolTip">
+           <string>([a]tapa) Joined Visibility Toggle Settings</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../images/images.qrc">
+            <normaloff>:/images/themes/default/sb_joinedtoggle.svg</normaloff>:/images/themes/default/sb_joinedtoggle.svg</iconset>
+          </property>
+         </item>
+         <item>
+          <property name="text">
            <string>Labels</string>
           </property>
           <property name="toolTip">
@@ -363,7 +375,7 @@
           </sizepolicy>
          </property>
          <property name="currentIndex">
-          <number>0</number>
+          <number>13</number>
          </property>
          <widget class="QWidget" name="mOptsPage_Information">
           <layout class="QVBoxLayout" name="verticalLayout_5">
@@ -543,7 +555,7 @@
                  <property name="checkable">
                   <bool>false</bool>
                  </property>
-                 <property name="syncGroup" stdset="0">
+                 <property name="syncGroup">
                   <string notr="true">vectorgeneral</string>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_28">
@@ -551,7 +563,7 @@
                    <number>6</number>
                   </property>
                   <item>
-                   <widget class="QgsProjectionSelectionWidget" name="mCrsSelector" native="true">
+                   <widget class="QgsProjectionSelectionWidget" name="mCrsSelector">
                     <property name="focusPolicy">
                      <enum>Qt::StrongFocus</enum>
                     </property>
@@ -598,7 +610,7 @@
                  <property name="checkable">
                   <bool>false</bool>
                  </property>
-                 <property name="syncGroup" stdset="0">
+                 <property name="syncGroup">
                   <string notr="true">vectorgeneral</string>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_31">
@@ -771,6 +783,32 @@
                </item>
               </layout>
              </widget>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="mOptsPage_JoinedToggle">
+          <layout class="QVBoxLayout" name="verticalLayout_47">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QFrame" name="joinedToggleFrame">
+             <property name="frameShape">
+              <enum>QFrame::NoFrame</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
             </widget>
            </item>
           </layout>
@@ -1095,7 +1133,7 @@
                 <property name="checkable">
                  <bool>false</bool>
                 </property>
-                <property name="syncGroup" stdset="0">
+                <property name="syncGroup">
                  <string notr="true">vectormeta</string>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_11">
@@ -1429,7 +1467,7 @@
                 </property>
                 <layout class="QGridLayout" name="gridLayout_50">
                  <item row="0" column="0">
-                  <widget class="QgsFieldExpressionWidget" name="mDisplayExpressionWidget" native="true">
+                  <widget class="QgsFieldExpressionWidget" name="mDisplayExpressionWidget">
                    <property name="focusPolicy">
                     <enum>Qt::StrongFocus</enum>
                    </property>
@@ -1538,7 +1576,7 @@
                   </widget>
                  </item>
                  <item row="1" column="0">
-                  <widget class="QgsFieldExpressionWidget" name="mMapTipExpressionFieldWidget" native="true">
+                  <widget class="QgsFieldExpressionWidget" name="mMapTipExpressionFieldWidget">
                    <property name="focusPolicy">
                     <enum>Qt::StrongFocus</enum>
                    </property>
@@ -1609,7 +1647,7 @@
                  </property>
                  <layout class="QGridLayout" name="gridLayout_6">
                   <item row="0" column="0">
-                   <widget class="QgsScaleRangeWidget" name="mScaleRangeWidget" native="true">
+                   <widget class="QgsScaleRangeWidget" name="mScaleRangeWidget">
                     <property name="focusPolicy">
                      <enum>Qt::StrongFocus</enum>
                     </property>
@@ -1746,7 +1784,7 @@
                  <property name="checkable">
                   <bool>true</bool>
                  </property>
-                 <property name="syncGroup" stdset="0">
+                 <property name="syncGroup">
                   <string notr="true">vectorgeneral</string>
                  </property>
                  <layout class="QGridLayout" name="gridLayout">
@@ -1765,7 +1803,7 @@
                    </widget>
                   </item>
                   <item row="2" column="1">
-                   <widget class="QgsScaleWidget" name="mReferenceScaleWidget" native="true">
+                   <widget class="QgsScaleWidget" name="mReferenceScaleWidget">
                     <property name="focusPolicy">
                      <enum>Qt::StrongFocus</enum>
                     </property>
@@ -1843,6 +1881,100 @@
                     </property>
                     <property name="text">
                      <string>Change…</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsCollapsibleGroupBox" name="mUseMinPixelSizeFilter">
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="focusPolicy">
+                  <enum>Qt::StrongFocus</enum>
+                 </property>
+                 <property name="title">
+                  <string>([a]tapa) Minimum Pixel Size Filter</string>
+                 </property>
+                 <property name="checkable">
+                  <bool>true</bool>
+                 </property>
+                 <property name="syncGroup">
+                  <string notr="true">vectorgeneral</string>
+                 </property>
+                 <layout class="QGridLayout" name="gridLayout_9">
+                  <item row="1" column="0">
+                   <widget class="QLabel" name="mMinPixelSizeMaxScaleLabel">
+                    <property name="text">
+                     <string>Maximum Scale</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="mMinPixelSizeLabel">
+                    <property name="text">
+                     <string>Minimum Pixel Size</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QDoubleSpinBox" name="mMinPixelSizeSpinBox">
+                    <property name="decimals">
+                     <number>1</number>
+                    </property>
+                    <property name="minimum">
+                     <double>0.100000000000000</double>
+                    </property>
+                    <property name="singleStep">
+                     <double>0.100000000000000</double>
+                    </property>
+                    <property name="value">
+                     <double>1.000000000000000</double>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="2">
+                   <spacer name="horizontalSpacer_5">
+                    <property name="orientation">
+                     <enum>Qt::Horizontal</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>40</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
+                  <item row="2" column="0">
+                   <widget class="QLabel" name="mMinPixelSizeDebugLabel">
+                    <property name="text">
+                     <string>Debug Mode</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="1">
+                   <widget class="QCheckBox" name="mMinPixelSizeDebugCheck">
+                    <property name="text">
+                     <string/>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QgsScaleWidget" name="mMinPixelSizeMaxScaleWidget">
+                    <property name="showCurrentScaleButton">
+                     <bool>true</bool>
+                    </property>
+                    <property name="scale">
+                     <bool>true</bool>
+                    </property>
+                    <property name="minScale">
+                     <bool>false</bool>
                     </property>
                    </widget>
                   </item>
@@ -2186,7 +2318,7 @@
                  <property name="title">
                   <string>Description</string>
                  </property>
-                 <property name="syncGroup" stdset="0">
+                 <property name="syncGroup">
                   <string notr="true">vectormeta</string>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_5">
@@ -2328,7 +2460,7 @@
                  <property name="title">
                   <string>Attribution</string>
                  </property>
-                 <property name="syncGroup" stdset="0">
+                 <property name="syncGroup">
                   <string notr="true">vectormeta</string>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_7">
@@ -2633,6 +2765,12 @@
    <header>qgsdoublespinbox.h</header>
   </customwidget>
   <customwidget>
+   <class>QgsFieldExpressionWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsfieldexpressionwidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
    <class>QgsFilterLineEdit</class>
    <extends>QLineEdit</extends>
    <header>qgsfilterlineedit.h</header>
@@ -2644,15 +2782,20 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>QgsScrollArea</class>
-   <extends>QScrollArea</extends>
-   <header>qgsscrollarea.h</header>
+   <class>QgsScaleRangeWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsscalerangewidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsScaleWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsscalewidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>QgsFieldExpressionWidget</class>
-   <extends>QWidget</extends>
-   <header>qgsfieldexpressionwidget.h</header>
+   <class>QgsScrollArea</class>
+   <extends>QScrollArea</extends>
+   <header>qgsscrollarea.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
@@ -2673,11 +2816,6 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>QgsScaleRangeWidget</class>
-   <extends>QWidget</extends>
-   <header>qgsscalerangewidget.h</header>
-  </customwidget>
-  <customwidget>
    <class>QgsLayerTreeEmbeddedConfigWidget</class>
    <extends>QWidget</extends>
    <header>qgslayertreeembeddedconfigwidget.h</header>
@@ -2692,12 +2830,6 @@
    <class>QgsVectorLayerLegendWidget</class>
    <extends>QWidget</extends>
    <header>qgsvectorlayerlegendwidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>QgsScaleWidget</class>
-   <extends>QWidget</extends>
-   <header>qgsscalewidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>

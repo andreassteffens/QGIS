@@ -958,6 +958,8 @@ set(QGIS_CORE_SRCS
   qgsuserprofile.cpp
   qgsuserprofilemanager.cpp
 
+  sbjoinedtoggleutils.cpp
+  sbminpixelsizefilterutils.cpp
 )
 
 if (WITH_INTERNAL_POLY2TRI)
@@ -2008,6 +2010,9 @@ set(QGIS_CORE_HDRS
   vectortile/qgsvtpktiles.h
   vectortile/qgsvtpkvectortiledataprovider.h
   vectortile/qgsxyzvectortiledataprovider.h
+  
+  sbjoinedtoggleutils.h
+  sbminpixelsizefilterutils.h
 )
 
 set(QGIS_CORE_PRIVATE_HDRS

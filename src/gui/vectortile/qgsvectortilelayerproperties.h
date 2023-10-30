@@ -22,6 +22,7 @@
 class QgsMapLayer;
 class QgsMapCanvas;
 class QgsMessageBar;
+class sbJoinedToggleWidget;
 class QgsVectorTileBasicLabelingWidget;
 class QgsVectorTileBasicRendererWidget;
 class QgsVectorTileLayer;
@@ -85,6 +86,7 @@ class GUI_EXPORT QgsVectorTileLayerProperties : public QgsLayerPropertiesDialog,
     QAction *mActionSaveMetadataAs = nullptr;
 
     QgsMetadataWidget *mMetadataWidget = nullptr;
+    sbJoinedToggleWidget *mSbJoinedToggleWidget = nullptr;
 
     QgsProviderSourceWidget *mSourceWidget = nullptr;
 

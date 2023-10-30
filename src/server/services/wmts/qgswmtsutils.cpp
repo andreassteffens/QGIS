@@ -411,6 +411,30 @@ namespace QgsWmts
         pLayer.wgs84BoundingRect = QgsRectangle( -180, -90, 180, 90 );
       }
 
+      QStringList wmtsGridConfigList = project->readListEntry( QStringLiteral( "WMTSGrids" ), QStringLiteral( "Config" ) );
+      for ( const QString &c : wmtsGridConfigList )
+      {
+        QStringList config = c.split( ',' );
+        QString crsStr = config[0];
+
+        if ( !fixedTileMatrixInfoMap.contains( crsStr ) )
+        {
+          QgsCoordinateReferenceSystem gridCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( crsStr );
+          QgsCoordinateTransform gridTransform = QgsCoordinateTransform( projCrs, gridCrs, project );
+
+          try
+          {
+            QgsRectangle gridRect = gridTransform.transformBoundingBox( projRect );
+            if ( !pLayer.sbCrsBoundingRects.contains( gridCrs.authid() ) )
+              pLayer.sbCrsBoundingRects.insert( gridCrs.authid(), gridRect );
+          }
+          catch ( const QgsCsException & )
+          {
+            // nothing to be done here for now
+          }
+        }
+      }
+
       // Formats
       const bool wmtsPngProject = project->readBoolEntry( QStringLiteral( "WMTSPngLayers" ), QStringLiteral( "Project" ) );
       if ( wmtsPngProject )
@@ -418,6 +442,9 @@ namespace QgsWmts
       const bool wmtsJpegProject = project->readBoolEntry( QStringLiteral( "WMTSJpegLayers" ), QStringLiteral( "Project" ) );
       if ( wmtsJpegProject )
         pLayer.formats << QStringLiteral( "image/jpeg" );
+      const bool wmtsWebpProject = project->readBoolEntry( QStringLiteral( "WMTSWebpLayers" ), QStringLiteral( "Project" ) );
+      if ( wmtsWebpProject )
+        pLayer.formats << QStringLiteral( "image/webp" );
 
       // Project is not queryable in WMS
       //pLayer.queryable = ( nonIdentifiableLayers.count() != project->count() );
@@ -433,6 +460,7 @@ namespace QgsWmts
 
       const QStringList wmtsPngGroupNameList = project->readListEntry( QStringLiteral( "WMTSPngLayers" ), QStringLiteral( "Group" ) );
       const QStringList wmtsJpegGroupNameList = project->readListEntry( QStringLiteral( "WMTSJpegLayers" ), QStringLiteral( "Group" ) );
+      const QStringList wmtsWebpGroupNameList = project->readListEntry( QStringLiteral( "WMTSWebpLayers" ), QStringLiteral( "Group" ) );
 
       for ( const QString &gName : wmtsGroupNameList )
       {
@@ -475,6 +503,34 @@ namespace QgsWmts
           {
             wgs84BoundingRect.combineExtentWith( QgsRectangle( -180, -90, 180, 90 ) );
           }
+
+          QStringList wmtsGridConfigList = project->readListEntry( QStringLiteral( "WMTSGrids" ), QStringLiteral( "Config" ) );
+          for ( const QString &c : wmtsGridConfigList )
+          {
+            QStringList config = c.split( ',' );
+            QString crsStr = config[0];
+
+            if ( !fixedTileMatrixInfoMap.contains( crsStr ) )
+            {
+              QgsCoordinateReferenceSystem gridCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( crsStr );
+              QgsCoordinateTransform gridTransform = QgsCoordinateTransform( layerCrs, gridCrs, project );
+
+              try
+              {
+                QgsRectangle gridRect = gridTransform.transformBoundingBox( l->extent() );
+
+                if ( pLayer.sbCrsBoundingRects.contains( gridCrs.authid() ) )
+                  pLayer.sbCrsBoundingRects[gridCrs.authid()].combineExtentWith( gridRect );
+                else
+                  pLayer.sbCrsBoundingRects.insert( gridCrs.authid(), gridRect );
+              }
+              catch ( const QgsCsException & )
+              {
+                // nothing to be done here for now
+              }
+            }
+          }
+
           if ( !queryable && l->flags().testFlag( QgsMapLayer::Identifiable ) )
           {
             queryable = true;
@@ -504,6 +560,8 @@ namespace QgsWmts
           pLayer.formats << QStringLiteral( "image/png" );
         if ( wmtsJpegGroupNameList.contains( gName ) )
           pLayer.formats << QStringLiteral( "image/jpeg" );
+        if ( wmtsWebpGroupNameList.contains( gName ) )
+          pLayer.formats << QStringLiteral( "image/webp" );
 
         wmtsLayers.append( pLayer );
       }
@@ -512,6 +570,7 @@ namespace QgsWmts
     const QStringList wmtsLayerIdList = project->readListEntry( QStringLiteral( "WMTSLayers" ), QStringLiteral( "Layer" ) );
     const QStringList wmtsPngLayerIdList = project->readListEntry( QStringLiteral( "WMTSPngLayers" ), QStringLiteral( "Layer" ) );
     const QStringList wmtsJpegLayerIdList = project->readListEntry( QStringLiteral( "WMTSJpegLayers" ), QStringLiteral( "Layer" ) );
+    const QStringList wmtsWebpLayerIdList = project->readListEntry( QStringLiteral( "WMTSWebpLayers" ), QStringLiteral( "Layer" ) );
 
     for ( const QString &lId : wmtsLayerIdList )
     {
@@ -548,6 +607,30 @@ namespace QgsWmts
         pLayer.wgs84BoundingRect = QgsRectangle( -180, -90, 180, 90 );
       }
 
+      QStringList wmtsGridConfigList = project->readListEntry( QStringLiteral( "WMTSGrids" ), QStringLiteral( "Config" ) );
+      for ( const QString &c : wmtsGridConfigList )
+      {
+        QStringList config = c.split( ',' );
+        QString crsStr = config[0];
+
+        if ( !fixedTileMatrixInfoMap.contains( crsStr ) )
+        {
+          QgsCoordinateReferenceSystem gridCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( crsStr );
+          QgsCoordinateTransform gridTransform = QgsCoordinateTransform( layerCrs, gridCrs, project );
+
+          try
+          {
+            QgsRectangle gridRect = gridTransform.transformBoundingBox( l->extent() );
+            if ( !pLayer.sbCrsBoundingRects.contains( gridCrs.authid() ) )
+              pLayer.sbCrsBoundingRects.insert( gridCrs.authid(), gridRect );
+          }
+          catch ( const QgsCsException & )
+          {
+            // nothing to be done here for now
+          }
+        }
+      }
+
       // Formats
       if ( wmtsPngLayerIdList.contains( lId ) )
         pLayer.formats << QStringLiteral( "image/png" );
@@ -582,14 +665,23 @@ namespace QgsWmts
     if ( tms.ref != QLatin1String( "EPSG:4326" ) )
     {
       const QgsCoordinateReferenceSystem crs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( tms.ref );
-      const QgsCoordinateTransform exGeoTransform( wgs84, crs, project );
-      try
+
+      if ( layer.sbCrsBoundingRects.contains( crs.authid() ) )
       {
-        rect = exGeoTransform.transformBoundingBox( layer.wgs84BoundingRect );
+        rect = layer.sbCrsBoundingRects[crs.authid()];
       }
-      catch ( const QgsCsException & )
+      else
       {
-        return tmsl;
+        const QgsCoordinateTransform exGeoTransform( wgs84, crs, project );
+
+        try
+        {
+          rect = exGeoTransform.transformBoundingBox( layer.wgs84BoundingRect );
+        }
+        catch ( const QgsCsException & )
+        {
+          return tmsl;
+        }
       }
     }
     tmsl.ref = tms.ref;
@@ -768,17 +860,17 @@ namespace QgsWmts
     QString bbox;
     if ( tms.hasAxisInverted )
     {
-      bbox = qgsDoubleToString( miny, 6 ) + ',' +
-             qgsDoubleToString( minx, 6 ) + ',' +
-             qgsDoubleToString( maxy, 6 ) + ',' +
-             qgsDoubleToString( maxx, 6 );
+      bbox = qgsDoubleToString( miny, 9 ) + ',' +
+             qgsDoubleToString( minx, 9 ) + ',' +
+             qgsDoubleToString( maxy, 9 ) + ',' +
+             qgsDoubleToString( maxx, 9 );
     }
     else
     {
-      bbox = qgsDoubleToString( minx, 6 ) + ',' +
-             qgsDoubleToString( miny, 6 ) + ',' +
-             qgsDoubleToString( maxx, 6 ) + ',' +
-             qgsDoubleToString( maxy, 6 );
+      bbox = qgsDoubleToString( minx, 9 ) + ',' +
+             qgsDoubleToString( miny, 9 ) + ',' +
+             qgsDoubleToString( maxx, 9 ) + ',' +
+             qgsDoubleToString( maxy, 9 );
     }
 
     QUrlQuery query;

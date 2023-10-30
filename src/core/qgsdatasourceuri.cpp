@@ -221,6 +221,10 @@ QgsDataSourceUri::QgsDataSourceUri( const QString &u )
       {
         mHttpHeaders.insert( pname, pval );
       }
+      else if ( pname.startsWith( QgsHttpHeaders::PARAM_PREFIX ) )
+      {
+        mHttpHeaders.insert( pname, pval );
+      }
       else
       {
         QgsDebugMsgLevel( "parameter \"" + pname + "\":\"" + pval + "\" added", 4 );

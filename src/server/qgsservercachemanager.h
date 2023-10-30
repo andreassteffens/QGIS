@@ -135,6 +135,8 @@ class SERVER_EXPORT QgsServerCacheManager
      */
     void registerServerCache( QgsServerCacheFilter *serverCache, int priority = 0 );
 
+    QString sbGetProjectCacheId( const QgsProject *project ) const SIP_SKIP;
+
   private:
     QString getCacheKey( bool &cache, QgsAccessControl *accessControl, const QgsServerRequest &request ) const;
     //! The ServerCache plugins registry

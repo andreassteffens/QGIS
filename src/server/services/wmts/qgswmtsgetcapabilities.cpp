@@ -39,7 +39,7 @@ namespace QgsWmts
    * Output WMTS  GetCapabilities response
    */
   void writeGetCapabilities( QgsServerInterface *serverIface, const QgsProject *project, const QString &version,
-                             const QgsServerRequest &request, QgsServerResponse &response )
+                             const QgsServerRequest &request, QgsServerResponse &response, bool sbJustLoaded )
   {
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
     QgsAccessControl *accessControl = serverIface->accessControls();
@@ -49,7 +49,7 @@ namespace QgsWmts
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
     QgsServerCacheManager *cacheManager = serverIface->cacheManager();
-    if ( cacheManager && cacheManager->getCachedDocument( &doc, project, request, accessControl ) )
+    if ( !sbJustLoaded && cacheManager && cacheManager->getCachedDocument( &doc, project, request, accessControl ) )
     {
       capabilitiesDocument = &doc;
     }
@@ -394,14 +394,20 @@ namespace QgsWmts
 
           QgsRectangle rect;
           const QgsCoordinateReferenceSystem crs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( tms.ref );
-          const QgsCoordinateTransform exGeoTransform( wgs84, crs, project );
-          try
+
+          if ( wmtsLayer.sbCrsBoundingRects.contains( crs.authid() ) )
+            rect = wmtsLayer.sbCrsBoundingRects[crs.authid()];
+          else
           {
-            rect = exGeoTransform.transformBoundingBox( wmtsLayer.wgs84BoundingRect );
-          }
-          catch ( const QgsCsException & )
-          {
-            continue;
+            const QgsCoordinateTransform exGeoTransform( wgs84, crs, project );
+            try
+            {
+              rect = exGeoTransform.transformBoundingBox( wmtsLayer.wgs84BoundingRect );
+            }
+            catch ( const QgsCsException & )
+            {
+              continue;
+            }
           }
 
           int precision = 3;

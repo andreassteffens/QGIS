@@ -3852,6 +3852,12 @@ void QgsGdalProvider::initBaseDataset()
       }
     }
 
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,7,0)
+    if ( myGdalDataType == GDT_Int8 )
+    {
+      myGdalDataType = GDT_Int16;
+    }
+#endif
 #if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,5,0)
     if ( myGdalDataType == GDT_Int64 || myGdalDataType == GDT_UInt64 )
     {
@@ -3929,6 +3935,10 @@ bool QgsGdalProvider::write( void *data, int band, int width, int height, int xO
     return false;
   }
   GDALDataType gdalDataType = GDALGetRasterDataType( rasterBand );
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,7,0)
+  if ( gdalDataType == GDT_Int8 )
+    gdalDataType = GDT_Int16;
+#endif
 #if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,5,0)
   if ( gdalDataType == GDT_Int64 || gdalDataType == GDT_UInt64 )
     gdalDataType = GDT_Float64;

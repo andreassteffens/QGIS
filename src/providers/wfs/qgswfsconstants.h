@@ -52,6 +52,8 @@ struct QgsWFSConstants
   static const QString URI_PARAM_SKIP_INITIAL_GET_FEATURE;
   static const QString URI_PARAM_GEOMETRY_TYPE_FILTER;
   static const QString URI_PARAM_SQL;
+  static const QString URI_PARAM_SB_FALLBACK_GEOMETRY_TYPE;
+  static const QString URI_PARAM_SB_FALLBACK_GEOMETRY_NAME;
 
   //
   static const QString VERSION_AUTO;

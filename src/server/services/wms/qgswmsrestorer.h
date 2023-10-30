@@ -28,6 +28,8 @@
 class QgsMapLayer;
 class QgsAbstractVectorLayerLabeling;
 
+using namespace QgsWms;
+
 /**
  * \ingroup server
  * \brief RAII class to restore layer configuration on destruction (opacity,
@@ -42,7 +44,13 @@ class QgsLayerRestorer
      * Constructor for QgsLayerRestorer.
      * \param layers List of layers to restore in their initial states
      */
-    QgsLayerRestorer( const QList<QgsMapLayer *> &layers );
+    QgsLayerRestorer( const QgsWmsRenderContext &context );
+
+    /**
+     *
+     *
+     */
+    void sbUpdateScaleBasedVisibility( QgsWmsRenderContext &context, double dScale );
 
     /**
      * Destructor.
@@ -61,6 +69,15 @@ class QgsLayerRestorer
       QString mNamedStyle;
       QString mFilter;
       QgsFeatureIds mSelectedFeatureIds;
+
+      bool mSetLegendItemStates;
+      QMultiMap<QString, bool> mLegendItemStates;
+
+      bool mSetLabelVisibility;
+      bool mLabelVisibility;
+
+      bool mSetScaleBasedVisibility;
+      bool mScaleBasedVisibility;
     };
 
     std::map<QgsMapLayer *, QgsLayerSettings> mLayerSettings;
@@ -83,6 +100,12 @@ namespace QgsWms
        * \param context The rendering context to restore in its initial state
        */
       QgsWmsRestorer( const QgsWmsRenderContext &context );
+
+      /**
+      *
+      *
+      */
+      void sbUpdateScaleBasedVisibility( QgsWmsRenderContext &context, double dScale ) { mLayerRestorer.sbUpdateScaleBasedVisibility( context, dScale ); }
 
       /**
        * Default destructor.

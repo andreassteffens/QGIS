@@ -65,7 +65,7 @@ bool QgsPythonUtilsImpl::checkSystemImports()
 #ifdef Q_OS_WIN
   runString( "oldhome=None" );
   runString( "if 'HOME' in os.environ: oldhome=os.environ['HOME']\n" );
-  runString( "os.environ['HOME']=os.environ['USERPROFILE']\n" );
+  runString( "if 'USERPROFILE' in os.environ: os.environ['HOME']=os.environ['USERPROFILE']\n" );
 #endif
 
   // construct a list of plugin paths

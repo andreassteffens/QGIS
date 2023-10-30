@@ -27,6 +27,10 @@
 
 namespace QgsWfs
 {
+  struct QgsWfsParametersRules
+  {
+    QList<QPair<QString, bool>> mRules;
+  };
 
   /**
    * \ingroup server
@@ -55,7 +59,13 @@ namespace QgsWfs
         BBOX,
         SORTBY,
         EXP_FILTER,
-        GEOMETRYNAME
+        GEOMETRYNAME,
+        SBJSONNOTRANSFORM,
+        SBGEOMETRYOUTPUT,
+        SBALLOWEMPTYPROPERTYLIST,
+        SBRULES,
+        SBWITHMAPTIP,
+        SBPASSTHROUGHQGISFILTEREXPRESSION
       };
       Q_ENUM( Name )
 
@@ -284,10 +294,23 @@ namespace QgsWfs
       QStringList expFilters() const;
 
       /**
+        * Returns the list of display rules found in SBRULES parameter.
+        * \returns the list of rules
+        */
+      QStringList sbRules() const;
+
+      /**
        * Returns GEOMETRYNAME parameter as a string.
        * \returns geometryName parameter as string
        */
       QString geometryNameAsString() const;
+
+      bool sbJsonNoTransform() const;
+      bool sbAllowEmptyPropertyList() const;
+      bool sbWithMapTip() const;
+      bool sbPassThroughQgisFilterExpression() const;
+
+      QMultiMap<QString, QgsWfsParametersRules> sbLayerRules( const QStringList &layers ) const;
 
     private:
       bool loadParameter( const QString &key, const QString &value ) override;

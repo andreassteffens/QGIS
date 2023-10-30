@@ -33,6 +33,7 @@
 #include "qgssettings.h"
 #include "qgsdatumtransformdialog.h"
 #include "qgsmetadatawidget.h"
+#include "sbjoinedtogglewidget.h"
 
 #include <QDesktopServices>
 #include <QFileDialog>
@@ -108,6 +109,14 @@ QgsMeshLayerProperties::QgsMeshLayerProperties( QgsMapLayer *lyr, QgsMapCanvas *
   metadataFrame->setLayout( layout );
   mOptsPage_Metadata->setContentsMargins( 0, 0, 0, 0 );
   mBackupCrs = mMeshLayer->crs();
+
+  // Joined Toggle tab
+  QVBoxLayout *toggleLayout = new QVBoxLayout( joinedToggleFrame );
+  toggleLayout->setContentsMargins( 0, 0, 0, 0 );
+  mSbJoinedToggleWidget = new sbJoinedToggleWidget( this, mMeshLayer );
+  mSbJoinedToggleWidget->layout()->setContentsMargins( 0, 0, 0, 0 );
+  toggleLayout->addWidget( mSbJoinedToggleWidget );
+  joinedToggleFrame->setLayout( toggleLayout );
 
   mTemporalDateTimeStart->setDisplayFormat( "yyyy-MM-dd HH:mm:ss" );
   mTemporalDateTimeEnd->setDisplayFormat( "yyyy-MM-dd HH:mm:ss" );
@@ -286,6 +295,9 @@ void QgsMeshLayerProperties::apply()
     mMeshLayer->temporalProperties() )->setAlwaysLoadReferenceTimeFromSource( mAlwaysTimeFromSourceCheckBox->isChecked() );
 
   mMetadataWidget->acceptMetadata();
+
+  if ( mSbJoinedToggleWidget )
+    mSbJoinedToggleWidget->applyToLayer();
 
   mBackupCrs = mMeshLayer->crs();
 

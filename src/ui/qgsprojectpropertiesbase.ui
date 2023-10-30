@@ -298,8 +298,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>640</width>
-                <height>971</height>
+                <width>454</width>
+                <height>643</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout">
@@ -979,6 +979,34 @@
                   </property>
                  </spacer>
                 </item>
+                <item>
+                 <widget class="QToolButton" name="pbnSbOsmScales">
+                  <property name="toolTip">
+                   <string>([a]tapa) Generate OSM scales</string>
+                  </property>
+                  <property name="text">
+                   <string>…</string>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../../images/images.qrc">
+                    <normaloff>:/images/themes/default/mSbOsmScales.svg</normaloff>:/images/themes/default/mSbOsmScales.svg</iconset>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QToolButton" name="pbnSbAutoScales">
+                  <property name="toolTip">
+                   <string>([a]tapa) Generate scales starting at current scale</string>
+                  </property>
+                  <property name="text">
+                   <string>…</string>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../../images/images.qrc">
+                    <normaloff>:/images/themes/default/mSbAutoScales.svg</normaloff>:/images/themes/default/mSbAutoScales.svg</iconset>
+                  </property>
+                 </widget>
+                </item>
                </layout>
               </item>
              </layout>
@@ -1042,8 +1070,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>340</width>
-                <height>57</height>
+                <width>231</width>
+                <height>43</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_7">
@@ -1107,8 +1135,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>634</width>
-                <height>90</height>
+                <width>420</width>
+                <height>66</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -1179,8 +1207,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>344</width>
-                <height>817</height>
+                <width>281</width>
+                <height>606</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_12" stretch="0,0,1,1">
@@ -1219,7 +1247,7 @@
                    </widget>
                   </item>
                   <item row="3" column="0">
-                   <widget class="QSvgWidget" name="pixStyleColorRamp">
+                   <widget class="QSvgWidget" name="pixStyleColorRamp" native="true">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                       <horstretch>0</horstretch>
@@ -1353,7 +1381,7 @@
                    </widget>
                   </item>
                   <item row="4" column="0">
-                   <widget class="QSvgWidget" name="pixStyleTextFormat">
+                   <widget class="QSvgWidget" name="pixStyleTextFormat" native="true">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                       <horstretch>0</horstretch>
@@ -1852,8 +1880,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>176</width>
-                <height>45</height>
+                <width>125</width>
+                <height>28</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_17">
@@ -1934,9 +1962,9 @@
               <property name="geometry">
                <rect>
                 <x>0</x>
-                <y>0</y>
-                <width>679</width>
-                <height>1515</height>
+                <y>-401</y>
+                <width>667</width>
+                <height>1195</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -2911,6 +2939,11 @@
                             <string>JPEG</string>
                            </property>
                           </column>
+                          <column>
+                           <property name="text">
+                            <string>([a]tapa) WEBP</string>
+                           </property>
+                          </column>
                          </widget>
                         </item>
                        </layout>
@@ -3192,20 +3225,40 @@
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_28">
                     <item>
-                     <widget class="QPushButton" name="pbnLaunchOWSChecker">
-                      <property name="sizePolicy">
-                       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                        <horstretch>0</horstretch>
-                        <verstretch>0</verstretch>
-                       </sizepolicy>
-                      </property>
-                      <property name="toolTip">
-                       <string>Test the configuration</string>
-                      </property>
-                      <property name="text">
-                       <string>Launch</string>
-                      </property>
-                     </widget>
+                     <layout class="QHBoxLayout" name="horizontalLayout_11">
+                      <item>
+                       <widget class="QPushButton" name="pbnLaunchOWSChecker">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="toolTip">
+                         <string>Test the configuration for [a]tapa Atlas</string>
+                        </property>
+                        <property name="text">
+                         <string>([a]tapa) Atlas test</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="pbnSbFillLayerShortNames">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="toolTip">
+                         <string>Optimize configuration for [a]tapa Atlas</string>
+                        </property>
+                        <property name="text">
+                         <string>([a]tapa) Atlas optimizations</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
                     </item>
                     <item>
                      <widget class="QTextEdit" name="teOWSChecker">
@@ -3221,7 +3274,7 @@
                       <property name="minimumSize">
                        <size>
                         <width>0</width>
-                        <height>0</height>
+                        <height>200</height>
                        </size>
                       </property>
                       <property name="acceptDrops">
@@ -3343,7 +3396,7 @@
             </spacer>
            </item>
           </layout>
-         </widget>        
+         </widget>
         </widget>
        </item>
       </layout>
@@ -3541,6 +3594,8 @@
   <tabstop>pbnRemoveScale</tabstop>
   <tabstop>pbnImportScales</tabstop>
   <tabstop>pbnExportScales</tabstop>
+  <tabstop>pbnSbOsmScales</tabstop>
+  <tabstop>pbnSbAutoScales</tabstop>
   <tabstop>mExtentGroupBox</tabstop>
   <tabstop>scrollArea</tabstop>
   <tabstop>scrollArea_3</tabstop>
@@ -3635,6 +3690,7 @@
   <tabstop>pbnWCSLayersDeselectAll</tabstop>
   <tabstop>mWCSUrlLineEdit</tabstop>
   <tabstop>pbnLaunchOWSChecker</tabstop>
+  <tabstop>pbnSbFillLayerShortNames</tabstop>
   <tabstop>teOWSChecker</tabstop>
   <tabstop>mStartDateTimeEdit</tabstop>
   <tabstop>mEndDateTimeEdit</tabstop>

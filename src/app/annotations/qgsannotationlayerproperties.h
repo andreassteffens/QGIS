@@ -28,6 +28,7 @@ class QgsMapCanvas;
 class QgsMessageBar;
 class QgsAnnotationLayer;
 class QgsMetadataWidget;
+class sbJoinedToggleWidget;
 class QgsMapLayerConfigWidgetFactory;
 class QgsMapLayerConfigWidget;
 
@@ -53,6 +54,16 @@ class APP_EXPORT QgsAnnotationLayerProperties : public QgsLayerPropertiesDialog,
     QgsAnnotationLayer *mLayer = nullptr;
 
     QPushButton *mBtnStyle = nullptr;
+
+    QgsMapCanvas *mMapCanvas = nullptr;
+
+    sbJoinedToggleWidget *mSbJoinedToggleWidget = nullptr;
+
+    /**
+     * Previous layer style. Used to reset style to previous state if new style
+     * was loaded but dialog is canceled.
+    */
+    QgsMapLayerStyle mOldStyle;
 
     std::unique_ptr< QgsPaintEffect > mPaintEffect;
 

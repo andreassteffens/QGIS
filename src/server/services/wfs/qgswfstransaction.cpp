@@ -52,17 +52,17 @@ namespace QgsWfs
 
   void writeTransaction( QgsServerInterface *serverIface, const QgsProject *project,
                          const QString &version, const QgsServerRequest &request,
-                         QgsServerResponse &response )
+                         QgsServerResponse &response, const QgsWfsParameters &wfsParameters )
 
   {
-    QDomDocument doc = createTransactionDocument( serverIface, project, version, request );
+    QDomDocument doc = createTransactionDocument( serverIface, project, version, request, wfsParameters );
 
     response.setHeader( "Content-Type", "text/xml; charset=utf-8" );
     response.write( doc.toByteArray() );
   }
 
   QDomDocument createTransactionDocument( QgsServerInterface *serverIface, const QgsProject *project,
-                                          const QString &version, const QgsServerRequest &request )
+                                          const QString &version, const QgsServerRequest &request, const QgsWfsParameters &wfsParameters )
   {
     Q_UNUSED( version )
 
@@ -75,11 +75,11 @@ namespace QgsWfs
     if ( doc.setContent( request.data(), true, &errorMsg ) )
     {
       QDomElement docElem = doc.documentElement();
-      aRequest = parseTransactionRequestBody( docElem, project );
+      aRequest = parseTransactionRequestBody( docElem, project, wfsParameters );
     }
     else
     {
-      aRequest = parseTransactionParameters( parameters, project );
+      aRequest = parseTransactionParameters( parameters, project, wfsParameters );
     }
 
     int actionCount = aRequest.inserts.size() + aRequest.updates.size() + aRequest.deletes.size();
@@ -858,7 +858,7 @@ namespace QgsWfs
     return featList;
   }
 
-  transactionRequest parseTransactionParameters( QgsServerRequest::Parameters parameters, const QgsProject *project )
+  transactionRequest parseTransactionParameters( QgsServerRequest::Parameters parameters, const QgsProject *project, const QgsWfsParameters &wfsParameters )
   {
     if ( !parameters.contains( QStringLiteral( "OPERATION" ) ) )
     {
@@ -1107,7 +1107,7 @@ namespace QgsWfs
 
         QDomElement filterElem = filter.firstChildElement();
         QStringList serverFids;
-        action.featureRequest = parseFilterElement( action.typeName, filterElem, serverFids, project );
+        action.featureRequest = parseFilterElement( action.typeName, filterElem, serverFids, wfsParameters, project );
         action.serverFids = serverFids;
 
         if ( filterIt != filterList.constEnd() )
@@ -1121,7 +1121,7 @@ namespace QgsWfs
     return request;
   }
 
-  transactionRequest parseTransactionRequestBody( QDomElement &docElem, const QgsProject *project )
+  transactionRequest parseTransactionRequestBody( QDomElement &docElem, const QgsProject *project, const QgsWfsParameters &wfsParameters )
   {
     transactionRequest request;
 
@@ -1142,12 +1142,12 @@ namespace QgsWfs
       }
       else if ( actionName == QLatin1String( "Update" ) )
       {
-        transactionUpdate action = parseUpdateActionElement( actionElem, project );
+        transactionUpdate action = parseUpdateActionElement( actionElem, project, wfsParameters );
         request.updates.append( action );
       }
       else if ( actionName == QLatin1String( "Delete" ) )
       {
-        transactionDelete action = parseDeleteActionElement( actionElem, project );
+        transactionDelete action = parseDeleteActionElement( actionElem, project, wfsParameters );
         request.deletes.append( action );
       }
     }
@@ -1155,7 +1155,7 @@ namespace QgsWfs
     return request;
   }
 
-  transactionDelete parseDeleteActionElement( QDomElement &actionElem, const QgsProject *project )
+  transactionDelete parseDeleteActionElement( QDomElement &actionElem, const QgsProject *project, const QgsWfsParameters &wfsParameters )
   {
     QString typeName = actionElem.attribute( QStringLiteral( "typeName" ) );
     if ( typeName.contains( ':' ) )
@@ -1168,7 +1168,7 @@ namespace QgsWfs
     }
 
     QStringList serverFids;
-    QgsFeatureRequest featureRequest = parseFilterElement( typeName, filterElem, serverFids, project );
+    QgsFeatureRequest featureRequest = parseFilterElement( typeName, filterElem, serverFids, wfsParameters, project );
 
     transactionDelete action;
     action.typeName = typeName;
@@ -1184,7 +1184,7 @@ namespace QgsWfs
     return action;
   }
 
-  transactionUpdate parseUpdateActionElement( QDomElement &actionElem, const QgsProject *project )
+  transactionUpdate parseUpdateActionElement( QDomElement &actionElem, const QgsProject *project, const QgsWfsParameters &wfsParameters )
   {
     QgsMessageLog::logMessage( QStringLiteral( "parseUpdateActionElement" ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
     QString typeName = actionElem.attribute( QStringLiteral( "typeName" ) );
@@ -1224,7 +1224,7 @@ namespace QgsWfs
     if ( filterNodeList.size() != 0 )
     {
       QDomElement filterElem = filterNodeList.at( 0 ).toElement();
-      featureRequest = parseFilterElement( typeName, filterElem, serverFids, project );
+      featureRequest = parseFilterElement( typeName, filterElem, serverFids, wfsParameters, project );
     }
     QgsMessageLog::logMessage( QStringLiteral( "parseUpdateActionElement: serverFids length %1" ).arg( serverFids.count() ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
 

@@ -832,6 +832,10 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer, public QgsExpressionConte
      */
     Q_INVOKABLE void selectByIds( const QgsFeatureIds &ids, Qgis::SelectBehavior behavior = Qgis::SelectBehavior::SetSelection );
 
+    void sbSetRenderSelectionOnly( bool bRenderSelectionOnly ) SIP_SKIP;
+
+    bool sbRenderSelectionOnly() const SIP_SKIP;
+
     /**
      * Modifies the current selection on this layer
      *
@@ -1081,6 +1085,8 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer, public QgsExpressionConte
      * \returns TRUE in case of success
      */
     bool writeSld( QDomNode &node, QDomDocument &doc, QString &errorMessage, const QVariantMap &props = QVariantMap() ) const;
+
+    bool writeSldLabeling( QDomNode &node, const QVariantMap &props = QVariantMap() ) const SIP_SKIP;
 
     bool readSld( const QDomNode &node, QString &errorMessage ) FINAL;
 
@@ -2816,6 +2822,9 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer, public QgsExpressionConte
     void onAfterCommitChangesDependency();
 
   private:
+    QList<QgsLayerMetadata::Constraint> mSbConstraints SIP_SKIP;
+    bool mSbRenderSelectionOnly SIP_SKIP;
+
     void updateDefaultValues( QgsFeatureId fid, QgsFeature feature = QgsFeature() );
 
     /**

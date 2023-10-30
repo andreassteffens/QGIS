@@ -18,7 +18,6 @@
 
 #include "qgsservercachemanager.h"
 #include "qgsserverprojectutils.h"
-#include "qgsmessagelog.h"
 #include "qgis.h"
 
 QgsServerCacheManager::QgsServerCacheManager( const QgsServerSettings &settings ):
@@ -201,6 +200,18 @@ bool QgsServerCacheManager::deleteCachedImages( const QgsProject *project ) cons
     }
   }
   return false;
+}
+
+QString QgsServerCacheManager::sbGetProjectCacheId( const QgsProject *project ) const
+{
+  QgsServerCacheFilterMap::const_iterator scIterator;
+  for ( scIterator = mPluginsServerCaches->constBegin(); scIterator != mPluginsServerCaches->constEnd(); ++scIterator )
+  {
+    QString id = scIterator.value()->sbGetProjectCacheId( project );
+    if ( !id.isEmpty() )
+      return id;
+  }
+  return "EMPTY";
 }
 
 void QgsServerCacheManager::registerServerCache( QgsServerCacheFilter *serverCache, int priority )

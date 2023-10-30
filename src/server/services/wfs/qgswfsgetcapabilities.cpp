@@ -37,7 +37,7 @@ namespace QgsWfs
    * Output WFS  GetCapabilities response
    */
   void writeGetCapabilities( QgsServerInterface *serverIface, const QgsProject *project, const QString &version,
-                             const QgsServerRequest &request, QgsServerResponse &response )
+                             const QgsServerRequest &request, QgsServerResponse &response, bool sbJustLoaded )
   {
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
     QgsAccessControl *accessControl = serverIface->accessControls();
@@ -47,7 +47,7 @@ namespace QgsWfs
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
     QgsServerCacheManager *cacheManager = serverIface->cacheManager();
-    if ( cacheManager && cacheManager->getCachedDocument( &doc, project, request, accessControl ) )
+    if ( !sbJustLoaded && cacheManager && cacheManager->getCachedDocument( &doc, project, request, accessControl ) )
     {
       capabilitiesDocument = &doc;
     }
@@ -578,9 +578,35 @@ namespace QgsWfs
       layerElem.appendChild( operationsElement );
 
       //create WGS84BoundingBox
-      const QgsRectangle layerExtent = layer->extent();
+      QgsRectangle layerExtent = layer->extent();
       //transform the layers native CRS into WGS84
       const QgsCoordinateReferenceSystem wgs84 = QgsCoordinateReferenceSystem::fromOgcWmsCrs( geoEpsgCrsAuthId() );
+
+      if ( layerExtent.isNull() || layerExtent.isEmpty() )
+      {
+        QgsLayerMetadata meta = layer->metadata();
+        if ( meta.extent().spatialExtents().count() > 0 )
+        {
+          QgsLayerMetadata::SpatialExtent spext = meta.extent().spatialExtents().first();
+          bool bValid = spext.extentCrs.isValid();
+          if ( bValid )
+          {
+            if ( spext.bounds.width() > 0 && spext.bounds.height() > 0 )
+            {
+              QgsRectangle rectExtent = QgsRectangle( spext.bounds.xMinimum(), spext.bounds.yMinimum(), spext.bounds.xMaximum(), spext.bounds.yMaximum() );
+
+              if ( layer->crs() == spext.extentCrs )
+                layerExtent = rectExtent;
+              else
+              {
+                QgsCoordinateTransform trans( spext.extentCrs, layer->crs(), project );
+                layerExtent = trans.transformBoundingBox( rectExtent );
+              }
+            }
+          }
+        }
+      }
+
       const int wgs84precision = 6;
       QgsRectangle wgs84BoundingRect;
       if ( !layerExtent.isNull() )

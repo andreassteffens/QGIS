@@ -748,6 +748,7 @@ set(QGIS_GUI_SRCS
   qgswidgetstatehelper_p.cpp
   qgssourceselectprovider.cpp
   qgssourceselectproviderregistry.cpp
+  sbjoinedtogglewidget.cpp
 )
 
 set(QGIS_GUI_HDRS
@@ -1025,6 +1026,7 @@ set(QGIS_GUI_HDRS
   qgsvertexmarker.h
   qgsvscrollarea.h
   qgswindowmanagerinterface.h
+  sbjoinedtogglewidget.h
 
   actions/qgsactionmenu.h
   actions/qgsmaplayeraction.h

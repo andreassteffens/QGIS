@@ -92,9 +92,14 @@ QJsonObject QgsLegendRenderer::exportLegendToJson( const QgsRenderContext &conte
       const QModelIndex idx = mLegendModel->node2index( nodeGroup );
       const QString text = mLegendModel->data( idx, Qt::DisplayRole ).toString();
 
+      QString name = nodeGroup->customProperty( QStringLiteral( "wmsShortName" ) ).toString();
+      if ( name.isEmpty() )
+        name = nodeGroup->name();
+
       QJsonObject group = exportLegendToJson( context, nodeGroup );
       group[ QStringLiteral( "type" ) ] = QStringLiteral( "group" );
       group[ QStringLiteral( "title" ) ] = text;
+      group[ QStringLiteral( "name" ) ] = name;
       nodes.append( group );
     }
     else if ( QgsLayerTree::isLayer( node ) )
@@ -113,16 +118,22 @@ QJsonObject QgsLegendRenderer::exportLegendToJson( const QgsRenderContext &conte
       if ( legendNodes.isEmpty() && mLegendModel->legendFilterMapSettings() )
         continue;
 
+      QString name = nodeLayer->customProperty( QStringLiteral( "wmsShortName" ) ).toString();
+      if ( name.isEmpty() )
+        name = nodeLayer->name();
+
       if ( legendNodes.count() == 1 )
       {
         QJsonObject group = legendNodes.at( 0 )->exportToJson( mSettings, context );
         group[ QStringLiteral( "type" ) ] = QStringLiteral( "layer" );
+        group[ QStringLiteral( "name" ) ] = name;
         nodes.append( group );
       }
       else if ( legendNodes.count() > 1 )
       {
         QJsonObject group;
         group[ QStringLiteral( "type" ) ] = QStringLiteral( "layer" );
+        group[ QStringLiteral( "name" ) ] = name;
         group[ QStringLiteral( "title" ) ] = text;
 
         QJsonArray symbols;
@@ -130,6 +141,7 @@ QJsonObject QgsLegendRenderer::exportLegendToJson( const QgsRenderContext &conte
         {
           QgsLayerTreeModelLegendNode *legendNode = legendNodes.at( j );
           QJsonObject symbol = legendNode->exportToJson( mSettings, context );
+          
           symbols.append( symbol );
         }
         group[ QStringLiteral( "symbols" ) ] = symbols;
@@ -185,7 +197,9 @@ QSizeF QgsLegendRenderer::paintAndDetermineSize( QgsRenderContext &context )
   QSizeF titleSize = drawTitle( context, 0 );
   //add title margin to size of title text
   titleSize.rwidth() += mSettings.boxSpace() * 2.0;
-  double columnTop = mSettings.boxSpace() + titleSize.height() + mSettings.style( QgsLegendStyle::Title ).margin( QgsLegendStyle::Bottom );
+  double columnTop = mSettings.boxSpace();
+  if ( titleSize.height() > 0 )
+    columnTop += titleSize.height() + mSettings.style( QgsLegendStyle::Title ).margin( QgsLegendStyle::Bottom );
 
   noPainter.reset();
 
@@ -842,6 +856,7 @@ QSizeF QgsLegendRenderer::drawGroup( const LegendComponentGroup &group, QgsRende
       }
 
       LegendComponent symbolComponent = drawSymbolItem( legendNode, context, columnContextForItem, currentY, component.maxSiblingSymbolWidth );
+
       // expand width, it may be wider because of label offsets
       size.rwidth() = std::max( symbolComponent.size.width() + indentWidth, size.width() );
     }

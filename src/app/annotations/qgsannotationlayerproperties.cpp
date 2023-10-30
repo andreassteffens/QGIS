@@ -23,7 +23,7 @@
 #include "qgspainteffect.h"
 #include "qgsproject.h"
 #include "qgsprojectutils.h"
-
+#include "sbjoinedtogglewidget.h"
 #include <QFileDialog>
 #include <QMenu>
 #include <QMessageBox>
@@ -74,6 +74,15 @@ QgsAnnotationLayerProperties::QgsAnnotationLayerProperties( QgsAnnotationLayer *
 
   mBackupCrs = mLayer->crs();
 
+
+  // Joined Toggle tab
+  QVBoxLayout *toggleLayout = new QVBoxLayout( joinedToggleFrame );
+  toggleLayout->setContentsMargins( 0, 0, 0, 0 );
+  mSbJoinedToggleWidget = new sbJoinedToggleWidget( this, mLayer );
+  mSbJoinedToggleWidget->layout()->setContentsMargins( 0, 0, 0, 0 );
+  toggleLayout->addWidget( mSbJoinedToggleWidget );
+  joinedToggleFrame->setLayout( toggleLayout );
+
   initialize();
 }
 
@@ -94,6 +103,9 @@ void QgsAnnotationLayerProperties::apply()
   mBlendModeComboBox->setShowClippingModes( QgsProjectUtils::layerIsContainedInGroupLayer( QgsProject::instance(), mLayer ) );
   mLayer->setBlendMode( mBlendModeComboBox->blendMode() );
   mLayer->setOpacity( mOpacityWidget->opacity() );
+
+  if ( mSbJoinedToggleWidget )
+    mSbJoinedToggleWidget->applyToLayer();
 
   if ( mPaintEffect )
     mLayer->setPaintEffect( mPaintEffect->clone() );

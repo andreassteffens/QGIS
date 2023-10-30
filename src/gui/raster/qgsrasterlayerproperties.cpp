@@ -29,6 +29,7 @@
 #include "qgsmaplayerstylemanager.h"
 #include "qgsmaptoolemitpoint.h"
 #include "qgsmetadatawidget.h"
+#include "sbjoinedtogglewidget.h"
 #include "qgsmetadataurlitemdelegate.h"
 #include "qgsmultibandcolorrenderer.h"
 #include "qgsmultibandcolorrendererwidget.h"
@@ -362,6 +363,13 @@ QgsRasterLayerProperties::QgsRasterLayerProperties( QgsMapLayer *lyr, QgsMapCanv
   mMetadataWidget->setMapCanvas( mCanvas );
   layout->addWidget( mMetadataWidget );
   metadataFrame->setLayout( layout );
+
+  layout = new QVBoxLayout( joinedToggleFrame );
+  layout->setContentsMargins( 0, 0, 0, 0 );
+  mSbJoinedToggleWidget = new sbJoinedToggleWidget( this, mRasterLayer );
+  mSbJoinedToggleWidget->layout()->setContentsMargins( 0, 0, 0, 0 );
+  layout->addWidget( mSbJoinedToggleWidget );
+  joinedToggleFrame->setLayout( layout );
 
   QVBoxLayout *temporalLayout = new QVBoxLayout( temporalFrame );
   temporalLayout->setContentsMargins( 0, 0, 0, 0 );
@@ -976,6 +984,9 @@ void QgsRasterLayerProperties::apply()
   mBackupCrs = mRasterLayer->crs();
   mMetadataWidget->acceptMetadata();
   mMetadataFilled = false;
+
+  if ( mSbJoinedToggleWidget )
+    mSbJoinedToggleWidget->applyToLayer();
 
   //transparency settings
   QgsRasterRenderer *rasterRenderer = mRasterLayer->renderer();

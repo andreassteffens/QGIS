@@ -404,6 +404,8 @@ class QgsWcsProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
     // Fix for rasters rotated by GeoServer
     bool mFixRotate = false;
 
+    bool mSbAvoidFullExtentRequest = false;
+
     QNetworkRequest::CacheLoadControl mCacheLoadControl = QNetworkRequest::PreferNetwork;
 
     /**

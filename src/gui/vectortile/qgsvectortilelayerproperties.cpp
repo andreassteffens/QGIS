@@ -26,6 +26,7 @@
 #include "qgsapplication.h"
 #include "qgsjsonutils.h"
 #include "qgsmetadatawidget.h"
+#include "sbjoinedtogglewidget.h"
 #include "qgsmaplayerloadstyledialog.h"
 #include "qgsmapboxglstyleconverter.h"
 #include "qgsprovidersourcewidget.h"
@@ -98,6 +99,14 @@ QgsVectorTileLayerProperties::QgsVectorTileLayerProperties( QgsVectorTileLayer *
 
   setMetadataWidget( mMetadataWidget, mOptsPage_Metadata );
 
+  // Joined Toggle tab
+  QVBoxLayout *toggleLayout = new QVBoxLayout( joinedToggleFrame );
+  toggleLayout->setContentsMargins( 0, 0, 0, 0 );
+  mSbJoinedToggleWidget = new sbJoinedToggleWidget( this, mLayer );
+  mSbJoinedToggleWidget->layout()->setContentsMargins( 0, 0, 0, 0 );
+  toggleLayout->addWidget( mSbJoinedToggleWidget );
+  joinedToggleFrame->setLayout( toggleLayout );
+
   // update based on lyr's current state
   syncToLayer();
 
@@ -149,6 +158,9 @@ void QgsVectorTileLayerProperties::apply()
   mRendererWidget->apply();
   mLabelingWidget->apply();
   mMetadataWidget->acceptMetadata();
+
+  if ( mSbJoinedToggleWidget )
+    mSbJoinedToggleWidget->applyToLayer();
 
   mLayer->setScaleBasedVisibility( chkUseScaleDependentRendering->isChecked() );
   mLayer->setMinimumScale( mScaleRangeWidget->minimumScale() );

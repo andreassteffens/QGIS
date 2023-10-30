@@ -743,7 +743,6 @@ QgsXyzLayerItem::QgsXyzLayerItem( QgsDataItem *parent, QString name, QString pat
 
 // ---------------------------------------------------------------------------
 
-
 QString QgsXyzTileDataItemProvider::name()
 {
   return QStringLiteral( "XYZ Tiles" );

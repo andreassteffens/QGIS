@@ -26,6 +26,7 @@
 #include "qgsmessagelog.h"
 #include "qgsserverinterface.h"
 #include "qgsmaplayerstylemanager.h"
+#include "qgswmsprovider.h"
 
 #include <algorithm>
 
@@ -72,6 +73,28 @@ bool setBoundingRect(
   const QList<QgsCoordinateReferenceSystem> &outputCrsList )
 {
   QgsRectangle layerExtent = ml->extent();
+
+  QgsLayerMetadata meta = ml->metadata();
+  if ( meta.extent().spatialExtents().count() > 0 )
+  {
+    QgsLayerMetadata::SpatialExtent spext = meta.extent().spatialExtents().first();
+    if ( spext.extentCrs.isValid() )
+    {
+      if ( spext.bounds.width() > 0 && spext.bounds.height() > 0 )
+      {
+        QgsRectangle extent = QgsRectangle( spext.bounds.xMinimum(), spext.bounds.yMinimum(), spext.bounds.xMaximum(), spext.bounds.yMaximum() );
+
+        if ( ml->crs() == spext.extentCrs )
+          layerExtent = extent;
+        else
+        {
+          QgsCoordinateTransform trans( spext.extentCrs, ml->crs(), project );
+          layerExtent = trans.transformBoundingBox( extent );
+        }
+      }
+    }
+  }
+
   if ( layerExtent.isEmpty() )
   {
     // if the extent is empty (not only Null), use the wms extent
@@ -99,6 +122,12 @@ bool setBoundingRect(
       }
     }
 
+    if ( qgsDoubleNear( layerExtent.xMinimum(), layerExtent.xMaximum() ) || qgsDoubleNear( layerExtent.yMinimum(), layerExtent.yMaximum() ) )
+    {
+      //layer bbox cannot be empty
+      layerExtent.grow( 0.000001 );
+    }
+
     // Now we have a layer Extent we need the WGS84 bounding rectangle
     try
     {
@@ -108,6 +137,12 @@ bool setBoundingRect(
     {
       QgsMessageLog::logMessage( QStringLiteral( "Error transforming extent for layer %1: %2" ).arg( ml->name() ).arg( cse.what() ), QStringLiteral( "Server" ), Qgis::MessageLevel::Warning );
       return false;
+    }
+
+    if ( qgsDoubleNear( pLayer.wgs84BoundingRect.xMinimum(), pLayer.wgs84BoundingRect.xMaximum() ) || qgsDoubleNear( pLayer.wgs84BoundingRect.yMinimum(), pLayer.wgs84BoundingRect.yMaximum() ) )
+    {
+      //layer bbox cannot be empty
+      pLayer.wgs84BoundingRect.grow( 0.000001 );
     }
   }
   else
@@ -223,6 +258,24 @@ QMap< QString, QgsWmsLayerInfos > QgsWmsLayerInfos::buildWmsLayerInfos(
       pLayer.hasScaleBasedVisibility = ml->hasScaleBasedVisibility();
       pLayer.maxScale = ml->maximumScale();
       pLayer.minScale = ml->minimumScale();
+    }
+    else
+    {
+      if ( ml->dataProvider() != NULL )
+      {
+        if ( ml->dataProvider()->name() == "wms" )
+        {
+          QgsWmsProvider *wmsProvider = ( QgsWmsProvider * )ml->dataProvider();
+
+          double minScale, maxScale;
+          if ( wmsProvider->getMinMaxScale( maxScale, minScale ) )
+          {
+            pLayer.hasScaleBasedVisibility = true;
+            pLayer.maxScale = maxScale;
+            pLayer.minScale = minScale;
+          }
+        }
+      }
     }
     // layer data URL
     pLayer.dataUrl = ml->dataUrl();

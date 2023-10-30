@@ -816,6 +816,9 @@ bool QgsWFSProvider::setLayerPropertiesListFromDescribeFeature( QDomDocument &de
     {
       layerProperties.mNamespaceURI = mShared->mCaps.getNamespaceForTypename( typeName );
       layerProperties.mNamespacePrefix = QgsWFSUtils::nameSpacePrefix( typeName );
+
+      if ( !layerProperties.mNamespacePrefix.isEmpty() && layerProperties.mNamespacePrefix.compare( "ucgml", Qt::CaseInsensitive ) == 0 )
+        layerProperties.mNamespacePrefix = QString();
     }
 
     mShared->mLayerPropertiesList << layerProperties;
@@ -1724,8 +1727,36 @@ bool QgsWFSProvider::readAttributesFromSchema( QDomDocument &schemaDoc,
     const thread_local QRegularExpression gmlPT( QStringLiteral( "gml:(.*)PropertyType" ) );
     const thread_local QRegularExpression gmlRefProperty( QStringLiteral( "gml:(.*)Property" ) );
 
+    if ( ! foundGeometryAttribute && ( type.indexOf( QRegularExpression( "(.*):CompositePolygonGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0
+                                       || type.indexOf( QRegularExpression( "(.*):BoundaryGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0
+                                       || type.indexOf( QRegularExpression( "(.*):RasterGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0
+                                       || type.indexOf( QRegularExpression( "(.*):PolygonGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0 ) )
+    {
+      foundGeometryAttribute = true;
+      geometryAttribute = name;
+      geomType = Qgis::WkbType::Polygon;
+    }
+    else if ( ! foundGeometryAttribute && ( type.indexOf( QRegularExpression( "(.*):OrientedPointGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0
+                                            || type.indexOf( QRegularExpression( "(.*):TextPointGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0 ) )
+    {
+      foundGeometryAttribute = true;
+      geometryAttribute = name;
+      geomType = Qgis::WkbType::Point;
+    }
+    else if ( ! foundGeometryAttribute && type.indexOf( QRegularExpression( "(.*):PolylineGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0 )
+    {
+      foundGeometryAttribute = true;
+      geometryAttribute = name;
+      geomType = Qgis::WkbType::LineString;
+    }
+    else if ( ! foundGeometryAttribute && type.indexOf( QRegularExpression( "(.*):CompositePolylineGeometry", QRegularExpression::PatternOption::CaseInsensitiveOption ) ) == 0 )
+    {
+      foundGeometryAttribute = true;
+      geometryAttribute = name;
+      geomType = Qgis::WkbType::MultiLineString;
+    }
     // gmgml: is Geomedia Web Server
-    if ( ! foundGeometryAttribute && type == QLatin1String( "gmgml:Polygon_Surface_MultiSurface_CompositeSurfacePropertyType" ) )
+    else if ( ! foundGeometryAttribute && type == QLatin1String( "gmgml:Polygon_Surface_MultiSurface_CompositeSurfacePropertyType" ) )
     {
       foundGeometryAttribute = true;
       geometryAttribute = name;
@@ -1798,6 +1829,17 @@ bool QgsWFSProvider::readAttributesFromSchema( QDomDocument &schemaDoc,
   if ( !foundGeometryAttribute )
   {
     geomType = Qgis::WkbType::NoGeometry;
+
+    if ( !mShared->mURI.sbFallbackGeometryName().isEmpty() && !mShared->mURI.sbFallbackGeometryType().isEmpty() )
+    {
+      Qgis::WkbType fallbackType = QgsWkbTypes::parseType( mShared->mURI.sbFallbackGeometryType() );
+      if ( fallbackType != Qgis::WkbType::Unknown )
+      {
+        geometryAttribute = mShared->mURI.sbFallbackGeometryName();
+        geomType = fallbackType;
+        foundGeometryAttribute = true;
+      }
+    }
   }
 
   return true;

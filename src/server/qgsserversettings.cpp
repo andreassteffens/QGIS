@@ -20,6 +20,7 @@
 #include "qgsapplication.h"
 #include "qgsvariantutils.h"
 
+#include <cpl_conv.h>
 #include <QSettings>
 #include <QDir>
 
@@ -192,11 +193,55 @@ void QgsServerSettings::initSettings()
                                         QgsServerSettingsEnv::DEFAULT_VALUE,
                                         QStringLiteral( "Show group (thousands) separator" ),
                                         QStringLiteral( "/locale/showGroupSeparator" ),
-                                        QVariant::String,
+                                        QVariant::Bool,
                                         QVariant( false ),
                                         QVariant()
                                       };
   mSettings[ sShowGroupSeparator.envVar ] = sShowGroupSeparator;
+
+  // unload project watcher
+  const Setting sUnloadWatcherInterval = { QgsServerSettingsEnv::QGIS_SERVER_SB_UNLOAD_WATCHER_INTERVAL,
+                                           QgsServerSettingsEnv::DEFAULT_VALUE,
+                                           QStringLiteral( "Specify the interval [ms] used for checking changes in the unload configuration file" ),
+                                           QStringLiteral( "/unload_watcher/interval" ),
+                                           QVariant::Int,
+                                           QVariant( 8000 ),
+                                           QVariant()
+                                         };
+  mSettings[sUnloadWatcherInterval.envVar] = sUnloadWatcherInterval;
+
+  // fonts directory
+  const Setting sFontsDir = { QgsServerSettingsEnv::QGIS_SERVER_FONTS_DIRECTORY,
+                              QgsServerSettingsEnv::DEFAULT_VALUE,
+                              QStringLiteral( "Specify the fonts directory" ),
+                              QStringLiteral( "/fonts/directory" ),
+                              QVariant::String,
+                              QVariant( "" ),
+                              QVariant()
+                            };
+  mSettings[sFontsDir.envVar] = sFontsDir;
+
+  // internal sb cache
+  const Setting sUseSbCache = { QgsServerSettingsEnv::QGIS_SERVER_USE_SB_CACHE,
+                                QgsServerSettingsEnv::DEFAULT_VALUE,
+                                QStringLiteral( "Use sb server cache" ),
+                                QStringLiteral( "/cache/useSb" ),
+                                QVariant::String,
+                                QVariant( false ),
+                                QVariant()
+                              };
+  mSettings[sUseSbCache.envVar] = sUseSbCache;
+
+  // handling FORWARDED-FOR header
+  const Setting sIgnoreForwardedForHeader = { QgsServerSettingsEnv::QGIS_SERVER_IGNORE_FORWARDED_FOR_HEADER,
+                                              QgsServerSettingsEnv::DEFAULT_VALUE,
+                                              QStringLiteral( "Ignore FORWARDED-FOR header when building service URLs" ),
+                                              QString(),
+                                              QVariant::Bool,
+                                              QVariant( false ),
+                                              QVariant()
+                                            };
+  mSettings[sIgnoreForwardedForHeader.envVar] = sIgnoreForwardedForHeader;
 
   // max height
   const Setting sMaxHeight = { QgsServerSettingsEnv::QGIS_SERVER_WMS_MAX_HEIGHT,
@@ -542,6 +587,25 @@ void QgsServerSettings::logSummary() const
   }
 }
 
+QStringList QgsServerSettings::getSettings() const
+{
+  QStringList qstrlstSettings;
+
+  const QMetaEnum metaEnumSrc( QMetaEnum::fromType<QgsServerSettingsEnv::Source>() );
+  const QMetaEnum metaEnumEnv( QMetaEnum::fromType<QgsServerSettingsEnv::EnvVar>() );
+
+  for ( Setting s : mSettings )
+  {
+    const QString src = metaEnumSrc.valueToKey( s.src );
+    const QString var = metaEnumEnv.valueToKey( s.envVar );
+
+    const QString msg = var + "=" + value( s.envVar ).toString();
+    qstrlstSettings.append( msg );
+  }
+
+  return qstrlstSettings;
+}
+
 // getter
 QString QgsServerSettings::iniFile() const
 {
@@ -556,6 +620,26 @@ bool QgsServerSettings::parallelRendering() const
 int QgsServerSettings::maxThreads() const
 {
   return value( QgsServerSettingsEnv::QGIS_SERVER_MAX_THREADS ).toInt();
+}
+
+int QgsServerSettings::sbUnloadWatcherInterval() const
+{
+  return value( QgsServerSettingsEnv::QGIS_SERVER_SB_UNLOAD_WATCHER_INTERVAL ).toInt();
+}
+
+QString QgsServerSettings::fontsDirectory() const
+{
+  return value( QgsServerSettingsEnv::QGIS_SERVER_FONTS_DIRECTORY ).toString();
+}
+
+bool QgsServerSettings::sbUseCache() const
+{
+  return value( QgsServerSettingsEnv::QGIS_SERVER_USE_SB_CACHE ).toBool();
+}
+
+bool QgsServerSettings::sbIgnoreForwardedForHeader() const
+{
+  return value( QgsServerSettingsEnv::QGIS_SERVER_IGNORE_FORWARDED_FOR_HEADER ).toBool();
 }
 
 QString QgsServerSettings::logFile() const

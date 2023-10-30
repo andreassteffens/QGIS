@@ -59,7 +59,7 @@ namespace QgsWfs
       QString version() const override { return mVersion; }
 
       void executeRequest( const QgsServerRequest &request, QgsServerResponse &response,
-                           const QgsProject *project ) override
+                           const QgsProject *project, bool sbJustLoaded ) override
       {
         const QgsWfsParameters params( QUrlQuery( request.url() ) );
 
@@ -80,34 +80,142 @@ namespace QgsWfs
 
         if ( QSTR_COMPARE( req, "GetCapabilities" ) )
         {
-          // Supports WFS 1.0.0
-          if ( QSTR_COMPARE( versionString, "1.0.0" ) )
+          try
           {
-            v1_0_0::writeGetCapabilities( mServerIface, project, versionString, request, response );
+            // Supports WFS 1.0.0
+            if ( QSTR_COMPARE( versionString, "1.0.0" ) )
+            {
+              v1_0_0::writeGetCapabilities( mServerIface, project, versionString, request, response, sbJustLoaded );
+            }
+            else
+            {
+              writeGetCapabilities( mServerIface, project, versionString, request, response, sbJustLoaded );
+            }
           }
-          else
+          catch ( QgsServerException &ex )
           {
-            writeGetCapabilities( mServerIface, project, versionString, request, response );
+            QgsMessageLog::logMessage( QStringLiteral( "GetCapabilities - QgsServerException: %1" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( QgsException &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetCapabilities - QgsException: %1" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( std::runtime_error &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetCapabilities - RuntimeError: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( std::exception &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetCapabilities - Exception: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( ... )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetCapabilities - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
           }
         }
         else if ( QSTR_COMPARE( req, "GetFeature" ) )
         {
-          writeGetFeature( mServerIface, project, versionString, request, response );
+          try
+          {
+            writeGetFeature( mServerIface, project, versionString, request, response );
+          }
+          catch ( QgsServerException &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetFeature - QgsServerException: %1" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( QgsException &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetFeature - QgsException: %1" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( std::runtime_error &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetFeature - RuntimeError: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( std::exception &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetFeature - Exception: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( ... )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetFeature - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+          }
         }
         else if ( QSTR_COMPARE( req, "DescribeFeatureType" ) )
         {
-          writeDescribeFeatureType( mServerIface, project, versionString, request, response );
+          try
+          {
+            writeDescribeFeatureType( mServerIface, project, versionString, request, response );
+          }
+          catch ( QgsServerException &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "DescribeFeatureType - QgsServerException: %1" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( QgsException &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "DescribeFeatureType - QgsException: %1" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( std::runtime_error &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "DescribeFeatureType - RuntimeError: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( std::exception &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "DescribeFeatureType - Exception: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( ... )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "DescribeFeatureType - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+          }
         }
         else if ( QSTR_COMPARE( req, "Transaction" ) )
         {
-          // Supports WFS 1.0.0
-          if ( QSTR_COMPARE( versionString, "1.0.0" ) )
+          try
           {
-            v1_0_0::writeTransaction( mServerIface, project, versionString, request, response );
+            // Supports WFS 1.0.0
+            if ( QSTR_COMPARE( versionString, "1.0.0" ) )
+            {
+              v1_0_0::writeTransaction( mServerIface, project, versionString, request, response, params );
+            }
+            else
+            {
+              writeTransaction( mServerIface, project, versionString, request, response, params );
+            }
           }
-          else
+          catch ( QgsServerException &ex )
           {
-            writeTransaction( mServerIface, project, versionString, request, response );
+            QgsMessageLog::logMessage( QStringLiteral( "Transaction - QgsServerException: %1" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( QgsException &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "Transaction - QgsException: %1" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( std::runtime_error &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "Transaction - RuntimeError: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( std::exception &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "Transaction - Exception: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( ... )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "Transaction - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
           }
         }
         else

@@ -45,12 +45,22 @@ namespace QgsWms
     QgsOgcUtils::FilterVersion mVersion = QgsOgcUtils::FILTER_OGC_1_0; // only if FE
   };
 
+  struct QgsWmsParametersRules
+  {
+    QList<QPair<QString, bool>> mRules;
+  };
+
   struct QgsWmsParametersLayer
   {
     QString mNickname; // name, id or short name
     int mOpacity = -1;
     QList<QgsWmsParametersFilter> mFilter; // list of filter
+    QList<QPair<QString, bool>> mRules; // list of display rules;
+    bool mLabelsPresent;
+    bool mLabels;
     QStringList mSelection; // list of string fid
+    bool mRenderSelectionOnly;
+    QStringList mQuerySubstitutions;
     QString mStyle;
     QString mExternalUri;
   };
@@ -146,6 +156,13 @@ namespace QgsWms
         FI_POINT_TOLERANCE,
         FILTER,
         FILTER_GEOM,
+        SBRULES,
+        SBLABELS,
+        SBKEY,
+        SBWITHLABEL,
+        SBALWAYSRENDERSELECTION,
+        SBALLOWUNSAFE,
+        SBQUERYSUBSTITUTIONS,
         FORMAT,
         INFO_FORMAT,
         I,
@@ -524,6 +541,42 @@ namespace QgsWms
       QStringList selections() const;
 
       /**
+       * Returns the list of substitution values inserted into feature source queries found in SBQUERYSUBSTITUTIONS parameter.
+       * \returns the list of substitutions
+       */
+      QStringList sbQuerySubstitutions() const;
+
+      /**
+       * Returns the list of display rules found in SBLABELS parameter.
+       * \returns the list of rules
+       */
+      QStringList sbLabels() const;
+
+      /**
+       * Returns the list of display rules found in SBRULES parameter.
+       * \returns the list of rules
+       */
+      QStringList sbRules() const;
+
+      /**
+       * Returns the the API key authorizing access to specialized [a]tapa functions found in RULES parameter.
+       * \returns [a]tapa API key
+      */
+      QString sbKey() const;
+
+      /**
+       */
+      bool sbWithLabel() const;
+
+      /**
+       */
+      bool sbAlwaysRenderSelection() const;
+
+      /*
+       */
+      bool sbAllowUnsafe() const;
+
+      /**
        * Returns the list of filters found in FILTER parameter.
        * \returns the list of filter
        */
@@ -573,6 +626,11 @@ namespace QgsWms
        * \returns layer parameters
        */
       QList<QgsWmsParametersLayer> layersParameters() const;
+
+      /**
+       *
+       */
+      void sbAddRenderSelectionOnlyLayer( QString &strLayer );
 
       /**
        * Returns FI_POLYGON_TOLERANCE parameter or an empty string if not
@@ -1463,6 +1521,10 @@ namespace QgsWms
 
       QString request() const override;
 
+      QMultiMap<QString, QgsWmsParametersRules> sbAllLayerRules() const;
+      QMultiMap<QString, bool> sbAllLayerLabels() const;
+      QStringList sbLayerQuerySubstitutions( const QString &layer ) const;
+
       /**
        * Returns the format options for an output format. Possible template types are QgsWmsParameters::PdfFormatOption or QgsWmsParameters::DxfFormatOption
        * \returns a key-value map
@@ -1509,10 +1571,12 @@ namespace QgsWms
       QgsWmsParametersExternalLayer externalLayerParameter( const QString &name ) const;
 
       QMultiMap<QString, QgsWmsParametersFilter> layerFilters( const QStringList &layers ) const;
-
+      QMultiMap<QString, QgsWmsParametersRules> sbLayerRules( const QStringList &layers ) const;
+      QMultiMap<QString, bool> sbLayerLabels( const QStringList &layers ) const;
 
       QMultiMap<QgsWmsParameter::Name, QgsWmsParameter> mWmsParameters;
       QMap<QString, QMap<QString, QString> > mExternalWMSParameters;
+      QMap<QString, QString> mSbRenderSelectionOnlyLayers;
       QList<QgsProjectVersion> mVersions;
   };
 }

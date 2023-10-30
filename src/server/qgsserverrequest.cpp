@@ -131,6 +131,7 @@ QByteArray QgsServerRequest::data() const
 void QgsServerRequest::setParameter( const QString &key, const QString &value )
 {
   mParams.add( key, value );
+
   mUrl.setQuery( mParams.urlQuery() );
 }
 

@@ -123,6 +123,11 @@ QJsonObject QgsLayerTreeModelLegendNode::exportToJson( const QgsLegendSettings &
   QJsonObject json = exportSymbolToJson( settings, context );
   const QString text = data( Qt::DisplayRole ).toString();
   json[ QStringLiteral( "title" ) ] = text;
+
+  const QString ruleKey = data ( RuleKeyRole ).toString();
+  if ( !ruleKey.isEmpty() )
+    json[ QStringLiteral( "name" ) ] = ruleKey;
+
   return json;
 }
 
@@ -202,6 +207,14 @@ QSizeF QgsLayerTreeModelLegendNode::drawSymbolText( const QgsLegendSettings &set
   if ( !document )
   {
     const QStringList lines = settings.evaluateItemText( data( Qt::DisplayRole ).toString(), context->expressionContext() );
+
+    bool bHasNonEmptyText = false;
+    for ( QStringList::ConstIterator itemPart = lines.constBegin(); itemPart != lines.constEnd(); ++itemPart )
+      bHasNonEmptyText = bHasNonEmptyText || !itemPart->trimmed().isEmpty();
+
+    if ( !bHasNonEmptyText )
+      return QSizeF( 0, 0 );
+
     tempDocument.emplace( format.allowHtmlFormatting() ? QgsTextDocument::fromHtml( lines ) : QgsTextDocument::fromPlainText( lines ) );
     document = &tempDocument.value();
   }
@@ -692,6 +705,18 @@ QSizeF QgsSymbolLegendNode::drawSymbol( const QgsLegendSettings &settings, ItemC
 
   if ( QgsMarkerSymbol *markerSymbol = dynamic_cast<QgsMarkerSymbol *>( s ) )
   {
+    if ( settings.sbScaleIndependentSymbol() && markerSymbol->sizeUnit() == Qgis::RenderUnit::MapUnits )
+    {
+      for ( int i = 0; i < 20; i++ )
+      {
+        double dPainterSize = markerSymbol->size( *context );
+        if ( dPainterSize >= 10 )
+          break;
+
+        context->setRendererScale( context->rendererScale() * 1.5 );
+      }
+    }
+
     const double size = markerSymbol->size( *context ) / context->scaleFactor();
     if ( size > 0 )
     {
@@ -720,8 +745,14 @@ QSizeF QgsSymbolLegendNode::drawSymbol( const QgsLegendSettings &settings, ItemC
   }
   if ( ctx && ctx->painter )
   {
-    const double currentYCoord = ctx->top + ( itemHeight - desiredHeight ) / 2;
+    double currentYCoord = ctx->top + ( itemHeight - desiredHeight ) / 2;
     QPainter *p = ctx->painter;
+
+    if ( settings.sbNoWidthHeightOffset() )
+    {
+      heightOffset = 0;
+      widthOffset = currentYCoord = 0.4;
+    }
 
     //setup painter scaling to dots so that raster symbology is drawn to scale
     const double dotsPerMM = context->scaleFactor();
@@ -742,6 +773,11 @@ QSizeF QgsSymbolLegendNode::drawSymbol( const QgsLegendSettings &settings, ItemC
       case Qt::AlignRight:
         p->translate( ctx->columnRight - widthOffset - width, currentYCoord + heightOffset );
         break;
+      case Qt::AlignCenter:
+      {
+        p->translate( ctx->columnLeft + ( ( desiredWidth - width ) / 2.0 ), ctx->top + ( ( desiredHeight - height ) / 2.0 ) );
+      }
+      break;
     }
 
     p->scale( 1.0 / dotsPerMM, 1.0 / dotsPerMM );

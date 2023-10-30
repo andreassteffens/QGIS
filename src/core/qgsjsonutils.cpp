@@ -74,6 +74,17 @@ QgsCoordinateReferenceSystem QgsJsonExporter::sourceCrs() const
   return mCrs;
 }
 
+void QgsJsonExporter::sbSetDestinationCrs( const QgsCoordinateReferenceSystem &crs )
+{
+  mSbDestCrs = crs;
+  mTransform.setDestinationCrs( mSbDestCrs );
+}
+
+QgsCoordinateReferenceSystem QgsJsonExporter::sbDestinationCrs() const
+{
+  return mSbDestCrs;
+}
+
 QString QgsJsonExporter::exportFeature( const QgsFeature &feature, const QVariantMap &extraProperties,
                                         const QVariant &id, int indent ) const
 {

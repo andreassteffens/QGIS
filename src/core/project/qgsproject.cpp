@@ -4088,7 +4088,7 @@ QgsLayerTree *QgsProject::layerTreeRoot() const
   return mRootGroup;
 }
 
-QgsMapThemeCollection *QgsProject::mapThemeCollection()
+QgsMapThemeCollection *QgsProject::mapThemeCollection() const
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 

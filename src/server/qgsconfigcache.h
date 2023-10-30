@@ -30,6 +30,8 @@
 #include "qgis_sip.h"
 #include "qgsproject.h"
 #include "qgsserversettings.h"
+#include "qgsmapsettings.h"
+#include "SimpleCrypt.h"
 
 #ifndef SIP_RUN
 
@@ -95,7 +97,12 @@ class SERVER_EXPORT QgsConfigCache : public QObject
      * Removes an entry from cache.
      * \param path The path of the project
      */
-    void removeEntry( const QString &path );
+    bool removeEntry( const QString &path );
+
+    QStringList sbLoadedProjects();
+    void sbPurge();
+    QgsMapSettings *sbMapSettings( const QString &path );
+    QStringList *sbProjectWarnings( const QString &path );
 
     /**
      * If the project is not cached yet, then the project is read from the
@@ -109,7 +116,7 @@ class SERVER_EXPORT QgsConfigCache : public QObject
      * \returns the project or NULLPTR if an error happened
      * \since QGIS 3.0
      */
-    const QgsProject *project( const QString &path, const QgsServerSettings *settings = nullptr );
+    const QgsProject *project( const QString &path, bool *pSbJustLoaded, const QgsServerSettings *settings = nullptr );
 
     /**
      * Returns the name of the current strategy
@@ -134,12 +141,20 @@ class SERVER_EXPORT QgsConfigCache : public QObject
     // SIP require this
     QgsConfigCache() SIP_FORCE;
 
+    //! Check for configuration file updates (remove entry from cache if file changes)
+    QFileSystemWatcher mFileSystemWatcher;
+
   private:
     //! Returns xml document for project file / sld or 0 in case of errors
     QDomDocument *xmlDocument( const QString &filePath );
 
     QCache<QString, QDomDocument> mXmlDocumentCache;
     QCache<QString, std::pair<QDateTime, std::unique_ptr<QgsProject> > > mProjectCache;
+
+    QCache<QString, QgsMapSettings> mSbMapSettingsCache;
+    QCache<QString, QStringList> mSbProjectWarnings;
+
+    QString mSbLoadingPath;
 
     std::unique_ptr<QgsAbstractCacheStrategy> mStrategy;
 
@@ -148,6 +163,12 @@ class SERVER_EXPORT QgsConfigCache : public QObject
     void cacheProject( const QString &path, QgsProject *project );
 
     static QgsConfigCache *sInstance;
+
+  private slots:
+    void loadProjectCanvas( const QDomDocument &doc );
+    void logOldProjectVersionWarning( const QString &warning );
+    void logLoadingLayerMessage( const QString &layer, const QList<QgsReadWriteContext::ReadWriteMessage> &listMessages );
+    void logProjectCleared();
 
   public slots:
     //! Remove cache entry

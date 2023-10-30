@@ -32,6 +32,10 @@ import qgis  # NOQA
 
 import test_qgsdelimitedtextprovider_wanted as want  # NOQA
 
+import qgis  # NOQA
+
+import test_qgsdelimitedtextprovider_wanted as want  # NOQA
+
 rebuildTests = 'REBUILD_DELIMITED_TEXT_TESTS' in os.environ
 
 from providertestbase import ProviderTestCase

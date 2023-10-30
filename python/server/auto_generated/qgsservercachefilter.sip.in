@@ -35,7 +35,7 @@ and must be passed to QgsServerCacheFilter instances.
 
     virtual ~QgsServerCacheFilter();
 
-    virtual QByteArray getCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
+    virtual QByteArray getCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key );
 %Docstring
 Returns cached document (or 0 if document not in cache) like capabilities
 
@@ -46,7 +46,7 @@ Returns cached document (or 0 if document not in cache) like capabilities
 :return: QByteArray of the cached document or an empty one if no corresponding document found
 %End
 
-    virtual bool setCachedDocument( const QDomDocument *doc, const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
+    virtual bool setCachedDocument( const QDomDocument *doc, const QgsProject *project, const QgsServerRequest &request, const QString &key );
 %Docstring
 Updates or inserts the document in cache like capabilities
 
@@ -58,7 +58,7 @@ Updates or inserts the document in cache like capabilities
 :return: ``True`` if the document has been cached
 %End
 
-    virtual bool deleteCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
+    virtual bool deleteCachedDocument( const QgsProject *project, const QgsServerRequest &request, const QString &key );
 %Docstring
 Deletes the cached document
 
@@ -69,7 +69,7 @@ Deletes the cached document
 :return: ``True`` if the document has been deleted
 %End
 
-    virtual bool deleteCachedDocuments( const QgsProject *project ) const;
+    virtual bool deleteCachedDocuments( const QgsProject *project );
 %Docstring
 Deletes all cached documents for a QGIS project
 
@@ -78,7 +78,7 @@ Deletes all cached documents for a QGIS project
 :return: ``True`` if the documents have been deleted
 %End
 
-    virtual QByteArray getCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
+    virtual QByteArray getCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key );
 %Docstring
 Returns cached image (or 0 if document not in cache) like tiles
 
@@ -89,7 +89,7 @@ Returns cached image (or 0 if document not in cache) like tiles
 :return: QByteArray of the cached image or an empty one if no corresponding image found
 %End
 
-    virtual bool setCachedImage( const QByteArray *img, const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
+    virtual bool setCachedImage( const QByteArray *img, const QgsProject *project, const QgsServerRequest &request, const QString &key );
 %Docstring
 Updates or inserts the image in cache like tiles
 
@@ -101,7 +101,7 @@ Updates or inserts the image in cache like tiles
 :return: ``True`` if the image has been cached
 %End
 
-    virtual bool deleteCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key ) const;
+    virtual bool deleteCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key );
 %Docstring
 Deletes the cached image
 
@@ -112,7 +112,7 @@ Deletes the cached image
 :return: ``True`` if the image has been deleted
 %End
 
-    virtual bool deleteCachedImages( const QgsProject *project ) const;
+    virtual bool deleteCachedImages( const QgsProject *project );
 %Docstring
 Deletes all cached images for a QGIS project
 
