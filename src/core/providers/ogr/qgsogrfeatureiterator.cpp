@@ -344,13 +344,13 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
   }
 
   QString strMinPixelSizeExpression;
+  bool bRenderMinPixelSizeDebug = false;
   if ( request.sbHasRenderMinPixelSizeFilter() )
   {
     QString strGeometryColumn = OGR_L_GetGeometryColumn( mOgrLayer );
     if ( !strGeometryColumn.isEmpty() )
     {
       double dRenderMinPixelSize;
-      bool bRenderMinPixelSizeDebug;
       int iRenderMinPixelSizeMaxScale;
       double dScaleFactor;
       double dMapUnitsPerPixel;
@@ -362,8 +362,8 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
       {
         strMinPixelSizeExpression = "(((ST_MaxX(" + strGeometryColumn + ") - ST_MinX(" + strGeometryColumn + ")) * " + QString::number( dScaleFactor / dMapUnitsPerPixel ) + ") > " + QString::number( dRenderMinPixelSize ) + ") OR (((ST_MaxY(" + strGeometryColumn + ") - ST_MinY(" + strGeometryColumn + ")) * " + QString::number( dScaleFactor / dMapUnitsPerPixel ) + ") > " + QString::number( dRenderMinPixelSize ) + ")";
 
-        if ( bRenderMinPixelSizeDebug )
-          QgsMessageLog::logMessage( QStringLiteral( "Setting render min pixel size filter on layer %1: %2" ).arg( mSource->mDataSource ).arg( strMinPixelSizeExpression ), QStringLiteral( "" ), Qgis::Critical );
+         if ( bRenderMinPixelSizeDebug )
+            QgsMessageLog::logMessage( QStringLiteral( "Preparing render min pixel size filter for layer %1: min pixel size: %2 | max scale: %3 | scale factor: %4 | current scale: %5" ).arg( mSource->mDataSource ).arg( QString::number( dRenderMinPixelSize ) ).arg( QString::number( iRenderMinPixelSizeMaxScale ) ).arg( QString::number( dScaleFactor ) ).arg( QString::number( dCurrentScale ) ), QStringLiteral( "[a]tapa" ), Qgis::Warning );
       }
     }
   }
@@ -413,7 +413,20 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
                         QStringLiteral( ") AND (" ) + whereClause +
                         QStringLiteral( ") AND (" ) + strMinPixelSizeExpression +
                         QStringLiteral( ")" );
+
+          if ( bRenderMinPixelSizeDebug )
+            QgsMessageLog::logMessage( QStringLiteral( "Setting render min pixel size filter on layer %1: %2" ).arg( mSource->mDataSource ).arg( whereClause ), QStringLiteral( "[a]tapa" ), Qgis::Warning );
         }
+      }
+      else if ( !strMinPixelSizeExpression.isEmpty() )
+      {
+        if (whereClause.isEmpty())
+          whereClause = strMinPixelSizeExpression;
+        else
+          whereClause = QStringLiteral( "(" ) + whereClause + QStringLiteral( ") AND (" ) + strMinPixelSizeExpression + QStringLiteral( ")" );
+
+        if (bRenderMinPixelSizeDebug)
+          QgsMessageLog::logMessage( QStringLiteral( "Setting render min pixel size filter on layer %1: %2" ).arg( mSource->mDataSource ).arg( whereClause ), QStringLiteral( "[a]tapa" ), Qgis::Warning );
       }
 
       if ( mAllowResetReading )
@@ -437,8 +450,11 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
         OGR_L_SetAttributeFilter( mOgrLayer, nullptr );
       else
       {
+        if ( bRenderMinPixelSizeDebug )
+          QgsMessageLog::logMessage( QStringLiteral( "Setting render min pixel size filter on layer %1: %2" ).arg( mSource->mDataSource ).arg( strMinPixelSizeExpression ), QStringLiteral( "[a]tapa" ), Qgis::Warning );
+
         if ( OGR_L_SetAttributeFilter( mOgrLayer, mSource->mEncoding->fromUnicode( strMinPixelSizeExpression ).constData() ) != OGRERR_NONE )
-          QgsMessageLog::logMessage( QStringLiteral( "([a]tapa) Error setting min pixel size filter: %1" ).arg( strMinPixelSizeExpression ), QStringLiteral( "" ), Qgis::Critical );
+          QgsMessageLog::logMessage( QStringLiteral( "Error setting min pixel size filter: %1" ).arg( strMinPixelSizeExpression ), QStringLiteral( "[a]tapa" ), Qgis::Critical );
       }
     }
   }
@@ -448,8 +464,11 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource *source, bool 
       OGR_L_SetAttributeFilter( mOgrLayer, nullptr );
     else
     {
+      if ( bRenderMinPixelSizeDebug )
+        QgsMessageLog::logMessage( QStringLiteral( "Setting render min pixel size filter on layer %1: %2" ).arg( mSource->mDataSource ).arg( strMinPixelSizeExpression ), QStringLiteral( "[a]tapa" ), Qgis::Warning );
+
       if ( OGR_L_SetAttributeFilter( mOgrLayer, mSource->mEncoding->fromUnicode( strMinPixelSizeExpression ).constData() ) != OGRERR_NONE )
-        QgsMessageLog::logMessage( QStringLiteral( "([a]tapa) Error setting min pixel size filter: %1" ).arg( strMinPixelSizeExpression ), QStringLiteral( "" ), Qgis::Critical );
+        QgsMessageLog::logMessage( QStringLiteral( "Error setting min pixel size filter: %1" ).arg( strMinPixelSizeExpression ), QStringLiteral( "[a]tapa" ), Qgis::Critical );
     }
   }
 
