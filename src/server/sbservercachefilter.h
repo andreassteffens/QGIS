@@ -46,7 +46,7 @@ class sbServerCacheFilter : public QgsServerCacheFilter
     virtual   bool       setCachedImage( const QByteArray *img, const QgsProject *project, const QgsServerRequest &request, const QString &key );
     virtual   bool       deleteCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key );
     virtual   bool       deleteCachedImages( const QgsProject *project );
-    virtual   QString    sbGetProjectCacheId(const QgsProject* project) SIP_SKIP;
+    virtual   QString    sbGetProjectCacheId( const QgsProject *project ) SIP_SKIP;
 };
 
 #endif // SBSERVERCACHEFILTER_H

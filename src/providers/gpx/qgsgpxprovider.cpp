@@ -47,13 +47,13 @@
 #include "gpsdata.h"
 
 const QStringList QgsGPXProvider::sAttributeNames = { "name", "elevation", "symbol", "number",
-                                                      "comment", "description", "source",
-                                                      "url", "url name", "time"
-                                                    };
+  "comment", "description", "source",
+  "url", "url name", "time"
+};
 const QList< QVariant::Type > QgsGPXProvider::sAttributeTypes = { QVariant::String, QVariant::Double, QVariant::String, QVariant::Int,
-                                                                  QVariant::String, QVariant::String, QVariant::String,
-                                                                  QVariant::String, QVariant::String, QVariant::DateTime,
-                                                                };
+        QVariant::String, QVariant::String, QVariant::String,
+        QVariant::String, QVariant::String, QVariant::DateTime,
+};
 const QList< QgsGPXProvider::DataType > QgsGPXProvider::sAttributedUsedForLayerType =
 {
   QgsGPXProvider::AllType, QgsGPXProvider::WaypointType, QgsGPXProvider::TrkRteType, QgsGPXProvider::TrkRteType,

@@ -229,14 +229,14 @@ bool sbServerCacheFilter::deleteCachedImages( const QgsProject *project )
   return true;
 }
 
-QString sbServerCacheFilter::sbGetProjectCacheId(const QgsProject* project)
+QString sbServerCacheFilter::sbGetProjectCacheId( const QgsProject *project )
 {
   QString strId = "";
 
   QString strKey = project->absoluteFilePath().toLower().toUtf8();
   if ( !m_mapProjectIds.contains( strKey ) )
   {
-    strId = QString( QCryptographicHash::hash( (project->absoluteFilePath().toLower().toUtf8() ), QCryptographicHash::Md5 ).toHex() );
+    strId = QString( QCryptographicHash::hash( ( project->absoluteFilePath().toLower().toUtf8() ), QCryptographicHash::Md5 ).toHex() );
     m_mapProjectIds[strKey] = strId;
   }
   else
