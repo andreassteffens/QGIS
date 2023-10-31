@@ -187,9 +187,9 @@ void QgsLayerTreeNode::sbResolveLayerPath( QString &rstrPath ) const
 {
   rstrPath = name() + "/" + rstrPath;
 
-  if( !mParent )
+  if ( !mParent )
   {
-    if ( rstrPath.endsWith("/") )
+    if ( rstrPath.endsWith( "/" ) )
       rstrPath.truncate( rstrPath.length() - 1 );
   }
   else

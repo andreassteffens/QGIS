@@ -56,7 +56,7 @@ QString QgsProjectServerValidator::displayValidationError( QgsProjectServerValid
   return QString();
 }
 
-void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &owsNames, QStringList &encodingMessages, QStringList &checkLegendMessages, QStringList &insecureSourceMessages, QStringList &tiledSourceMessages, QStringList &clientSidePublishingMessages, QStringList &missingWfsLayerMessages, QStringList &missingSearchTermMessages, QStringList& duplicateRuleKeyMessages )
+void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &owsNames, QStringList &encodingMessages, QStringList &checkLegendMessages, QStringList &insecureSourceMessages, QStringList &tiledSourceMessages, QStringList &clientSidePublishingMessages, QStringList &missingWfsLayerMessages, QStringList &missingSearchTermMessages, QStringList &duplicateRuleKeyMessages )
 {
   const QList< QgsLayerTreeNode * > treeGroupChildren = treeGroup->children();
   for ( int i = 0; i < treeGroupChildren.size(); ++i )
@@ -106,19 +106,19 @@ void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTr
 
           if ( vl->isSpatial() )
           {
-            QgsFeatureRenderer* renderer = vl->renderer();
-            if (renderer != NULL)
+            QgsFeatureRenderer *renderer = vl->renderer();
+            if ( renderer != NULL )
             {
               QMap<QString, QString> mapRuleIds;
               QgsLegendSymbolList listSymbols = renderer->legendSymbolItems();
               for ( int iSymbol = 0; iSymbol < listSymbols.count(); iSymbol++ )
               {
-                QgsLegendSymbolItem& legendItem = listSymbols[iSymbol];
+                QgsLegendSymbolItem &legendItem = listSymbols[iSymbol];
                 QString strKey = legendItem.ruleKey();
                 if ( strKey.isEmpty() )
                   continue;
 
-                if ( mapRuleIds.contains(strKey) )
+                if ( mapRuleIds.contains( strKey ) )
                 {
                   QString strLabel = "unnamed";
                   if ( !legendItem.label().isEmpty() )

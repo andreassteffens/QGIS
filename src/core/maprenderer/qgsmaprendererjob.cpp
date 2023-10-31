@@ -1400,7 +1400,7 @@ void QgsMapRendererJob::logRenderingTime( const std::vector< LayerRenderJob > &j
     return;
 
   QMultiMap<int, QString> elapsed;
-  for ( const LayerRenderJob& job : jobs )
+  for ( const LayerRenderJob &job : jobs )
   {
     QString layerId = job.layerId;
 
@@ -1410,7 +1410,7 @@ void QgsMapRendererJob::logRenderingTime( const std::vector< LayerRenderJob > &j
       {
         if ( job.layer->project()->layerTreeRoot() )
         {
-          QgsLayerTreeLayer* treeLayer = job.layer->project()->layerTreeRoot()->findLayer( job.layerId );
+          QgsLayerTreeLayer *treeLayer = job.layer->project()->layerTreeRoot()->findLayer( job.layerId );
           if ( treeLayer )
           {
             QString path;
@@ -1434,12 +1434,12 @@ void QgsMapRendererJob::logRenderingTime( const std::vector< LayerRenderJob > &j
       {
         if ( job.layer->project()->layerTreeRoot() )
         {
-          QgsLayerTreeLayer* treeLayer = job.layer->project()->layerTreeRoot()->findLayer( job.layerId );
+          QgsLayerTreeLayer *treeLayer = job.layer->project()->layerTreeRoot()->findLayer( job.layerId );
           if ( treeLayer )
           {
             QString path;
             treeLayer->sbResolveLayerPath( path );
-            layerId = path + QString(" (second pass)" );
+            layerId = path + QString( " (second pass)" );
           }
         }
       }

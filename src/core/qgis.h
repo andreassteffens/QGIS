@@ -120,7 +120,7 @@ class CORE_EXPORT Qgis
                Annotation SIP_MONKEYPATCH_COMPAT_NAME( AnnotationLayer ), //!< Contains freeform, georeferenced annotations. Added in QGIS 3.16
                PointCloud SIP_MONKEYPATCH_COMPAT_NAME( PointCloudLayer ), //!< Point cloud layer. Added in QGIS 3.18
                Group SIP_MONKEYPATCH_COMPAT_NAME( GroupLayer ), //!< Composite group layer. Added in QGIS 3.24
-      TiledScene, //!< Tiled scene layer. Added in QGIS 3.34
+               TiledScene, //!< Tiled scene layer. Added in QGIS 3.34
     };
     Q_ENUM( LayerType )
 
@@ -130,23 +130,23 @@ class CORE_EXPORT Qgis
      * \since QGIS 3.34. Prior to 3.34 this was available as QgsMapLayerProxyModel::Filter.
      */
     enum class LayerFilter SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsMapLayerProxyModel, Filter ) : int
-      {
-      RasterLayer = 1,
-      NoGeometry = 2,
-      PointLayer = 4,
-      LineLayer = 8,
-      PolygonLayer = 16,
-      HasGeometry = PointLayer | LineLayer | PolygonLayer,
-      VectorLayer = NoGeometry | HasGeometry,
-      PluginLayer = 32,
-      WritableLayer = 64,
-      MeshLayer = 128, //!< QgsMeshLayer \since QGIS 3.6
-      VectorTileLayer = 256, //!< QgsVectorTileLayer \since QGIS 3.14
-      PointCloudLayer = 512, //!< QgsPointCloudLayer \since QGIS 3.18
-      AnnotationLayer = 1024, //!< QgsAnnotationLayer \since QGIS 3.22
-      TiledSceneLayer = 2048, //!< QgsTiledSceneLayer \since QGIS 3.34
-      All = RasterLayer | VectorLayer | PluginLayer | MeshLayer | VectorTileLayer | PointCloudLayer | AnnotationLayer | TiledSceneLayer,
-      SpatialLayer = RasterLayer | HasGeometry | PluginLayer | MeshLayer | VectorTileLayer | PointCloudLayer | AnnotationLayer | TiledSceneLayer //!< \since QGIS 3.24
+    {
+        RasterLayer = 1,
+        NoGeometry = 2,
+        PointLayer = 4,
+        LineLayer = 8,
+        PolygonLayer = 16,
+        HasGeometry = PointLayer | LineLayer | PolygonLayer,
+        VectorLayer = NoGeometry | HasGeometry,
+        PluginLayer = 32,
+        WritableLayer = 64,
+        MeshLayer = 128, //!< QgsMeshLayer \since QGIS 3.6
+        VectorTileLayer = 256, //!< QgsVectorTileLayer \since QGIS 3.14
+        PointCloudLayer = 512, //!< QgsPointCloudLayer \since QGIS 3.18
+        AnnotationLayer = 1024, //!< QgsAnnotationLayer \since QGIS 3.22
+        TiledSceneLayer = 2048, //!< QgsTiledSceneLayer \since QGIS 3.34
+        All = RasterLayer | VectorLayer | PluginLayer | MeshLayer | VectorTileLayer | PointCloudLayer | AnnotationLayer | TiledSceneLayer,
+        SpatialLayer = RasterLayer | HasGeometry | PluginLayer | MeshLayer | VectorTileLayer | PointCloudLayer | AnnotationLayer | TiledSceneLayer //!< \since QGIS 3.24
     };
     Q_DECLARE_FLAGS( LayerFilters, LayerFilter )
     Q_FLAG( LayerFilters )
@@ -657,21 +657,21 @@ class CORE_EXPORT Qgis
      * \since QGIS 3.20
      */
     enum class BrowserLayerType SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsLayerItem, LayerType ) : int
-      {
-      NoType, //!< No type
-      Vector, //!< Generic vector layer
-      Raster, //!< Raster layer
-      Point, //!< Vector point layer
-      Line, //!< Vector line layer
-      Polygon, //!< Vector polygon layer
-      TableLayer, //!< Vector non-spatial layer
-      Database, //!< Database layer
-      Table, //!< Database table
-      Plugin, //!< Plugin based layer
-      Mesh, //!< Mesh layer
-      VectorTile, //!< Vector tile layer
-      PointCloud, //!< Point cloud layer
-      TiledScene, //!< Tiled scene layer (since QGIS 3.34)
+    {
+        NoType, //!< No type
+        Vector, //!< Generic vector layer
+        Raster, //!< Raster layer
+        Point, //!< Vector point layer
+        Line, //!< Vector line layer
+        Polygon, //!< Vector polygon layer
+        TableLayer, //!< Vector non-spatial layer
+        Database, //!< Database layer
+        Table, //!< Database table
+        Plugin, //!< Plugin based layer
+        Mesh, //!< Mesh layer
+        VectorTile, //!< Vector tile layer
+        PointCloud, //!< Point cloud layer
+        TiledScene, //!< Tiled scene layer (since QGIS 3.34)
     };
     Q_ENUM( BrowserLayerType )
 
@@ -1001,7 +1001,7 @@ class CORE_EXPORT Qgis
         MeshDataset SIP_MONKEYPATCH_COMPAT_NAME( FilterMeshDataset ), //!< Mesh datasets
         PointCloud SIP_MONKEYPATCH_COMPAT_NAME( FilterPointCloud ), //!< Point clouds (since QGIS 3.18)
         VectorTile, //!< Vector tile layers (since QGIS 3.32)
-      TiledScene, //!< Tiled scene layers (since QGIS 3.34)
+        TiledScene, //!< Tiled scene layers (since QGIS 3.34)
     };
     Q_ENUM( FileFilterType )
 
@@ -1536,7 +1536,7 @@ class CORE_EXPORT Qgis
         AddRingNotInExistingFeature, //!< The input ring doesn't have any existing ring to fit into
         // Split features
         SplitCannotSplitPoint, //!< Cannot split points
-      GeometryTypeHasChanged, //!< Operation has changed geometry type
+        GeometryTypeHasChanged, //!< Operation has changed geometry type
     };
     Q_ENUM( GeometryOperationResult )
 
@@ -1984,7 +1984,7 @@ class CORE_EXPORT Qgis
         HighQualityImageTransforms = 0x4000, //!< Enable high quality image transformations, which results in better appearance of scaled or rotated raster components of a map (since QGIS 3.24)
         SkipSymbolRendering      = 0x8000, //!< Disable symbol rendering while still drawing labels if enabled (since QGIS 3.24)
         ForceRasterMasks         = 0x10000,  //!< Force symbol masking to be applied using a raster method. This is considerably faster when compared to the vector method, but results in a inferior quality output. (since QGIS 3.26.1)
-      RecordProfile            = 0x20000, //!< Enable run-time profiling while rendering (since QGIS 3.34)
+        RecordProfile            = 0x20000, //!< Enable run-time profiling while rendering (since QGIS 3.34)
     };
     //! Map settings flags
     Q_DECLARE_FLAGS( MapSettingsFlags, MapSettingsFlag ) SIP_MONKEYPATCH_FLAGS_UNNEST( QgsMapSettings, Flags )
@@ -2017,7 +2017,7 @@ class CORE_EXPORT Qgis
         RenderingSubSymbol       = 0x10000, //!< Set whenever a sub-symbol of a parent symbol is currently being rendered. Can be used during symbol and symbol layer rendering to determine whether the symbol being rendered is a subsymbol. (Since QGIS 3.24)
         HighQualityImageTransforms = 0x20000, //!< Enable high quality image transformations, which results in better appearance of scaled or rotated raster components of a map (since QGIS 3.24)
         SkipSymbolRendering      = 0x40000, //!< Disable symbol rendering while still drawing labels if enabled (since QGIS 3.24)
-      RecordProfile            = 0x80000, //!< Enable run-time profiling while rendering (since QGIS 3.34)
+        RecordProfile            = 0x80000, //!< Enable run-time profiling while rendering (since QGIS 3.34)
     };
     //! Render context flags
     Q_DECLARE_FLAGS( RenderContextFlags, RenderContextFlag ) SIP_MONKEYPATCH_FLAGS_UNNEST( QgsRenderContext, Flags )

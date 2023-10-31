@@ -141,7 +141,7 @@ QJsonObject QgsLegendRenderer::exportLegendToJson( const QgsRenderContext &conte
         {
           QgsLayerTreeModelLegendNode *legendNode = legendNodes.at( j );
           QJsonObject symbol = legendNode->exportToJson( mSettings, context );
-          
+
           symbols.append( symbol );
         }
         group[ QStringLiteral( "symbols" ) ] = symbols;

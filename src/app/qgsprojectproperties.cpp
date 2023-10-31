@@ -2419,7 +2419,7 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
       strMessage += "<li><b>" + validationResults[iResult].identifier.toString() + "</b></li>";
     }
   }
-  if (!strMessage.isEmpty())
+  if ( !strMessage.isEmpty() )
   {
     strMessage = "<h3 style='color: #f00;'>" + tr( "Some layers contain styling rules with duplicate rule keys:" ) + "</h3><ul>" + strMessage + "</ul>";
     strContent += strMessage;
