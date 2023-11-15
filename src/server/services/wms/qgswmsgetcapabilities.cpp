@@ -1270,17 +1270,31 @@ namespace QgsWms
                 layerElem.setAttribute( "sbHasMapTip", "true" );
             }
 
+            bool wmtsPublished = false;
+            QStringList wmtsLayerIds = QgsServerProjectUtils::sbWmtsLayerIds( *project );
+            for ( int i = 0; i < wmtsLayerIds.size(); ++i )
+            {
+              QgsMapLayer* layer = project->mapLayer( wmtsLayerIds.at( i ) );
+              if ( layer == l )
+              {
+                wmtsPublished = true;
+                break;
+              }
+            }
+            layerElem.setAttribute( QStringLiteral( "sbWmts" ), wmtsPublished ? "1" : "0" );
+
+            bool wfsPublished = false;
             QStringList wfsLayerIds = QgsServerProjectUtils::wfsLayerIds( *project );
-            QDomElement wfsLayersElem = doc.createElement( QStringLiteral( "WFSLayers" ) );
             for ( int i = 0; i < wfsLayerIds.size(); ++i )
             {
               QgsMapLayer *layer = project->mapLayer( wfsLayerIds.at( i ) );
               if ( layer == l )
               {
-                layerElem.setAttribute( QStringLiteral( "sbWfs" ), "1" );
+                wfsPublished = true;
                 break;
               }
             }
+            layerElem.setAttribute( QStringLiteral( "sbWfs" ), wfsPublished ? "1" : "0" );
 
             if ( !l->flags().testFlag( QgsMapLayer::Searchable ) )
               layerElem.setAttribute( QStringLiteral( "sbSearchable" ), QStringLiteral( "0" ) );

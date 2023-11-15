@@ -446,6 +446,13 @@ namespace QgsServerProjectUtils
   SERVER_EXPORT QString wmtsServiceUrl( const QgsProject &project, const QgsServerRequest &request = QgsServerRequest(), const QgsServerSettings &settings = QgsServerSettings() );
 
   /**
+   * Returns the Layer ids list defined in a QGIS project as published in WMTS.
+   * \param project the QGIS project
+   * \returns the Layer ids list.
+   */
+  SERVER_EXPORT QStringList sbWmtsLayerIds( const QgsProject& project ) SIP_SKIP;
+
+  /**
    * Returns the service url defined in the environment variable or with HTTP header.
    * This is calculated from (in order of precedence):
    *

@@ -1480,7 +1480,6 @@ namespace QgsWms
         mapSettings.setIsTemporal( true );
         mapSettings.setTemporalRange( range );
       }
-
     }
   }
 

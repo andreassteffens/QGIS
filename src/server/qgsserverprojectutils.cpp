@@ -526,6 +526,11 @@ QStringList QgsServerProjectUtils::wcsLayerIds( const QgsProject &project )
   return project.readListEntry( QStringLiteral( "WCSLayers" ), QStringLiteral( "/" ) );
 }
 
+QStringList QgsServerProjectUtils::sbWmtsLayerIds( const QgsProject &project )
+{
+  return project.readListEntry( QStringLiteral( "WMTSLayers" ), QStringLiteral( "Layer" ) );
+}
+
 QString QgsServerProjectUtils::wmtsServiceUrl( const QgsProject &project, const QgsServerRequest &request, const QgsServerSettings &settings )
 {
   QString url = project.readEntry( QStringLiteral( "WMTSUrl" ), QStringLiteral( "/" ), "" );
