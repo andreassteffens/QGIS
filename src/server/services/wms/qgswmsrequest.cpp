@@ -27,6 +27,12 @@ namespace QgsWms
     init();
   }
 
+  QgsWmsRequest::QgsWmsRequest( const QUrl& url, Method method, const Headers& headers )
+    : QgsServerRequest( url, method, headers )
+  {
+    init();
+  }
+
   const QgsWmsParameters &QgsWmsRequest::wmsParameters() const
   {
     return mWmsParams;

@@ -38,7 +38,7 @@ namespace QgsWms
   QDomElement getLayersAndStylesCapabilitiesElement( QDomDocument &doc,
       QgsServerInterface *serverIface,
       const QgsProject *project, const QgsWmsRequest &request,
-      bool projectSettings );
+      bool projectSettings, QMap<QString, QString> legendItemIconMap );
 
   /**
    * Create WFSLayers element for get capabilities document
@@ -85,7 +85,7 @@ namespace QgsWms
    * \param projectSettings If TRUE, adds extended project information (does not validate against WMS schema)
    * \returns GetCapabilities XML document
    */
-  QDomDocument getCapabilities( QgsServerInterface *serverIface, const QgsProject *project, const QgsWmsRequest &request, bool projectSettings );
+  QDomDocument getCapabilities( QgsServerInterface *serverIface, const QgsProject *project, const QgsWmsRequest &request, bool projectSettings, QMap<QString, QString> legendItemIconMap );
 
   /**
    * Returns true if at least one layer from the layers ids is queryable

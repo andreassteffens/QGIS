@@ -44,13 +44,16 @@
 #include "qgssymbollayerutils.h"
 #include "qgsprojectviewsettings.h"
 #include "qgswmsprovider.h"
+#include "qgswmsgetlegendgraphics.h"
+#include "qjsonobject.h"
+#include "qjsonarray.h"
 
 namespace QgsWms
 {
   namespace
   {
 
-    void appendLayerProjectSettings( QDomDocument &doc, QDomElement &layerElem, QgsMapLayer *currentLayer );
+    void appendLayerProjectSettings( QDomDocument &doc, QDomElement &layerElem, QgsMapLayer *currentLayer, QMap<QString, QString> legendItemIconMap );
 
     void appendDrawingOrder( QDomDocument &doc, QDomElement &parentElem, QgsServerInterface *serverIface,
                              const QgsProject *project );
@@ -75,7 +78,7 @@ namespace QgsWms
                                     const QgsWmsRequest &request,
                                     const QgsLayerTreeGroup *layerTreeGroup,
                                     const QMap< QString, QgsWmsLayerInfos > &wmsLayerInfos,
-                                    bool projectSettings );
+                                    bool projectSettings, QMap<QString, QString> legendItemIconMap );
 
     void addKeywordListElement( const QgsProject *project, QDomDocument &doc, QDomElement &parent );
   }
@@ -89,6 +92,74 @@ namespace QgsWms
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
     QgsAccessControl *accessControl = serverIface->accessControls();
 #endif
+
+    QMap<QString, QString> legendItemIconMap;
+
+    if ( request.wmsParameters().sbIncludeLegendItems() )
+    {
+      bool useLayerIds = QgsServerProjectUtils::wmsUseLayerIds(*project);
+
+      QStringList layerList;
+      const QMap<QString, QgsMapLayer *> layers = project->mapLayers();
+      for ( auto layerIt = layers.constBegin(); layerIt != layers.constEnd(); ++layerIt )
+      {
+        if ( QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( layerIt.value() ) )
+        {
+          QString wmsName = vl->name();
+          if ( useLayerIds )
+            wmsName = vl->id();
+          else if ( !vl->shortName().isEmpty() )
+            wmsName = vl->shortName();
+
+          if ( !wmsName.isEmpty() )
+            layerList.append( wmsName );
+        }
+      }
+
+      if ( !layerList.isEmpty() )
+      {
+        QUrl legendUrl ( request.originalUrl().toString( QUrl::UrlFormattingOption::RemoveQuery ) + "?SERVICE=WMS&REQUEST=GetLegendGraphics&FORMAT=application/json&layers=" + layerList.join(',') );
+
+        QgsWmsRequest requestLegend( legendUrl, QgsServerRequest::Method::GetMethod, request.headers() );
+
+        QJsonObject legendsObject = sbGetLegendGraphics( serverIface, project, requestLegend );
+        if ( legendsObject.contains( "nodes" ) )
+        {
+          QJsonArray nodesArray = legendsObject[ "nodes" ].toArray();
+          for ( QJsonArray::const_iterator nodesIt = nodesArray.constBegin(); nodesIt != nodesArray.constEnd(); nodesIt++ )
+          {
+            if ( nodesIt->type() != QJsonValue::Type::Object )
+              continue;
+
+            QJsonObject layerObject = nodesIt->toObject();
+            if ( !layerObject.contains( "layerId" ) )
+              continue;
+
+            QString layerId = layerObject[ "layerId" ].toString();
+
+            if ( layerObject.contains( "symbols" ) )
+            {
+              QJsonArray symbolsArray = layerObject[ "symbols" ].toArray();
+              for ( QJsonArray::const_iterator symbolsIt = symbolsArray.constBegin(); symbolsIt != symbolsArray.constEnd(); symbolsIt++ )
+              {
+                if ( symbolsIt->type() != QJsonValue::Type::Object )
+                  continue;
+
+                QJsonObject symbolObject = symbolsIt->toObject();
+
+                if ( symbolObject.contains( "name" ) && symbolObject.contains( "icon" ) )
+                {
+                  QString symbolName = symbolObject[ "name" ].toString();
+                  legendItemIconMap[ layerId + "_" + symbolName ] = symbolObject[ "icon" ].toString();
+                }
+              }
+            }
+            else if ( layerObject.contains( "icon" ) )
+              legendItemIconMap[ layerId ] = layerObject[ "icon" ].toString();
+          }
+        }
+      }
+    }
 
     QDomDocument doc;
     const QDomDocument *capabilitiesDocument = nullptr;
@@ -123,7 +194,7 @@ namespace QgsWms
     {
       QgsMessageLog::logMessage( QStringLiteral( "WMS capabilities document not found in cache" ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
 
-      doc = getCapabilities( serverIface, project, request, projectSettings );
+      doc = getCapabilities( serverIface, project, request, projectSettings, legendItemIconMap );
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
       if ( cacheManager &&
@@ -477,7 +548,7 @@ namespace QgsWms
 
   QDomDocument getCapabilities( QgsServerInterface *serverIface, const QgsProject *project,
                                 const QgsWmsRequest &request,
-                                bool projectSettings )
+                                bool projectSettings, QMap<QString, QString> legendItemIconMap )
   {
     QDomDocument doc;
     QDomElement wmsCapabilitiesElement;
@@ -606,7 +677,7 @@ namespace QgsWms
     }
 
     capabilityElement.appendChild(
-      getLayersAndStylesCapabilitiesElement( doc, serverIface, project, request, projectSettings )
+      getLayersAndStylesCapabilitiesElement( doc, serverIface, project, request, projectSettings, legendItemIconMap )
     );
 
     if ( projectSettings )
@@ -1011,7 +1082,7 @@ namespace QgsWms
                                   const QgsWmsRequest &request,
                                   const QgsLayerTreeGroup *layerTreeGroup,
                                   const QMap< QString, QgsWmsLayerInfos > &wmsLayerInfos,
-                                  bool projectSettings )
+                                  bool projectSettings, QMap<QString, QString> legendItemIconMap )
   {
     const auto layerIds = layerTreeGroup->findLayerIds();
 
@@ -1027,12 +1098,12 @@ namespace QgsWms
     appendLayerWgs84BoundingRect( doc, parentLayer, wgs84BoundingRect );
     appendLayerCrsExtents( doc, parentLayer, crsExtents );
 
-    appendLayersFromTreeGroup( doc, parentLayer, serverIface, project, request, layerTreeGroup, wmsLayerInfos, projectSettings );
+    appendLayersFromTreeGroup( doc, parentLayer, serverIface, project, request, layerTreeGroup, wmsLayerInfos, projectSettings, legendItemIconMap );
   }
 
   QDomElement getLayersAndStylesCapabilitiesElement( QDomDocument &doc, QgsServerInterface *serverIface,
       const QgsProject *project,
-      const QgsWmsRequest &request, bool projectSettings )
+      const QgsWmsRequest &request, bool projectSettings, QMap<QString, QString> legendItemIconMap )
   {
     const QgsLayerTree *projectLayerTreeRoot = project->layerTreeRoot();
 
@@ -1142,11 +1213,11 @@ namespace QgsWms
       appendLayerWgs84BoundingRect( doc, layerParentElem, wmsWgs84BoundingRect );
       appendLayerCrsExtents( doc, layerParentElem, wmsCrsExtents );
 
-      appendLayersFromTreeGroup( doc, layerParentElem, serverIface, project, request, projectLayerTreeRoot, wmsLayerInfos, projectSettings );
+      appendLayersFromTreeGroup( doc, layerParentElem, serverIface, project, request, projectLayerTreeRoot, wmsLayerInfos, projectSettings, legendItemIconMap );
     }
     else
     {
-      handleLayersFromTreeGroup( doc, layerParentElem, serverIface, project, request, projectLayerTreeRoot, wmsLayerInfos, projectSettings );
+      handleLayersFromTreeGroup( doc, layerParentElem, serverIface, project, request, projectLayerTreeRoot, wmsLayerInfos, projectSettings, legendItemIconMap );
     }
 
     return layerParentElem;
@@ -1162,7 +1233,7 @@ namespace QgsWms
                                     const QgsWmsRequest &request,
                                     const QgsLayerTreeGroup *layerTreeGroup,
                                     const QMap< QString, QgsWmsLayerInfos > &wmsLayerInfos,
-                                    bool projectSettings )
+                                    bool projectSettings, QMap<QString, QString> legendItemIconMap )
     {
       const QString version = request.wmsParameters().version();
 
@@ -1242,7 +1313,7 @@ namespace QgsWms
             layerElem.appendChild( layerTypeElem );
           }
 
-          handleLayersFromTreeGroup( doc, layerElem, serverIface, project, request, treeGroupChild, wmsLayerInfos, projectSettings );
+          handleLayersFromTreeGroup( doc, layerElem, serverIface, project, request, treeGroupChild, wmsLayerInfos, projectSettings, legendItemIconMap );
 
           // Check if child layer elements have been added
           if ( layerElem.elementsByTagName( QStringLiteral( "Layer" ) ).length() == 0 )
@@ -1677,13 +1748,21 @@ namespace QgsWms
             layerTypeElem.appendChild( layerTypeText );
             layerElem.appendChild( layerTypeElem );
 
-            appendLayerProjectSettings( doc, layerElem, l );
+            appendLayerProjectSettings( doc, layerElem, l, legendItemIconMap );
 
             QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( l );
             if ( vlayer )
             {
               if ( vlayer->isSpatial() )
               {
+                if ( legendItemIconMap.contains( l->id() ) )
+                {
+                  QDomElement iconElem = doc.createElement( QStringLiteral( "sbIcon" ) );
+                  QDomText iconText = doc.createTextNode( legendItemIconMap[ l->id() ] );
+                  iconElem.appendChild( iconText );
+                  layerElem.appendChild( iconElem );
+                }
+
                 QgsLegendSymbolList symbolsList = vlayer->renderer()->legendSymbolItems();
 
                 if ( symbolsList.count() > 0 )
@@ -1696,11 +1775,18 @@ namespace QgsWms
 
                     QDomElement symbolElem = doc.createElement( QStringLiteral( "sbLegendSymbol" ) );
                     symbolElem.setAttribute( "name", legendItem.ruleKey() );
-                    symbolElem.setAttribute( "title", legendItem.label() );
+
+                    if ( !legendItem.label().isEmpty() )
+                      symbolElem.setAttribute( "title", legendItem.label() );
+
                     symbolElem.setAttribute( "checkable", vlayer->renderer()->legendSymbolItemsCheckable() );
                     symbolElem.setAttribute( "checked", vlayer->renderer()->legendSymbolItemChecked( legendItem.ruleKey() ) );
                     symbolElem.setAttribute( "minScale", legendItem.scaleMinDenom() );
                     symbolElem.setAttribute( "maxScale", legendItem.scaleMaxDenom() );
+
+                    QString symbolKey = l->id() + "_" + legendItem.ruleKey();
+                    if ( legendItemIconMap.contains( symbolKey ) )
+                      symbolElem.setAttribute( "icon", legendItemIconMap[ symbolKey ] );
 
                     if ( legendItem.symbol() != NULL )
                     {
@@ -2105,7 +2191,7 @@ namespace QgsWms
       }
     }
 
-    void appendLayerProjectSettings( QDomDocument &doc, QDomElement &layerElem, QgsMapLayer *currentLayer )
+    void appendLayerProjectSettings( QDomDocument &doc, QDomElement &layerElem, QgsMapLayer *currentLayer, QMap<QString, QString> legendItemIconMap )
     {
       if ( !currentLayer )
       {
@@ -2216,15 +2302,16 @@ namespace QgsWms
             attributeElem.setAttribute( QStringLiteral( "name" ), field.name() );
             attributeElem.setAttribute( QStringLiteral( "type" ), QVariant::typeToName( field.type() ) );
             attributeElem.setAttribute( QStringLiteral( "typeName" ), field.typeName() );
-            QString alias = field.alias();
-            if ( !alias.isEmpty() )
-            {
-              attributeElem.setAttribute( QStringLiteral( "alias" ), alias );
-            }
+            
+            if ( !field.alias().isEmpty() )
+              attributeElem.setAttribute( QStringLiteral( "alias" ), field.alias() );
 
             //edit type to text
             attributeElem.setAttribute( QStringLiteral( "editType" ), vLayer->editorWidgetSetup( idx ).type() );
-            attributeElem.setAttribute( QStringLiteral( "comment" ), field.comment() );
+
+            if ( !field.comment().isEmpty() )
+              attributeElem.setAttribute( QStringLiteral( "comment" ), field.comment() );
+
             attributeElem.setAttribute( QStringLiteral( "length" ), field.length() );
             attributeElem.setAttribute( QStringLiteral( "precision" ), field.precision() );
 

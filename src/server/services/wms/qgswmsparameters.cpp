@@ -492,6 +492,9 @@ namespace QgsWms
     const QgsWmsParameter pSbAllowUnsafe( QgsWmsParameter::SBALLOWUNSAFE );
     save( pSbAllowUnsafe );
 
+    const QgsWmsParameter pSbIncludeLegendItems( QgsWmsParameter::SBINCLUDELEGENDITEMS );
+    save( pSbIncludeLegendItems );
+
     const QgsWmsParameter pPolygTol( QgsWmsParameter::FI_POLYGON_TOLERANCE,
                                      QVariant::Double,
                                      QVariant( 0.0 ) );
@@ -1529,6 +1532,19 @@ namespace QgsWms
   bool QgsWmsParameters::sbAllowUnsafe() const
   {
     const QString strKey = mWmsParameters.value( QgsWmsParameter::SBALLOWUNSAFE ).toString();
+
+    if ( strKey.isEmpty() )
+      return false;
+
+    if ( strKey.compare( "true", Qt::CaseInsensitive ) == 0 )
+      return true;
+
+    return false;
+  }
+
+  bool QgsWmsParameters::sbIncludeLegendItems() const
+  {
+    const QString strKey = mWmsParameters.value( QgsWmsParameter::SBINCLUDELEGENDITEMS ).toString();
 
     if ( strKey.isEmpty() )
       return false;

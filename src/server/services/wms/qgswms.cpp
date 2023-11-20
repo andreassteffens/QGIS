@@ -74,6 +74,8 @@ namespace QgsWms
         const QgsWmsRequest wmsRequest( request );
         const QString req = wmsRequest.wmsParameters().request();
 
+        
+
         if ( req.isEmpty() )
         {
           throw QgsServiceException( QgsServiceException::OGC_OperationNotSupported,

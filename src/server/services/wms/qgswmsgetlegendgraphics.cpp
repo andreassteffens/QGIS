@@ -38,6 +38,43 @@
 
 namespace QgsWms
 {
+  QJsonObject sbGetLegendGraphics ( QgsServerInterface* serverIface, const QgsProject* project,
+                                    const QgsWmsRequest& request )
+  {
+    // get parameters from query
+    QgsWmsParameters parameters = request.wmsParameters();
+
+    // check parameters validity
+    // FIXME fail with png + mode
+    checkParameters( parameters );
+
+    // init render context
+    QgsWmsRenderContext context( project, serverIface );
+    context.setFlag( QgsWmsRenderContext::UseScaleDenominator );
+    context.setFlag( QgsWmsRenderContext::UseSrcWidthHeight );
+    context.setParameters( parameters );
+
+    QgsRenderer renderer( context );
+
+    // retrieve legend settings and model
+    bool addLegendGroups = QgsServerProjectUtils::wmsAddLegendGroupsLegendGraphic( *project ) || parameters.addLayerGroups();
+    std::unique_ptr<QgsLayerTree> tree( addLegendGroups ? layerTreeWithGroups( context, QgsProject::instance()->layerTreeRoot() ) : layerTree( context ) );
+    const std::unique_ptr<QgsLayerTreeModel> model( legendModel( context, *tree.get() ) );
+
+    QJsonObject result;
+    if (!parameters.rule().isEmpty())
+    {
+      throw QgsBadRequestException(QgsServiceException::QGIS_InvalidParameterValue,
+        QStringLiteral("RULE cannot be used with JSON format"));
+    }
+    else
+      result = renderer.getLegendGraphicsAsJson(*model.get());
+
+    tree->clear();
+
+    return result;
+  }
+
   void writeGetLegendGraphics( QgsServerInterface *serverIface, const QgsProject *project,
                                const QgsWmsRequest &request,
                                QgsServerResponse &response )

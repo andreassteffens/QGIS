@@ -25,6 +25,9 @@
 namespace QgsWms
 {
 
+  QJsonObject sbGetLegendGraphics ( QgsServerInterface* serverIface, const QgsProject* project,
+                                    const QgsWmsRequest& request );
+
   /**
    * Output GetLegendGRaphics response
    */

@@ -163,6 +163,7 @@ namespace QgsWms
         SBALWAYSRENDERSELECTION,
         SBALLOWUNSAFE,
         SBQUERYSUBSTITUTIONS,
+        SBINCLUDELEGENDITEMS,
         FORMAT,
         INFO_FORMAT,
         I,
@@ -575,6 +576,10 @@ namespace QgsWms
       /*
        */
       bool sbAllowUnsafe() const;
+
+      /*
+       */
+      bool sbIncludeLegendItems() const;
 
       /**
        * Returns the list of filters found in FILTER parameter.

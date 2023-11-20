@@ -92,14 +92,18 @@ QJsonObject QgsLegendRenderer::exportLegendToJson( const QgsRenderContext &conte
       const QModelIndex idx = mLegendModel->node2index( nodeGroup );
       const QString text = mLegendModel->data( idx, Qt::DisplayRole ).toString();
 
+      QJsonObject group = exportLegendToJson( context, nodeGroup );
+
       QString name = nodeGroup->customProperty( QStringLiteral( "wmsShortName" ) ).toString();
       if ( name.isEmpty() )
         name = nodeGroup->name();
+      else
+        group[ QStringLiteral( "wmsShortName" ) ] = name;
 
-      QJsonObject group = exportLegendToJson( context, nodeGroup );
       group[ QStringLiteral( "type" ) ] = QStringLiteral( "group" );
       group[ QStringLiteral( "title" ) ] = text;
       group[ QStringLiteral( "name" ) ] = name;
+
       nodes.append( group );
     }
     else if ( QgsLayerTree::isLayer( node ) )
@@ -118,15 +122,25 @@ QJsonObject QgsLegendRenderer::exportLegendToJson( const QgsRenderContext &conte
       if ( legendNodes.isEmpty() && mLegendModel->legendFilterMapSettings() )
         continue;
 
+      QString wmsShortName;
+
       QString name = nodeLayer->customProperty( QStringLiteral( "wmsShortName" ) ).toString();
       if ( name.isEmpty() )
         name = nodeLayer->name();
+      else
+        wmsShortName = name;
 
       if ( legendNodes.count() == 1 )
       {
         QJsonObject group = legendNodes.at( 0 )->exportToJson( mSettings, context );
         group[ QStringLiteral( "type" ) ] = QStringLiteral( "layer" );
         group[ QStringLiteral( "name" ) ] = name;
+
+        group[ QStringLiteral( "layerId" ) ] = nodeLayer->layerId();
+
+        if ( !wmsShortName.isEmpty() )
+          group[ QStringLiteral( "wmsShortName" ) ] = wmsShortName;
+
         nodes.append( group );
       }
       else if ( legendNodes.count() > 1 )
@@ -134,14 +148,18 @@ QJsonObject QgsLegendRenderer::exportLegendToJson( const QgsRenderContext &conte
         QJsonObject group;
         group[ QStringLiteral( "type" ) ] = QStringLiteral( "layer" );
         group[ QStringLiteral( "name" ) ] = name;
+        group[ QStringLiteral( "layerId" ) ] = nodeLayer->layerId();
         group[ QStringLiteral( "title" ) ] = text;
+
+        if ( !wmsShortName.isEmpty() )
+          group[ QStringLiteral( "wmsShortName" ) ] = wmsShortName;
 
         QJsonArray symbols;
         for ( int j = 0; j < legendNodes.count(); j++ )
         {
           QgsLayerTreeModelLegendNode *legendNode = legendNodes.at( j );
           QJsonObject symbol = legendNode->exportToJson( mSettings, context );
-
+          
           symbols.append( symbol );
         }
         group[ QStringLiteral( "symbols" ) ] = symbols;
