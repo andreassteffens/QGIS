@@ -159,7 +159,7 @@ bool sbServerCacheFilter::deleteCachedDocuments( const QgsProject *project )
 QByteArray sbServerCacheFilter::getCachedImage( const QgsProject *project, const QgsServerRequest &request, const QString &key )
 {
   if ( !m_bInitialized )
-    return false;
+    return QByteArray();
 
   QString strProjectDirectory = initializeProjectDirectory( project );
   QString strCacheKey = getCacheKey( request );
