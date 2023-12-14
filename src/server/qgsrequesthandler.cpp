@@ -225,7 +225,7 @@ void QgsRequestHandler::parseInput()
         bProcessAsQueryString = !doc.setContent( inputString, true, &errorMsg, &line, &column );
 
         // XXX Output error but continue processing request ?
-        QgsMessageLog::logMessage( QStringLiteral( "Warning: error parsing post data as XML: at line %1, column %2: %3. Assuming urlencoded query string sent in the post body  of request '%4'." )
+        QgsMessageLog::logMessage( QStringLiteral( "Warning: error parsing post data as XML: at line %1, column %2: %3. Assuming urlencoded query string sent in the post body of request '%4'." )
                                    .arg( line ).arg( column ).arg( errorMsg ).arg( mRequest.originalUrl().toString() ), QStringLiteral( "Server" ), Qgis::Warning );
       }
 
