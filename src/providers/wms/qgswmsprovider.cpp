@@ -639,6 +639,20 @@ bool QgsWmsProvider::setImageCrs( QString const &crs )
     if ( mCaps.mTileMatrixSets.contains( mSettings.mTileMatrixSetId ) )
     {
       mTileMatrixSet = &mCaps.mTileMatrixSets[ mSettings.mTileMatrixSetId ];
+
+      if ( crs.isEmpty() )
+      {
+        // if CRS is not specified, use default
+        mSettings.mCrsId = mTileMatrixSet->crs;
+        mExtentDirty = true;
+        mImageCrs = mSettings.mCrsId;
+      }
+      if ( mSettings.mImageMimeType.isEmpty() && mTileLayer )
+      {
+        // if format is not specified, use first available
+        mSettings.mImageMimeType = mTileLayer->formats.value( 0 );
+      }
+
       QList<double> keys = mTileMatrixSet->tileMatrices.keys();
       std::sort( keys.begin(), keys.end() );
       const auto constKeys = keys;
@@ -2449,11 +2463,6 @@ int QgsWmsProvider::capabilities() const
     capability |= Capability::Prefetch;
   }
 
-  if ( mSettings.mTiled || mSettings.mXyz )
-  {
-    capability |= DpiDependentData;
-  }
-
   QgsDebugMsgLevel( QStringLiteral( "capability = %1" ).arg( capability ), 2 );
   return capability;
 }
@@ -4084,12 +4093,20 @@ QgsCoordinateReferenceSystem QgsWmsProvider::crs() const
 
 QgsRasterDataProvider::ProviderCapabilities QgsWmsProvider::providerCapabilities() const
 {
+  QgsRasterDataProvider::ProviderCapabilities capabilities;
   if ( mConverter )
-    return ProviderCapability::ReadLayerMetadata |
-           ProviderCapability::ProviderHintBenefitsFromResampling |
-           ProviderCapability::ProviderHintCanPerformProviderResampling;
+    capabilities = ProviderCapability::ReadLayerMetadata |
+                   ProviderCapability::ProviderHintBenefitsFromResampling |
+                   ProviderCapability::ProviderHintCanPerformProviderResampling;
+  else
+    capabilities = ProviderCapability::ReadLayerMetadata;
 
-  return ProviderCapability::ReadLayerMetadata;
+  if ( mSettings.mTiled || mSettings.mXyz )
+  {
+    capabilities |= DpiDependentData;
+  }
+
+  return capabilities;
 }
 
 QString QgsWmsProvider::lastErrorTitle()

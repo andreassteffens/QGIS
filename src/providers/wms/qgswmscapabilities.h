@@ -905,6 +905,7 @@ class QgsWmsSettings
     QString mInterpretation;
 
     friend class QgsWmsProvider;
+    friend class TestQgsWmsProvider;
 };
 
 
