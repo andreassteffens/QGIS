@@ -327,7 +327,17 @@ void QgsValueRelationWidgetWrapper::initWidget( QWidget *editor )
   }
   else if ( mLineEdit )
   {
-    connect( mLineEdit, &QLineEdit::textChanged, this, &QgsValueRelationWidgetWrapper::emitValueChangedInternal, Qt::UniqueConnection );
+    if ( QgsFilterLineEdit *filterLineEdit = qobject_cast<QgsFilterLineEdit *>( editor ) )
+    {
+      connect( filterLineEdit, &QgsFilterLineEdit::valueChanged, this, [ = ]( const QString & )
+      {
+        emitValueChanged();
+      } );
+    }
+    else
+    {
+      connect( mLineEdit, &QLineEdit::textChanged, this, &QgsValueRelationWidgetWrapper::emitValueChangedInternal, Qt::UniqueConnection );
+    }
   }
 }
 
@@ -519,7 +529,7 @@ void QgsValueRelationWidgetWrapper::populate( )
 
   if ( mComboBox )
   {
-    mComboBox->clear();
+    whileBlocking( mComboBox )->clear();
     if ( config( QStringLiteral( "AllowNull" ) ).toBool( ) )
     {
       whileBlocking( mComboBox )->addItem( tr( "(no selection)" ), QVariant( field().type( ) ) );
