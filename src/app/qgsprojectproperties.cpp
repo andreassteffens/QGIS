@@ -2272,7 +2272,7 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
   if ( !QgsProject::instance()->trustLayerMetadata() || !QgsProject::instance()->autoTransaction() )
   {
     strContent += "<hr>";
-    strContent += "<h3 style='color: #f00;'>Some performance optimizations have to be reviewed:</h3>";
+    strContent += "<h3 style='color: #f00;'>([a]tapa) Some performance optimizations have to be reviewed:</h3>";
 
     strContent += "<ul>";
 
@@ -2421,11 +2421,11 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
   }
   if ( !strMessage.isEmpty() )
   {
-    strMessage = "<h3 style='color: #f00;'>" + tr( "Some layers contain styling rules with duplicate rule keys:" ) + "</h3><ul>" + strMessage + "</ul>";
+    strMessage = "<h3 style='color: #f00;'>" + tr( "([a]tapa) Some layers contain styling rules with duplicate rule keys:" ) + "</h3><ul>" + strMessage + "</ul>";
     strContent += strMessage;
   }
   else
-    strContent += "<h3>" + tr( "All layers have unique styling rule keys" ) + "</h3>";
+    strContent += "<h3>" + tr( "([a]tapa) All layers have unique styling rule keys" ) + "</h3>";
 
   strMessage = "";
   for ( int iResult = 0; iResult < validationResults.count(); iResult++ )
