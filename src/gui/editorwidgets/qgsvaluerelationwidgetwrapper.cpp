@@ -307,8 +307,7 @@ QWidget *QgsValueRelationWidgetWrapper::createWidget( QWidget *parent )
 
 void QgsValueRelationWidgetWrapper::initWidget( QWidget *editor )
 {
-
-  mComboBox = qobject_cast<QgsToolTipComboBox *>( editor );
+  mComboBox = qobject_cast<QComboBox *>( editor );
   mTableWidget = qobject_cast<QgsFilteredTableWidget *>( editor );
   mLineEdit = qobject_cast<QLineEdit *>( editor );
 
@@ -331,7 +330,8 @@ void QgsValueRelationWidgetWrapper::initWidget( QWidget *editor )
     {
       connect( filterLineEdit, &QgsFilterLineEdit::valueChanged, this, [ = ]( const QString & )
       {
-        emitValueChanged();
+        if ( mSubWidgetSignalBlocking == 0 )
+          emitValueChanged();
       } );
     }
     else
@@ -399,6 +399,7 @@ void QgsValueRelationWidgetWrapper::updateValues( const QVariant &value, const Q
   }
   else if ( mLineEdit )
   {
+    mSubWidgetSignalBlocking ++;
     mLineEdit->clear();
     bool wasFound { false };
     for ( const QgsValueRelationFieldFormatter::ValueRelationItem &i : std::as_const( mCache ) )
@@ -415,6 +416,7 @@ void QgsValueRelationWidgetWrapper::updateValues( const QVariant &value, const Q
     {
       mLineEdit->setText( tr( "(no selection)" ) );
     }
+    mSubWidgetSignalBlocking --;
   }
 }
 
@@ -507,7 +509,7 @@ QVariant::Type QgsValueRelationWidgetWrapper::fkType() const
   return QVariant::Type::Invalid;
 }
 
-void QgsValueRelationWidgetWrapper::populate( )
+void QgsValueRelationWidgetWrapper::populate()
 {
   // Initialize, note that signals are blocked, to avoid double signals on new features
   if ( QgsValueRelationFieldFormatter::expressionRequiresFormScope( mExpression ) ||
