@@ -1760,6 +1760,13 @@ namespace QgsWms
                   QDomElement iconElem = doc.createElement( QStringLiteral( "sbIcon" ) );
                   QDomText iconText = doc.createTextNode( legendItemIconMap[ l->id() ] );
                   iconElem.appendChild( iconText );
+
+                  QPixmap image;
+                  image.loadFromData(QByteArray::fromBase64(legendItemIconMap[l->id()].toUtf8()));
+
+                  iconElem.setAttribute( "width", image.width() );
+                  iconElem.setAttribute( "height", image.height() );
+
                   layerElem.appendChild( iconElem );
                 }
 
@@ -1786,7 +1793,15 @@ namespace QgsWms
 
                     QString symbolKey = l->id() + "_" + legendItem.ruleKey();
                     if ( legendItemIconMap.contains( symbolKey ) )
+                    {
                       symbolElem.setAttribute( "icon", legendItemIconMap[ symbolKey ] );
+
+                      QPixmap image;
+                      image.loadFromData( QByteArray::fromBase64( legendItemIconMap[ symbolKey ].toUtf8() ) );
+
+                      symbolElem.setAttribute( "width", image.width() );
+                      symbolElem.setAttribute( "height", image.height() );
+                    }
 
                     if ( legendItem.symbol() != NULL )
                     {
