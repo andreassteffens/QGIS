@@ -654,9 +654,9 @@ void QgsLayerStylingWidget::updateCurrentWidgetLayer()
                 QVBoxLayout *layout = new QVBoxLayout{ mRasterAttributeTableDisabledWidget };
                 mRasterAttributeTableDisabledWidget->setLayout( layout );
                 QLabel *label { new QLabel( tr( "There are no raster attribute tables associated with this data source.<br>"
-                                                  "If the current symbology can be converted to an attribute table you "
-                                                  "can create a new attribute table using the context menu available in the "
-                                                  "layer tree or in the layer properties dialog." ) )};
+                                                "If the current symbology can be converted to an attribute table you "
+                                                "can create a new attribute table using the context menu available in the "
+                                                "layer tree or in the layer properties dialog." ) )};
                 label->setWordWrap( true );
                 mRasterAttributeTableDisabledWidget->layout()->addWidget( label );
                 layout->addStretch();
