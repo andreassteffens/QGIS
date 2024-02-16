@@ -69,6 +69,10 @@
 #include "qgstemporalutils.h"
 #include "qgsstylemanagerdialog.h"
 #include "qgsfileutils.h"
+#include "qgsmarkersymbollayer.h"
+#include "qgslinesymbollayer.h"
+#include "qgsfillsymbollayer.h"
+#include "qgsmessagelog.h"
 
 //qt includes
 #include <QInputDialog>
@@ -2289,21 +2293,20 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
     strContent += "<h3>" + tr( "([a]tapa) Main database performance options seem to be in order" ) + "</h3>";
   }
 
-  QMap<QString, QgsMapLayer *> mapLayers = QgsProject::instance()->mapLayers( true );
-  QMap<QString, QgsMapLayer *>::ConstIterator iter;
-  for ( iter = mapLayers.constBegin(); iter != mapLayers.constEnd(); iter++ )
+  const auto layers { QgsProject::instance()->layers<QgsVectorLayer*>() };
+  for (QgsVectorLayer* layer : layers)
   {
     QString strPath = "";
-    QgsLayerTreeLayer *pTreeLayer = QgsProject::instance()->layerTreeRoot()->findLayer( ( *iter )->id() );
+    QgsLayerTreeLayer *pTreeLayer = QgsProject::instance()->layerTreeRoot()->findLayer( layer->id() );
     if ( pTreeLayer )
       pTreeLayer->sbResolveLayerPath( strPath );
 
-    bool bSearchable = mLayerCapabilitiesModel->searchable( ( *iter ) );
+    bool bSearchable = mLayerCapabilitiesModel->searchable( layer );
     if ( bSearchable )
     {
       bSearchable = false;
 
-      QgsLayerMetadata meta = ( *iter )->metadata();
+      QgsLayerMetadata meta = layer->metadata();
       QList<QgsLayerMetadata::Constraint> qlistConstraints = meta.constraints();
       for ( int iMeta = 0; iMeta < qlistConstraints.length(); iMeta++ )
       {
@@ -2317,14 +2320,14 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
       if ( !bSearchable )
       {
         if ( !strPath.isEmpty() )
-          validationResults << QgsProjectServerValidator::ValidationResult( QgsProjectServerValidator::sbVectorLayerSearchNotDefined, QStringLiteral( "%1 (%2)" ).arg( ( *iter )->name() ).arg( strPath ) );
+          validationResults << QgsProjectServerValidator::ValidationResult( QgsProjectServerValidator::sbVectorLayerSearchNotDefined, QStringLiteral( "%1 (%2)" ).arg( layer->name() ).arg( strPath ) );
         else
-          validationResults << QgsProjectServerValidator::ValidationResult( QgsProjectServerValidator::sbVectorLayerSearchNotDefined, ( *iter )->name() );
+          validationResults << QgsProjectServerValidator::ValidationResult( QgsProjectServerValidator::sbVectorLayerSearchNotDefined, layer->name() );
       }
     }
 
-    bool bSelectable = mLayerCapabilitiesModel->sbSelectable( ( *iter ) );
-    bool bSnappable = mLayerCapabilitiesModel->sbSnappable( ( *iter ) );
+    bool bSelectable = mLayerCapabilitiesModel->sbSelectable( layer );
+    bool bSnappable = mLayerCapabilitiesModel->sbSnappable( layer );
     bool bNeedsWfs = bSearchable || bSelectable || bSnappable;
 
     if ( bNeedsWfs )
@@ -2334,7 +2337,7 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
       for ( int i = 0; i < twWFSLayers->rowCount(); i++ )
       {
         QString id = twWFSLayers->item( i, 0 )->data( Qt::UserRole ).toString();
-        if ( id.compare( iter.key(), Qt::CaseInsensitive ) == 0 )
+        if ( id.compare( layer->id(), Qt::CaseInsensitive ) == 0 )
         {
           QCheckBox *cb = nullptr;
           cb = qobject_cast<QCheckBox *>( twWFSLayers->cellWidget( i, 1 ) );
@@ -2348,9 +2351,80 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
       if ( !bFoundWfs )
       {
         if ( !strPath.isEmpty() )
-          validationResults << QgsProjectServerValidator::ValidationResult( QgsProjectServerValidator::sbRequiredWfsNotEnabled, QStringLiteral( "%1 (%2)" ).arg( ( *iter )->name() ).arg( strPath ) );
+          validationResults << QgsProjectServerValidator::ValidationResult( QgsProjectServerValidator::sbRequiredWfsNotEnabled, QStringLiteral( "%1 (%2)" ).arg( layer->name() ).arg( strPath ) );
         else
-          validationResults << QgsProjectServerValidator::ValidationResult( QgsProjectServerValidator::sbRequiredWfsNotEnabled, ( *iter )->name() );
+          validationResults << QgsProjectServerValidator::ValidationResult( QgsProjectServerValidator::sbRequiredWfsNotEnabled, layer->name() );
+      }
+    }
+    
+    QgsFeatureRenderer* renderer = layer->renderer();
+    if ( renderer != NULL )
+    {
+      QgsRenderContext context;
+
+      int symbolId = 0;
+      QgsSymbolList symbols = const_cast<QgsFeatureRenderer*>( renderer )->symbols( context );
+      for ( QgsSymbol* symbol : symbols )
+      {
+        symbolId++;
+
+        int symbolLayerId = 0;
+        QgsSymbolLayerList symbolLayers = symbol->symbolLayers();
+        for ( QgsSymbolLayer* symbolLayer : symbolLayers )
+        {
+          symbolLayerId++;
+
+          QString resourcePath;
+          QString resolvedResourcePath;
+
+          QString layerType = symbolLayer->layerType();
+          if ( layerType.compare( "RasterLine", Qt::CaseInsensitive ) == 0 )
+          {
+            resourcePath = static_cast<QgsRasterLineSymbolLayer*>( symbolLayer )->path();
+            resolvedResourcePath = sbResolveRasterPath( resourcePath, QgsProject::instance()->pathResolver() );
+          }
+          else if ( layerType.compare( "SvgMarker", Qt::CaseInsensitive ) == 0 )
+          {
+            resourcePath = static_cast<QgsSvgMarkerSymbolLayer *>( symbolLayer )->path();
+            resolvedResourcePath = sbResolveSvgPath( resourcePath, QgsProject::instance()->pathResolver() );
+          }
+          else if ( layerType.compare( "AnimatedMarker", Qt::CaseInsensitive ) == 0 )
+          {
+            resourcePath = static_cast<QgsAnimatedMarkerSymbolLayer *>( symbolLayer )->path();
+            resolvedResourcePath = sbResolveRasterPath( resourcePath, QgsProject::instance()->pathResolver() );
+          }
+          else if ( layerType.compare( "RasterMarker", Qt::CaseInsensitive ) == 0 )
+          {
+            resourcePath = static_cast<QgsRasterMarkerSymbolLayer*>( symbolLayer )->path();
+            resolvedResourcePath = sbResolveRasterPath( resourcePath, QgsProject::instance()->pathResolver() );
+          }
+          else if ( layerType.compare( "RasterFill", Qt::CaseInsensitive ) == 0 )
+          {
+            resourcePath = static_cast<QgsRasterFillSymbolLayer*>( symbolLayer )->imageFilePath();
+            resolvedResourcePath = sbResolveRasterPath( resourcePath, QgsProject::instance()->pathResolver() );
+          }
+          else if ( layerType.compare( "SVGFill", Qt::CaseInsensitive ) == 0 )
+          {
+            resourcePath = static_cast<QgsSVGFillSymbolLayer *>( symbolLayer )->svgFilePath();
+            resolvedResourcePath = sbResolveSvgPath( resourcePath, QgsProject::instance()->pathResolver() );
+          }
+
+          if ( !resourcePath.isEmpty() )
+          {
+            if( resourcePath.startsWith( "base64:", Qt::CaseInsensitive ) )
+            {
+              validationResults << QgsProjectServerValidator::ValidationResult( QgsProjectServerValidator::sbVectorLayerBase64SymbolContent, QStringLiteral( "%1 (%2): %3 | %4" ).arg( layer->name() ).arg( strPath ).arg( symbolId ).arg( symbolLayerId ) );
+              continue;
+            }
+
+            QFileInfo info( resourcePath );
+            if ( !info.exists() )
+              validationResults << QgsProjectServerValidator::ValidationResult( QgsProjectServerValidator::sbVectorLayerInvalidSymbolPath, QStringLiteral( "%1 (%2): %3 | %4 | %5" ).arg( layer->name() ).arg( strPath ).arg( symbolId ).arg( symbolLayerId ).arg( resolvedResourcePath ) );
+
+            if ( resourcePath.compare( resolvedResourcePath, Qt::CaseInsensitive ) == 0 )
+              validationResults << QgsProjectServerValidator::ValidationResult( QgsProjectServerValidator::sbVectorLayerAbsolutePathSymbolContent, QStringLiteral( "%1 (%2): %3 | %4 | %5" ).arg( layer->name() ).arg( strPath ).arg( symbolId ).arg( symbolLayerId ).arg( resolvedResourcePath ) );
+          }
+        }
       }
     }
   }
@@ -2462,10 +2536,91 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
   else
     strContent += "<h3>" + tr( "([a]tapa) All Atlas related raster layer settings are consistent" ) + "</h3>";
 
+  strMessage = "";
+  for ( int iResult = 0; iResult < validationResults.count(); iResult++ )
+  {
+    if ( validationResults[iResult].error == QgsProjectServerValidator::sbVectorLayerBase64SymbolContent )
+      strMessage += "<li><b>" + validationResults[iResult].identifier.toString() + "</b></li>";
+  }
+  if (!strMessage.isEmpty())
+  {
+    strMessage = "<h3 style='color: #f00;'>" + tr("([a]tapa) Some layers contain BASE64 symbology:") + "</h3><ul>" + strMessage + "</ul>";
+    strContent += strMessage;
+  }
+  else
+    strContent += "<h3>" + tr("([a]tapa) No layer contains BASE64 symbology") + "</h3>";
+
+  strMessage = "";
+  for (int iResult = 0; iResult < validationResults.count(); iResult++)
+  {
+    if ( validationResults[iResult].error == QgsProjectServerValidator::sbVectorLayerAbsolutePathSymbolContent )
+      strMessage += "<li><b>" + validationResults[iResult].identifier.toString() + "</b></li>";
+  }
+  if (!strMessage.isEmpty())
+  {
+    strMessage = "<h3 style='color: #f00;'>" + tr("([a]tapa) Some layers contain file based symbology with absolute paths:") + "</h3><ul>" + strMessage + "</ul>";
+    strContent += strMessage;
+  }
+  else
+    strContent += "<h3>" + tr("([a]tapa) No layer contains file based symbology with an absolute path") + "</h3>";
+
+  strMessage = "";
+  for (int iResult = 0; iResult < validationResults.count(); iResult++)
+  {
+    if (validationResults[iResult].error == QgsProjectServerValidator::sbVectorLayerInvalidSymbolPath)
+      strMessage += "<li><b>" + validationResults[iResult].identifier.toString() + "</b></li>";
+  }
+  if (!strMessage.isEmpty())
+  {
+    strMessage = "<h3 style='color: #f00;'>" + tr("([a]tapa) Some layers contain file based symbology with invalid paths:") + "</h3><ul>" + strMessage + "</ul>";
+    strContent += strMessage;
+  }
+  else
+    strContent += "<h3>" + tr("([a]tapa) No layer contains file based symbology with an invalid path") + "</h3>";
+
   strContent += "<hr>";
   strContent += "<h1>" + tr( "([a]tapa) QGIS Server check done! Hat still on?" ) + "</h1>";
 
   teOWSChecker->setHtml( strContent );
+}
+
+QString QgsProjectProperties::sbResolveSvgPath( QString &resourcePath, const QgsPathResolver &pathResolver )
+{
+  return pathResolver.writePath( resourcePath );
+}
+
+QString QgsProjectProperties::sbResolveRasterPath( QString &resourcePath, const QgsPathResolver &pathResolver )
+{
+  if ( resourcePath.isEmpty() )
+    return QString();
+
+  if ( resourcePath.startsWith( QLatin1String( "base64:" ) ) )
+    return resourcePath;
+
+  if ( !QFileInfo::exists( resourcePath ) )
+    return resourcePath;
+
+  QString path = QFileInfo( resourcePath ).canonicalFilePath();
+
+  QStringList svgPaths = QgsApplication::svgPaths();
+
+  bool isInSvgPaths = false;
+  for ( int i = 0; i < svgPaths.size(); i++ )
+  {
+    const QString dir = QFileInfo(svgPaths[i]).canonicalFilePath();
+
+    if ( !dir.isEmpty() && path.startsWith( dir ) )
+    {
+      path = path.mid( dir.size() + 1 );
+      isInSvgPaths = true;
+      break;
+    }
+  }
+
+  if ( isInSvgPaths )
+    return path;
+
+  return pathResolver.writePath( path );
 }
 
 void QgsProjectProperties::sbCollectLayerShortNames( QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapShortNames )

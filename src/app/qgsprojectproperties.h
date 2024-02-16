@@ -275,6 +275,10 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
     void sbBuildLayerPath( QgsLayerTreeNode *node, QString &path );
     void sbPrecalculateLayerMetadata( QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapLayerMetadata );
 
+    //! Resource path resolution
+    QString sbResolveSvgPath( QString &resourcePath, const QgsPathResolver &pathResolver );
+    QString sbResolveRasterPath( QString &resourcePath, const QgsPathResolver &pathResolver );
+
     //! Populates list with ellipsoids from Sqlite3 db
     void populateEllipsoidList();
 

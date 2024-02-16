@@ -56,7 +56,10 @@ class CORE_EXPORT QgsProjectServerValidator
       sbRasterLayerCheckEnabledLegend = 8,
       sbRequiredWfsNotEnabled = 9,
       sbVectorLayerSearchNotDefined = 10,
-      sbVectorLayerDuplicateRuleKey = 11
+      sbVectorLayerDuplicateRuleKey = 11,
+      sbVectorLayerBase64SymbolContent = 12,
+      sbVectorLayerAbsolutePathSymbolContent = 13,
+      sbVectorLayerInvalidSymbolPath = 14
     };
 
     /**

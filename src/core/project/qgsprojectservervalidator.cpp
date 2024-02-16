@@ -50,8 +50,6 @@ QString QgsProjectServerValidator::displayValidationError( QgsProjectServerValid
       return QObject::tr( "The layer has been marked to be used in a WebGIS tool that requires accessing the layer's features through WFS ... but access is not granted through WFS!" );
     case QgsProjectServerValidator::sbVectorLayerSearchNotDefined:
       return QObject::tr( "The layer has been marked searchable ... but no search expression has been defined!" );
-    case QgsProjectServerValidator::sbVectorLayerDuplicateRuleKey:
-      return "";
   }
   return QString();
 }
