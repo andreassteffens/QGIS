@@ -2304,7 +2304,9 @@ class TestGdalRasterAlgorithms(unittest.TestCase, AlgorithmsTestBase.AlgorithmsT
                 ['gdal_fillnodata.py',
                  f'{source} {outsource} -md 10 -b 1 -of GTiff'])
 
-            # nomask true
+            # The -nomask option is no longer supported since GDAL 3.4 and
+            # it doesn't work as expected even using GDAL < 3.4 https://github.com/OSGeo/gdal/pull/4201
+            # Silently ignore the NO_MASK parameter
             self.assertEqual(
                 alg.getConsoleCommands({'INPUT': source,
                                         'BAND': 1,
@@ -2313,7 +2315,7 @@ class TestGdalRasterAlgorithms(unittest.TestCase, AlgorithmsTestBase.AlgorithmsT
                                         'NO_MASK': True,
                                         'OUTPUT': outsource}, context, feedback),
                 ['gdal_fillnodata.py',
-                 f'{source} {outsource} -md 10 -b 1 -nomask -of GTiff'])
+                 f'{source} {outsource} -md 10 -b 1 -of GTiff'])
 
             # creation options
             self.assertEqual(
