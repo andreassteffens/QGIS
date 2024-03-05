@@ -426,121 +426,121 @@ namespace QgsWms
         authorElem.appendChild( authorText );
         serviceElem.appendChild( authorElem );
       }
-    }
 
-    QDomElement backgroundElem = doc.createElement( QStringLiteral( "sbBackgroundColor" ) );
-    int red = project->readNumEntry( QStringLiteral( "Gui" ), QStringLiteral( "/CanvasColorRedPart" ), 255 );
-    int green = project->readNumEntry( QStringLiteral( "Gui" ), QStringLiteral( "/CanvasColorGreenPart" ), 255 );
-    int blue = project->readNumEntry( QStringLiteral( "Gui" ), QStringLiteral( "/CanvasColorBluePart" ), 255 );
-    QColor col = QColor::fromRgb( red, green, blue );
-    QDomText backgroundColorText = doc.createTextNode( col.name( QColor::NameFormat::HexRgb ) );
-    backgroundElem.appendChild( backgroundColorText );
-    serviceElem.appendChild( backgroundElem );
+      QDomElement backgroundElem = doc.createElement( QStringLiteral( "sbBackgroundColor" ) );
+      int red = project->readNumEntry( QStringLiteral( "Gui" ), QStringLiteral( "/CanvasColorRedPart" ), 255 );
+      int green = project->readNumEntry( QStringLiteral( "Gui" ), QStringLiteral( "/CanvasColorGreenPart" ), 255 );
+      int blue = project->readNumEntry( QStringLiteral( "Gui" ), QStringLiteral( "/CanvasColorBluePart" ), 255 );
+      QColor col = QColor::fromRgb( red, green, blue );
+      QDomText backgroundColorText = doc.createTextNode( col.name( QColor::NameFormat::HexRgb ) );
+      backgroundElem.appendChild( backgroundColorText );
+      serviceElem.appendChild( backgroundElem );
 
-    QDomElement selectionElem = doc.createElement( QStringLiteral( "sbSelectionColor" ) );
-    int alpha = project->readNumEntry( QStringLiteral( "Gui" ), QStringLiteral( "/SelectionColorAlphaPart" ), 255 );
-    red = project->readNumEntry( QStringLiteral( "Gui" ), QStringLiteral( "/SelectionColorRedPart" ), 255 );
-    green = project->readNumEntry( QStringLiteral( "Gui" ), QStringLiteral( "/SelectionColorGreenPart" ), 255 );
-    blue = project->readNumEntry( QStringLiteral( "Gui" ), QStringLiteral( "/SelectionColorBluePart" ), 255 );
-    col = QColor::fromRgb( red, green, blue, alpha );
-    QDomText selectionColorText = doc.createTextNode( col.name( QColor::NameFormat::HexArgb ) );
-    selectionElem.appendChild( selectionColorText );
-    serviceElem.appendChild( selectionElem );
+      QDomElement selectionElem = doc.createElement( QStringLiteral( "sbSelectionColor" ) );
+      int alpha = project->readNumEntry( QStringLiteral( "Gui" ), QStringLiteral( "/SelectionColorAlphaPart" ), 255 );
+      red = project->readNumEntry( QStringLiteral( "Gui" ), QStringLiteral( "/SelectionColorRedPart" ), 255 );
+      green = project->readNumEntry( QStringLiteral( "Gui" ), QStringLiteral( "/SelectionColorGreenPart" ), 255 );
+      blue = project->readNumEntry( QStringLiteral( "Gui" ), QStringLiteral( "/SelectionColorBluePart" ), 255 );
+      col = QColor::fromRgb( red, green, blue, alpha );
+      QDomText selectionColorText = doc.createTextNode( col.name( QColor::NameFormat::HexArgb ) );
+      selectionElem.appendChild( selectionColorText );
+      serviceElem.appendChild( selectionElem );
 
-    QStringList colorsList = project->readListEntry( QStringLiteral( "Palette" ), QStringLiteral( "/Colors" ) );
-    QStringList labelsList = project->readListEntry( QStringLiteral( "Palette" ), QStringLiteral( "/Labels" ) );
-    if ( colorsList.count() > 0 )
-    {
-      QDomElement paletteElem = doc.createElement( QStringLiteral( "sbColorPalette" ) );
-      serviceElem.appendChild( paletteElem );
-
-      int index = 0;
-      for ( QStringList::iterator it = colorsList.begin(); it != colorsList.end(); ++it )
+      QStringList colorsList = project->readListEntry( QStringLiteral( "Palette" ), QStringLiteral( "/Colors" ) );
+      QStringList labelsList = project->readListEntry( QStringLiteral( "Palette" ), QStringLiteral( "/Labels" ) );
+      if ( colorsList.count() > 0 )
       {
-        QColor color = QgsSymbolLayerUtils::decodeColor( *it );
+        QDomElement paletteElem = doc.createElement( QStringLiteral( "sbColorPalette" ) );
+        serviceElem.appendChild( paletteElem );
 
-        QString label;
-        if ( labelsList.length() > index )
-          label = labelsList.at( index );
+        int index = 0;
+        for ( QStringList::iterator it = colorsList.begin(); it != colorsList.end(); ++it )
+        {
+          QColor color = QgsSymbolLayerUtils::decodeColor( *it );
 
-        QDomElement colorElem = doc.createElement( QStringLiteral( "sbColor" ) );
-        colorElem.setAttribute( QStringLiteral( "name" ), label );
-        QDomText colorText = doc.createTextNode( color.name( QColor::NameFormat::HexArgb ) );
-        colorElem.appendChild( colorText );
-        paletteElem.appendChild( colorElem );
+          QString label;
+          if ( labelsList.length() > index )
+            label = labelsList.at( index );
+
+          QDomElement colorElem = doc.createElement( QStringLiteral( "sbColor" ) );
+          colorElem.setAttribute( QStringLiteral( "name" ), label );
+          QDomText colorText = doc.createTextNode( color.name( QColor::NameFormat::HexArgb ) );
+          colorElem.appendChild( colorText );
+          paletteElem.appendChild( colorElem );
+        }
       }
-    }
 
-    QDomElement scalesElem = doc.createElement( QStringLiteral( "sbMapScales" ) );
-    serviceElem.appendChild( scalesElem );
+      QDomElement scalesElem = doc.createElement( QStringLiteral( "sbMapScales" ) );
+      serviceElem.appendChild( scalesElem );
 
-    bool useScales = project->readBoolEntry( QStringLiteral( "Scales" ), QStringLiteral( "/useProjectScales" ) );
-    if ( useScales )
-    {
-      QStringList scalesList = project->readListEntry( QStringLiteral( "Scales" ), QStringLiteral( "/ScalesList" ) );
-      if ( scalesList.count() > 0 )
+      bool useScales = project->readBoolEntry( QStringLiteral( "Scales" ), QStringLiteral( "/useProjectScales" ) );
+      if ( useScales )
       {
-        for ( QStringList::const_iterator it = scalesList.constBegin(); it != scalesList.constEnd(); ++it )
+        QStringList scalesList = project->readListEntry( QStringLiteral( "Scales" ), QStringLiteral( "/ScalesList" ) );
+        if ( scalesList.count() > 0 )
+        {
+          for ( QStringList::const_iterator it = scalesList.constBegin(); it != scalesList.constEnd(); ++it )
+          {
+            QDomElement scaleElem = doc.createElement( QStringLiteral( "sbScale" ) );
+            QDomText scaleText = doc.createTextNode( *it );
+            scaleElem.appendChild( scaleText );
+            scalesElem.appendChild( scaleElem );
+          }
+        }
+      }
+
+      useScales = project->viewSettings()->useProjectScales();
+      if ( useScales )
+      {
+        QVector<double> vecScales = project->viewSettings()->mapScales();
+        for ( QVector<double>::const_iterator it = vecScales.constBegin(); it != vecScales.constEnd(); ++it )
         {
           QDomElement scaleElem = doc.createElement( QStringLiteral( "sbScale" ) );
-          QDomText scaleText = doc.createTextNode( *it );
+          QDomText scaleText = doc.createTextNode( QString::number( *it ) );
           scaleElem.appendChild( scaleText );
           scalesElem.appendChild( scaleElem );
         }
       }
-    }
 
-    useScales = project->viewSettings()->useProjectScales();
-    if ( useScales )
-    {
-      QVector<double> vecScales = project->viewSettings()->mapScales();
-      for ( QVector<double>::const_iterator it = vecScales.constBegin(); it != vecScales.constEnd(); ++it )
+      QgsMapThemeCollection *themes = project->mapThemeCollection();
+      if ( themes->mapThemes().count() > 0 )
       {
-        QDomElement scaleElem = doc.createElement( QStringLiteral( "sbScale" ) );
-        QDomText scaleText = doc.createTextNode( QString::number( *it ) );
-        scaleElem.appendChild( scaleText );
-        scalesElem.appendChild( scaleElem );
+        QDomElement viewsElem = doc.createElement( QStringLiteral( "sbViews" ) );
+        themes->writeXmlContent( viewsElem, doc, true );
+        serviceElem.appendChild( viewsElem );
       }
-    }
 
-    QgsMapThemeCollection *themes = project->mapThemeCollection();
-    if ( themes->mapThemes().count() > 0 )
-    {
-      QDomElement viewsElem = doc.createElement( QStringLiteral( "sbViews" ) );
-      themes->writeXmlContent( viewsElem, doc, true );
-      serviceElem.appendChild( viewsElem );
-    }
+      QgsMapSettings *settings = QgsConfigCache::instance()->sbMapSettings( serverIface->configFilePath() );
+      if ( settings != NULL )
+      {
+        QDomElement extentElem = doc.createElement( QStringLiteral( "sbViewExtent" ) );
 
-    QgsMapSettings *settings = QgsConfigCache::instance()->sbMapSettings( serverIface->configFilePath() );
-    if ( settings != NULL )
-    {
-      QDomElement extentElem = doc.createElement( QStringLiteral( "sbViewExtent" ) );
+        QDomElement xMin = doc.createElement( QStringLiteral( "xmin" ) );
+        QDomElement yMin = doc.createElement( QStringLiteral( "ymin" ) );
+        QDomElement xMax = doc.createElement( QStringLiteral( "xmax" ) );
+        QDomElement yMax = doc.createElement( QStringLiteral( "ymax" ) );
 
-      QDomElement xMin = doc.createElement( QStringLiteral( "xmin" ) );
-      QDomElement yMin = doc.createElement( QStringLiteral( "ymin" ) );
-      QDomElement xMax = doc.createElement( QStringLiteral( "xmax" ) );
-      QDomElement yMax = doc.createElement( QStringLiteral( "ymax" ) );
+        QDomText xMinText = doc.createTextNode( qgsDoubleToString( settings->extent().xMinimum() ) );
+        QDomText yMinText = doc.createTextNode( qgsDoubleToString( settings->extent().yMinimum() ) );
+        QDomText xMaxText = doc.createTextNode( qgsDoubleToString( settings->extent().xMaximum() ) );
+        QDomText yMaxText = doc.createTextNode( qgsDoubleToString( settings->extent().yMaximum() ) );
 
-      QDomText xMinText = doc.createTextNode( qgsDoubleToString( settings->extent().xMinimum() ) );
-      QDomText yMinText = doc.createTextNode( qgsDoubleToString( settings->extent().yMinimum() ) );
-      QDomText xMaxText = doc.createTextNode( qgsDoubleToString( settings->extent().xMaximum() ) );
-      QDomText yMaxText = doc.createTextNode( qgsDoubleToString( settings->extent().yMaximum() ) );
+        xMin.appendChild( xMinText );
+        yMin.appendChild( yMinText );
+        xMax.appendChild( xMaxText );
+        yMax.appendChild( yMaxText );
 
-      xMin.appendChild( xMinText );
-      yMin.appendChild( yMinText );
-      xMax.appendChild( xMaxText );
-      yMax.appendChild( yMaxText );
+        extentElem.appendChild( xMin );
+        extentElem.appendChild( yMin );
+        extentElem.appendChild( xMax );
+        extentElem.appendChild( yMax );
 
-      extentElem.appendChild( xMin );
-      extentElem.appendChild( yMin );
-      extentElem.appendChild( xMax );
-      extentElem.appendChild( yMax );
+        QgsCoordinateReferenceSystem crs = project->crs();
+        extentElem.setAttribute( "crs", crs.authid() );
+        extentElem.setAttribute( "rotation", settings->rotation() );
 
-      QgsCoordinateReferenceSystem crs = project->crs();
-      extentElem.setAttribute( "crs", crs.authid() );
-      extentElem.setAttribute( "rotation", settings->rotation() );
-
-      serviceElem.appendChild( extentElem );
+        serviceElem.appendChild( extentElem );
+      }
     }
 
     return serviceElem;
