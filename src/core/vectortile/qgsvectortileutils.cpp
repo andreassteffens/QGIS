@@ -191,6 +191,7 @@ void QgsVectorTileUtils::loadSprites( const QVariantMap &styleDefinition, QgsMap
     {
       QUrl spriteUrl = QUrl( spriteUriBase );
       spriteUrl.setPath( spriteUrl.path() + QStringLiteral( "%1.json" ).arg( resolution > 1 ? QStringLiteral( "@%1x" ).arg( resolution ) : QString() ) );
+
       QNetworkRequest request = QNetworkRequest( spriteUrl );
       QgsSetRequestInitiatorClass( request, QStringLiteral( "QgsVectorTileLayer" ) )
       QgsBlockingNetworkRequest networkRequest;
@@ -237,4 +238,3 @@ void QgsVectorTileUtils::loadSprites( const QVariantMap &styleDefinition, QgsMap
     }
   }
 }
-

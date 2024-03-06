@@ -2682,9 +2682,20 @@ QgsProperty QgsMapBoxGlStyleConverter::parseMatchList( const QVariantList &json,
     const QVariantList keys = json.value( i ).toList();
 
     QStringList matchString;
-    for ( const QVariant &key : keys )
+
+    if ( keys.count() != 0 )
     {
-      matchString << QgsExpression::quotedValue( key );
+      for ( const QVariant &key : keys )
+      {
+        matchString << QgsExpression::quotedValue( key );
+      }
+    }
+    else
+    {
+      if ( json.value( i ).type() == QVariant::Type::String )
+        matchString << QgsExpression::quotedValue( json.value( i ).toString() );
+      else
+        matchString << json.value( i ).toString();
     }
 
     const QVariant value = json.value( i + 1 );
