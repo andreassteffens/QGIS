@@ -258,18 +258,13 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
     void collapseAll();
     void selectFeatureByAttribute();
 
-    /**
-     * Called when an item is expanded so that we can ensure that the
-     * column width if expanded to show it.
-     */
-    void itemExpanded( QTreeWidgetItem * );
-
     //! sends signal if current feature id has changed
     void handleCurrentItemChanged( QTreeWidgetItem *current, QTreeWidgetItem *previous );
     /* Item in tree was clicked */
     void itemClicked( QTreeWidgetItem *lvi, int column );
 
-    QTreeWidgetItem *retrieveAttributes( QTreeWidgetItem *item, QgsAttributeMap &attributes, int &currentIdx );
+    QgsAttributeMap retrieveAttributes( QTreeWidgetItem *item );
+    QVariant retrieveAttribute( QTreeWidgetItem *item );
 
     void cmbIdentifyMode_currentIndexChanged( int index );
 
@@ -350,6 +345,8 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
 
     void initSelectionModes();
     QgsIdentifyResultsFeatureItem *createFeatureItem( QgsVectorLayer *vlayer, const QgsFeature &f, const QMap<QString, QString> &derivedAttributes, bool includeRelations, QTreeWidgetItem *parentItem );
+
+    friend class TestQgsMapToolIdentifyAction;
 };
 
 class QgsIdentifyResultsDialogMapLayerAction : public QAction
