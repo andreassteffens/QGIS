@@ -213,6 +213,7 @@ namespace QgsSb
       unloadFile.close();
     }
 
+    response.setStatusCode( 200 );
     response.setHeader( QStringLiteral( "Content-Type" ), QStringLiteral( "text/xml; charset=utf-8" ) );
     response.write( doc.toByteArray() );
   }

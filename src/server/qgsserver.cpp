@@ -70,8 +70,6 @@ sbServerCacheFilter *QgsServer::sSbServerCacheFilter = nullptr;
 // Initialization must run once for all servers
 bool QgsServer::sInitialized = false;
 
-SimpleCrypt QgsServer::sCrypto;
-
 QgsServiceRegistry *QgsServer::sServiceRegistry = nullptr;
 
 Q_GLOBAL_STATIC( QgsServerSettings, sSettings );
@@ -285,7 +283,7 @@ QString QgsServer::sbGetDecryptedProjectPath( QString strPath )
   bool bClearName = strPath.contains( ".qgs", Qt::CaseInsensitive ) || strPath.contains( ".qgz", Qt::CaseInsensitive );
   if ( !bClearName )
   {
-    strDecryptedPath = sCrypto.sbDecryptFromBase64String( strPath );
+    strDecryptedPath = SimpleCrypt::sbDecrypt( strPath );
 
     if ( !QFileInfo( strDecryptedPath ).exists() )
       strDecryptedPath = strPath;
@@ -557,7 +555,6 @@ bool QgsServer::init( const QString &strTenant )
   sServiceRegistry = new QgsServiceRegistry();
 
   sServerInterface = new QgsServerInterfaceImpl( sCapabilitiesCache, sServiceRegistry, sSettings(), strTenant );
-  sCrypto.setKey( Q_UINT64_C( 0x0c2ad4a4acb9f023 ) );
 
   if ( !sSettings->cacheDirectory().isEmpty() && sSettings->sbUseCache() )
   {

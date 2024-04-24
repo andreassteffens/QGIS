@@ -8,6 +8,7 @@ SET (sb_SRCS
   qgssbconvertproject.cpp
   qgssbgetlayermetadata.cpp
   qgssbgetencryptedpath.cpp
+  qgssbgetdecryptedpath.cpp
   qgssbpurgecache.cpp
   qgssbsetpreloadprojects.cpp
   qgssbsetunloadprojects.cpp

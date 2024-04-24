@@ -74,15 +74,11 @@ static double OSM_ZOOM_SCALES[19] =
   2000
 };
 
-SimpleCrypt sbAddressServicesGui::sCrypto;
-
 sbAddressServicesGui::sbAddressServicesGui( QgisInterface *pQgisIface, const QString &strPluginName, QWidget *parent, Qt::WindowFlags fl )
   : QWidget( parent, fl )
   , mstrPluginName( strPluginName )
 {
   mpQgisIface = pQgisIface;
-
-  sCrypto.setKey( Q_UINT64_C( 0x0c2ad4a4acb9f023 ) );
 
   setupUi( this );
 
@@ -141,7 +137,7 @@ sbAddressServicesGui::sbAddressServicesGui( QgisInterface *pQgisIface, const QSt
   mCheckGoogleActive->setCheckState( ( Qt::CheckState )s.value( "sbAddressServices/GoogleActive", ( int )Qt::CheckState::Unchecked ).toInt() );
   QString strKey = s.value( QStringLiteral( "sbAddressServices/GoogleApiKey" ), "" ).toString();
   if ( !strKey.isEmpty() )
-    strKey = sCrypto.decryptToString( strKey );
+    strKey = SimpleCrypt::sbDecrypt( strKey );
   mPleGoogleKey->setText( strKey );
 
   mLeGoogleQueryOptions->setText( s.value( QStringLiteral( "sbAddressServices/GoogleQueryOptions" ), "" ).toString() );
@@ -264,7 +260,7 @@ void sbAddressServicesGui::onSettingsTextChanged( const QString &text )
 
   QString strKey = mPleGoogleKey->text();
   if ( !strKey.isEmpty() )
-    strKey = sCrypto.encryptToString( strKey );
+    strKey = SimpleCrypt::sbEncrypt( strKey );
   s.setValue( "sbAddressServices/GoogleApiKey", QVariant( strKey ) );
 
   s.setValue( "sbAddressServices/GoogleQueryOptions", QVariant( mLeGoogleQueryOptions->text() ) );

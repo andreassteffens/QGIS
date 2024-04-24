@@ -1,247 +1,225 @@
-/*
-Copyright (c) 2011, Andre Somers
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
-    * Neither the name of the Rathenau Instituut, Andre Somers nor the
-      names of its contributors may be used to endorse or promote products
-      derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL ANDRE SOMERS BE LIABLE FOR ANY
-DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR #######; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
 #ifndef SIMPLECRYPT_H
 #define SIMPLECRYPT_H
-#include <QString>
-#include <QVector>
-#include <QFlags>
 
-/**
-*  @short Simple encryption and decryption of strings and byte arrays
+#define QTAESSHARED_EXPORT
 
-*  This class provides a simple implementation of encryption and decryption
-*  of strings and byte arrays.
+#include <QObject>
+#include <QByteArray>
 
-*  @warning The encryption provided by this class is NOT strong encryption. It may
-*  help to shield things from curious eyes, but it will NOT stand up to someone
-*  determined to break the encryption. Don't say you were not warned.
+#ifdef __linux__
+#ifndef __LP64__
+#define do_rdtsc _do_rdtsc
+#endif
+#endif
 
-*  The class uses a 64 bit key. Simply create an instance of the class, set the key,
-*  and use the encryptToString() method to calculate an encrypted version of the input string.
-*  To decrypt that string again, use an instance of SimpleCrypt initialized with
-*  the same key, and call the decryptToString() method with the encrypted string. If the key
-*  matches, the decrypted version of the string will be returned again.
-
-*  If you do not provide a key, or if something else is wrong, the encryption and
-*  decryption function will return an empty string or will return a string containing nonsense.
-*  lastError() will return a value indicating if the method was succesful, and if not, why not.
-
-*  SimpleCrypt is prepared for the case that the encryption and decryption
-*  algorithm is changed in a later version, by prepending a version identifier to the cypertext.
-  */
-class SimpleCrypt
+class QTAESSHARED_EXPORT SimpleCrypt : public QObject
 {
-  public:
+  Q_OBJECT
+public:
+  enum Aes {
+    AES_128,
+    AES_192,
+    AES_256
+  };
 
-    /**
-    *      CompressionMode describes if compression will be applied to the data to be
-    *      encrypted.
-      */
-    enum CompressionMode
-    {
-      CompressionAuto,    //!< Only apply compression if that results in a shorter plaintext.
-      CompressionAlways,  //!< Always apply compression. Note that for short inputs, a compression may result in longer data
-      CompressionNever    //!< Never apply compression.
-    };
+  enum Mode {
+    ECB,
+    CBC,
+    CFB,
+    OFB
+  };
 
-    /**
-    *      IntegrityProtectionMode describes measures taken to make it possible to detect problems with the data
-    *      or wrong decryption keys.
+  enum Padding {
+    ZERO,
+    PKCS7,
+    ISO
+  };
 
-    *      Measures involve adding a checksum or a cryptograhpic hash to the data to be encrypted. This
-    *      increases the length of the resulting cypertext, but makes it possible to check if the plaintext
-    *      appears to be valid after decryption.
-    */
-    enum IntegrityProtectionMode
-    {
-      ProtectionNone,    //!< The integerity of the encrypted data is not protected. It is not really possible to detect a wrong key, for instance.
-      ProtectionChecksum,//!< A simple checksum is used to verify that the data is in order. If not, an empty string is returned.
-      ProtectionHash     //!< A cryptographic hash is used to verify the integrity of the data. This method produces a much stronger, but longer check
-    };
+  static QString sbEncrypt( const QString& plain );
 
-    /**
-    *      Error describes the type of error that occured.
-      */
-    enum Error
-    {
-      ErrorNoError,         //!< No error occurred.
-      ErrorNoKeySet,        //!< No key was set. You can not encrypt or decrypt without a valid key.
-      ErrorUnknownVersion,  //!< The version of this data is unknown, or the data is otherwise not valid.
-      ErrorIntegrityFailed, //!< The integrity check of the data failed. Perhaps the wrong key was used.
-    };
+  static QString sbDecrypt( const QString& encoded );
 
-    /**
-    *      Constructor.
+  /*!
+   * \brief static method call to encrypt data given by rawText
+   * \param level:    AES::Aes level
+   * \param mode:     AES::Mode mode
+   * \param rawText:  input text
+   * \param key:      user-key (key.size either 128, 192, 256 bits depending on AES::Aes)
+   * \param iv:       initialisation-vector (iv.size is 128 bits (16 Bytes))
+   * \param padding:  AES::Padding standard
+   * \return encrypted cipher
+   */
+  static QByteArray Crypt(SimpleCrypt::Aes level, SimpleCrypt::Mode mode, const QByteArray& rawText, const QByteArray& key,
+    const QByteArray& iv = QByteArray(), SimpleCrypt::Padding padding = SimpleCrypt::ISO);
+  /*!
+   * \brief static method call to decrypt data given by rawText
+   * \param level:    AES::Aes level
+   * \param mode:     AES::Mode mode
+   * \param rawText:  input text
+   * \param key:      user-key (key.size either 128, 192, 256 bits depending on AES::Aes)
+   * \param iv:       initialisation-vector (iv.size is 128 bits (16 Bytes))
+   * \param padding:  AES::Padding standard
+   * \return decrypted cipher with padding
+   */
+  static QByteArray Decrypt(SimpleCrypt::Aes level, SimpleCrypt::Mode mode, const QByteArray& rawText, const QByteArray& key,
+    const QByteArray& iv = QByteArray(), SimpleCrypt::Padding padding = SimpleCrypt::ISO);
+  /*!
+   * \brief static method call to expand the user key to fit the encrypting/decrypting algorithm
+   * \param level:            AES::Aes level
+   * \param mode:             AES::Mode mode
+   * \param key:              user-key (key.size either 128, 192, 256 bits depending on AES::Aes)
+   * \param expKey:           output expanded key
+   * \param isEncryptionKey:    always 'true' || only 'false' when DECRYPTING in CBC or EBC mode with aesni (check if supported)
+   * \return AES-ready key
+   */
+  static QByteArray ExpandKey(SimpleCrypt::Aes level, SimpleCrypt::Mode mode, const QByteArray& key, bool isEncryptionKey);
 
-    *      Constructs a SimpleCrypt instance without a valid key set on it.
-     */
-    SimpleCrypt();
+  /*!
+   * \brief static method call to remove padding from decrypted cipher given by rawText
+   * \param rawText:  inputText
+   * \param padding:  AES::Padding standard
+   * \return decrypted cipher with padding removed
+   */
+  static QByteArray RemovePadding(const QByteArray& rawText, SimpleCrypt::Padding padding = SimpleCrypt::ISO);
 
-    /**
-    *      Constructor.
+  SimpleCrypt(SimpleCrypt::Aes level, SimpleCrypt::Mode mode,
+    SimpleCrypt::Padding padding = SimpleCrypt::ISO);
 
-    *      Constructs a SimpleCrypt instance and initializes it with the given @arg key.
-     */
-    explicit SimpleCrypt( quint64 key );
 
-    /**
-    *      (Re-) initializes the key with the given @arg key.
-      */
-    void setKey( quint64 key );
 
-    /**
-    *      Returns true if SimpleCrypt has been initialized with a key.
-      */
-    bool hasKey() const {return !m_keyParts.isEmpty();}
+  /*!
+   * \brief object method call to encrypt data given by rawText
+   * \param rawText:  input text
+   * \param key:      user-key (key.size either 128, 192, 256 bits depending on AES::Aes)
+   * \param iv:       initialisation-vector (iv.size is 128 bits (16 Bytes))
+   * \return encrypted cipher
+   */
+  QByteArray encode(const QByteArray& rawText, const QByteArray& key, const QByteArray& iv = QByteArray());
 
-    /**
-    *      Sets the compression mode to use when encrypting data. The default mode is Auto.
+  /*!
+   * \brief object method call to decrypt data given by rawText
+   * \param rawText:  input text
+   * \param key:      user-key (key.size either 128, 192, 256 bits depending on AES::Aes)
+   * \param iv:       initialisation-vector (iv.size is 128 bits (16 Bytes))
+   * \param padding:  AES::Padding standard
+   * \return decrypted cipher with padding
+   */
+  QByteArray decode(const QByteArray& rawText, const QByteArray& key, const QByteArray& iv = QByteArray());
 
-    *      Note that decryption is not influenced by this mode, as the decryption recognizes
-    *      what mode was used when encrypting.
-      */
-    void setCompressionMode( CompressionMode mode ) {m_compressionMode = mode;}
+  /*!
+   * \brief object method call to expand the user key to fit the encrypting/decrypting algorithm
+   * \param key:              user-key (key.size either 128, 192, 256 bits depending on AES::Aes)
+   * \param isEncryptionKey:    always 'true' || only 'false' when DECRYPTING in CBC or EBC mode with aesni (check if supported)
+   * \return AES-ready key
+   */
+  QByteArray expandKey(const QByteArray& key, bool isEncryptionKey);
 
-    /**
-    *      Returns the CompressionMode that is currently in use.
-      */
-    CompressionMode compressionMode() const {return m_compressionMode;}
+  /*!
+   * \brief object method call to remove padding from decrypted cipher given by rawText
+   * \param rawText:  inputText
+   * \return decrypted cipher with padding removed
+   */
+  QByteArray removePadding(const QByteArray& rawText);
 
-    /**
-    *      Sets the integrity mode to use when encrypting data. The default mode is Checksum.
+  QByteArray printArray(uchar* arr, int size);
+Q_SIGNALS:
 
-    *      Note that decryption is not influenced by this mode, as the decryption recognizes
-    *      what mode was used when encrypting.
-      */
-    void setIntegrityProtectionMode( IntegrityProtectionMode mode ) {m_protectionMode = mode;}
+public Q_SLOTS:
 
-    /**
-    *      Returns the IntegrityProtectionMode that is currently in use.
-      */
-    IntegrityProtectionMode integrityProtectionMode() const {return m_protectionMode;}
+private:
+  int m_nb;
+  int m_blocklen;
+  int m_level;
+  int m_mode;
+  int m_nk;
+  int m_keyLen;
+  int m_nr;
+  int m_expandedKey;
+  int m_padding;
+  bool m_aesNIAvailable;
+  QByteArray* m_state;
 
-    /**
-    *      Returns the last error that occurred.
-      */
-    Error lastError() const {return m_lastError;}
+  struct AES256 {
+    int nk = 8;
+    int keylen = 32;
+    int nr = 14;
+    int expandedKey = 240;
+    int userKeySize = 256;
+  };
 
-    QString sbEncryptToBase64String( const QString &plaintext ) const;
+  struct AES192 {
+    int nk = 6;
+    int keylen = 24;
+    int nr = 12;
+    int expandedKey = 209;
+    int userKeySize = 192;
+  };
 
-    QString sbDecryptFromBase64String( const QString &cyphertext );
+  struct AES128 {
+    int nk = 4;
+    int keylen = 16;
+    int nr = 10;
+    int expandedKey = 176;
+    int userKeySize = 128;
+  };
 
-    /**
-    *      Encrypts the @arg plaintext string with the key the class was initialized with, and returns
-    *      a cyphertext the result. The result is a base64 encoded version of the binary array that is the
-    *      actual result of the string, so it can be stored easily in a text format.
-      */
-    QString encryptToString( const QString &plaintext ) ;
+  quint8 getSBoxValue(quint8 num) { return sbox[num]; }
+  quint8 getSBoxInvert(quint8 num) { return rsbox[num]; }
 
-    /**
-    *      Encrypts the @arg plaintext QByteArray with the key the class was initialized with, and returns
-    *      a cyphertext the result. The result is a base64 encoded version of the binary array that is the
-    *      actual result of the encryption, so it can be stored easily in a text format.
-      */
-    QString encryptToString( QByteArray plaintext ) ;
+  void addRoundKey(const quint8 round, const QByteArray& expKey);
+  void subBytes();
+  void shiftRows();
+  void mixColumns();
+  void invMixColumns();
+  void invSubBytes();
+  void invShiftRows();
+  QByteArray getPadding(int currSize, int alignment);
+  QByteArray cipher(const QByteArray& expKey, const QByteArray& in);
+  QByteArray invCipher(const QByteArray& expKey, const QByteArray& in);
+  QByteArray byteXor(const QByteArray& a, const QByteArray& b);
 
-    /**
-    *      Encrypts the @arg plaintext string with the key the class was initialized with, and returns
-    *      a binary cyphertext in a QByteArray the result.
+  const quint8 sbox[256] = {
+    //0     1    2      3     4    5     6     7      8    9     A      B    C     D     E     F
+    0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
+    0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
+    0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
+    0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
+    0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
+    0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
+    0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
+    0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
+    0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
+    0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
+    0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
+    0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
+    0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
+    0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
+    0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
+    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 };
 
-    *      This method returns a byte array, that is useable for storing a binary format. If you need
-    *      a string you can store in a text file, use encryptToString() instead.
-      */
-    QByteArray encryptToByteArray( const QString &plaintext ) ;
+  const quint8 rsbox[256] = {
+    0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
+    0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
+    0x54, 0x7b, 0x94, 0x32, 0xa6, 0xc2, 0x23, 0x3d, 0xee, 0x4c, 0x95, 0x0b, 0x42, 0xfa, 0xc3, 0x4e,
+    0x08, 0x2e, 0xa1, 0x66, 0x28, 0xd9, 0x24, 0xb2, 0x76, 0x5b, 0xa2, 0x49, 0x6d, 0x8b, 0xd1, 0x25,
+    0x72, 0xf8, 0xf6, 0x64, 0x86, 0x68, 0x98, 0x16, 0xd4, 0xa4, 0x5c, 0xcc, 0x5d, 0x65, 0xb6, 0x92,
+    0x6c, 0x70, 0x48, 0x50, 0xfd, 0xed, 0xb9, 0xda, 0x5e, 0x15, 0x46, 0x57, 0xa7, 0x8d, 0x9d, 0x84,
+    0x90, 0xd8, 0xab, 0x00, 0x8c, 0xbc, 0xd3, 0x0a, 0xf7, 0xe4, 0x58, 0x05, 0xb8, 0xb3, 0x45, 0x06,
+    0xd0, 0x2c, 0x1e, 0x8f, 0xca, 0x3f, 0x0f, 0x02, 0xc1, 0xaf, 0xbd, 0x03, 0x01, 0x13, 0x8a, 0x6b,
+    0x3a, 0x91, 0x11, 0x41, 0x4f, 0x67, 0xdc, 0xea, 0x97, 0xf2, 0xcf, 0xce, 0xf0, 0xb4, 0xe6, 0x73,
+    0x96, 0xac, 0x74, 0x22, 0xe7, 0xad, 0x35, 0x85, 0xe2, 0xf9, 0x37, 0xe8, 0x1c, 0x75, 0xdf, 0x6e,
+    0x47, 0xf1, 0x1a, 0x71, 0x1d, 0x29, 0xc5, 0x89, 0x6f, 0xb7, 0x62, 0x0e, 0xaa, 0x18, 0xbe, 0x1b,
+    0xfc, 0x56, 0x3e, 0x4b, 0xc6, 0xd2, 0x79, 0x20, 0x9a, 0xdb, 0xc0, 0xfe, 0x78, 0xcd, 0x5a, 0xf4,
+    0x1f, 0xdd, 0xa8, 0x33, 0x88, 0x07, 0xc7, 0x31, 0xb1, 0x12, 0x10, 0x59, 0x27, 0x80, 0xec, 0x5f,
+    0x60, 0x51, 0x7f, 0xa9, 0x19, 0xb5, 0x4a, 0x0d, 0x2d, 0xe5, 0x7a, 0x9f, 0x93, 0xc9, 0x9c, 0xef,
+    0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
+    0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d };
 
-    /**
-    *      Encrypts the @arg plaintext QByteArray with the key the class was initialized with, and returns
-    *      a binary cyphertext in a QByteArray the result.
-
-    *      This method returns a byte array, that is useable for storing a binary format. If you need
-    *      a string you can store in a text file, use encryptToString() instead.
-      */
-    QByteArray encryptToByteArray( QByteArray plaintext ) ;
-
-    /**
-    *      Decrypts a cyphertext string encrypted with this class with the set key back to the
-    *      plain text version.
-
-    *      If an error occured, such as non-matching keys between encryption and decryption,
-    *      an empty string or a string containing nonsense may be returned.
-      */
-    QString decryptToString( const QString &cyphertext ) ;
-
-    /**
-    *      Decrypts a cyphertext string encrypted with this class with the set key back to the
-    *      plain text version.
-
-    *      If an error occured, such as non-matching keys between encryption and decryption,
-    *      an empty string or a string containing nonsense may be returned.
-      */
-    QByteArray decryptToByteArray( const QString &cyphertext ) ;
-
-    /**
-    *      Decrypts a cyphertext binary encrypted with this class with the set key back to the
-    *      plain text version.
-
-    *      If an error occured, such as non-matching keys between encryption and decryption,
-    *      an empty string or a string containing nonsense may be returned.
-      */
-    QString decryptToString( QByteArray cypher ) ;
-
-    /**
-    *      Decrypts a cyphertext binary encrypted with this class with the set key back to the
-    *      plain text version.
-
-    *      If an error occured, such as non-matching keys between encryption and decryption,
-    *      an empty string or a string containing nonsense may be returned.
-      */
-    QByteArray decryptToByteArray( QByteArray cypher ) ;
-
-    //enum to describe options that have been used for the encryption. Currently only one, but
-    //that only leaves room for future extensions like adding a cryptographic hash...
-    enum CryptoFlag {CryptoFlagNone = 0,
-                     CryptoFlagCompression = 0x01,
-                     CryptoFlagChecksum = 0x02,
-                     CryptoFlagHash = 0x04
-                    };
-    Q_DECLARE_FLAGS( CryptoFlags, CryptoFlag );
-  private:
-
-    void splitKey();
-
-    quint64 m_key;
-    QVector<char> m_keyParts;
-    CompressionMode m_compressionMode;
-    IntegrityProtectionMode m_protectionMode;
-    Error m_lastError;
-
-    static QMap<QString, QString> s_sbMapDecrypted;
+  // The round constant word array, Rcon[i], contains the values given by
+  // x to th e power (i-1) being powers of x (x is denoted as {02}) in the field GF(2^8)
+  // Only the first 14 elements are needed
+  const quint8 Rcon[14] = {
+      0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8, 0xab };
 };
-Q_DECLARE_OPERATORS_FOR_FLAGS( SimpleCrypt::CryptoFlags )
 
 #endif // SimpleCrypt_H

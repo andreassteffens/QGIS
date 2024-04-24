@@ -1,308 +1,575 @@
-/*
-Copyright (c) 2011, Andre Somers
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
-    * Neither the name of the Rathenau Instituut, Andre Somers nor the
-      names of its contributors may be used to endorse or promote products
-      derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL ANDRE SOMERS BE LIABLE FOR ANY
-DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR #######; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-#include "simplecrypt.h"
-#include <algorithm>
-#include <QByteArray>
-#include <QtDebug>
-#include <QtGlobal>
-#include <QDateTime>
+#include "SimpleCrypt.h"
 #include <QCryptographicHash>
-#include <QDataStream>
 
-QMap<QString, QString> SimpleCrypt::s_sbMapDecrypted;
+/*
+ * Static Functions
+ * */
 
-SimpleCrypt::SimpleCrypt():
-  m_key( 0 ),
-  m_compressionMode( CompressionAuto ),
-  m_protectionMode( ProtectionChecksum ),
-  m_lastError( ErrorNoError )
+SimpleCrypt sbEncryption( SimpleCrypt::AES_256, SimpleCrypt::CBC, SimpleCrypt::PKCS7 );
+QByteArray sbHashKey = QStringLiteral( "01234567891234560123456789123456" ).toUtf8();
+QByteArray sbHashIv = QStringLiteral( "0123456789123456" ).toUtf8();
+
+QString SimpleCrypt::sbEncrypt( const QString& plain )
 {
-  qsrand( uint( 4711 ) );
+  QByteArray encodedBytes = sbEncryption.encode( plain.toUtf8(), sbHashKey, sbHashIv );
+  QString encodedBase64 = QString( encodedBytes.toBase64() );
+
+  return encodedBase64;
 }
 
-SimpleCrypt::SimpleCrypt( quint64 key ):
-  m_key( key ),
-  m_compressionMode( CompressionAuto ),
-  m_protectionMode( ProtectionChecksum ),
-  m_lastError( ErrorNoError )
+QString SimpleCrypt::sbDecrypt( const QString& encoded )
 {
-  qsrand( uint( 4711 ) );
-  splitKey();
+  QByteArray encodedBytes = QByteArray::fromBase64( encoded.toUtf8() );
+  QByteArray decodedBytes = sbEncryption.decode( encodedBytes, sbHashKey, sbHashIv );
+
+  QString decodedString = QString( sbEncryption.removePadding( decodedBytes ) );
+  return decodedString;
 }
 
-void SimpleCrypt::setKey( quint64 key )
+QByteArray SimpleCrypt::Crypt(SimpleCrypt::Aes level, SimpleCrypt::Mode mode, const QByteArray& rawText,
+  const QByteArray& key, const QByteArray& iv, SimpleCrypt::Padding padding)
 {
-  m_key = key;
-  splitKey();
+  return SimpleCrypt(level, mode, padding).encode(rawText, key, iv);
 }
 
-void SimpleCrypt::splitKey()
+QByteArray SimpleCrypt::Decrypt(SimpleCrypt::Aes level, SimpleCrypt::Mode mode, const QByteArray& rawText,
+  const QByteArray& key, const QByteArray& iv, SimpleCrypt::Padding padding)
 {
-  m_keyParts.clear();
-  m_keyParts.resize( 8 );
-  for ( int i = 0; i < 8; i++ )
+  return SimpleCrypt(level, mode, padding).decode(rawText, key, iv);
+}
+
+QByteArray SimpleCrypt::ExpandKey(SimpleCrypt::Aes level, SimpleCrypt::Mode mode, const QByteArray& key, bool isEncryptionKey)
+{
+  return SimpleCrypt(level, mode).expandKey(key, isEncryptionKey);
+}
+
+QByteArray SimpleCrypt::RemovePadding(const QByteArray& rawText, SimpleCrypt::Padding padding)
+{
+  if (rawText.isEmpty())
+    return rawText;
+
+  QByteArray ret(rawText);
+  switch (padding)
   {
-    quint64 part = m_key;
-    for ( int j = i; j > 0; j-- )
-      part = part >> 8;
-    part = part & 0xff;
-    m_keyParts[i] = static_cast<char>( part );
-  }
-}
-
-QByteArray SimpleCrypt::encryptToByteArray( const QString &plaintext )
-{
-  QByteArray plaintextArray = plaintext.toUtf8();
-  return encryptToByteArray( plaintextArray );
-}
-
-QByteArray SimpleCrypt::encryptToByteArray( QByteArray plaintext )
-{
-  if ( m_keyParts.isEmpty() )
+  case Padding::ZERO:
+    //Works only if the last byte of the decoded array is not zero
+    while (ret.at(ret.length() - 1) == 0x00)
+      ret.remove(ret.length() - 1, 1);
+    break;
+  case Padding::PKCS7:
+#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
+    ret.remove(ret.length() - ret.back(), ret.back());
+#else
+    ret.remove(ret.length() - ret.at(ret.length() - 1), ret.at(ret.length() - 1));
+#endif
+    break;
+  case Padding::ISO:
   {
-    qWarning() << "No key set.";
-    m_lastError = ErrorNoKeySet;
-    return QByteArray();
-  }
-
-
-  QByteArray ba = plaintext;
-
-  CryptoFlags flags = CryptoFlagNone;
-  if ( m_compressionMode == CompressionAlways )
-  {
-    ba = qCompress( ba, 9 ); //maximum compression
-    flags |= CryptoFlagCompression;
-  }
-  else if ( m_compressionMode == CompressionAuto )
-  {
-    QByteArray compressed = qCompress( ba, 9 );
-    if ( compressed.count() < ba.count() )
+    // Find the last byte which is not zero
+    int marker_index = ret.length() - 1;
+    for (; marker_index >= 0; --marker_index)
     {
-      ba = compressed;
-      flags |= CryptoFlagCompression;
+      if (ret.at(marker_index) != 0x00)
+      {
+        break;
+      }
+    }
+
+    // And check if it's the byte for marking padding
+    if (ret.at(marker_index) == '\x80')
+    {
+      ret.truncate(marker_index);
+    }
+    break;
+  }
+  default:
+    //do nothing
+    break;
+  }
+  return ret;
+}
+/*
+ * End Static function declarations
+ * */
+
+ /*
+  * Local Functions
+  * */
+
+namespace {
+
+  quint8 xTime(quint8 x)
+  {
+    return ((x << 1) ^ (((x >> 7) & 1) * 0x1b));
+  }
+
+  quint8 multiply(quint8 x, quint8 y)
+  {
+    return (((y & 1) * x) ^ ((y >> 1 & 1) * xTime(x)) ^ ((y >> 2 & 1) * xTime(xTime(x))) ^ ((y >> 3 & 1)
+      * xTime(xTime(xTime(x)))) ^ ((y >> 4 & 1) * xTime(xTime(xTime(xTime(x))))));
+  }
+
+}
+
+/*
+ * End Local functions
+ * */
+
+SimpleCrypt::SimpleCrypt(Aes level, Mode mode,
+  Padding padding)
+  : m_nb(4), m_blocklen(16), m_level(level), m_mode(mode), m_padding(padding)
+  , m_aesNIAvailable(false), m_state(nullptr)
+{
+#ifdef USE_INTEL_AES_IF_AVAILABLE
+  m_aesNIAvailable = check_aesni_support();
+#endif
+
+  switch (level)
+  {
+  case AES_128: {
+    AES128 aes;
+    m_nk = aes.nk;
+    m_keyLen = aes.keylen;
+    m_nr = aes.nr;
+    m_expandedKey = aes.expandedKey;
+  }
+              break;
+  case AES_192: {
+    AES192 aes;
+    m_nk = aes.nk;
+    m_keyLen = aes.keylen;
+    m_nr = aes.nr;
+    m_expandedKey = aes.expandedKey;
+  }
+              break;
+  case AES_256: {
+    AES256 aes;
+    m_nk = aes.nk;
+    m_keyLen = aes.keylen;
+    m_nr = aes.nr;
+    m_expandedKey = aes.expandedKey;
+  }
+              break;
+  default: {
+    AES128 aes;
+    m_nk = aes.nk;
+    m_keyLen = aes.keylen;
+    m_nr = aes.nr;
+    m_expandedKey = aes.expandedKey;
+  }
+         break;
+  }
+
+}
+QByteArray SimpleCrypt::getPadding(int currSize, int alignment)
+{
+  int size = (alignment - currSize % alignment) % alignment;
+  switch (m_padding)
+  {
+  case Padding::ZERO:
+    return QByteArray(size, 0x00);
+    break;
+  case Padding::PKCS7:
+    if (size == 0)
+      size = alignment;
+    return QByteArray(size, size);
+    break;
+  case Padding::ISO:
+    if (size > 0)
+      return QByteArray(size - 1, 0x00).prepend('\x80');
+    break;
+  default:
+    return QByteArray(size, 0x00);
+    break;
+  }
+  return QByteArray();
+}
+
+QByteArray SimpleCrypt::expandKey(const QByteArray& key, bool isEncryptionKey)
+{
+  {
+
+    int i, k;
+    quint8 tempa[4]; // Used for the column/row operations
+    QByteArray roundKey(key); // The first round key is the key itself.
+
+    // All other round keys are found from the previous round keys.
+    //i == Nk
+    for (i = m_nk; i < m_nb * (m_nr + 1); i++)
+    {
+      tempa[0] = (quint8)roundKey.at((i - 1) * 4 + 0);
+      tempa[1] = (quint8)roundKey.at((i - 1) * 4 + 1);
+      tempa[2] = (quint8)roundKey.at((i - 1) * 4 + 2);
+      tempa[3] = (quint8)roundKey.at((i - 1) * 4 + 3);
+
+      if (i % m_nk == 0)
+      {
+        // This function shifts the 4 bytes in a word to the left once.
+        // [a0,a1,a2,a3] becomes [a1,a2,a3,a0]
+
+        // Function RotWord()
+        k = tempa[0];
+        tempa[0] = tempa[1];
+        tempa[1] = tempa[2];
+        tempa[2] = tempa[3];
+        tempa[3] = k;
+
+        // Function Subword()
+        tempa[0] = getSBoxValue(tempa[0]);
+        tempa[1] = getSBoxValue(tempa[1]);
+        tempa[2] = getSBoxValue(tempa[2]);
+        tempa[3] = getSBoxValue(tempa[3]);
+
+        tempa[0] = tempa[0] ^ Rcon[i / m_nk];
+      }
+
+      if (m_level == AES_256 && i % m_nk == 4)
+      {
+        // Function Subword()
+        tempa[0] = getSBoxValue(tempa[0]);
+        tempa[1] = getSBoxValue(tempa[1]);
+        tempa[2] = getSBoxValue(tempa[2]);
+        tempa[3] = getSBoxValue(tempa[3]);
+      }
+      roundKey.insert(i * 4 + 0, (quint8)roundKey.at((i - m_nk) * 4 + 0) ^ tempa[0]);
+      roundKey.insert(i * 4 + 1, (quint8)roundKey.at((i - m_nk) * 4 + 1) ^ tempa[1]);
+      roundKey.insert(i * 4 + 2, (quint8)roundKey.at((i - m_nk) * 4 + 2) ^ tempa[2]);
+      roundKey.insert(i * 4 + 3, (quint8)roundKey.at((i - m_nk) * 4 + 3) ^ tempa[3]);
+    }
+    return roundKey;
+  }
+}
+
+// This function adds the round key to state.
+// The round key is added to the state by an XOR function.
+void SimpleCrypt::addRoundKey(const quint8 round, const QByteArray& expKey)
+{
+  QByteArray::iterator it = m_state->begin();
+  for (int i = 0; i < 16; ++i)
+    it[i] = (quint8)it[i] ^ (quint8)expKey.at(round * m_nb * 4 + (i / 4) * m_nb + (i % 4));
+}
+
+// The SubBytes Function Substitutes the values in the
+// state matrix with values in an S-box.
+void SimpleCrypt::subBytes()
+{
+  QByteArray::iterator it = m_state->begin();
+  for (int i = 0; i < 16; i++)
+    it[i] = getSBoxValue((quint8)it[i]);
+}
+
+// The ShiftRows() function shifts the rows in the state to the left.
+// Each row is shifted with different offset.
+// Offset = Row number. So the first row is not shifted.
+void SimpleCrypt::shiftRows()
+{
+  QByteArray::iterator it = m_state->begin();
+  quint8 temp;
+  //Keep in mind that QByteArray is column-driven!!
+
+   //Shift 1 to left
+  temp = (quint8)it[1];
+  it[1] = (quint8)it[5];
+  it[5] = (quint8)it[9];
+  it[9] = (quint8)it[13];
+  it[13] = (quint8)temp;
+
+  //Shift 2 to left
+  temp = (quint8)it[2];
+  it[2] = (quint8)it[10];
+  it[10] = (quint8)temp;
+  temp = (quint8)it[6];
+  it[6] = (quint8)it[14];
+  it[14] = (quint8)temp;
+
+  //Shift 3 to left
+  temp = (quint8)it[3];
+  it[3] = (quint8)it[15];
+  it[15] = (quint8)it[11];
+  it[11] = (quint8)it[7];
+  it[7] = (quint8)temp;
+}
+
+// MixColumns function mixes the columns of the state matrix
+//optimized!!
+void SimpleCrypt::mixColumns()
+{
+  QByteArray::iterator it = m_state->begin();
+  quint8 tmp, tm, t;
+
+  for (int i = 0; i < 16; i += 4) {
+    t = (quint8)it[i];
+    tmp = (quint8)it[i] ^ (quint8)it[i + 1] ^ (quint8)it[i + 2] ^ (quint8)it[i + 3];
+
+    tm = xTime((quint8)it[i] ^ (quint8)it[i + 1]);
+    it[i] = (quint8)it[i] ^ (quint8)tm ^ (quint8)tmp;
+
+    tm = xTime((quint8)it[i + 1] ^ (quint8)it[i + 2]);
+    it[i + 1] = (quint8)it[i + 1] ^ (quint8)tm ^ (quint8)tmp;
+
+    tm = xTime((quint8)it[i + 2] ^ (quint8)it[i + 3]);
+    it[i + 2] = (quint8)it[i + 2] ^ (quint8)tm ^ (quint8)tmp;
+
+    tm = xTime((quint8)it[i + 3] ^ (quint8)t);
+    it[i + 3] = (quint8)it[i + 3] ^ (quint8)tm ^ (quint8)tmp;
+  }
+}
+
+// MixColumns function mixes the columns of the state matrix.
+// The method used to multiply may be difficult to understand for the inexperienced.
+// Please use the references to gain more information.
+void SimpleCrypt::invMixColumns()
+{
+  QByteArray::iterator it = m_state->begin();
+  quint8 a, b, c, d;
+  for (int i = 0; i < 16; i += 4) {
+    a = (quint8)it[i];
+    b = (quint8)it[i + 1];
+    c = (quint8)it[i + 2];
+    d = (quint8)it[i + 3];
+
+    it[i] = (quint8)(multiply(a, 0x0e) ^ multiply(b, 0x0b) ^ multiply(c, 0x0d) ^ multiply(d, 0x09));
+    it[i + 1] = (quint8)(multiply(a, 0x09) ^ multiply(b, 0x0e) ^ multiply(c, 0x0b) ^ multiply(d, 0x0d));
+    it[i + 2] = (quint8)(multiply(a, 0x0d) ^ multiply(b, 0x09) ^ multiply(c, 0x0e) ^ multiply(d, 0x0b));
+    it[i + 3] = (quint8)(multiply(a, 0x0b) ^ multiply(b, 0x0d) ^ multiply(c, 0x09) ^ multiply(d, 0x0e));
+  }
+}
+
+// The SubBytes Function Substitutes the values in the
+// state matrix with values in an S-box.
+void SimpleCrypt::invSubBytes()
+{
+  QByteArray::iterator it = m_state->begin();
+  for (int i = 0; i < 16; ++i)
+    it[i] = getSBoxInvert((quint8)it[i]);
+}
+
+void SimpleCrypt::invShiftRows()
+{
+  QByteArray::iterator it = m_state->begin();
+  uint8_t temp;
+
+  //Keep in mind that QByteArray is column-driven!!
+
+  //Shift 1 to right
+  temp = (quint8)it[13];
+  it[13] = (quint8)it[9];
+  it[9] = (quint8)it[5];
+  it[5] = (quint8)it[1];
+  it[1] = (quint8)temp;
+
+  //Shift 2
+  temp = (quint8)it[10];
+  it[10] = (quint8)it[2];
+  it[2] = (quint8)temp;
+  temp = (quint8)it[14];
+  it[14] = (quint8)it[6];
+  it[6] = (quint8)temp;
+
+  //Shift 3
+  temp = (quint8)it[7];
+  it[7] = (quint8)it[11];
+  it[11] = (quint8)it[15];
+  it[15] = (quint8)it[3];
+  it[3] = (quint8)temp;
+}
+
+QByteArray SimpleCrypt::byteXor(const QByteArray& a, const QByteArray& b)
+{
+  QByteArray::const_iterator it_a = a.begin();
+  QByteArray::const_iterator it_b = b.begin();
+  QByteArray ret;
+
+  //for(int i = 0; i < m_blocklen; i++)
+  for (int i = 0; i < std::min(a.size(), b.size()); i++)
+    ret.insert(i, it_a[i] ^ it_b[i]);
+
+  return ret;
+}
+
+// Cipher is the main function that encrypts the PlainText.
+QByteArray SimpleCrypt::cipher(const QByteArray& expKey, const QByteArray& in)
+{
+
+  //m_state is the input buffer...
+  QByteArray output(in);
+  m_state = &output;
+
+  // Add the First round key to the state before starting the rounds.
+  addRoundKey(0, expKey);
+
+  // There will be Nr rounds.
+  // The first Nr-1 rounds are identical.
+  // These Nr-1 rounds are executed in the loop below.
+  for (quint8 round = 1; round < m_nr; ++round) {
+    subBytes();
+    shiftRows();
+    mixColumns();
+    addRoundKey(round, expKey);
+  }
+
+  // The last round is given below.
+  // The MixColumns function is not here in the last round.
+  subBytes();
+  shiftRows();
+  addRoundKey(m_nr, expKey);
+
+  return output;
+}
+
+QByteArray SimpleCrypt::invCipher(const QByteArray& expKey, const QByteArray& in)
+{
+  //m_state is the input buffer.... handle it!
+  QByteArray output(in);
+  m_state = &output;
+
+  // Add the First round key to the state before starting the rounds.
+  addRoundKey(m_nr, expKey);
+
+  // There will be Nr rounds.
+  // The first Nr-1 rounds are identical.
+  // These Nr-1 rounds are executed in the loop below.
+  for (quint8 round = m_nr - 1; round > 0; round--) {
+    invShiftRows();
+    invSubBytes();
+    addRoundKey(round, expKey);
+    invMixColumns();
+  }
+
+  // The last round is given below.
+  // The MixColumns function is not here in the last round.
+  invShiftRows();
+  invSubBytes();
+  addRoundKey(0, expKey);
+
+  return output;
+}
+
+QByteArray SimpleCrypt::printArray(uchar* arr, int size)
+{
+  QByteArray print("");
+  for (int i = 0; i < size; i++)
+    print.append(arr[i]);
+
+  return print.toHex();
+}
+
+QByteArray SimpleCrypt::encode(const QByteArray& rawText, const QByteArray& key, const QByteArray& iv)
+{
+  if ((m_mode >= CBC && (iv.isEmpty() || iv.size() != m_blocklen)) || key.size() != m_keyLen)
+    return QByteArray();
+
+  QByteArray expandedKey = expandKey(key, true);
+  QByteArray alignedText(rawText);
+
+  //Fill array with padding
+  alignedText.append(getPadding(rawText.size(), m_blocklen));
+
+  switch (m_mode)
+  {
+  case ECB: {
+    QByteArray ret;
+    for (int i = 0; i < alignedText.size(); i += m_blocklen)
+      ret.append(cipher(expandedKey, alignedText.mid(i, m_blocklen)));
+    return ret;
+  }
+          break;
+  case CBC: {
+    QByteArray ret;
+    QByteArray ivTemp(iv);
+    for (int i = 0; i < alignedText.size(); i += m_blocklen) {
+      alignedText.replace(i, m_blocklen, byteXor(alignedText.mid(i, m_blocklen), ivTemp));
+      ret.append(cipher(expandedKey, alignedText.mid(i, m_blocklen)));
+      ivTemp = ret.mid(i, m_blocklen);
+    }
+    return ret;
+  }
+          break;
+  case CFB: {
+    QByteArray ret;
+    ret.append(byteXor(alignedText.left(m_blocklen), cipher(expandedKey, iv)));
+    for (int i = 0; i < alignedText.size(); i += m_blocklen) {
+      if (i + m_blocklen < alignedText.size())
+        ret.append(byteXor(alignedText.mid(i + m_blocklen, m_blocklen),
+          cipher(expandedKey, ret.mid(i, m_blocklen))));
+    }
+    return ret;
+  }
+          break;
+  case OFB: {
+    QByteArray ret;
+    QByteArray ofbTemp;
+    ofbTemp.append(cipher(expandedKey, iv));
+    for (int i = m_blocklen; i < alignedText.size(); i += m_blocklen) {
+      ofbTemp.append(cipher(expandedKey, ofbTemp.right(m_blocklen)));
+    }
+    ret.append(byteXor(alignedText, ofbTemp));
+    return ret;
+  }
+          break;
+  default: break;
+  }
+  return QByteArray();
+}
+
+QByteArray SimpleCrypt::decode(const QByteArray& rawText, const QByteArray& key, const QByteArray& iv)
+{
+  if ((m_mode >= CBC && (iv.isEmpty() || iv.size() != m_blocklen)) || key.size() != m_keyLen || rawText.size() % m_blocklen != 0)
+    return QByteArray();
+
+  QByteArray ret;
+  QByteArray expandedKey;
+
+  expandedKey = expandKey(key, true);
+
+  //false or true here is very important
+  //the expandedKeys aren't the same for !aes-ni! ENcryption and DEcryption (only CBC and EBC)
+  //but if you are !NOT! using aes-ni then the expandedKeys for encryption and decryption are the SAME!!!
+
+
+  switch (m_mode)
+  {
+  case ECB:
+    for (int i = 0; i < rawText.size(); i += m_blocklen)
+      ret.append(invCipher(expandedKey, rawText.mid(i, m_blocklen)));
+    break;
+  case CBC:
+  {
+    QByteArray ivTemp(iv);
+    for (int i = 0; i < rawText.size(); i += m_blocklen) {
+      ret.append(invCipher(expandedKey, rawText.mid(i, m_blocklen)));
+      ret.replace(i, m_blocklen, byteXor(ret.mid(i, m_blocklen), ivTemp));
+      ivTemp = rawText.mid(i, m_blocklen);
     }
   }
-
-  QByteArray integrityProtection;
-  if ( m_protectionMode == ProtectionChecksum )
-  {
-    flags |= CryptoFlagChecksum;
-    QDataStream s( &integrityProtection, QIODevice::WriteOnly );
-    s << qChecksum( ba.constData(), ba.length() );
-  }
-  else if ( m_protectionMode == ProtectionHash )
-  {
-    flags |= CryptoFlagHash;
-    QCryptographicHash hash( QCryptographicHash::Sha1 );
-    hash.addData( ba );
-
-    integrityProtection += hash.result();
-  }
-
-  //prepend a random char to the string
-  char randomChar = char( qrand() & 0xFF );
-  ba = randomChar + integrityProtection + ba;
-
-  int pos( 0 );
-  char lastChar( 0 );
-
-  int cnt = ba.count();
-
-  while ( pos < cnt )
-  {
-    ba[pos] = ba.at( pos ) ^ m_keyParts.at( pos % 8 ) ^ lastChar;
-    lastChar = ba.at( pos );
-    ++pos;
-  }
-
-  QByteArray resultArray;
-  resultArray.append( char( 0x03 ) ); //version for future updates to algorithm
-  resultArray.append( char( flags ) ); //encryption flags
-  resultArray.append( ba );
-
-  m_lastError = ErrorNoError;
-  return resultArray;
-}
-
-QString SimpleCrypt::sbEncryptToBase64String( const QString &plaintext ) const
-{
-  QByteArray arrCipher = plaintext.toUtf8().toBase64();
-
-  QString strCipher = arrCipher;
-  strCipher = strCipher.replace( '=', '_' );
-
-  QString strReverse = "";
-  for ( int i = strCipher.count() - 1; i >= 0; i-- )
-    strReverse += strCipher[i];
-
-  return strReverse;
-}
-
-QString SimpleCrypt::sbDecryptFromBase64String( const QString &cyphertext )
-{
-  QString strCipher( cyphertext );
-
-  if ( s_sbMapDecrypted.contains( strCipher ) )
-    return s_sbMapDecrypted[strCipher];
-
-  QString strReverse = "";
-  for ( int i = strCipher.count() - 1; i >= 0; i-- )
-    strReverse += strCipher[i];
-
-  strReverse = strReverse.replace( '_', '=' );
-
-  QString strPlain = QByteArray::fromBase64( strReverse.toUtf8() );
-
-  s_sbMapDecrypted.insert( strCipher, strPlain );
-
-  return strPlain;
-}
-
-QString SimpleCrypt::encryptToString( const QString &plaintext )
-{
-  QByteArray plaintextArray = plaintext.toUtf8();
-  QByteArray cypher = encryptToByteArray( plaintextArray );
-  QString cypherString = QString::fromLatin1( cypher.toBase64() );
-  return cypherString;
-}
-
-QString SimpleCrypt::encryptToString( QByteArray plaintext )
-{
-  QByteArray cypher = encryptToByteArray( plaintext );
-  QString cypherString = QString::fromLatin1( cypher.toBase64() );
-  return cypherString;
-}
-
-QString SimpleCrypt::decryptToString( const QString &cyphertext )
-{
-  QByteArray cyphertextArray = QByteArray::fromBase64( cyphertext.toLatin1() );
-  QByteArray plaintextArray = decryptToByteArray( cyphertextArray );
-  QString plaintext = QString::fromUtf8( plaintextArray, plaintextArray.size() );
-
-  return plaintext;
-}
-
-QString SimpleCrypt::decryptToString( QByteArray cypher )
-{
-  QByteArray ba = decryptToByteArray( cypher );
-  QString plaintext = QString::fromUtf8( ba, ba.size() );
-
-  return plaintext;
-}
-
-QByteArray SimpleCrypt::decryptToByteArray( const QString &cyphertext )
-{
-  QByteArray cyphertextArray = QByteArray::fromBase64( cyphertext.toLatin1() );
-  QByteArray ba = decryptToByteArray( cyphertextArray );
-
-  return ba;
-}
-
-QByteArray SimpleCrypt::decryptToByteArray( QByteArray cypher )
-{
-  if ( m_keyParts.isEmpty() )
-  {
-    qWarning() << "No key set.";
-    m_lastError = ErrorNoKeySet;
-    return QByteArray();
-  }
-
-  QByteArray ba = cypher;
-
-  if ( cypher.count() < 3 )
-    return QByteArray();
-
-  char version = ba.at( 0 );
-
-  if ( version != 3 ) //we only work with version 3
-  {
-    m_lastError = ErrorUnknownVersion;
-    qWarning() << "Invalid version or not a cyphertext.";
-    return QByteArray();
-  }
-
-  CryptoFlags flags = CryptoFlags( ba.at( 1 ) );
-
-  ba = ba.mid( 2 );
-  int pos( 0 );
-  int cnt( ba.count() );
-  char lastChar = 0;
-
-  while ( pos < cnt )
-  {
-    char currentChar = ba[pos];
-    ba[pos] = ba.at( pos ) ^ lastChar ^ m_keyParts.at( pos % 8 );
-    lastChar = currentChar;
-    ++pos;
-  }
-
-  ba = ba.mid( 1 ); //chop off the random number at the start
-
-  bool integrityOk( true );
-  if ( flags.testFlag( CryptoFlagChecksum ) )
-  {
-    if ( ba.length() < 2 )
-    {
-      m_lastError = ErrorIntegrityFailed;
-      return QByteArray();
+  break;
+  case CFB: {
+    ret.append(byteXor(rawText.mid(0, m_blocklen), cipher(expandedKey, iv)));
+    for (int i = 0; i < rawText.size(); i += m_blocklen) {
+      if (i + m_blocklen < rawText.size()) {
+        ret.append(byteXor(rawText.mid(i + m_blocklen, m_blocklen),
+          cipher(expandedKey, rawText.mid(i, m_blocklen))));
+      }
     }
-    quint16 storedChecksum;
-    {
-      QDataStream s( &ba, QIODevice::ReadOnly );
-      s >> storedChecksum;
+  }
+          break;
+  case OFB: {
+    QByteArray ofbTemp;
+    ofbTemp.append(cipher(expandedKey, iv));
+    for (int i = m_blocklen; i < rawText.size(); i += m_blocklen) {
+      ofbTemp.append(cipher(expandedKey, ofbTemp.right(m_blocklen)));
     }
-    ba = ba.mid( 2 );
-    quint16 checksum = qChecksum( ba.constData(), ba.length() );
-    integrityOk = ( checksum == storedChecksum );
+    ret.append(byteXor(rawText, ofbTemp));
   }
-  else if ( flags.testFlag( CryptoFlagHash ) )
-  {
-    if ( ba.length() < 20 )
-    {
-      m_lastError = ErrorIntegrityFailed;
-      return QByteArray();
-    }
-    QByteArray storedHash = ba.left( 20 );
-    ba = ba.mid( 20 );
-    QCryptographicHash hash( QCryptographicHash::Sha1 );
-    hash.addData( ba );
-    integrityOk = ( hash.result() == storedHash );
+          break;
+  default:
+    //do nothing
+    break;
   }
+  return ret;
+}
 
-  if ( !integrityOk )
-  {
-    m_lastError = ErrorIntegrityFailed;
-    return QByteArray();
-  }
-
-  if ( flags.testFlag( CryptoFlagCompression ) )
-    ba = qUncompress( ba );
-
-  m_lastError = ErrorNoError;
-  return ba;
+QByteArray SimpleCrypt::removePadding(const QByteArray& rawText)
+{
+  return RemovePadding(rawText, (Padding)m_padding);
 }

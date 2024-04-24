@@ -56,8 +56,6 @@ class sbAddressServicesGui : public QWidget, private Ui::sbAddressServicesGuiBas
     void onClearedProject();
 
   private:
-    static SimpleCrypt sCrypto;
-
     QgisInterface *mpQgisIface = nullptr;
     const QString &mstrPluginName;
 

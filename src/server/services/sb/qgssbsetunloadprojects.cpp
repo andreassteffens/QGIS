@@ -41,8 +41,6 @@ namespace QgsSb
     if ( !fileConfig.open( QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate ) )
       return;
 
-    SimpleCrypt crypto( Q_UINT64_C( 0x0c2ad4a4acb9f023 ) ); //some random number
-
     if ( !projects.isEmpty() )
     {
       QStringList listProjects = projects.split( "," );
@@ -53,7 +51,7 @@ namespace QgsSb
         QString strPath = listProjects[i];
         bool bClearName = strPath.contains( ".qgs", Qt::CaseInsensitive ) || strPath.contains( ".qgz", Qt::CaseInsensitive );
         if ( !bClearName )
-          strPath = crypto.sbDecryptFromBase64String( strPath );
+          strPath = SimpleCrypt::sbDecrypt( strPath );
 
         strPath = sbGetStandardizedPath( strPath );
 
