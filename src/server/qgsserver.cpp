@@ -594,7 +594,6 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
 {
   const Qgis::MessageLevel logLevel = QgsServerLogger::instance()->logLevel();
   {
-
     const QgsScopedRuntimeProfile profiler { QStringLiteral( "handleRequest" ), QStringLiteral( "server" ) };
 
     qApp->processEvents();
