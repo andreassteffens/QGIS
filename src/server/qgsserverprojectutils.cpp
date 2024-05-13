@@ -417,19 +417,25 @@ QString QgsServerProjectUtils::serviceUrl( const QString &service, const QgsServ
   const QUrlQuery query { request.originalUrl().query() };
   const QList<QPair<QString, QString>> constItems { query.queryItems( ) };
   QString map;
+  QString project;
   for ( const QPair<QString, QString> &item : std::as_const( constItems ) )
   {
     if ( 0 == item.first.compare( QLatin1String( "MAP" ), Qt::CaseSensitivity::CaseInsensitive ) )
-    {
       map = item.second;
-      break;
-    }
+    else if  ( 0 == item.first.compare( QLatin1String( "PROJECT" ), Qt::CaseSensitivity::CaseInsensitive ) )
+      project = item.second;
   }
 
-  if ( ! map.isEmpty() )
+  if ( ! map.isEmpty() || ! project.isEmpty() )
   {
     QUrlQuery query;
-    query.setQueryItems( {{"MAP", map}} );
+
+    if ( ! map.isEmpty() )
+      query.addQueryItem( "MAP", map );
+
+    if ( ! project.isEmpty() )
+      query.addQueryItem( "PROJECT", project );
+
     urlQUrl.setQuery( query );
   }
   else
