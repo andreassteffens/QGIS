@@ -333,12 +333,12 @@ QList<QgsAbstractDatabaseProviderConnection::TableProperty> QgsPostgresProviderC
             try
             {
               const QList<QVariantList> pks = executeSqlPrivate( QStringLiteral( R"(
-              WITH pkrelid AS (
-              SELECT indexrelid AS idxri FROM pg_index WHERE indrelid='%1.%2'::regclass AND (indisprimary OR indisunique)
-                ORDER BY CASE WHEN indisprimary THEN 1 ELSE 2 END LIMIT 1)
-              SELECT attname FROM pg_index,pg_attribute, pkrelid
-              WHERE indexrelid=pkrelid.idxri AND indrelid=attrelid AND pg_attribute.attnum=any(pg_index.indkey);
-             )" )
+                                              WITH pkrelid AS (
+                                                SELECT indexrelid AS idxri FROM pg_index WHERE indrelid='%1.%2'::regclass AND (indisprimary OR indisunique)
+                                                    ORDER BY CASE WHEN indisprimary THEN 1 ELSE 2 END LIMIT 1)
+                                              SELECT attname FROM pg_index,pg_attribute, pkrelid
+                                              WHERE indexrelid=pkrelid.idxri AND indrelid=attrelid AND pg_attribute.attnum=any(pg_index.indkey);
+                                                                               )" )
                                               .arg( QgsPostgresConn::quotedIdentifier( pr.schemaName ),
                                                     QgsPostgresConn::quotedIdentifier( pr.tableName ) ),
                                               false );
@@ -690,18 +690,18 @@ bool QgsPostgresProviderConnection::spatialIndexExists( const QString &schema, c
   checkCapability( Capability::SpatialIndexExists );
 
   const QList<QVariantList> res = executeSql( QStringLiteral( R"""(SELECT COUNT(*)
-                                                              FROM pg_class t, pg_class i, pg_namespace ns, pg_index ix, pg_attribute a
-                                                              WHERE
-                                                                  t.oid=ix.indrelid
-                                                                  AND t.relnamespace=ns.oid
-                                                                  AND i.oid=ix.indexrelid
-                                                                  AND a.attrelid=t.oid
-                                                                  AND a.attnum=ANY(ix.indkey)
-                                                                  AND t.relkind IN ('r', 'm')
-                                                                  AND ns.nspname=%1
-                                                                  AND t.relname=%2
-                                                                  AND a.attname=%3;
-                                                              )""" )
+                                  FROM pg_class t, pg_class i, pg_namespace ns, pg_index ix, pg_attribute a
+                                  WHERE
+                                  t.oid=ix.indrelid
+                                        AND t.relnamespace=ns.oid
+                                            AND i.oid=ix.indexrelid
+                                                AND a.attrelid=t.oid
+                                                    AND a.attnum=ANY(ix.indkey)
+                                                        AND t.relkind IN ('r', 'm')
+                                                        AND ns.nspname=%1
+                                                            AND t.relname=%2
+                                                                AND a.attname=%3;
+                                                            )""" )
                                   .arg(
                                     QgsPostgresConn::quotedValue( schema ),
                                     QgsPostgresConn::quotedValue( name ),
@@ -714,18 +714,18 @@ void QgsPostgresProviderConnection::deleteSpatialIndex( const QString &schema, c
   checkCapability( Capability::DeleteSpatialIndex );
 
   const QList<QVariantList> res = executeSql( QStringLiteral( R"""(SELECT i.relname
-                                                                FROM pg_class t, pg_class i, pg_namespace ns, pg_index ix, pg_attribute a
-                                                                WHERE
-                                                                    t.oid=ix.indrelid
-                                                                    AND t.relnamespace=ns.oid
-                                                                    AND i.oid=ix.indexrelid
-                                                                    AND a.attrelid=t.oid
-                                                                    AND a.attnum=ANY(ix.indkey)
-                                                                    AND t.relkind='r'
-                                                                    AND ns.nspname=%1
-                                                                    AND t.relname=%2
+                                  FROM pg_class t, pg_class i, pg_namespace ns, pg_index ix, pg_attribute a
+                                  WHERE
+                                  t.oid=ix.indrelid
+                                        AND t.relnamespace=ns.oid
+                                            AND i.oid=ix.indexrelid
+                                                AND a.attrelid=t.oid
+                                                    AND a.attnum=ANY(ix.indkey)
+                                                        AND t.relkind='r'
+                                                            AND ns.nspname=%1
+                                                                AND t.relname=%2
                                                                     AND a.attname=%3;
-                                                                )""" )
+                                                            )""" )
                                   .arg(
                                     QgsPostgresConn::quotedValue( schema ),
                                     QgsPostgresConn::quotedValue( name ),

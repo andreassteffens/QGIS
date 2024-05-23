@@ -450,7 +450,7 @@ namespace QgsServerProjectUtils
    * \param project the QGIS project
    * \returns the Layer ids list.
    */
-  SERVER_EXPORT QStringList sbWmtsLayerIds( const QgsProject& project ) SIP_SKIP;
+  SERVER_EXPORT QStringList sbWmtsLayerIds( const QgsProject &project ) SIP_SKIP;
 
   /**
    * Returns the service url defined in the environment variable or with HTTP header.

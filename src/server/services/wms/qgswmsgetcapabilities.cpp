@@ -97,7 +97,7 @@ namespace QgsWms
 
     if ( request.wmsParameters().sbIncludeLegendItems() )
     {
-      bool useLayerIds = QgsServerProjectUtils::wmsUseLayerIds(*project);
+      bool useLayerIds = QgsServerProjectUtils::wmsUseLayerIds( *project );
 
       QStringList layerList;
       const QMap<QString, QgsMapLayer *> layers = project->mapLayers();
@@ -118,7 +118,7 @@ namespace QgsWms
 
       if ( !layerList.isEmpty() )
       {
-        QUrl legendUrl ( request.originalUrl().toString( QUrl::UrlFormattingOption::RemoveQuery ) + "?SERVICE=WMS&REQUEST=GetLegendGraphics&FORMAT=application/json&layers=" + layerList.join(',') );
+        QUrl legendUrl( request.originalUrl().toString( QUrl::UrlFormattingOption::RemoveQuery ) + "?SERVICE=WMS&REQUEST=GetLegendGraphics&FORMAT=application/json&layers=" + layerList.join( ',' ) );
 
         QgsWmsRequest requestLegend( legendUrl, QgsServerRequest::Method::GetMethod, request.headers() );
 
@@ -1345,7 +1345,7 @@ namespace QgsWms
             QStringList wmtsLayerIds = QgsServerProjectUtils::sbWmtsLayerIds( *project );
             for ( int i = 0; i < wmtsLayerIds.size(); ++i )
             {
-              QgsMapLayer* layer = project->mapLayer( wmtsLayerIds.at( i ) );
+              QgsMapLayer *layer = project->mapLayer( wmtsLayerIds.at( i ) );
               if ( layer == l )
               {
                 wmtsPublished = true;
@@ -1762,7 +1762,7 @@ namespace QgsWms
                   iconElem.appendChild( iconText );
 
                   QPixmap image;
-                  image.loadFromData(QByteArray::fromBase64(legendItemIconMap[l->id()].toUtf8()));
+                  image.loadFromData( QByteArray::fromBase64( legendItemIconMap[l->id()].toUtf8() ) );
 
                   iconElem.setAttribute( "width", image.width() );
                   iconElem.setAttribute( "height", image.height() );
@@ -2317,7 +2317,7 @@ namespace QgsWms
             attributeElem.setAttribute( QStringLiteral( "name" ), field.name() );
             attributeElem.setAttribute( QStringLiteral( "type" ), QVariant::typeToName( field.type() ) );
             attributeElem.setAttribute( QStringLiteral( "typeName" ), field.typeName() );
-            
+
             if ( !field.alias().isEmpty() )
               attributeElem.setAttribute( QStringLiteral( "alias" ), field.alias() );
 

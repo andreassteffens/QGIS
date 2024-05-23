@@ -422,7 +422,7 @@ QString QgsServerProjectUtils::serviceUrl( const QString &service, const QgsServ
   {
     if ( 0 == item.first.compare( QLatin1String( "MAP" ), Qt::CaseSensitivity::CaseInsensitive ) )
       map = item.second;
-    else if  ( 0 == item.first.compare( QLatin1String( "PROJECT" ), Qt::CaseSensitivity::CaseInsensitive ) )
+    else if ( 0 == item.first.compare( QLatin1String( "PROJECT" ), Qt::CaseSensitivity::CaseInsensitive ) )
       project = item.second;
   }
 

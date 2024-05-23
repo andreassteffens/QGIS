@@ -38,8 +38,8 @@
 
 namespace QgsWms
 {
-  QJsonObject sbGetLegendGraphics ( QgsServerInterface* serverIface, const QgsProject* project,
-                                    const QgsWmsRequest& request )
+  QJsonObject sbGetLegendGraphics( QgsServerInterface *serverIface, const QgsProject *project,
+                                   const QgsWmsRequest &request )
   {
     // get parameters from query
     QgsWmsParameters parameters = request.wmsParameters();
@@ -62,13 +62,13 @@ namespace QgsWms
     const std::unique_ptr<QgsLayerTreeModel> model( legendModel( context, *tree.get() ) );
 
     QJsonObject result;
-    if (!parameters.rule().isEmpty())
+    if ( !parameters.rule().isEmpty() )
     {
-      throw QgsBadRequestException(QgsServiceException::QGIS_InvalidParameterValue,
-        QStringLiteral("RULE cannot be used with JSON format"));
+      throw QgsBadRequestException( QgsServiceException::QGIS_InvalidParameterValue,
+                                    QStringLiteral( "RULE cannot be used with JSON format" ) );
     }
     else
-      result = renderer.getLegendGraphicsAsJson(*model.get());
+      result = renderer.getLegendGraphicsAsJson( *model.get() );
 
     tree->clear();
 

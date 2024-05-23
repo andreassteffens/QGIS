@@ -27,7 +27,7 @@ namespace QgsWms
     init();
   }
 
-  QgsWmsRequest::QgsWmsRequest( const QUrl& url, Method method, const Headers& headers )
+  QgsWmsRequest::QgsWmsRequest( const QUrl &url, Method method, const Headers &headers )
     : QgsServerRequest( url, method, headers )
   {
     init();

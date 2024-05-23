@@ -268,46 +268,46 @@ namespace QgsSb
             QgsMessageLog::logMessage( QStringLiteral( "GetEncryptedPath - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
           }
         }
-        else if (QSTR_COMPARE(req, "GetDecryptedPath"))
+        else if ( QSTR_COMPARE( req, "GetDecryptedPath" ) )
         {
-          QString path = params.value(QStringLiteral("PATH"));
-          if (path.isEmpty())
-            throw QgsServerException(QStringLiteral("Request is missing required parameter 'PATH'"));
+          QString path = params.value( QStringLiteral( "PATH" ) );
+          if ( path.isEmpty() )
+            throw QgsServerException( QStringLiteral( "Request is missing required parameter 'PATH'" ) );
 
-          QString key = params.value(QStringLiteral("SBKEY"));
-          if (key.isEmpty())
-            throw QgsServerException(QStringLiteral("Request is missing required parameter 'SBKEY'"));
+          QString key = params.value( QStringLiteral( "SBKEY" ) );
+          if ( key.isEmpty() )
+            throw QgsServerException( QStringLiteral( "Request is missing required parameter 'SBKEY'" ) );
 
-          if (!QSTR_COMPARE(key, SB_SERVICE_KEY))
-            throw QgsServerException(QStringLiteral("Invalid service key"));
+          if ( !QSTR_COMPARE( key, SB_SERVICE_KEY ) )
+            throw QgsServerException( QStringLiteral( "Invalid service key" ) );
 
           try
           {
-            writeGetDecryptedPath(mServerIface, project, versionString, request, response, path);
+            writeGetDecryptedPath( mServerIface, project, versionString, request, response, path );
           }
-          catch (QgsServerException& ex)
+          catch ( QgsServerException &ex )
           {
-            QgsMessageLog::logMessage(QStringLiteral("GetDecryptedPath - QgsServerException: %1").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
+            QgsMessageLog::logMessage( QStringLiteral( "GetDecryptedPath - QgsServerException: %1" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
             throw ex;
           }
-          catch (QgsException& ex)
+          catch ( QgsException &ex )
           {
-            QgsMessageLog::logMessage(QStringLiteral("GetDecryptedPath - QgsException: %1").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
+            QgsMessageLog::logMessage( QStringLiteral( "GetDecryptedPath - QgsException: %1" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
             throw ex;
           }
-          catch (std::runtime_error& ex)
+          catch ( std::runtime_error &ex )
           {
-            QgsMessageLog::logMessage(QStringLiteral("GetDecryptedPath - RuntimeError: %1 | %2").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
+            QgsMessageLog::logMessage( QStringLiteral( "GetDecryptedPath - RuntimeError: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
             throw ex;
           }
-          catch (std::exception& ex)
+          catch ( std::exception &ex )
           {
-            QgsMessageLog::logMessage(QStringLiteral("GetDecryptedPath - Exception: %1 | %2").arg(QString(ex.what())).arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
+            QgsMessageLog::logMessage( QStringLiteral( "GetDecryptedPath - Exception: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
             throw ex;
           }
-          catch (...)
+          catch ( ... )
           {
-            QgsMessageLog::logMessage(QStringLiteral("GetDecryptedPath - Unknown exception: %1").arg(request.url().toString()), QStringLiteral("Server"), Qgis::Critical);
+            QgsMessageLog::logMessage( QStringLiteral( "GetDecryptedPath - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
           }
         }
         else if ( QSTR_COMPARE( req, "SetUnloadProjects" ) )

@@ -43,7 +43,7 @@ namespace QgsWms
       QgsWmsRequest( const QgsServerRequest &other );
 
 
-      QgsWmsRequest( const QUrl& url, Method method, const Headers& headers );
+      QgsWmsRequest( const QUrl &url, Method method, const Headers &headers );
 
       /**
        * Destructor.

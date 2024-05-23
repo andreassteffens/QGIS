@@ -250,7 +250,7 @@ void QgsRequestHandler::parseInput()
           {
             // XXX Output error but continue processing request ?
             QgsMessageLog::logMessage( QStringLiteral( "Warning: error parsing post data as XML: at line %1, column %2: %3. Had to assume urlencoded query string sent in the post body of request '%4' | %5." )
-              .arg( line ).arg( column ).arg( errorMsg ).arg( mRequest.originalUrl().toString() ).arg( mRequest.serverParameters().urlQuery().toString() ), QStringLiteral( "Server" ), Qgis::Warning );
+                                       .arg( line ).arg( column ).arg( errorMsg ).arg( mRequest.originalUrl().toString() ).arg( mRequest.serverParameters().urlQuery().toString() ), QStringLiteral( "Server" ), Qgis::Warning );
           }
         }
         catch ( ... )
