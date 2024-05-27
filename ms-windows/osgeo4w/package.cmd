@@ -106,7 +106,7 @@ touch %SRCDIR%\CMakeLists.txt
 echo CMAKE: %DATE% %TIME%
 if errorlevel 1 goto error
 
-if "%CMAKEGEN%"=="" set CMAKEGEN=Visual Studio 16 2019
+if "%CMAKEGEN%"=="" set CMAKEGEN=Visual Studio 17 2022
 if "%ARCH%"=="x86" (
 	set CMAKEARCH=x86
 ) else (
@@ -136,10 +136,10 @@ cmake -G "%CMAKEGEN%" -A %CMAKEARCH% ^
 	-D WITH_PDAL=TRUE ^
 	-D WITH_SERVER_PLUGINS=TRUE ^
 	-D SERVER_SKIP_ECW=FALSE ^
-	-D WITH_GRASS=TRUE ^
+	-D WITH_GRASS=FALSE ^
 	-D WITH_3D=TRUE ^
 	-D WITH_GRASS7=FALSE ^
-	-D WITH_GRASS8=TRUE ^
+	-D WITH_GRASS8=FALSE ^
 	-D GRASS_PREFIX7=%GRASS_PREFIX:\=/% ^
 	-D GRASS_PREFIX8=%GRASS_PREFIX:\=/% ^
 	-D WITH_ORACLE=TRUE ^

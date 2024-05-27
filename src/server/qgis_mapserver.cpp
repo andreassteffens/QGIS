@@ -187,7 +187,7 @@ class TcpServerWorker: public QObject
 #endif
 
           // Incoming connection parser
-          QTcpSocket::connect( clientConnection, &QIODevice::readyRead, context, [ = ] {
+          QTcpSocket::connect( clientConnection, &QIODevice::readyRead, context, [ = ]() {
 
             // Read all incoming data
             while ( clientConnection->bytesAvailable() > 0 )
