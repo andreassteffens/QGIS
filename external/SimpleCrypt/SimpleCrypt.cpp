@@ -13,13 +13,28 @@ QString SimpleCrypt::sbEncrypt( const QString& plain )
 {
   QByteArray encodedBytes = sbEncryption.encode( plain.toUtf8(), sbHashKey, sbHashIv );
   QString encodedBase64 = QString( encodedBytes.toBase64() );
+  while ( encodedBase64.endsWith( '=' ) )
+    encodedBase64.chop( 1 );
 
+  encodedBase64 = encodedBase64.replace( '+', '-' ).replace( '/', '_' );
   return encodedBase64;
 }
 
 QString SimpleCrypt::sbDecrypt( const QString& encoded )
 {
-  QByteArray encodedBytes = QByteArray::fromBase64( encoded.toUtf8() );
+  QString encodedPath = encoded;
+  encodedPath = encodedPath.replace( '_', '/' ).replace( '-', '+' );
+  switch (encodedPath.length() % 4)
+  {
+    case 2:
+      encodedPath += "==";
+      break;
+    case 3:
+      encodedPath += "=";
+      break;
+  }
+
+  QByteArray encodedBytes = QByteArray::fromBase64( encodedPath.toUtf8() );
   QByteArray decodedBytes = sbEncryption.decode( encodedBytes, sbHashKey, sbHashIv );
 
   QString decodedString = QString( sbEncryption.removePadding( decodedBytes ) );
