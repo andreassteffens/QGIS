@@ -944,6 +944,15 @@ class CORE_EXPORT QgsGeometry
     Qgis::GeometryOperationResult addPart( QgsAbstractGeometry *part SIP_TRANSFER, Qgis::GeometryType geomType = Qgis::GeometryType::Unknown );
 
     /**
+     * Adds a new part to this geometry.
+     * \param part part to add (ownership is transferred)
+     * \param wkbType default WKB type to create if no existing geometry
+     * \returns OperationResult a result code: success or reason of failure
+     * \note Not available in Python
+     */
+    Qgis::GeometryOperationResult addPartWkbType( QgsAbstractGeometry *part SIP_TRANSFER, Qgis::WkbType wkbType = Qgis::WkbType::Unknown ) SIP_SKIP;
+
+    /**
      * Adds a new island polygon to a multipolygon feature
      * \returns OperationResult a result code: success or reason of failure
      * \note available in python bindings as addPartGeometry
