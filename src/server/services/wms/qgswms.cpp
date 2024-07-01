@@ -84,6 +84,8 @@ namespace QgsWms
 
         if ( QSTR_COMPARE( req, "GetCapabilities" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'GetCapabilities' request..." ) );
+
           try
           {
             writeGetCapabilities( mServerIface, project, wmsRequest, response, false, sbJustLoaded );
@@ -112,9 +114,13 @@ namespace QgsWms
           {
             QgsMessageLog::logMessage( QStringLiteral( "GetCapabilities - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'GetCapabilities' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "GetProjectSettings" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'GetProjectSettings' request..." ) );
+
           try
           {
             writeGetCapabilities( mServerIface, project, request, response, true, sbJustLoaded );
@@ -144,9 +150,12 @@ namespace QgsWms
             QgsMessageLog::logMessage( QStringLiteral( "GetProjectSettings - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
           }
 
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'GetProjectSettings' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "GetMap" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'GetMap' request..." ) );
+
           try
           {
             if QSTR_COMPARE( wmsRequest.wmsParameters().formatAsString(), "application/dxf" )
@@ -182,9 +191,13 @@ namespace QgsWms
           {
             QgsMessageLog::logMessage( QStringLiteral( "GetMap - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "DONE processing 'GetMap' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "GetFeatureInfo" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'GetFeatureInfo' request..." ) );
+
           try
           {
             writeGetFeatureInfo( mServerIface, project, request, response );
@@ -213,9 +226,13 @@ namespace QgsWms
           {
             QgsMessageLog::logMessage( QStringLiteral( "GetFeatureInfo - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'GetFeatureInfo' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "GetContext" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'GetContext' request..." ) );
+
           try
           {
             writeGetContext( mServerIface, project, request, response );
@@ -244,9 +261,13 @@ namespace QgsWms
           {
             QgsMessageLog::logMessage( QStringLiteral( "GetContext - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'GetContext' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "GetSchemaExtension" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'GetSchemaExtension' request..." ) );
+
           try
           {
             writeGetSchemaExtension( response );
@@ -275,9 +296,13 @@ namespace QgsWms
           {
             QgsMessageLog::logMessage( QStringLiteral( "GetSchemaExtension - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'GetSchemaExtension' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "GetStyle" ) || QSTR_COMPARE( req, "GetStyles" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'GetStyle' request..." ) );
+
           try
           {
             writeGetStyles( mServerIface, project, request, response );
@@ -306,9 +331,13 @@ namespace QgsWms
           {
             QgsMessageLog::logMessage( QStringLiteral( "GetStyle - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'GetStyle' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "DescribeLayer" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'DescribeLayer' request..." ) );
+
           try
           {
             writeDescribeLayer( mServerIface, project, request, response );
@@ -337,9 +366,13 @@ namespace QgsWms
           {
             QgsMessageLog::logMessage( QStringLiteral( "DescribeLayer - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'DescribeLayer' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "GetLegendGraphic" ) || QSTR_COMPARE( req, "GetLegendGraphics" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'GetLegendGraphic' request..." ) );
+
           try
           {
             writeGetLegendGraphics( mServerIface, project, request, response );
@@ -368,6 +401,8 @@ namespace QgsWms
           {
             QgsMessageLog::logMessage( QStringLiteral( "GetLegendGraphic - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'GetLegendGraphic' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "GetPrint" ) )
         {
@@ -378,6 +413,8 @@ namespace QgsWms
             throw QgsServiceException( QgsServiceException::OGC_OperationNotSupported,
                                        QStringLiteral( "Request %1 is not supported" ).arg( req ), 501 );
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'GetPrint' request..." ) );
 
           try
           {
@@ -407,9 +444,13 @@ namespace QgsWms
           {
             QgsMessageLog::logMessage( QStringLiteral( "GetPrint - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'GetPrint' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "LogProfiler" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'LogProfiler' request..." ) );
+
           try
           {
             LogProfiler();
@@ -438,6 +479,8 @@ namespace QgsWms
           {
             QgsMessageLog::logMessage( QStringLiteral( "LogProfiler - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'LogProfiler' request!" ) );
         }
         else
         {

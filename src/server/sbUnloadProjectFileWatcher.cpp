@@ -31,7 +31,7 @@ void sbUnloadProjectFileWatcher::setTimeout( int iTimeout )
   m_iTimeout = iTimeout;
 }
 
-void sbUnloadProjectFileWatcher::setWatchedPath( QString strUnloadFilename )
+void sbUnloadProjectFileWatcher::setWatchedPath( const QString& strUnloadFilename )
 {
   m_strUnloadFilename = strUnloadFilename;
 
@@ -60,46 +60,53 @@ void sbUnloadProjectFileWatcher::run()
 {
   QgsMessageLog::logMessage( QStringLiteral( "([a]tapa) Starting unload project file watcher on file '%1' with timeout %2" ).arg( m_strUnloadFilename ).arg( QString::number( m_iTimeout ) ), QStringLiteral( "Server" ), Qgis::Info );
 
-  if ( m_iTimeout <= 0 )
-    return;
-
-  QFile unloadFile( m_strUnloadFilename );
-  if ( !unloadFile.exists() )
+  try
   {
-    if ( unloadFile.open( QIODevice::ReadWrite | QIODevice::Text ) )
-      unloadFile.close();
-  }
+    if ( m_iTimeout <= 0 )
+      return;
 
-  while ( !unloadFile.exists() )
-    std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
-
-  QDateTime dtLastRead = QDateTime::currentDateTime().addYears( -10 );
-  while ( !isInterruptionRequested() )
-  {
-    msleep( m_iTimeout );
-
-    if ( isInterruptionRequested() )
-      break;
-
-    if ( unloadFile.exists() )
+    QFile unloadFile( m_strUnloadFilename );
+    if ( !unloadFile.exists() )
     {
-      QFileInfo info( m_strUnloadFilename );
-
-      QDateTime dtLastModified = info.lastModified();
-      if ( dtLastModified > dtLastRead )
-      {
-        readUnloadProjects();
-        dtLastRead = dtLastModified;
-      }
+      if ( unloadFile.open( QIODevice::ReadWrite | QIODevice::Text ) )
+        unloadFile.close();
     }
-    else
-      clearUnloadProjects();
+
+    while ( !unloadFile.exists() )
+      std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
+
+    QDateTime dtLastRead = QDateTime::currentDateTime().addYears( -10 );
+    while ( !isInterruptionRequested() )
+    {
+      msleep( m_iTimeout );
+
+      if ( isInterruptionRequested() )
+        break;
+
+      if ( unloadFile.exists() )
+      {
+        QFileInfo info( m_strUnloadFilename );
+
+        QDateTime dtLastModified = info.lastModified();
+        if ( dtLastModified > dtLastRead )
+        {
+          readUnloadProjects();
+          dtLastRead = dtLastModified;
+        }
+      }
+      else
+        clearUnloadProjects();
+    }
+  }
+  catch ( ... )
+  {
+    QgsMessageLog::logMessage( QStringLiteral( "sbUnloadProjectFileWatcher - Unknown exception" ), QStringLiteral( "Server" ), Qgis::Critical );
   }
 
   QgsMessageLog::logMessage( QStringLiteral( "([a]tapa) Terminating unload project file watcher on file '%1'" ).arg( m_strUnloadFilename ), QStringLiteral( "Server" ), Qgis::Info );
 }
 
-bool sbUnloadProjectFileWatcher::isUnloaded( QString strProjectFilename )
+bool sbUnloadProjectFileWatcher::isUnloaded( const QString& strProjectFilename )
 {
   bool bRes = false;
 
@@ -172,7 +179,7 @@ void sbUnloadProjectFileWatcher::readUnloadProjects()
     }
     catch ( ... )
     {
-      QgsMessageLog::logMessage( QStringLiteral( "sbUnloadProjectFileWatcher - Unknown exception" ), QStringLiteral( "Server" ), Qgis::Critical );
+      QgsMessageLog::logMessage( QStringLiteral( "sbUnloadProjectFileWatcher::readUnloadProjects - Unknown exception" ), QStringLiteral( "Server" ), Qgis::Critical );
     }
   }
   m_mutexProjectFiles.unlock();

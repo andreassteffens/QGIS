@@ -70,6 +70,7 @@ class SERVER_EXPORT QgsServerSettingsEnv : public QObject
       QGIS_SERVER_IGNORE_FORWARDED_FOR_HEADER,
       QGIS_SERVER_USE_SB_CACHE,
       QGIS_SERVER_SB_UNLOAD_WATCHER_INTERVAL,
+      QGIS_SERVER_SB_LOG_PER_REQUEST,
       QGIS_SERVER_TRUST_LAYER_METADATA, //!< Trust layer metadata. Improves project read time. (since QGIS 3.16).
       QGIS_SERVER_FORCE_READONLY_LAYERS, //!< Force to open layers in read-only mode. (since QGIS 3.28).
       QGIS_SERVER_DISABLE_GETPRINT, //!< Disabled WMS GetPrint request and don't load layouts. Improves project read time. (since QGIS 3.16).
@@ -228,14 +229,19 @@ class SERVER_EXPORT QgsServerSettings
     QString fontsDirectory() const;
 
     /**
-     * Returns if internal sb server cache shall be used.
+     * Returns TRUE if internal sb server cache shall be used.
      */
     bool sbUseCache() const;
 
     /**
-    * Returns if FORWARDED-FOR header should be ignored when building service URLs
+    * Returns TRUE if FORWARDED-FOR header should be ignored when building service URLs
     */
     bool sbIgnoreForwardedForHeader() const;
+
+    /**
+    * Returns TRUE if per request log shall be created to detect server crashes
+    */
+    bool sbLogPerRequest() const;
 
     /**
      * Returns the server-wide max height of a WMS GetMap request. The lower one of this and the project configuration is used.

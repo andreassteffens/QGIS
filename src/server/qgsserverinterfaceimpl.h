@@ -97,6 +97,10 @@ class SERVER_EXPORT QgsServerInterfaceImpl : public QgsServerInterface
 
     const QString &sbTenant() override;
 
+    void sbRequestLogStart() override;
+    void sbRequestLogMessage( const QString& message ) override;
+    void sbRequestLogStop() override;
+
   private:
 
     QString mConfigFilePath;
@@ -109,6 +113,7 @@ class SERVER_EXPORT QgsServerInterfaceImpl : public QgsServerInterface
     QgsServerSettings *mServerSettings = nullptr;
 
     QString mSbTenant;
+    QString mSbPerRequestLogFilename;
 };
 
 #endif // QGSSERVERINTERFACEIMPL_H

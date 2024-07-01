@@ -592,6 +592,8 @@ void QgsServer::putenv( const QString &var, const QString &val )
 
 void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &response, const QgsProject *project )
 {
+  sServerInterface->sbRequestLogStart();
+
   const Qgis::MessageLevel logLevel = QgsServerLogger::instance()->logLevel();
   {
     const QgsScopedRuntimeProfile profiler { QStringLiteral( "handleRequest" ), QStringLiteral( "server" ) };
@@ -769,6 +771,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
             service = sServiceRegistry->getService( serviceString.toLower(), versionString );
           if ( service )
           {
+            sServerInterface->sbRequestLogMessage( QStringLiteral( "Executing request '%1' (%2) in service '%3'" ).arg( request.originalUrl().toString() ).arg( request.methodToString( request.method() ) ).arg(service->name()));
             service->executeRequest( request, responseDecorator, project, sbJustLoaded );
           }
           else
@@ -848,7 +851,6 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
           const auto subIdx { QgsApplication::profiler()->index( subRow, 0, idx ) };
           profileFormatter( subIdx, level + 1 );
         }
-
       };
 
       for ( int row = 0; row < QgsApplication::profiler()->rowCount( ); row++ )
@@ -859,10 +861,10 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
     }
   }
 
-
   // Clear the profiler server section after each request
   QgsApplication::profiler()->clear( QStringLiteral( "server" ) );
 
+  sServerInterface->sbRequestLogStop();
 }
 
 

@@ -139,7 +139,6 @@ namespace QgsWms
     // rendering
 
     PROFILER_START( writeGetMap_setup );
-
     QgsRenderer renderer( context );
     PROFILER_END();
 

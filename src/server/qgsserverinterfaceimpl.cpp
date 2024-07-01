@@ -19,6 +19,7 @@
 
 #include "qgsserverinterfaceimpl.h"
 #include "qgsconfigcache.h"
+#include "qgsapplication.h"
 
 #include <qstringlist.h>
 
@@ -29,6 +30,10 @@ QgsServerInterfaceImpl::QgsServerInterfaceImpl( QgsCapabilitiesCache *capCache, 
   , mServerSettings( settings )
 {
   mSbTenant = strTenant;
+
+  QString processId = QString::number(QgsApplication::applicationPid());
+  QFileInfo logFileInfo( settings->logFile() );
+  mSbPerRequestLogFilename = QDir( logFileInfo.dir() ).filePath( "prl_" + strTenant + "_" + processId + ".txt" );
 
   mRequestHandler = nullptr;
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
@@ -42,7 +47,6 @@ QString QgsServerInterfaceImpl::getEnv( const QString &name ) const
   return getenv( name.toLocal8Bit() );
 }
 
-
 QgsServerInterfaceImpl::~QgsServerInterfaceImpl()
 {
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
@@ -50,7 +54,6 @@ QgsServerInterfaceImpl::~QgsServerInterfaceImpl()
   delete mCacheManager;
 #endif
 }
-
 
 void QgsServerInterfaceImpl::clearRequestHandler()
 {
@@ -120,7 +123,6 @@ QgsServiceRegistry *QgsServerInterfaceImpl::serviceRegistry()
 
 QgsServerSettings *QgsServerInterfaceImpl::serverSettings()
 {
-
   return mServerSettings;
 }
 
@@ -137,4 +139,39 @@ QStringList QgsServerInterfaceImpl::sbLoadedProjects()
 const QString &QgsServerInterfaceImpl::sbTenant()
 {
   return mSbTenant;
+}
+
+void QgsServerInterfaceImpl::sbRequestLogStart()
+{
+  if ( !mServerSettings->sbLogPerRequest() )
+    return;
+
+  QFile logFile( mSbPerRequestLogFilename );
+  if ( logFile.open( QIODevice::ReadWrite | QIODevice::Text | QIODevice::Truncate ) )
+    logFile.close();
+}
+
+void QgsServerInterfaceImpl::sbRequestLogMessage( const QString& message )
+{
+  if ( !mServerSettings->sbLogPerRequest() )
+    return;
+
+  QFile logFile( mSbPerRequestLogFilename );
+  if ( logFile.open( QIODevice::ReadWrite | QIODevice::Text | QIODevice::Append ) )
+  {
+    QTextStream logStream( &logFile );
+    logStream << message << endl;
+
+    logFile.close();
+  }
+}
+
+void QgsServerInterfaceImpl::sbRequestLogStop()
+{
+  if ( !mServerSettings->sbLogPerRequest() )
+    return;
+
+  QFile logFile( mSbPerRequestLogFilename );
+  if ( logFile.exists() )
+    logFile.remove();
 }

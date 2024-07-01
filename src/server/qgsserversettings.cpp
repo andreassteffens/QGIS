@@ -226,11 +226,22 @@ void QgsServerSettings::initSettings()
                                 QgsServerSettingsEnv::DEFAULT_VALUE,
                                 QStringLiteral( "Use sb server cache" ),
                                 QStringLiteral( "/cache/useSb" ),
-                                QVariant::String,
+                                QVariant::Bool,
                                 QVariant( false ),
                                 QVariant()
                               };
   mSettings[sUseSbCache.envVar] = sUseSbCache;
+
+  // internal sb log per request to detect crashes
+  const Setting sSbLogPerRequest = { QgsServerSettingsEnv::QGIS_SERVER_SB_LOG_PER_REQUEST,
+                                QgsServerSettingsEnv::DEFAULT_VALUE,
+                                QStringLiteral( "Create log per request to detect crashes" ),
+                                QStringLiteral( "/log/sbCreatePerRequest" ),
+                                QVariant::Bool,
+                                QVariant( false ),
+                                QVariant()
+  };
+  mSettings[ sSbLogPerRequest.envVar ] = sSbLogPerRequest;
 
   // handling FORWARDED-FOR header
   const Setting sIgnoreForwardedForHeader = { QgsServerSettingsEnv::QGIS_SERVER_IGNORE_FORWARDED_FOR_HEADER,
@@ -241,7 +252,7 @@ void QgsServerSettings::initSettings()
                                               QVariant( false ),
                                               QVariant()
                                             };
-  mSettings[sIgnoreForwardedForHeader.envVar] = sIgnoreForwardedForHeader;
+  mSettings[ sIgnoreForwardedForHeader.envVar ] = sIgnoreForwardedForHeader;
 
   // max height
   const Setting sMaxHeight = { QgsServerSettingsEnv::QGIS_SERVER_WMS_MAX_HEIGHT,
@@ -640,6 +651,11 @@ bool QgsServerSettings::sbUseCache() const
 bool QgsServerSettings::sbIgnoreForwardedForHeader() const
 {
   return value( QgsServerSettingsEnv::QGIS_SERVER_IGNORE_FORWARDED_FOR_HEADER ).toBool();
+}
+
+bool QgsServerSettings::sbLogPerRequest() const
+{
+  return value( QgsServerSettingsEnv::QGIS_SERVER_SB_LOG_PER_REQUEST ).toBool();
 }
 
 QString QgsServerSettings::logFile() const
