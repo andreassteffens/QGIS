@@ -47,7 +47,7 @@ int fcgi_accept()
 #endif
 }
 
-void Debug( QString &strMessage )
+void Debug( const QString &strMessage )
 {
   return;
 
@@ -56,7 +56,7 @@ void Debug( QString &strMessage )
     return;
 
   QTextStream out( &file );
-  out << strMessage;
+  out << strMessage << endl;
 }
 
 #ifdef Q_OS_WIN
@@ -158,8 +158,15 @@ int main( int argc, char *argv[] )
   catch ( QgsException &ex )
   {
     // Internal server error
-    QgsMessageLog::logMessage( QStringLiteral( "QgsServerException: %1" ).arg( ex.what() ), QStringLiteral( "Server" ), Qgis::Critical );
+    QgsMessageLog::logMessage( QStringLiteral( "QgsException: %1" ).arg( ex.what() ), QStringLiteral( "Server" ), Qgis::Critical );
   }
+#ifdef Q_OS_WIN
+  catch ( const std::exception &ex)
+  {
+    QString message = QString::fromUtf8( ex.what() );
+    QgsMessageLog::logMessage( QStringLiteral( "std::exception %1" ).arg( message ), QStringLiteral( "Server" ), Qgis::Critical );
+  }
+#endif
   catch ( ... )
   {
     QgsMessageLog::logMessage( QStringLiteral( "Unknown exception" ), QStringLiteral( "Server" ), Qgis::Critical );

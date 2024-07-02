@@ -31,10 +31,6 @@ QgsServerInterfaceImpl::QgsServerInterfaceImpl( QgsCapabilitiesCache *capCache, 
 {
   mSbTenant = strTenant;
 
-  QString processId = QString::number(QgsApplication::applicationPid());
-  QFileInfo logFileInfo( settings->logFile() );
-  mSbPerRequestLogFilename = QDir( logFileInfo.dir() ).filePath( "prl_" + strTenant + "_" + processId + ".txt" );
-
   mRequestHandler = nullptr;
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
   mAccessControls = new QgsAccessControl();
@@ -145,6 +141,11 @@ void QgsServerInterfaceImpl::sbRequestLogStart()
 {
   if ( !mServerSettings->sbLogPerRequest() )
     return;
+
+  QString processId = QString::number( QgsApplication::applicationPid() );
+  QFileInfo logFileInfo( mServerSettings->logFile() );
+
+  mSbPerRequestLogFilename = QDir( logFileInfo.dir() ).filePath( "prl_" + mSbTenant + "_" + processId + "_" + QString::number( QDateTime::currentSecsSinceEpoch() ) + ".txt" );
 
   QFile logFile( mSbPerRequestLogFilename );
   if ( logFile.open( QIODevice::ReadWrite | QIODevice::Text | QIODevice::Truncate ) )

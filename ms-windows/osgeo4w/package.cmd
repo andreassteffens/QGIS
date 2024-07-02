@@ -114,7 +114,7 @@ if "%ARCH%"=="x86" (
 )
 if "%CC%"=="" set CC="%CMAKE_COMPILER_PATH:\=/%/cl.exe"
 if "%CXX%"=="" set CXX="%CMAKE_COMPILER_PATH:\=/%/cl.exe"
-if "%OSGEO4W_CXXFLAGS%"=="" set OSGEO4W_CXXFLAGS=/MD /Z7 /MP /O2 /Ob2 /D NDEBUG
+if "%OSGEO4W_CXXFLAGS%"=="" set OSGEO4W_CXXFLAGS=/MD /Z7 /MP /O2 /Ob2 /bigobj /EHa /D NDEBUG
 
 for %%i in (%PYTHONHOME%) do set PYVER=%%~ni
 
