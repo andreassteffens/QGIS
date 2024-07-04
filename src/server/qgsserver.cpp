@@ -89,6 +89,7 @@ QgsServer::QgsServer( const QString &strTenant )
   QString strUnloadConfig = QDir( sSettings()->cacheDirectory() ).filePath( "unload_" + strTenant );
   mSbUnloadWatcher.setWatchedPath( strUnloadConfig );
   mSbUnloadWatcher.setTimeout( sSettings()->sbUnloadWatcherInterval() );
+  mSbUnloadWatcher.setServerSettings( sSettings() );
   mSbUnloadWatcher.start();
 }
 
@@ -105,9 +106,7 @@ QgsServer::QgsServer()
 
 QgsServer::~QgsServer()
 {
-  mSbUnloadWatcher.exit();
-  if ( !mSbUnloadWatcher.wait( 3000 ) )
-    mSbUnloadWatcher.terminate();
+  
 }
 
 QString &QgsServer::serverName()
@@ -223,54 +222,75 @@ int QgsServer::sbPreloadProjects()
     if ( !fileConfig.open( QIODevice::ReadOnly | QIODevice::Text ) )
       return iRet;
 
-    QTextStream streamIn( &fileConfig );
-    QString strLine;
-    while ( streamIn.readLineInto( &strLine ) )
+    try
     {
-      try
+      QTextStream streamIn( &fileConfig );
+      QString strLine;
+      while ( streamIn.readLineInto( &strLine ) )
       {
-        if ( mSbUnloadWatcher.isUnloaded( strLine ) )
-          continue;
+        try
+        {
+          if ( mSbUnloadWatcher.isUnloaded( strLine ) )
+            continue;
 
-        bool bSbJustLoaded = false;
-        QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' ..." ).arg( strLine ), QStringLiteral( "Server" ), Qgis::Warning );
-        const QgsProject *pProject = QgsConfigCache::instance()->project( strLine, &bSbJustLoaded );
-        if ( pProject != NULL )
-        {
-          QgsMessageLog::logMessage( QStringLiteral( "Preloading of project '%1' SUCCEEDED" ).arg( strLine ), QStringLiteral( "Server" ), Qgis::Warning );
-          iRet++;
+          bool bSbJustLoaded = false;
+          QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' ..." ).arg( strLine ), QStringLiteral( "Server" ), Qgis::Info );
+          const QgsProject *pProject = QgsConfigCache::instance()->project( strLine, &bSbJustLoaded );
+          if ( pProject != NULL )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "Preloading of project '%1' SUCCEEDED" ).arg( strLine ), QStringLiteral( "Server" ), Qgis::Info );
+            iRet++;
+          }
+          else
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "Preloading of project '%1' FAILED" ).arg( strLine ), QStringLiteral( "Server" ), Qgis::Warning );
+            iRet--;
+          }
         }
-        else
+        catch ( QgsServerException &ex )
         {
-          QgsMessageLog::logMessage( QStringLiteral( "Preloading of project '%1' FAILED" ).arg( strLine ), QStringLiteral( "Server" ), Qgis::Warning );
-          iRet--;
+          QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' failed: %2" ).arg( strLine ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
         }
-      }
-      catch ( QgsServerException &ex )
-      {
-        QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' failed: %2" ).arg( strLine ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
-        throw ex;
-      }
-      catch ( QgsException &ex )
-      {
-        QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' failed: %2" ).arg( strLine ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
-        throw ex;
-      }
-      catch ( std::runtime_error &ex )
-      {
-        QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' failed: %2" ).arg( strLine ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
-        throw ex;
-      }
-      catch ( std::exception &ex )
-      {
-        QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' failed %2" ).arg( strLine ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
-        throw ex;
-      }
-      catch ( ... )
-      {
-        QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' failed" ).arg( strLine ), QStringLiteral( "Server" ), Qgis::Critical );
+        catch ( QgsException &ex )
+        {
+          QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' failed: %2" ).arg( strLine ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
+        }
+        catch ( std::runtime_error &ex )
+        {
+          QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' failed: %2" ).arg( strLine ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
+        }
+        catch ( std::exception &ex )
+        {
+          QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' failed %2" ).arg( strLine ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
+        }
+        catch ( ... )
+        {
+          QgsMessageLog::logMessage( QStringLiteral( "Preloading project '%1' failed" ).arg( strLine ), QStringLiteral( "Server" ), Qgis::Critical );
+        }
       }
     }
+    catch ( QgsServerException &ex )
+    {
+      QgsMessageLog::logMessage( QStringLiteral( "QgsServer::sbPreloadProjects - QgsServerException: %1" ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
+    }
+    catch ( QgsException &ex )
+    {
+      QgsMessageLog::logMessage( QStringLiteral( "QgsServer::sbPreloadProjects - QgsException: %1" ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
+    }
+    catch ( std::runtime_error &ex )
+    {
+      QgsMessageLog::logMessage( QStringLiteral( "QgsServer::sbPreloadProjects - RuntimeError: %1" ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
+    }
+    catch ( std::exception &ex )
+    {
+      QgsMessageLog::logMessage( QStringLiteral( "QgsServer::sbPreloadProjects - std::exception: %1" ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
+    }
+    catch ( ... )
+    {
+      QgsMessageLog::logMessage( QStringLiteral( "QgsServer::sbPreloadProjects - Unknown exception" ), QStringLiteral( "Server" ), Qgis::Critical );
+    }
+
+    fileConfig.close();
   }
 
   return iRet;
@@ -575,8 +595,6 @@ bool QgsServer::init( const QString &strTenant )
   return true;
 }
 
-
-
 void QgsServer::putenv( const QString &var, const QString &val )
 {
   if ( val.isEmpty() )
@@ -696,11 +714,13 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
           }
           else
           {
+            sServerInterface->sbRequestLogMessage( QStringLiteral( "Checking if project '%1' is unloaded" ).arg( configFilePath ) );
             if ( mSbUnloadWatcher.isUnloaded( configFilePath ) )
               throw QgsServerException( QStringLiteral( "Project has been marked unloaded!" ) );
 
             // load the project if needed and not empty
             // Note that  QgsConfigCache::project( ... ) call QgsProject::setInstance(...)
+            sServerInterface->sbRequestLogMessage( QStringLiteral( "Loading project '%1'" ).arg( configFilePath ) );
             project = QgsConfigCache::instance()->project( configFilePath, &sbJustLoaded, sServerInterface->serverSettings() );
           }
         }

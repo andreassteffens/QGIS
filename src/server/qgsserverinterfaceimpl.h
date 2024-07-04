@@ -26,6 +26,7 @@
 #include "qgscapabilitiescache.h"
 #include "qgsservercachemanager.h"
 #include "qgsconfigcache.h"
+#include "sbUnloadProjectFileWatcher.h"
 
 #include <qstringlist.h>
 
@@ -98,7 +99,7 @@ class SERVER_EXPORT QgsServerInterfaceImpl : public QgsServerInterface
     const QString &sbTenant() override;
 
     void sbRequestLogStart() override;
-    void sbRequestLogMessage( const QString& message ) override;
+    void sbRequestLogMessage( const QString &message ) override;
     void sbRequestLogStop() override;
 
   private:

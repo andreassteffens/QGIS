@@ -115,6 +115,7 @@ namespace QgsWfs
           catch ( ... )
           {
             QgsMessageLog::logMessage( QStringLiteral( "GetCapabilities - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw;
           }
         }
         else if ( QSTR_COMPARE( req, "GetFeature" ) )
@@ -146,6 +147,7 @@ namespace QgsWfs
           catch ( ... )
           {
             QgsMessageLog::logMessage( QStringLiteral( "GetFeature - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw;
           }
         }
         else if ( QSTR_COMPARE( req, "DescribeFeatureType" ) )
@@ -177,6 +179,7 @@ namespace QgsWfs
           catch ( ... )
           {
             QgsMessageLog::logMessage( QStringLiteral( "DescribeFeatureType - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw;
           }
         }
         else if ( QSTR_COMPARE( req, "Transaction" ) )
@@ -216,6 +219,7 @@ namespace QgsWfs
           catch ( ... )
           {
             QgsMessageLog::logMessage( QStringLiteral( "Transaction - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw;
           }
         }
         else

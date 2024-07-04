@@ -454,7 +454,7 @@ namespace QgsWms
         serviceElem.appendChild( paletteElem );
 
         int index = 0;
-        for ( QStringList::iterator it = colorsList.begin(); it != colorsList.end(); ++it )
+        for ( QStringList::const_iterator it = colorsList.constBegin(); it != colorsList.constEnd(); ++it )
         {
           QColor color = QgsSymbolLayerUtils::decodeColor( *it );
 

@@ -152,7 +152,7 @@ void QgsServerInterfaceImpl::sbRequestLogStart()
     logFile.close();
 }
 
-void QgsServerInterfaceImpl::sbRequestLogMessage( const QString& message )
+void QgsServerInterfaceImpl::sbRequestLogMessage( const QString &message )
 {
   if ( !mServerSettings->sbLogPerRequest() )
     return;

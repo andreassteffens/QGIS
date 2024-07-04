@@ -133,7 +133,7 @@ int main( int argc, char *argv[] )
     // When using FCGI with IIS, environment variables (QT_QPA_FONTDIR in this case) are lost after fcgi_accept().
     QFontDatabase fontDB;
 
-    int iRet = server.sbPreloadProjects();
+    server.sbPreloadProjects();
 #endif
 
     // Starts FCGI loop
@@ -160,13 +160,11 @@ int main( int argc, char *argv[] )
     // Internal server error
     QgsMessageLog::logMessage( QStringLiteral( "QgsException: %1" ).arg( ex.what() ), QStringLiteral( "Server" ), Qgis::Critical );
   }
-#ifdef Q_OS_WIN
-  catch ( const std::exception &ex)
+  catch ( std::exception &ex )
   {
     QString message = QString::fromUtf8( ex.what() );
-    QgsMessageLog::logMessage( QStringLiteral( "std::exception %1" ).arg( message ), QStringLiteral( "Server" ), Qgis::Critical );
+    QgsMessageLog::logMessage( QStringLiteral( "std::exception: %1" ).arg( message ), QStringLiteral( "Server" ), Qgis::Critical );
   }
-#endif
   catch ( ... )
   {
     QgsMessageLog::logMessage( QStringLiteral( "Unknown exception" ), QStringLiteral( "Server" ), Qgis::Critical );

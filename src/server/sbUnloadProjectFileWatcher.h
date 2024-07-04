@@ -34,10 +34,11 @@ class sbUnloadProjectFileWatcher : public QThread
     Q_OBJECT
 
   private:
-    QString                     m_strUnloadFilename;
-    QMultiMap<QString, QString> m_mapUnloadProjectFiles;
-    int                         m_iTimeout;
-    QMutex                      m_mutexProjectFiles;
+    QString            m_strUnloadFilename;
+    QgsStringMap       m_mapUnloadProjectFiles;
+    int                m_iTimeout;
+    QMutex             m_mutexProjectFiles;
+    QgsServerSettings* m_pServerSettings = nullptr;
 
     void readUnloadProjects();
     void clearUnloadProjects();
@@ -46,13 +47,15 @@ class sbUnloadProjectFileWatcher : public QThread
     sbUnloadProjectFileWatcher();
     ~sbUnloadProjectFileWatcher();
 
-    void setTimeout( int iTimeout );
-    void setWatchedPath( const QString& strUnloadFilename );
+    QStringList unloadedProjects();
 
-    bool isUnloaded( const QString& strProjectFilename );
+    void setTimeout( int iTimeout );
+    void setWatchedPath( const QString &strUnloadFilename );
+    void setServerSettings( QgsServerSettings *pSettings );
+
+    bool isUnloaded( const QString &strProjectFilename );
 
     void run() override;
 };
-
 
 #endif // SBUNLOADPROJECTFILEWATCHER_H

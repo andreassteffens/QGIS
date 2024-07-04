@@ -41,22 +41,33 @@ namespace QgsSb
     if ( !fileConfig.open( QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate ) )
       return;
 
-    if ( !projects.isEmpty() )
+    try
     {
-      QStringList listProjects = projects.split( "," );
-
-      QTextStream streamOut( &fileConfig );
-      for ( int i = 0; i < listProjects.count(); i++ )
+      if ( !projects.isNull() && !projects.isEmpty() )
       {
-        QString strPath = listProjects[i];
-        bool bClearName = strPath.contains( ".qgs", Qt::CaseInsensitive ) || strPath.contains( ".qgz", Qt::CaseInsensitive );
-        if ( !bClearName )
-          strPath = SimpleCrypt::sbDecrypt( strPath );
+        QStringList listProjects = projects.split( "," );
 
-        strPath = sbGetStandardizedPath( strPath );
+        QTextStream streamOut( &fileConfig );
+        for ( QStringList::const_iterator it = listProjects.constBegin(); it != listProjects.constEnd(); it++ )
+        {
+          QString strPath = *it;
+          bool bClearName = strPath.contains( ".qgs", Qt::CaseInsensitive ) || strPath.contains( ".qgz", Qt::CaseInsensitive );
+          if ( !bClearName )
+            strPath = SimpleCrypt::sbDecrypt( strPath );
 
-        streamOut << strPath + "\n";
+          strPath = sbGetStandardizedPath( strPath );
+
+          streamOut << strPath << endl;
+        }
       }
+    }
+    catch ( std::exception &ex )
+    {
+      QgsMessageLog::logMessage( QStringLiteral( "writeSetUnloadProjects - Exception: %1" ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
+    }
+    catch ( ... )
+    {
+      QgsMessageLog::logMessage( QStringLiteral( "writeSetUnloadProjects - Unknown exception" ), QStringLiteral( "Server" ), Qgis::Critical );
     }
 
     fileConfig.close();

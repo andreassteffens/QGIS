@@ -47,6 +47,9 @@ namespace QgsSb
 
     doc.appendChild( xmlDeclaration );
 
+
+    serverIface->sbRequestLogMessage( QStringLiteral( "writeGetServerInfo: Collecting application info..." ) );
+
     QDomElement serverInfoElem = doc.createElement( QStringLiteral( "sbServerInfo" ) );
     serverInfoElem.setAttribute( QStringLiteral( "xmlns" ), QStringLiteral( "http://www.atapa.de/sbServerInfo" ) );
     serverInfoElem.setAttribute( QStringLiteral( "version" ), QStringLiteral( "1.0.0" ) );
@@ -57,7 +60,7 @@ namespace QgsSb
     versionElem.appendChild( versionText );
     serverInfoElem.appendChild( versionElem );
 
-    QDomElement devVersionElem = doc.createElement( QStringLiteral( "Version" ) );
+    QDomElement devVersionElem = doc.createElement( QStringLiteral( "DevVersion" ) );
     QDomText devVersionText = doc.createTextNode( Qgis::devVersion() );
     devVersionElem.appendChild( devVersionText );
     serverInfoElem.appendChild( devVersionElem );
@@ -67,46 +70,76 @@ namespace QgsSb
     releaseElem.appendChild( releaseText );
     serverInfoElem.appendChild( releaseElem );
 
+
+    serverIface->sbRequestLogMessage( QStringLiteral( "writeGetServerInfo: Collecting localization info..." ) );
+
     QgsSettings settings;
-    QString strUserTranslation = settings.value( QStringLiteral( "locale/userLocale" ), "" ).toString();
-    QString strGlobalTranslation = settings.value( QStringLiteral( "locale/globalLocale" ), "" ).toString();
+    QString strUserLocale = settings.value( QStringLiteral( "locale/userLocale" ), "N/A" ).toString();
+    QString strGlobalLocale = settings.value( QStringLiteral( "locale/globalLocale" ), "N/A" ).toString();
     QDomElement localeElem = doc.createElement( QStringLiteral( "Locale" ) );
-    QDomText localeText = doc.createTextNode( strGlobalTranslation + " | " + strUserTranslation );
+    QDomText localeText = doc.createTextNode( strGlobalLocale + " | " + strUserLocale );
     localeElem.appendChild( localeText );
     serverInfoElem.appendChild( localeElem );
 
-    QDomElement translationElem = doc.createElement( QStringLiteral( "Translation" ) );
-    QDomText translationText = doc.createTextNode( QgsApplication::instance()->translation() );
-    translationElem.appendChild( translationText );
-    serverInfoElem.appendChild( translationElem );
+
+    serverIface->sbRequestLogMessage( QStringLiteral( "writeGetServerInfo: Collecting translation info..." ) );
+
+    QString strTranslation = QgsApplication::instance()->translation();
+    if ( !strTranslation.isNull() && !strTranslation.isEmpty() )
+    {
+      QDomElement translationElem = doc.createElement( QStringLiteral( "Translation" ) );
+      QDomText translationText = doc.createTextNode( strTranslation );
+      translationElem.appendChild( translationText );
+      serverInfoElem.appendChild( translationElem );
+    }
+
+
+    serverIface->sbRequestLogMessage( QStringLiteral( "writeGetServerInfo: Collecting paths info..." ) );
 
     QDomElement pathsElem = doc.createElement( QStringLiteral( "Paths" ) );
     QDomText pathsText = doc.createTextNode( QgsApplication::showSettings() );
     pathsElem.appendChild( pathsText );
     serverInfoElem.appendChild( pathsElem );
 
+
+    serverIface->sbRequestLogMessage( QStringLiteral( "writeGetServerInfo: Collecting fonts info..." ) );
+
     QFontDatabase db;
     QStringList listFamilies = db.families();
     QDomElement fontsElem = doc.createElement( QStringLiteral( "Fonts" ) );
-    QDomText fontsText = doc.createTextNode( listFamilies.join( "," ) );
-    fontsElem.appendChild( fontsText );
-    serverInfoElem.appendChild( fontsElem );
+    serverInfoElem.appendChild(fontsElem);
 
+    for ( QStringList::const_iterator it = listFamilies.constBegin(); it != listFamilies.constEnd(); ++it )
+    {
+      QDomElement fontElem = doc.createElement( QStringLiteral( "Font" ) );
+      QDomText fontText = doc.createTextNode ( *it );
+      fontElem.appendChild( fontText );
+      fontsElem.appendChild( fontElem );
+    }
+
+
+    serverIface->sbRequestLogMessage( QStringLiteral( "writeGetServerInfo: Collecting configuration parameters..." ) );
 
     QDomElement serverConfigurationElem = doc.createElement( QStringLiteral( "ServerConfiguration" ) );
     serverInfoElem.appendChild( serverConfigurationElem );
 
-    QStringList qstrlstSettings = serverIface->serverSettings()->getSettings();
-    for ( int iSetting = 0; iSetting < qstrlstSettings.count(); iSetting++ )
+    QStringList listSettings = serverIface->serverSettings()->getSettings();
+    for ( QStringList::const_iterator it = listSettings.constBegin(); it != listSettings.constEnd(); it++ )
     {
-      QStringList qstrlstParts = qstrlstSettings[iSetting].split( "=" );
-      if ( qstrlstParts.count() == 2 )
+      if ( !it->isNull() && !it->isEmpty() )
       {
-        QDomElement configElem = doc.createElement( QStringLiteral( "ConfigParam" ) );
-        configElem.setAttribute( "name", qstrlstParts[0] );
-        QDomText configText = doc.createTextNode( qstrlstParts[1] );
-        configElem.appendChild( configText );
-        serverConfigurationElem.appendChild( configElem );
+        QStringList listParts = it->split( "=" );
+        if ( listParts.count() == 2 )
+        {
+          if ( !listParts[0].isNull() && !listParts[0].isEmpty() && !listParts[1].isNull() && !listParts[1].isEmpty() )
+          {
+            QDomElement configElem = doc.createElement( QStringLiteral( "ConfigParam" ) );
+            configElem.setAttribute( "name", listParts[0] );
+            QDomText configText = doc.createTextNode( listParts[1] );
+            configElem.appendChild( configText );
+            serverConfigurationElem.appendChild( configElem );
+          }
+        }
       }
     }
 
@@ -141,53 +174,55 @@ namespace QgsSb
     serverConfigurationElem.appendChild( svgPathElem );
 
 
-    QDomElement gdalConfigurationElem = doc.createElement( QStringLiteral( "GdalConfiguration" ) );
-    serverInfoElem.appendChild( gdalConfigurationElem );
+    serverIface->sbRequestLogMessage( QStringLiteral( "writeGetServerInfo: Collecting GEOS info..." ) );
 
-    char **ppOptions = CPLGetConfigOptions();
-    for ( char *pOption = *ppOptions; pOption; pOption = *++ppOptions )
-    {
-      QString qstrOption = pOption;
-      QStringList qstrlstParts = qstrOption.split( "=" );
-      if ( qstrlstParts.count() == 2 )
-      {
-        QDomElement configElem = doc.createElement( QStringLiteral( "ConfigParam" ) );
-        configElem.setAttribute( "name", qstrlstParts[0] );
-        QDomText configText = doc.createTextNode( qstrlstParts[1] );
-        configElem.appendChild( configText );
-        gdalConfigurationElem.appendChild( configElem );
-      }
-    }
+    QDomElement geosVersionElem = doc.createElement( QStringLiteral( "GeosVersion" ) );
+    QDomText geosVersionText = doc.createTextNode( Qgis::geosVersion() );
+    geosVersionElem.appendChild( geosVersionText );
+    serverInfoElem.appendChild( geosVersionElem );
 
+
+    serverIface->sbRequestLogMessage( QStringLiteral( "writeGetServerInfo: Collecting Qt info..." ) );
 
     QDomElement qtConfigurationElem = doc.createElement( QStringLiteral( "QtConfiguration" ) );
     serverInfoElem.appendChild( qtConfigurationElem );
 
     QProcessEnvironment qEnv = QProcessEnvironment::systemEnvironment();
-    QStringList qlistQtEnv = qEnv.toStringList();
-    for ( int i = 0; i < qlistQtEnv.count(); i++ )
+    QStringList listQtEnv = qEnv.toStringList();
+    for ( QStringList::const_iterator it = listQtEnv.constBegin(); it != listQtEnv.constEnd(); it++ )
     {
-      QStringList qstrlstParts = qlistQtEnv[i].split( "=" );
-      if ( qstrlstParts.count() == 2 )
+      if ( !it->isNull() && !it->isEmpty() )
       {
-        QDomElement configElem = doc.createElement( QStringLiteral( "ConfigParam" ) );
-        configElem.setAttribute( "name", qstrlstParts[0] );
-        QDomText configText = doc.createTextNode( qstrlstParts[1] );
-        configElem.appendChild( configText );
-        qtConfigurationElem.appendChild( configElem );
+        QStringList listParts = it->split( "=" );
+        if ( listParts.count() == 2 )
+        {
+          if ( !listParts[0].isNull() && !listParts[0].isEmpty() && !listParts[1].isNull() && !listParts[1].isEmpty() )
+          {
+            QDomElement configElem = doc.createElement( QStringLiteral( "ConfigParam" ) );
+            configElem.setAttribute( "name", listParts[0] );
+            QDomText configText = doc.createTextNode( listParts[1] );
+            configElem.appendChild( configText );
+            qtConfigurationElem.appendChild( configElem );
+          }
+        }
       }
     }
+
+    serverIface->sbRequestLogMessage( QStringLiteral( "writeGetServerInfo: Collecting projects info..." ) );
 
     QDomElement loadedProjectsElem = doc.createElement( QStringLiteral( "LoadedProjects" ) );
     serverInfoElem.appendChild( loadedProjectsElem );
 
     QStringList listProjects = serverIface->sbLoadedProjects();
-    for ( int i = 0; i < listProjects.count(); i++ )
+    for ( QStringList::const_iterator it = listProjects.constBegin(); it != listProjects.constEnd(); it++ )
     {
-      QDomElement configElem = doc.createElement( QStringLiteral( "Path" ) );
-      QDomText configText = doc.createTextNode( listProjects[i] );
-      configElem.appendChild( configText );
-      loadedProjectsElem.appendChild( configElem );
+      if ( !it->isNull() && !it->isEmpty() )
+      {
+        QDomElement configElem = doc.createElement( QStringLiteral( "Project" ) );
+        QDomText configText = doc.createTextNode( *it );
+        configElem.appendChild( configText );
+        loadedProjectsElem.appendChild( configElem );
+      }
     }
 
     QDomElement blockedProjectsElem = doc.createElement( QStringLiteral( "UnloadedProjects" ) );
@@ -195,22 +230,36 @@ namespace QgsSb
 
     QString strUnloadConfig = QDir( serverIface->serverSettings()->cacheDirectory() ).filePath( "unload_" + serverIface->sbTenant() );
     QFile unloadFile( strUnloadConfig );
-    if ( unloadFile.open( QIODevice::ReadOnly | QIODevice::Text ) )
+    if ( unloadFile.exists() )
     {
-      QTextStream streamIn( &unloadFile );
-      QString strLine;
-      while ( streamIn.readLineInto( &strLine ) )
+      if ( unloadFile.open( QIODevice::ReadOnly | QIODevice::Text ) )
       {
-        if ( strLine.isNull() || strLine.isEmpty() )
-          continue;
+        try
+        {
+          QTextStream streamIn( &unloadFile );
+          QString strLine;
+          while ( streamIn.readLineInto( &strLine ) )
+          {
+            if ( strLine.isNull() || strLine.isEmpty() )
+              continue;
 
-        QDomElement configElem = doc.createElement( QStringLiteral( "Path" ) );
-        QDomText configText = doc.createTextNode( strLine );
-        configElem.appendChild( configText );
-        blockedProjectsElem.appendChild( configElem );
+            QDomElement configElem = doc.createElement( QStringLiteral( "Project" ) );
+            QDomText configText = doc.createTextNode( strLine );
+            configElem.appendChild( configText );
+            blockedProjectsElem.appendChild( configElem );
+          }
+        }
+        catch ( std::exception &ex )
+        {
+          QgsMessageLog::logMessage( QStringLiteral( "writeGetServerInfo - Exception: %1" ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
+        }
+        catch ( ... )
+        {
+          QgsMessageLog::logMessage( QStringLiteral( "writeGetServerInfo - Unknown exception" ), QStringLiteral( "Server" ), Qgis::Critical );
+        }
+
+        unloadFile.close();
       }
-
-      unloadFile.close();
     }
 
     response.setStatusCode( 200 );

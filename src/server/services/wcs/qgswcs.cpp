@@ -74,15 +74,99 @@ namespace QgsWcs
 
         if ( QSTR_COMPARE( req, "GetCapabilities" ) )
         {
-          writeGetCapabilities( mServerIface, project, versionString, request, response );
+          try
+          {
+            writeGetCapabilities( mServerIface, project, versionString, request, response );
+          }
+          catch ( QgsServerException &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetCapabilities - QgsServerException: %1" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( QgsException &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetCapabilities - QgsException: %1" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( std::runtime_error &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetCapabilities - RuntimeError: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( std::exception &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetCapabilities - Exception: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( ... )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetCapabilities - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw;
+          }
         }
         else if ( QSTR_COMPARE( req, "DescribeCoverage" ) )
         {
-          writeDescribeCoverage( mServerIface, project, versionString, request, response );
+          try
+          {
+            writeDescribeCoverage( mServerIface, project, versionString, request, response );
+          }
+          catch ( QgsServerException &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "DescribeCoverage - QgsServerException: %1" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( QgsException &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "DescribeCoverage - QgsException: %1" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( std::runtime_error &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "DescribeCoverage - RuntimeError: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( std::exception &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "DescribeCoverage - Exception: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( ... )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "DescribeCoverage - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw;
+          }
         }
         else if ( QSTR_COMPARE( req, "GetCoverage" ) )
         {
-          writeGetCoverage( mServerIface, project, versionString, request, response );
+          try
+          {
+            writeGetCoverage( mServerIface, project, versionString, request, response );
+          }
+          catch ( QgsServerException &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetCoverage - QgsServerException: %1" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( QgsException &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetCoverage - QgsException: %1" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( std::runtime_error &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetCoverage - RuntimeError: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( std::exception &ex )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetCoverage - Exception: %1 | %2" ).arg( QString( ex.what() ) ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw ex;
+          }
+          catch ( ... )
+          {
+            QgsMessageLog::logMessage( QStringLiteral( "GetCoverage - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw;
+          }
         }
         else
         {

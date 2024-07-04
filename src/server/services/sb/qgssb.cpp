@@ -73,6 +73,8 @@ namespace QgsSb
 
         if ( QSTR_COMPARE( req, "GetServerInfo" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'GetServerInfo' request..." ) );
+
           QString key = params.value( QStringLiteral( "SBKEY" ) );
           if ( key.isEmpty() )
             throw QgsServerException( QStringLiteral( "Request is missing required parameter 'SBKEY'" ) );
@@ -107,10 +109,15 @@ namespace QgsSb
           catch ( ... )
           {
             QgsMessageLog::logMessage( QStringLiteral( "GetServerInfo - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw;
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'GetServerInfo' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "ConvertProject" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'ConvertProject' request..." ) );
+
           if ( !project )
             throw QgsServerException( QStringLiteral( "Project file error" ) );
 
@@ -152,10 +159,15 @@ namespace QgsSb
           catch ( ... )
           {
             QgsMessageLog::logMessage( QStringLiteral( "ConvertProject - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw;
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'ConvertProject' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "GetLayerMetadata" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'GetLayerMetadata' request..." ) );
+
           if ( !project )
             throw QgsServerException( QStringLiteral( "Project file error" ) );
 
@@ -190,10 +202,15 @@ namespace QgsSb
           catch ( ... )
           {
             QgsMessageLog::logMessage( QStringLiteral( "GetLayerMetadata - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw;
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'GetLayerMetadata' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "PurgeCache" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'PurgeCache' request..." ) );
+
           if ( !project )
             throw QgsServerException( QStringLiteral( "Project file error" ) );
 
@@ -224,10 +241,15 @@ namespace QgsSb
           catch ( ... )
           {
             QgsMessageLog::logMessage( QStringLiteral( "PurgeCache - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw;
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'PurgeCache' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "GetEncryptedPath" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'GetEncryptedPath' request..." ) );
+          
           QString path = params.value( QStringLiteral( "PATH" ) );
           if ( path.isEmpty() )
             throw QgsServerException( QStringLiteral( "Request is missing required parameter 'PATH'" ) );
@@ -266,10 +288,15 @@ namespace QgsSb
           catch ( ... )
           {
             QgsMessageLog::logMessage( QStringLiteral( "GetEncryptedPath - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw;
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'GetEncryptedPath' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "GetDecryptedPath" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'GetDecryptedPath' request..." ) );
+          
           QString path = params.value( QStringLiteral( "PATH" ) );
           if ( path.isEmpty() )
             throw QgsServerException( QStringLiteral( "Request is missing required parameter 'PATH'" ) );
@@ -308,10 +335,15 @@ namespace QgsSb
           catch ( ... )
           {
             QgsMessageLog::logMessage( QStringLiteral( "GetDecryptedPath - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw;
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'GetDecryptedPath' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "SetUnloadProjects" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'SetUnloadProjects' request..." ) );
+
           QString projects = params.value( QStringLiteral( "PROJECTS" ) );
 
           QString key = params.value( QStringLiteral( "SBKEY" ) );
@@ -348,10 +380,15 @@ namespace QgsSb
           catch ( ... )
           {
             QgsMessageLog::logMessage( QStringLiteral( "SetUnloadProjects - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw;
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'SetUnloadProjects' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "SetPreloadProjects" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'SetPreloadProjects' request..." ) );
+
           QString projects = params.value( QStringLiteral( "PROJECTS" ) );
           if ( projects.isEmpty() )
             throw QgsServerException( QStringLiteral( "Request is missing required parameter 'PROJECTS'" ) );
@@ -390,10 +427,15 @@ namespace QgsSb
           catch ( ... )
           {
             QgsMessageLog::logMessage( QStringLiteral( "SetPreloadProjects - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw;
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'SetPreloadProjects' request!" ) );
         }
         else if ( QSTR_COMPARE( req, "GetServerProcessId" ) )
         {
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'GetServerProcessId' request..." ) );
+
           QString key = params.value( QStringLiteral( "SBKEY" ) );
           if ( key.isEmpty() )
             throw QgsServerException( QStringLiteral( "Request is missing required parameter 'SBKEY'" ) );
@@ -428,7 +470,10 @@ namespace QgsSb
           catch ( ... )
           {
             QgsMessageLog::logMessage( QStringLiteral( "GetServerProcessId - Unknown exception: %1" ).arg( request.url().toString() ), QStringLiteral( "Server" ), Qgis::Critical );
+            throw;
           }
+
+          mServerIface->sbRequestLogMessage( QStringLiteral( "Done processing 'GetServerProcessId' request!" ) );
         }
         else
         {

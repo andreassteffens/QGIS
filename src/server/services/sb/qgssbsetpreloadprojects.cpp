@@ -17,6 +17,7 @@
 
 #include "qgsmodule.h"
 #include "qgssbserviceexception.h"
+#include "sbutils.h"
 
 #include "qgssbsetpreloadprojects.h"
 #include "qgsserverprojectutils.h"
@@ -37,14 +38,36 @@ namespace QgsSb
     QString strPreloadConfig = QDir( serverIface->serverSettings()->cacheDirectory() ).filePath( "preload_" + serverIface->sbTenant() );
 
     QFile fileConfig( strPreloadConfig );
-    if ( !fileConfig.open( QIODevice::WriteOnly | QIODevice::Text ) )
+    if ( !fileConfig.open( QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate ) )
       return;
 
-    QStringList listProjects = projects.split( "," );
+    try
+    {
+      QStringList listProjects = projects.split( "," );
 
-    QTextStream streamOut( &fileConfig );
-    for ( int i = 0; i < listProjects.count(); i++ )
-      streamOut << listProjects[i] + "\n";
+      QTextStream streamOut( &fileConfig );
+      for ( QStringList::const_iterator it = listProjects.constBegin(); it != listProjects.constEnd(); it++ )
+      {
+        QString strPath = *it;
+        bool bClearName = strPath.contains( ".qgs", Qt::CaseInsensitive ) || strPath.contains( ".qgz", Qt::CaseInsensitive );
+        if ( !bClearName )
+          strPath = SimpleCrypt::sbDecrypt( strPath );
+
+        strPath = sbGetStandardizedPath( strPath );
+
+        streamOut << strPath << endl;
+      }
+    }
+    catch ( std::exception &ex )
+    {
+      QgsMessageLog::logMessage( QStringLiteral( "writeSetPreloadProjects - Exception: %1" ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
+    }
+    catch ( ... )
+    {
+      QgsMessageLog::logMessage( QStringLiteral( "writeSetPreloadProjects - Unknown exception" ), QStringLiteral( "Server" ), Qgis::Critical );
+    }
+
+    fileConfig.close();
 
     response.setStatusCode( 200 );
     response.setHeader( QStringLiteral( "Content-Type" ), QStringLiteral( "text/plain; charset=utf-8" ) );
