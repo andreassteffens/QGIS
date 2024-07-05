@@ -228,6 +228,9 @@ int QgsServer::sbPreloadProjects()
       QString strLine;
       while ( streamIn.readLineInto( &strLine ) )
       {
+        if ( strLine.isNull() || strLine.isEmpty() )
+          continue;
+
         try
         {
           if ( mSbUnloadWatcher.isUnloaded( strLine ) )
