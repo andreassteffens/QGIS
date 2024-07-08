@@ -88,9 +88,6 @@ QgsServer::QgsServer( const QString &strTenant )
 
   QString strUnloadConfig = QDir( sSettings()->cacheDirectory() ).filePath( "unload_" + strTenant );
   mSbUnloadWatcher.setWatchedPath( strUnloadConfig );
-  mSbUnloadWatcher.setTimeout( sSettings()->sbUnloadWatcherInterval() );
-  mSbUnloadWatcher.setServerSettings( sSettings() );
-  mSbUnloadWatcher.start();
 }
 
 QgsServer::QgsServer()
@@ -231,6 +228,9 @@ int QgsServer::sbPreloadProjects()
         if ( strLine.isNull() || strLine.isEmpty() )
           continue;
 
+        if ( strLine.compare( "DUMMY", Qt::CaseInsensitive ) )
+          continue;
+
         try
         {
           if ( mSbUnloadWatcher.isUnloaded( strLine ) )
@@ -363,6 +363,7 @@ bool QgsServer::init( const QString &strTenant )
 
   // init and configure logger
   QgsServerLogger::instance();
+  QgsServerLogger::instance()->sbSetTenant( strTenant );
   QgsServerLogger::instance()->setLogLevel( sSettings()->logLevel() );
   if ( ! sSettings()->logFile().isEmpty() )
   {
@@ -563,16 +564,14 @@ bool QgsServer::init( const QString &strTenant )
 
   QgsFontUtils::loadStandardTestFonts( QStringList() << QStringLiteral( "Roman" ) << QStringLiteral( "Bold" ) );
 
-  QgsMessageLog::logMessage( "([a]tapa) This service has been modified by the great and powerful Ender. Go ahead and enjoy!", QStringLiteral( "Server" ), Qgis::Info );
-
   QString strFontPath = sSettings->fontsDirectory();
   if ( !strFontPath.isEmpty() )
   {
-    QgsMessageLog::logMessage( "([a]tapa) Font directory: " + strFontPath, QStringLiteral( "Server" ), Qgis::Info );
+    QgsMessageLog::logMessage( "Font directory: " + strFontPath, QStringLiteral( "Server" ), Qgis::Info );
 
     int iLoaded = QgsFontUtils::loadLocalResourceFonts( strFontPath );
 
-    QgsMessageLog::logMessage( "([a]tapa) Loaded additional fonts: " + QString::number( iLoaded ), QStringLiteral( "Server" ), Qgis::Info );
+    QgsMessageLog::logMessage( "Loaded additional fonts: " + QString::number( iLoaded ), QStringLiteral( "Server" ), Qgis::Info );
   }
 
   sServiceRegistry = new QgsServiceRegistry();
@@ -582,7 +581,7 @@ bool QgsServer::init( const QString &strTenant )
   if ( !sSettings->cacheDirectory().isEmpty() && sSettings->sbUseCache() )
   {
     QString strCacheDirectory = QDir( sSettings->cacheDirectory() ).filePath( "sb" );
-    QgsMessageLog::logMessage( QStringLiteral( "([a]tapa) Initializing server cache in directory: %1" ).arg( strCacheDirectory ), QStringLiteral( "Server" ), Qgis::Info );
+    QgsMessageLog::logMessage( QStringLiteral( "Initializing server cache in directory: %1" ).arg( strCacheDirectory ), QStringLiteral( "Server" ), Qgis::Info );
 
     sSbServerCacheFilter = new sbServerCacheFilter( sServerInterface, strCacheDirectory );
     sServerInterface->registerServerCache( sSbServerCacheFilter, 1 );
@@ -632,6 +631,8 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
       accessControls->unresolveFilterFeatures();
     }
 #endif
+
+    mSbUnloadWatcher.readUnloadProjects();
 
     // Pass the filters to the requestHandler, this is needed for the following reasons:
     // Allow server request to call sendResponse plugin hook if enabled
@@ -723,8 +724,9 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
 
             // load the project if needed and not empty
             // Note that  QgsConfigCache::project( ... ) call QgsProject::setInstance(...)
-            sServerInterface->sbRequestLogMessage( QStringLiteral( "Loading project '%1'" ).arg( configFilePath ) );
+            sServerInterface->sbRequestLogMessage( QStringLiteral( "Loading project '%1'..." ).arg( configFilePath ) );
             project = QgsConfigCache::instance()->project( configFilePath, &sbJustLoaded, sServerInterface->serverSettings() );
+            sServerInterface->sbRequestLogMessage( QStringLiteral( "Done loading project '%1'!" ).arg( configFilePath ) );
           }
         }
 

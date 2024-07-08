@@ -41,7 +41,13 @@ void QgsServerLogger::logMessage( const QString &message, const QString &tag, Qg
   }
   if ( mLogFile.isOpen() )
   {
-    const QString formattedMessage = formatLogMessage( message, tag, level );
+    QString logMessage = message;
+
+    if ( !mSbTenant.isNull() && !mSbTenant.isEmpty() )
+      logMessage = "[" + mSbTenant + "] " + message;
+
+    const QString formattedMessage = formatLogMessage( logMessage, tag, level );
+
     mTextStream << formattedMessage;
     mTextStream.flush();
   }
@@ -72,4 +78,9 @@ void QgsServerLogger::setLogStderr()
 {
   setLogFile();
   mLogStderr = true;
+}
+
+void QgsServerLogger::sbSetTenant( const QString &tenant )
+{
+  mSbTenant = tenant;
 }

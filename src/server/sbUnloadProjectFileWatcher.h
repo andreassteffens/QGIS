@@ -29,18 +29,13 @@ email                : a dot steffens at gds dash team dot de
 #include "qgsconfigcache.h"
 
 
-class sbUnloadProjectFileWatcher : public QThread
+class sbUnloadProjectFileWatcher
 {
-    Q_OBJECT
-
   private:
-    QString            m_strUnloadFilename;
-    QgsStringMap       m_mapUnloadProjectFiles;
-    int                m_iTimeout;
-    QMutex             m_mutexProjectFiles;
-    QgsServerSettings* m_pServerSettings = nullptr;
+    QString             m_strUnloadFilename;
+    QgsStringMap        m_mapUnloadProjectFiles;
+    QDateTime           m_dtLastRead;
 
-    void readUnloadProjects();
     void clearUnloadProjects();
 
   public:
@@ -49,13 +44,11 @@ class sbUnloadProjectFileWatcher : public QThread
 
     QStringList unloadedProjects();
 
-    void setTimeout( int iTimeout );
     void setWatchedPath( const QString &strUnloadFilename );
-    void setServerSettings( QgsServerSettings *pSettings );
+
+    void readUnloadProjects();
 
     bool isUnloaded( const QString &strProjectFilename );
-
-    void run() override;
 };
 
 #endif // SBUNLOADPROJECTFILEWATCHER_H

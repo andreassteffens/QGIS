@@ -67,6 +67,8 @@ class SERVER_EXPORT QgsServerLogger : public QgsMessageLogConsole
      */
     void setLogStderr();
 
+    void sbSetTenant( const QString &tenant );
+
   public slots:
 
     /**
@@ -88,6 +90,8 @@ class SERVER_EXPORT QgsServerLogger : public QgsMessageLogConsole
     bool mLogStderr = false;
     QTextStream mTextStream;
     Qgis::MessageLevel mLogLevel = Qgis::MessageLevel::NoLevel;
+
+    QString mSbTenant;
 };
 
 #endif // QGSSERVERLOGGER_H

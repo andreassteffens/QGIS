@@ -162,7 +162,7 @@ void QgsServerInterfaceImpl::sbRequestLogMessage( const QString &message )
   {
     QTextStream logStream( &logFile );
     logStream << message << endl;
-
+    logStream.flush();
     logFile.close();
   }
 }

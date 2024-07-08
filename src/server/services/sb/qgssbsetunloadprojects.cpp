@@ -76,5 +76,4 @@ namespace QgsSb
     response.setHeader( QStringLiteral( "Content-Type" ), QStringLiteral( "text/plain; charset=utf-8" ) );
     response.write( "ok" );
   }
-
 } // namespace QgsWms

@@ -49,13 +49,17 @@ namespace QgsSb
       for ( QStringList::const_iterator it = listProjects.constBegin(); it != listProjects.constEnd(); it++ )
       {
         QString strPath = *it;
-        bool bClearName = strPath.contains( ".qgs", Qt::CaseInsensitive ) || strPath.contains( ".qgz", Qt::CaseInsensitive );
-        if ( !bClearName )
-          strPath = SimpleCrypt::sbDecrypt( strPath );
 
-        strPath = sbGetStandardizedPath( strPath );
+        if ( !strPath.isNull() && !strPath.isEmpty() )
+        {
+          bool bClearName = strPath.contains( ".qgs", Qt::CaseInsensitive ) || strPath.contains( ".qgz", Qt::CaseInsensitive );
+          if ( !bClearName )
+            strPath = SimpleCrypt::sbDecrypt( strPath );
 
-        streamOut << strPath << endl;
+          strPath = sbGetStandardizedPath( strPath );
+
+          streamOut << strPath << endl;
+        }
       }
     }
     catch ( std::exception &ex )
