@@ -506,6 +506,10 @@ bool QgsServer::init( const QString &strTenant )
   if ( !qstrConfigValue.isEmpty() )
     CPLSetConfigOption( "GDAL_FILENAME_IS_UTF8", qstrConfigValue.toStdString().c_str() );
 
+  qstrConfigValue = getenv( "OGR_SQLITE_CACHE" );
+  if ( !qstrConfigValue.isEmpty() )
+    CPLSetConfigOption( "OGR_SQLITE_CACHE", qstrConfigValue.toStdString().c_str() );
+
   qstrConfigValue = getenv( "OGR_SQLITE_PRAGMA" );
   if ( !qstrConfigValue.isEmpty() )
     CPLSetConfigOption( "OGR_SQLITE_PRAGMA", qstrConfigValue.toStdString().c_str() );
