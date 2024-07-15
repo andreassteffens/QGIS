@@ -31,8 +31,36 @@
 #include <QFontDatabase>
 #include <QString>
 
+void Debug(const QString& strMessage)
+{
+  QFile file("qgis_server_debug.txt");
+  if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append))
+    return;
+
+  QTextStream out(&file);
+  out << "[" << QDateTime::currentDateTime().toString(Qt::ISODate) << "] " << strMessage << endl;
+
+  out.flush();
+  file.close();
+}
+
 #ifdef Q_OS_WIN
 #include <eh.h>
+#include "StackWalker/StackWalker.h"
+
+class sbStackWalker : public StackWalker
+{
+  public:
+    sbStackWalker() : StackWalker() {}
+    sbStackWalker( ExceptType extype, int options = OptionsAll, PEXCEPTION_POINTERS exp = NULL ) : StackWalker( extype, options, exp ) {}
+
+  protected:
+    virtual void OnOutput(LPCSTR szText)
+    {
+      QString message = QString::fromUtf8( szText );
+      Debug( message );
+    }
+};
 #endif
 
 int fcgi_accept()
@@ -47,17 +75,7 @@ int fcgi_accept()
 #endif
 }
 
-void Debug( const QString &strMessage )
-{
-  return;
 
-  QFile file( "d:\\qgis_server_debug.txt" );
-  if ( !file.open( QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append ) )
-    return;
-
-  QTextStream out( &file );
-  out << strMessage << endl;
-}
 
 #ifdef Q_OS_WIN
 void SETranslator( unsigned int u, struct _EXCEPTION_POINTERS *pExp )
@@ -116,17 +134,15 @@ int main( int argc, char *argv[] )
 
   QgsMessageLog::logMessage( QStringLiteral( "STARTING QGIS SERVER" ), QStringLiteral( "Server" ), Qgis::Info );
 
+  QString strTenant = "";
+
+  if ( argc == 2 )
+    strTenant = argv[1];
+
   try
   {
-    *(int*)0 = 0;
-
     // since version 3.0 QgsServer now needs a qApp so initialize QgsApplication
     const QgsApplication app( argc, argv, withDisplay, QString(), QStringLiteral( "server" ) );
-
-    QString strTenant = "";
-
-    if ( argc == 2 )
-      strTenant = argv[1];
 
     QgsServer server( strTenant );
 
@@ -159,21 +175,41 @@ int main( int argc, char *argv[] )
   }
   catch ( QgsServerException &ex )
   {
-    QgsMessageLog::logMessage( QStringLiteral( "QgsServerException: %1" ).arg( ex.what() ), QStringLiteral( "Server" ), Qgis::Critical );
+    QString message = QStringLiteral( "QgsServerException: %1" ).arg( ex.what() );
+
+    Debug( "[" + strTenant + "] " + message );
+    QgsMessageLog::logMessage( message , QStringLiteral( "Server" ), Qgis::Critical );
   }
   catch ( QgsException &ex )
   {
-    // Internal server error
-    QgsMessageLog::logMessage( QStringLiteral( "QgsException: %1" ).arg( ex.what() ), QStringLiteral( "Server" ), Qgis::Critical );
+    QString message = QStringLiteral( "QgsException: %1" ).arg( ex.what() );
+
+    Debug( "[" + strTenant + "] " + message );
+    QgsMessageLog::logMessage( message, QStringLiteral( "Server" ), Qgis::Critical );
   }
   catch ( std::exception &ex )
   {
+#ifdef Q_OS_WIN
+    sbStackWalker sw;
+    sw.ShowCallstack( GetCurrentThread(), sw.GetCurrentExceptionContext() );
+#endif
+
     QString message = QString::fromUtf8( ex.what() );
+
+    Debug( "[" + strTenant + "] " + message );
     QgsMessageLog::logMessage( QStringLiteral( "std::exception: %1" ).arg( message ), QStringLiteral( "Server" ), Qgis::Critical );
   }
   catch ( ... )
   {
-    QgsMessageLog::logMessage( QStringLiteral( "Unknown exception" ), QStringLiteral( "Server" ), Qgis::Critical );
+#ifdef Q_OS_WIN
+    sbStackWalker sw( StackWalker::AfterCatch );
+    sw.ShowCallstack();
+#endif
+
+    QString message = QStringLiteral( "Unknown exception" );
+
+    Debug( "[" + strTenant + "] " + message );
+    QgsMessageLog::logMessage( message, QStringLiteral( "Server" ), Qgis::Critical );
   }
 
   QgsMessageLog::logMessage( QStringLiteral( "STOPPING QGIS SERVER" ), QStringLiteral( "Server" ), Qgis::Info );

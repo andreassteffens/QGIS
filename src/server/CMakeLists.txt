@@ -159,7 +159,20 @@ install(TARGETS qgis_server
 # add test resources, e.g. standard test font
 set(QGIS_SERVER_TESTRCCS ../../tests/testdata/testdata.qrc)
 
-add_executable(qgis_mapserv.fcgi qgis_map_serv.cpp ${QGIS_SERVER_TESTRCCS})
+if (WIN32)
+  set(QGIS_MAPSERV_SRCS
+    qgis_map_serv.cpp
+    ${CMAKE_SOURCE_DIR}/external/StackWalker/StackWalker.cpp
+  )
+
+  set (QGIS_MAPSERV_HDRS
+    ${CMAKE_SOURCE_DIR}/external/StackWalker/StackWalker.h
+  )
+
+  add_executable(qgis_mapserv.fcgi ${QGIS_MAPSERV_SRCS} ${QGIS_MAPSERV_HDRS} ${QGIS_SERVER_TESTRCCS})
+else()
+  add_executable(qgis_mapserv.fcgi qgis_map_serv.cpp ${QGIS_SERVER_TESTRCCS})
+endif()
 # add_executable(qgis_mapserver qgis_mapserver.cpp ${QGIS_SERVER_TESTRCCS})
 
 # require c++17
