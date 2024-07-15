@@ -21,8 +21,53 @@
 #include "qgsprojectservervalidator.h"
 #include "qgsvectorlayer.h"
 #include "qgsrenderer.h"
+#include "qgsrendercontext.h"
+#include "qgssymbollayer.h"
+#include "qgssymbol.h"
+#include "qgsmarkersymbollayer.h"
+#include "qgslinesymbollayer.h"
+#include "qgsfillsymbollayer.h"
 
 #include <QRegularExpression>
+
+QString QgsProjectServerValidator::sbResolveSvgPath( QString &resourcePath, const QgsPathResolver &pathResolver )
+{
+  return pathResolver.writePath( resourcePath );
+}
+
+QString QgsProjectServerValidator::sbResolveRasterPath( QString &resourcePath, const QgsPathResolver &pathResolver )
+{
+  if ( resourcePath.isEmpty() )
+    return QString();
+
+  if ( resourcePath.startsWith( QLatin1String( "base64:" ) ) )
+    return resourcePath;
+
+  if ( !QFileInfo::exists( resourcePath ) )
+    return resourcePath;
+
+  QString path = QFileInfo( resourcePath ).canonicalFilePath();
+
+  QStringList svgPaths = QgsApplication::svgPaths();
+
+  bool isInSvgPaths = false;
+  for ( int i = 0; i < svgPaths.size(); i++ )
+  {
+    const QString dir = QFileInfo( svgPaths[i] ).canonicalFilePath();
+
+    if ( !dir.isEmpty() && path.startsWith( dir ) )
+    {
+      path = path.mid( dir.size() + 1 );
+      isInSvgPaths = true;
+      break;
+    }
+  }
+
+  if ( isInSvgPaths )
+    return path;
+
+  return pathResolver.writePath( path );
+}
 
 QString QgsProjectServerValidator::displayValidationError( QgsProjectServerValidator::ValidationError error )
 {
@@ -50,11 +95,21 @@ QString QgsProjectServerValidator::displayValidationError( QgsProjectServerValid
       return QObject::tr( "The layer has been marked to be used in a WebGIS tool that requires accessing the layer's features through WFS ... but access is not granted through WFS!" );
     case QgsProjectServerValidator::sbVectorLayerSearchNotDefined:
       return QObject::tr( "The layer has been marked searchable ... but no search expression has been defined!" );
+    case QgsProjectServerValidator::sbVectorLayerDuplicateRuleKey:
+      return QObject::tr( "The layer has duplicate rule keys ... probably stemming from a migration of an older project version to a newer one!" );
+    case QgsProjectServerValidator::sbVectorLayerBase64SymbolContent:
+      return QObject::tr( "The layer contains BASE64 symbology integrated into the project file!" );
+    case QgsProjectServerValidator::sbVectorLayerAbsoluteSymbolPathContent:
+      return QObject::tr( "The layer contains file based symbology with an absolute file path that might get lost when copying the project to a new location!" );
+    case QgsProjectServerValidator::sbVectorLayerInvalidSymbolPath:
+      return QObject::tr( "The layer contains file based symbology whose location cannot be validated!" );
+    case QgsProjectServerValidator::sbVectorLayerObjectCountEnabled:
+      return QObject::tr( "The layers object count is enabled. Consider disabling the to speed up project loading!" );
   }
   return QString();
 }
 
-void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &owsNames, QStringList &encodingMessages, QStringList &checkLegendMessages, QStringList &insecureSourceMessages, QStringList &tiledSourceMessages, QStringList &clientSidePublishingMessages, QStringList &missingWfsLayerMessages, QStringList &missingSearchTermMessages, QStringList &duplicateRuleKeyMessages )
+void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &owsNames, QStringList &encodingMessages, QStringList &checkLegendMessages, QStringList &insecureSourceMessages, QStringList &tiledSourceMessages, QStringList &clientSidePublishingMessages, QStringList &missingWfsLayerMessages, QStringList &missingSearchTermMessages, QStringList &duplicateRuleKeyMessages, QStringList &absoluteSymbolPathMessages, QStringList &base64SymbolMessages, QStringList &invalidSymbolPathMessages, QStringList &layerObjectCountMessages )
 {
   const QList< QgsLayerTreeNode * > treeGroupChildren = treeGroup->children();
   for ( int i = 0; i < treeGroupChildren.size(); ++i )
@@ -72,7 +127,7 @@ void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTr
       else
         owsNames.append( QPair<QString, QString>( shortName, strPath ) );
 
-      browseLayerTree( project, treeGroupChild, owsNames, encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages, duplicateRuleKeyMessages );
+      browseLayerTree( project, treeGroupChild, owsNames, encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages, duplicateRuleKeyMessages, absoluteSymbolPathMessages, base64SymbolMessages, invalidSymbolPathMessages, layerObjectCountMessages );
     }
     else
     {
@@ -102,16 +157,85 @@ void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTr
               encodingMessages << layer->name();
           }
 
+          bool showFeatureCount = vl->customProperty( QStringLiteral( "showFeatureCount" ), 0 ).toBool();
+          if ( showFeatureCount )
+            layerObjectCountMessages << layer->name() + " (" + strPath + ")";
+
           if ( vl->isSpatial() )
           {
             QgsFeatureRenderer *renderer = vl->renderer();
             if ( renderer != NULL )
             {
-              QMap<QString, QString> mapRuleIds;
-              QgsLegendSymbolList listSymbols = renderer->legendSymbolItems();
+              QgsRenderContext context;
+
+              QgsSymbolList listSymbols = const_cast<QgsFeatureRenderer *>( renderer )->symbols( context );
               for ( int iSymbol = 0; iSymbol < listSymbols.count(); iSymbol++ )
               {
-                QgsLegendSymbolItem &legendItem = listSymbols[iSymbol];
+                QgsSymbol *pSymbol = listSymbols[ iSymbol ];
+
+                QgsSymbolLayerList listSymbolLayers = pSymbol->symbolLayers();
+                for ( int iSymbolLayer = 0; iSymbolLayer < listSymbolLayers.count(); iSymbolLayer++ )
+                {
+                  QgsSymbolLayer *pSymbolLayer = listSymbolLayers[ iSymbolLayer ];
+
+                  QString strResourcePath;
+                  QString strResolvedResourcePath;
+
+                  QString strLayerType = pSymbolLayer->layerType();
+                  if ( strLayerType.compare( "RasterLine", Qt::CaseInsensitive ) == 0 )
+                  {
+                    strResourcePath = static_cast<QgsRasterLineSymbolLayer *>( pSymbolLayer )->path();
+                    strResolvedResourcePath = sbResolveRasterPath( strResourcePath, QgsProject::instance()->pathResolver() );
+                  }
+                  else if ( strLayerType.compare( "SvgMarker", Qt::CaseInsensitive ) == 0 )
+                  {
+                    strResourcePath = static_cast<QgsSvgMarkerSymbolLayer *>( pSymbolLayer )->path();
+                    strResolvedResourcePath = sbResolveSvgPath( strResourcePath, QgsProject::instance()->pathResolver() );
+                  }
+                  else if ( strLayerType.compare( "AnimatedMarker", Qt::CaseInsensitive ) == 0 )
+                  {
+                    strResourcePath = static_cast<QgsAnimatedMarkerSymbolLayer *>( pSymbolLayer )->path();
+                    strResolvedResourcePath = sbResolveRasterPath( strResourcePath, QgsProject::instance()->pathResolver() );
+                  }
+                  else if ( strLayerType.compare( "RasterMarker", Qt::CaseInsensitive ) == 0 )
+                  {
+                    strResourcePath = static_cast<QgsRasterMarkerSymbolLayer *>( pSymbolLayer )->path();
+                    strResolvedResourcePath = sbResolveRasterPath( strResourcePath, QgsProject::instance()->pathResolver() );
+                  }
+                  else if ( strLayerType.compare( "RasterFill", Qt::CaseInsensitive ) == 0 )
+                  {
+                    strResourcePath = static_cast<QgsRasterFillSymbolLayer *>( pSymbolLayer )->imageFilePath();
+                    strResolvedResourcePath = sbResolveRasterPath( strResourcePath, QgsProject::instance()->pathResolver() );
+                  }
+                  else if ( strLayerType.compare( "SVGFill", Qt::CaseInsensitive ) == 0 )
+                  {
+                    strResourcePath = static_cast<QgsSVGFillSymbolLayer *>( pSymbolLayer )->svgFilePath();
+                    strResolvedResourcePath = sbResolveSvgPath( strResourcePath, QgsProject::instance()->pathResolver() );
+                  }
+
+                  if ( !strResourcePath.isEmpty() )
+                  {
+                    if ( strResourcePath.startsWith( "base64:", Qt::CaseInsensitive ) )
+                    {
+                      base64SymbolMessages << QStringLiteral( "%1 (%2): %3 | %4" ).arg( layer->name() ).arg( strPath ).arg( iSymbol ).arg( iSymbolLayer );
+                      continue;
+                    }
+
+                    QFileInfo info( strResourcePath );
+                    if ( !info.exists() )
+                      invalidSymbolPathMessages << QStringLiteral( "%1 (%2): %3 | %4 | %5" ).arg( layer->name() ).arg( strPath ).arg( iSymbol ).arg( iSymbolLayer ).arg( strResolvedResourcePath );
+
+                    if ( strResourcePath.compare( strResolvedResourcePath, Qt::CaseInsensitive ) == 0 )
+                      absoluteSymbolPathMessages << QStringLiteral( "%1 (%2): %3 | %4 | %5" ).arg( layer->name() ).arg( strPath ).arg( iSymbol ).arg( iSymbolLayer ).arg( strResolvedResourcePath );
+                  }
+                }
+              }
+
+              QMap<QString, QString> mapRuleIds;
+              QgsLegendSymbolList listLegendSymbols = renderer->legendSymbolItems();
+              for ( int iSymbol = 0; iSymbol < listLegendSymbols.count(); iSymbol++ )
+              {
+                QgsLegendSymbolItem &legendItem = listLegendSymbols[iSymbol];
                 QString strKey = legendItem.ruleKey();
                 if ( strKey.isEmpty() )
                   continue;
@@ -234,8 +358,8 @@ bool QgsProjectServerValidator::validate( QgsProject *project, QList<QgsProjectS
     return false;
 
   QList<QPair<QString, QString>> owsNames;
-  QStringList encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages, duplicateRuleKeyMessages;
-  browseLayerTree( project, project->layerTreeRoot(), owsNames, encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages, duplicateRuleKeyMessages );
+  QStringList encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages, duplicateRuleKeyMessages, absoluteSymbolPathMessages, base64SymbolMessages, invalidSymbolPathMessages, layerObjectCountMessages;
+  browseLayerTree( project, project->layerTreeRoot(), owsNames, encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages, duplicateRuleKeyMessages, absoluteSymbolPathMessages, base64SymbolMessages, invalidSymbolPathMessages, layerObjectCountMessages );
 
   QStringList duplicateNames, regExpMessages;
   const thread_local QRegularExpression snRegExp = QgsApplication::shortNameRegularExpression();
@@ -337,6 +461,38 @@ bool QgsProjectServerValidator::validate( QgsProject *project, QList<QgsProjectS
 
     for ( int i = 0; i < duplicateRuleKeyMessages.count(); i++ )
       results << ValidationResult( QgsProjectServerValidator::sbVectorLayerDuplicateRuleKey, duplicateRuleKeyMessages[i] );
+  }
+
+  if ( !absoluteSymbolPathMessages.empty() )
+  {
+    result = false;
+
+    for ( int i = 0; i < absoluteSymbolPathMessages.count(); i++ )
+      results << ValidationResult( QgsProjectServerValidator::sbVectorLayerAbsoluteSymbolPathContent, absoluteSymbolPathMessages[i] );
+  }
+
+  if ( !base64SymbolMessages.empty() )
+  {
+    result = false;
+
+    for ( int i = 0; i < base64SymbolMessages.count(); i++ )
+      results << ValidationResult( QgsProjectServerValidator::sbVectorLayerBase64SymbolContent, base64SymbolMessages[i] );
+  }
+
+  if ( !invalidSymbolPathMessages.empty() )
+  {
+    result = false;
+
+    for ( int i = 0; i < invalidSymbolPathMessages.count(); i++ )
+      results << ValidationResult( QgsProjectServerValidator::sbVectorLayerInvalidSymbolPath, invalidSymbolPathMessages[i] );
+  }
+
+  if ( !layerObjectCountMessages.empty() )
+  {
+    result = false;
+
+    for ( int i = 0; i < layerObjectCountMessages.count(); i++ )
+      results << ValidationResult( QgsProjectServerValidator::sbVectorLayerObjectCountEnabled, layerObjectCountMessages[i] );
   }
 
   // Determine the root layername

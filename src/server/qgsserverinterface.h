@@ -182,7 +182,7 @@ class SERVER_EXPORT QgsServerInterface
     virtual const QString &sbTenant() = 0 SIP_SKIP;
 
     virtual void sbRequestLogStart() = 0 SIP_SKIP;
-    virtual void sbRequestLogMessage( const QString& message ) = 0 SIP_SKIP;
+    virtual void sbRequestLogMessage( const QString &message ) = 0 SIP_SKIP;
     virtual void sbRequestLogStop() = 0 SIP_SKIP;
 
   private:

@@ -107,12 +107,12 @@ namespace QgsSb
     QFontDatabase db;
     QStringList listFamilies = db.families();
     QDomElement fontsElem = doc.createElement( QStringLiteral( "Fonts" ) );
-    serverInfoElem.appendChild(fontsElem);
+    serverInfoElem.appendChild( fontsElem );
 
     for ( QStringList::const_iterator it = listFamilies.constBegin(); it != listFamilies.constEnd(); ++it )
     {
       QDomElement fontElem = doc.createElement( QStringLiteral( "Font" ) );
-      QDomText fontText = doc.createTextNode ( *it );
+      QDomText fontText = doc.createTextNode( *it );
       fontElem.appendChild( fontText );
       fontsElem.appendChild( fontElem );
     }

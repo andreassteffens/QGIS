@@ -234,13 +234,13 @@ void QgsServerSettings::initSettings()
 
   // internal sb log per request to detect crashes
   const Setting sSbLogPerRequest = { QgsServerSettingsEnv::QGIS_SERVER_SB_LOG_PER_REQUEST,
-                                QgsServerSettingsEnv::DEFAULT_VALUE,
-                                QStringLiteral( "Create log per request to detect crashes" ),
-                                QStringLiteral( "/log/sbCreatePerRequest" ),
-                                QVariant::Bool,
-                                QVariant( false ),
-                                QVariant()
-  };
+                                     QgsServerSettingsEnv::DEFAULT_VALUE,
+                                     QStringLiteral( "Create log per request to detect crashes" ),
+                                     QStringLiteral( "/log/sbCreatePerRequest" ),
+                                     QVariant::Bool,
+                                     QVariant( false ),
+                                     QVariant()
+                                   };
   mSettings[ sSbLogPerRequest.envVar ] = sSbLogPerRequest;
 
   // handling FORWARDED-FOR header

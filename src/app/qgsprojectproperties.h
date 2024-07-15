@@ -264,9 +264,11 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
     void checkOWS( QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &listOwsNames, QStringList &encodingMessages, QStringList &serviceSourceMessages, QStringList &toolInconsistencyMessages );
 
     //! Fill layer short names
-    void sbCollectLayerShortNames( QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapShortNames );
     void sbFillLayerShortNames( QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QPair<QString, QString>> &mapShortNames, bool bSynchronizeTreeAndWmsTitles );
     QString sbDetermineShortName( QString strTitle, QString strPath, QMultiMap<QString, QPair<QString, QString>> &mapShortNames );
+
+    //! Disable layer object counts
+    void sbDisableLayerObjectCounts( QgsLayerTreeGroup *treeGroup, QStringList &listLayerNames );
 
     //! Ensure consistent layer settings
     void sbCollectWfsToolLayerIds( QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapLayerIds );
@@ -274,10 +276,6 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
     //! Precalculate layer metadata
     void sbBuildLayerPath( QgsLayerTreeNode *node, QString &path );
     void sbPrecalculateLayerMetadata( QgsLayerTreeGroup *treeGroup, QMultiMap<QString, QString> &mapLayerMetadata );
-
-    //! Resource path resolution
-    QString sbResolveSvgPath( QString &resourcePath, const QgsPathResolver &pathResolver );
-    QString sbResolveRasterPath( QString &resourcePath, const QgsPathResolver &pathResolver );
 
     //! Populates list with ellipsoids from Sqlite3 db
     void populateEllipsoidList();

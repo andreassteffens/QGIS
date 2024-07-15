@@ -249,7 +249,7 @@ namespace QgsSb
         else if ( QSTR_COMPARE( req, "GetEncryptedPath" ) )
         {
           mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'GetEncryptedPath' request..." ) );
-          
+
           QString path = params.value( QStringLiteral( "PATH" ) );
           if ( path.isEmpty() )
             throw QgsServerException( QStringLiteral( "Request is missing required parameter 'PATH'" ) );
@@ -296,7 +296,7 @@ namespace QgsSb
         else if ( QSTR_COMPARE( req, "GetDecryptedPath" ) )
         {
           mServerIface->sbRequestLogMessage( QStringLiteral( "Processing 'GetDecryptedPath' request..." ) );
-          
+
           QString path = params.value( QStringLiteral( "PATH" ) );
           if ( path.isEmpty() )
             throw QgsServerException( QStringLiteral( "Request is missing required parameter 'PATH'" ) );

@@ -24,7 +24,7 @@ email                : a dot steffens at gds dash team dot de
 
 sbUnloadProjectFileWatcher::sbUnloadProjectFileWatcher()
 {
-  m_dtLastRead = QDateTime::currentDateTime().addYears(-10);
+  m_dtLastRead = QDateTime::currentDateTime().addYears( -10 );
 }
 
 QStringList sbUnloadProjectFileWatcher::unloadedProjects()
@@ -127,11 +127,11 @@ void sbUnloadProjectFileWatcher::readUnloadProjects()
   {
     QgsMessageLog::logMessage( QStringLiteral( "sbUnloadProjectFileWatcher::readUnloadProjects - QgsServerException: %1" ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
   }
-  catch (QgsException& ex)
+  catch ( QgsException &ex )
   {
     QgsMessageLog::logMessage( QStringLiteral( "sbUnloadProjectFileWatcher::readUnloadProjects - QgsException: %1" ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
   }
-  catch (std::runtime_error& ex)
+  catch ( std::runtime_error &ex )
   {
     QgsMessageLog::logMessage( QStringLiteral( "sbUnloadProjectFileWatcher::readUnloadProjects - RuntimeError: %1" ).arg( QString( ex.what() ) ), QStringLiteral( "Server" ), Qgis::Critical );
   }

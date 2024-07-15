@@ -103,7 +103,7 @@ QgsServer::QgsServer()
 
 QgsServer::~QgsServer()
 {
-  
+
 }
 
 QString &QgsServer::serverName()
@@ -228,7 +228,7 @@ int QgsServer::sbPreloadProjects()
         if ( strLine.isNull() || strLine.isEmpty() )
           continue;
 
-        if ( strLine.compare( "DUMMY", Qt::CaseInsensitive ) )
+        if ( strLine.compare( "DUMMY", Qt::CaseInsensitive ) == 0 )
           continue;
 
         try
@@ -800,7 +800,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
             service = sServiceRegistry->getService( serviceString.toLower(), versionString );
           if ( service )
           {
-            sServerInterface->sbRequestLogMessage( QStringLiteral( "Executing request '%1' (%2) in service '%3'" ).arg( request.originalUrl().toString() ).arg( request.methodToString( request.method() ) ).arg(service->name()));
+            sServerInterface->sbRequestLogMessage( QStringLiteral( "Executing request '%1' (%2) in service '%3'" ).arg( request.originalUrl().toString() ).arg( request.methodToString( request.method() ) ).arg( service->name() ) );
             service->executeRequest( request, responseDecorator, project, sbJustLoaded );
           }
           else

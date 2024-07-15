@@ -63,6 +63,9 @@ void Debug( const QString &strMessage )
 void SETranslator( unsigned int u, struct _EXCEPTION_POINTERS *pExp )
 {
   std::string error = "SE Exception: ";
+
+  QgsMessageLog::logMessage( QStringLiteral( "Translating SE exception %1: ..." ).arg( u ), QStringLiteral( "Server" ), Qgis::Critical );
+
   switch ( u )
   {
     case 0xC0000005:
@@ -73,6 +76,7 @@ void SETranslator( unsigned int u, struct _EXCEPTION_POINTERS *pExp )
       sprintf_s( result, 11, "0x%08X", u );
       error += result;
   };
+
   throw std::exception( error.c_str() );
 }
 #endif
@@ -110,13 +114,15 @@ int main( int argc, char *argv[] )
   _set_se_translator( SETranslator );
 #endif
 
-  // since version 3.0 QgsServer now needs a qApp so initialize QgsApplication
-  const QgsApplication app( argc, argv, withDisplay, QString(), QStringLiteral( "server" ) );
-
-  QgsMessageLog::logMessage( QStringLiteral( "STARTING QGIS SERVER" ), QStringLiteral( "Server" ), Qgis::Warning );
+  QgsMessageLog::logMessage( QStringLiteral( "STARTING QGIS SERVER" ), QStringLiteral( "Server" ), Qgis::Info );
 
   try
   {
+    *(int*)0 = 0;
+
+    // since version 3.0 QgsServer now needs a qApp so initialize QgsApplication
+    const QgsApplication app( argc, argv, withDisplay, QString(), QStringLiteral( "server" ) );
+
     QString strTenant = "";
 
     if ( argc == 2 )
@@ -170,7 +176,7 @@ int main( int argc, char *argv[] )
     QgsMessageLog::logMessage( QStringLiteral( "Unknown exception" ), QStringLiteral( "Server" ), Qgis::Critical );
   }
 
-  QgsMessageLog::logMessage( QStringLiteral( "STOPPING QGIS SERVER" ), QStringLiteral( "Server" ), Qgis::Warning );
+  QgsMessageLog::logMessage( QStringLiteral( "STOPPING QGIS SERVER" ), QStringLiteral( "Server" ), Qgis::Info );
 
   QgsApplication::exitQgis();
 

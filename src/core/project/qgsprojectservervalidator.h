@@ -58,8 +58,9 @@ class CORE_EXPORT QgsProjectServerValidator
       sbVectorLayerSearchNotDefined = 10,
       sbVectorLayerDuplicateRuleKey = 11,
       sbVectorLayerBase64SymbolContent = 12,
-      sbVectorLayerAbsolutePathSymbolContent = 13,
-      sbVectorLayerInvalidSymbolPath = 14
+      sbVectorLayerAbsoluteSymbolPathContent = 13,
+      sbVectorLayerInvalidSymbolPath = 14,
+      sbVectorLayerObjectCountEnabled = 15
     };
 
     /**
@@ -105,9 +106,12 @@ class CORE_EXPORT QgsProjectServerValidator
     static bool validate( QgsProject *project, QList< QgsProjectServerValidator::ValidationResult > &results SIP_OUT );
 
   private:
-    static void browseLayerTree( QgsProject *project, QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &owsNames, QStringList &encodingMessages, QStringList &checkLegendMessages, QStringList &insecureSourceMessages, QStringList &tiledSourceMessages, QStringList &clientSidePublishingMessages, QStringList &missingWfsLayerMessages, QStringList &missingSearchTermMessages, QStringList &duplicateRuleKeyMessages );
+    static void browseLayerTree( QgsProject *project, QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &owsNames, QStringList &encodingMessages, QStringList &checkLegendMessages, QStringList &insecureSourceMessages, QStringList &tiledSourceMessages, QStringList &clientSidePublishingMessages, QStringList &missingWfsLayerMessages, QStringList &missingSearchTermMessages, QStringList &duplicateRuleKeyMessages, QStringList &absoluteSymbolPathMessages, QStringList &base64SymbolMessages, QStringList &invalidSymbolPathMessages, QStringList &layerObjectCountMessages );
 
     static void sbResolveLayerPath( QgsLayerTreeNode *pNode, QString &rstrPath );
+
+    static QString sbResolveSvgPath( QString &resourcePath, const QgsPathResolver &pathResolver );
+    static QString sbResolveRasterPath( QString &resourcePath, const QgsPathResolver &pathResolver );
 };
 
 #endif // QGSPROJECTSERVERVALIDATOR_H
