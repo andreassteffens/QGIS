@@ -157,7 +157,7 @@ void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTr
               encodingMessages << layer->name();
           }
 
-          bool showFeatureCount = vl->customProperty( QStringLiteral( "showFeatureCount" ), 0 ).toBool();
+          bool showFeatureCount = treeLayer->customProperty( QStringLiteral( "showFeatureCount" ), 0 ).toBool();
           if ( showFeatureCount )
             layerObjectCountMessages << layer->name() + " (" + strPath + ")";
 

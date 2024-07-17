@@ -75,8 +75,6 @@ int fcgi_accept()
 #endif
 }
 
-
-
 #ifdef Q_OS_WIN
 void SETranslator( unsigned int u, struct _EXCEPTION_POINTERS *pExp )
 {

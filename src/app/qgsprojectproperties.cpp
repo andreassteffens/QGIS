@@ -2271,7 +2271,7 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
   teOWSChecker->document()->setDefaultStyleSheet( myStyle );
 
   QString strContent;
-  strContent += "<h1>" + tr( "([a]tapa) Performing QGIS Server check. Hold on to your hat..." ) + "</h1>";
+  strContent += "<h1>" + tr( "([a]tapa) Performing QGIS Server check. Hold on to your hat..." ) + "</h1><hr>";
 
   const auto layers { QgsProject::instance()->layers<QgsVectorLayer *>() };
   for ( QgsVectorLayer *layer : layers )
@@ -2502,8 +2502,7 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
   else
     strContent += "<h3>" + tr( "([a]tapa) Object count is disabled for all layers" ) + "</h3>";
 
-  strContent += "<hr>";
-  strContent += "<h1>" + tr( "([a]tapa) QGIS Server check done! Hat still on?" ) + "</h1>";
+  strContent += "<hr><h1>" + tr( "([a]tapa) QGIS Server check done! Hat still on?" ) + "</h1>";
 
   teOWSChecker->setHtml( strContent );
 }
@@ -2628,7 +2627,7 @@ void QgsProjectProperties::sbFillLayerShortNames( QgsLayerTreeGroup *treeGroup, 
   }
 }
 
-void sbDisableLayerObjectCounts( QgsLayerTreeGroup *treeGroup, QStringList &listLayerNames )
+void QgsProjectProperties::sbDisableLayerObjectCounts( QgsLayerTreeGroup *treeGroup, QStringList &listLayerNames )
 {
   QList< QgsLayerTreeNode* > treeGroupChildren = treeGroup->children();
   for ( int i = 0; i < treeGroupChildren.size(); ++i )
@@ -2647,9 +2646,20 @@ void sbDisableLayerObjectCounts( QgsLayerTreeGroup *treeGroup, QStringList &list
       {
         if ( l->type() == Qgis::LayerType::Vector )
         {
-          bool bShowFeatureCount = l->customProperty( QStringLiteral( "showFeatureCount" ), 0 ).toBool();
+          bool bShowFeatureCount = treeLayer->customProperty( QStringLiteral( "showFeatureCount" ), 0 ).toBool();
           if ( bShowFeatureCount )
-            l->setCustomProperty( QStringLiteral( "showFeatureCount" ), false );
+          {
+            treeLayer->setCustomProperty( QStringLiteral( "showFeatureCount" ), false );
+
+            QString strPath;
+            treeNode->sbResolveLayerPath( strPath );
+
+            QString strTitle = l->title();
+            if ( strTitle.isEmpty() )
+              strTitle = treeLayer->name();
+
+            listLayerNames.append( QStringLiteral( "%1 (%2)" ).arg(strTitle).arg(strPath) );
+          }
         }
       }
     }
@@ -2776,9 +2786,7 @@ void QgsProjectProperties::pbnSbFillLayerShortNames_clicked()
   teOWSChecker->document()->setDefaultStyleSheet( myStyle );
 
   QString strContent;
-  strContent = "<h1>" + tr( "Performing project optimizations for [a]tapa Atlas publication..." ) + "</h1>";
-
-  strContent += "<hr>";
+  strContent = "<h1>" + tr( "Performing project optimizations for [a]tapa Atlas publication..." ) + "</h1><hr>";
 
   QMultiMap<QString, QPair<QString, QString>> mapShortNames;
   sbFillLayerShortNames( QgisApp::instance()->layerTreeView()->layerTreeModel()->rootGroup(), mapShortNames, bSynchronizeTreeAndWmsTitles );
@@ -2795,6 +2803,21 @@ void QgsProjectProperties::pbnSbFillLayerShortNames_clicked()
   else
     strContent += "<h3>" + tr( "All layer names and titles are already set according to standard." ) + "</h3>";
 
+  QStringList listObjectCountLayers;
+  sbDisableLayerObjectCounts( QgisApp::instance()->layerTreeView()->layerTreeModel()->rootGroup(), listObjectCountLayers );
+  if ( listObjectCountLayers.count() > 0 )
+  {
+    QStringList listMessages;
+    QStringList::ConstIterator iter;
+    for ( iter = listObjectCountLayers.constBegin(); iter != listObjectCountLayers.constEnd(); iter++ )
+      listMessages.append( QStringLiteral( "Disabled object count for layer %1" ).arg( *iter ) );
+
+    QString strMessage = "<h3 style='color: #f00;'>" + tr( "Disabling object counts for layers..." ) + "</h3><ul><li>" + listMessages.join( QStringLiteral( "</li><li>" ) ) + "</li></ul>";
+    strContent += strMessage;
+  }
+  else
+    strContent += "<h3>" + tr( "Object counts are disabled for all layers." ) + "</h3>";
+
   QMultiMap<QString, QString> mapLayerMetadata;
   sbPrecalculateLayerMetadata( QgisApp::instance()->layerTreeView()->layerTreeModel()->rootGroup(), mapLayerMetadata );
   if ( mapLayerMetadata.count() > 0 )
@@ -2802,11 +2825,8 @@ void QgsProjectProperties::pbnSbFillLayerShortNames_clicked()
     QStringList listMessages;
     QMultiMap<QString, QString>::const_iterator iter;
     for ( iter = mapLayerMetadata.begin(); iter != mapLayerMetadata.end(); iter++ )
-    {
       listMessages.append( QStringLiteral( "Calculated metadata for layer %2 (%1)" ).arg( iter.key() ).arg( iter.value() ) );
-    }
 
-    strContent += "<hr>";
     QString strMessage = "<h3 style='color: #f00;'>" + tr( "Precalculating layer metadata..." ) + "</h3><ul><li>" + listMessages.join( QStringLiteral( "</li><li>" ) ) + "</li></ul>";
     strContent += strMessage;
   }
@@ -2847,14 +2867,21 @@ void QgsProjectProperties::pbnSbFillLayerShortNames_clicked()
         listMessages.append( QStringLiteral( "Activating WFS for layer %2 (%1)" ).arg( iter.key() ).arg( iter.value() ) );
     }
 
-    strContent += "<hr>";
-
-    QString strMessage = "<h3 style='color: #f00;'>" + tr( "Setting WFS layer availabilities based on tool configuration..." ) + "</h3><ul><li>" + listMessages.join( QStringLiteral( "</li><li>" ) ) + "</li></ul>";
-    strContent += strMessage;
+    if ( listMessages.count() > 0 )
+    {
+      QString strMessage = "<h3 style='color: #f00;'>" + tr( "Setting WFS layer availabilities based on tool configuration..." ) + "</h3><ul><li>" + listMessages.join( QStringLiteral( "</li><li>" ) ) + "</li></ul>";
+      strContent += strMessage;
+    }
+    else
+    {
+      QString strMessage = "<h3>" + tr( "All WFS layer availabilities are set correctly." ) + "</h3>";
+      strContent += strMessage;
+    }
   }
+  else
+    strContent += "<h3>" + tr( "No layers present whose WFS availability has been marked for metadata precalculation." ) + "</h3>";
 
-  strContent += "<hr>";
-  strContent += "<h1>" + tr( "[a]tapa Atlas optimizations done!" ) + "</h1>";
+  strContent += "<hr><h1>" + tr( "[a]tapa Atlas optimizations done!" ) + "</h1>";
 
   teOWSChecker->setHtml( strContent );
 
