@@ -146,10 +146,7 @@ const QgsProject *QgsConfigCache::project( const QString &path, bool *pSbJustLoa
     mSbLoadingPath = strLoadingPath;
 
     if ( !mSbProjectWarnings.contains( mSbLoadingPath ) )
-    {
-      std::unique_ptr<QStringList> list( new QStringList() );
-      mSbProjectWarnings.insert( mSbLoadingPath, list.release() );
-    }
+      mSbProjectWarnings.insert( mSbLoadingPath, new QStringList() );
 
     // Always skip original styles storage
     Qgis::ProjectReadFlags readFlags = Qgis::ProjectReadFlag::DontStoreOriginalStyles
@@ -206,9 +203,11 @@ const QgsProject *QgsConfigCache::project( const QString &path, bool *pSbJustLoa
           }
           else
           {
-            QgsMessageLog::logMessage(
-              QStringLiteral( "Warning, Layer(s) %1 not valid in project %2" ).arg( unrestrictedBadLayers.join( QLatin1String( ", " ) ), strLoadingPath ),
-              QStringLiteral( "Server" ), Qgis::MessageLevel::Warning );
+            QString message = QStringLiteral( "Warning, Layer(s) %1 not valid in project %2" ).arg( unrestrictedBadLayers.join( QLatin1String( ", " ) ), strLoadingPath );
+
+            QgsMessageLog::logMessage( message, QStringLiteral( "Server" ), Qgis::MessageLevel::Warning );
+
+            mSbProjectWarnings[mSbLoadingPath]->append( message );
           }
         }
       }
@@ -384,7 +383,7 @@ QDomDocument *QgsConfigCache::xmlDocument( const QString &filePath )
 
 void QgsConfigCache::cacheProject( const QString &path, QgsProject *project )
 {
-  mProjectCache.insert( path, new std::pair<QDateTime, std::unique_ptr<QgsProject> >( project->lastModified(),  std::unique_ptr<QgsProject>( project ) ) );
+  mProjectCache.insert( path, new std::pair<QDateTime, std::unique_ptr<QgsProject> >( project->lastModified(), std::unique_ptr<QgsProject>( project ) ) );
 
   mStrategy->entryInserted( path );
 }
