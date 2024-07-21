@@ -1564,7 +1564,9 @@ class PyQgsTextRenderer(QgisTestCase):
     def checkRenderPoint(self, format, name, part=None, angle=0, alignment=QgsTextRenderer.AlignLeft,
                          text=['test'],
                          point=QPointF(100, 200),
-                         image_size=400):
+                         image_size=400,
+                         enable_scale_workaround=False,
+                         render_mask=False):
         image = QImage(image_size, image_size, QImage.Format_RGB32)
 
         painter = QPainter()
@@ -1574,6 +1576,10 @@ class PyQgsTextRenderer(QgisTestCase):
         context = QgsRenderContext.fromMapSettings(ms)
         context.setPainter(painter)
         context.setScaleFactor(96 / 25.4)  # 96 DPI
+        if render_mask:
+            context.setIsGuiPreview(True)
+
+        context.setFlag(QgsRenderContext.Flag.ApplyScalingWorkaroundForTextRendering, enable_scale_workaround)
 
         painter.begin(image)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -3373,6 +3379,9 @@ class PyQgsTextRenderer(QgisTestCase):
             point=QPointF(50, 200))
 
     def testHtmlFormattingBuffer(self):
+        """
+        Test drawing HTML with buffer
+        """
         format = QgsTextFormat()
         format.setFont(getTestFont('bold'))
         format.setSize(60)
@@ -3385,6 +3394,41 @@ class PyQgsTextRenderer(QgisTestCase):
         assert self.checkRenderPoint(format, 'text_html_formatting_buffer', None, text=[
             '<s>t</s><span style="text-decoration: overline">e</span><span style="color: red">s<span style="text-decoration: underline">t</span></span>'],
             point=QPointF(50, 200))
+
+    def testHtmlFormattingBufferScaleFactor(self):
+        """
+        Test drawing HTML with scale factor workaround
+        """
+        format = QgsTextFormat()
+        format.setFont(getTestFont('bold'))
+        # font sizes < 50 pixel trigger the scale factor workaround
+        format.setSize(49)
+        format.setSizeUnit(QgsUnitTypes.RenderPixels)
+        format.setColor(QColor(0, 255, 0))
+        format.setAllowHtmlFormatting(True)
+        format.buffer().setEnabled(True)
+        format.buffer().setSize(5)
+        format.buffer().setColor(QColor(50, 150, 200))
+        assert self.checkRenderPoint(format, 'text_html_formatting_buffer_scale_workaround', None, text=[
+            't <span style="font-size:60pt">e</span> <span style="color: red">s</span>'],
+            point=QPointF(50, 200), enable_scale_workaround=True)
+
+    def testHtmlFormattingMaskScaleFactor(self):
+        """
+        Test drawing HTML with mask with scale factor workaround
+        """
+        format = QgsTextFormat()
+        format.setFont(getTestFont('bold'))
+        # font sizes < 50 pixel trigger the scale factor workaround
+        format.setSize(49)
+        format.setSizeUnit(QgsUnitTypes.RenderPixels)
+        format.setColor(QColor(0, 255, 0))
+        format.setAllowHtmlFormatting(True)
+        format.mask().setEnabled(True)
+        format.mask().setSize(5)
+        assert self.checkRenderPoint(format, 'text_html_formatting_mask_scale_workaround', None, text=[
+            't <span style="font-size:60pt">e</span> <span style="color: red">s</span>'],
+            point=QPointF(50, 200), render_mask=True, enable_scale_workaround=True)
 
     def testHtmlFormattingShadow(self):
         format = QgsTextFormat()

@@ -89,10 +89,33 @@ Qgs3DAxis::~Qgs3DAxis()
 {
   delete mMenu;
   mMenu = nullptr;
+
+  // When an object (axis or cube) is not enabled. It is still present but it does not have a parent.
+  // In that case, it will never be automatically deleted. Therefore, it needs to be manually deleted.
+  // See setEnableCube() and setEnableAxis().
+  switch ( mMapSettings->get3DAxisSettings().mode() )
+  {
+    case Qgs3DAxisSettings::Mode::Crs:
+      delete mCubeRoot;
+      mCubeRoot = nullptr;
+      break;
+    case Qgs3DAxisSettings::Mode::Cube:
+      delete mAxisRoot;
+      mAxisRoot = nullptr;
+      break;
+    case Qgs3DAxisSettings::Mode::Off:
+      delete mAxisRoot;
+      mAxisRoot = nullptr;
+      delete mCubeRoot;
+      mCubeRoot = nullptr;
+      break;
+  }
 }
 
 void Qgs3DAxis::init3DObjectPicking( )
 {
+  mDefaultPickingMethod = mMapScene->engine()->renderSettings()->pickingSettings()->pickMethod();
+
   // Create screencaster to be used by EventFilter:
   //   1- Perform ray casting tests by specifying "touch" coordinates in screen space
   //   2- connect screencaster results to onTouchedByRay
@@ -164,12 +187,23 @@ bool Qgs3DAxis::eventFilter( QObject *watched, QEvent *event )
         // if casted ray from pos matches an entity, call onTouchedByRay
         mScreenRayCaster->trigger( mLastClickedPos );
       }
-
-      // when we exit the viewport, reset the mouse cursor if needed
-      else if ( mPreviousCursor != Qt::ArrowCursor && mParentWindow->cursor() == Qt::ArrowCursor )
+      // exit the viewport
+      else
       {
-        mParentWindow->setCursor( mPreviousCursor );
-        mPreviousCursor = Qt::ArrowCursor;
+        // reset the mouse cursor if needed
+        if ( mPreviousCursor != Qt::ArrowCursor && mParentWindow->cursor() == Qt::ArrowCursor )
+        {
+          mParentWindow->setCursor( mPreviousCursor );
+          mPreviousCursor = Qt::ArrowCursor;
+        }
+
+        // reset the picking settings if needed
+        if ( mMapScene->engine()->renderSettings()->pickingSettings()->pickMethod() == Qt3DRender::QPickingSettings::TrianglePicking
+             && mDefaultPickingMethod != Qt3DRender::QPickingSettings::TrianglePicking )
+        {
+          mMapScene->engine()->renderSettings()->pickingSettings()->setPickMethod( mDefaultPickingMethod );
+          QgsDebugMsgLevel( "Disabling triangle picking", 2 );
+        }
       }
 
       mIsDragging = false; // drag ends
@@ -218,6 +252,14 @@ void Qgs3DAxis::onTouchedByRay( const Qt3DRender::QAbstractRayCaster::Hits &hits
         mPreviousCursor = mParentWindow->cursor();
         mParentWindow->setCursor( Qt::ArrowCursor );
         QgsDebugMsgLevel( "Enabling arrow cursor", 2 );
+
+        // The cube needs triangle picking to handle click on faces.
+        if ( mMapScene->engine()->renderSettings()->pickingSettings()->pickMethod() != Qt3DRender::QPickingSettings::TrianglePicking &&
+             mCubeRoot->isEnabled() )
+        {
+          mMapScene->engine()->renderSettings()->pickingSettings()->setPickMethod( Qt3DRender::QPickingSettings::TrianglePicking );
+          QgsDebugMsgLevel( "Enabling triangle picking", 2 );
+        }
       }
     }
   }

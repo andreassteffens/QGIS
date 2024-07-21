@@ -800,6 +800,7 @@ class TestQgsProcessing: public QgsTest
     void asJsonMap();
     void tempUtils();
     void convertCompatible();
+    void convertCompatibleDuplicateFids();
     void create();
     void combineFields();
     void fieldNamesToIndices();
@@ -3144,7 +3145,6 @@ void TestQgsProcessing::parameterCrs()
   QVERIFY( !def->checkValueIsAcceptable( false ) );
   QVERIFY( !def->checkValueIsAcceptable( true ) );
   QVERIFY( !def->checkValueIsAcceptable( 5 ) );
-  QVERIFY( def->checkValueIsAcceptable( "EPSG:12003" ) );
   QVERIFY( def->checkValueIsAcceptable( "EPSG:3111" ) );
   QVERIFY( def->checkValueIsAcceptable( QVariant::fromValue( r1 ) ) );
   QVERIFY( def->checkValueIsAcceptable( QgsCoordinateReferenceSystem() ) );
@@ -3205,7 +3205,7 @@ void TestQgsProcessing::parameterCrs()
   QCOMPARE( def->valueAsPythonString( QVariant(), context ), QStringLiteral( "None" ) );
   QCOMPARE( def->valueAsPythonString( QgsCoordinateReferenceSystem( "EPSG:3111" ), context ), QStringLiteral( "QgsCoordinateReferenceSystem('EPSG:3111')" ) );
   QCOMPARE( def->valueAsPythonString( QgsCoordinateReferenceSystem(), context ), QStringLiteral( "QgsCoordinateReferenceSystem()" ) );
-  QCOMPARE( def->valueAsPythonString( "EPSG:12003", context ), QStringLiteral( "'EPSG:12003'" ) );
+  QCOMPARE( def->valueAsPythonString( "EPSG:3857", context ), QStringLiteral( "'EPSG:3857'" ) );
   QCOMPARE( def->valueAsPythonString( "ProjectCrs", context ), QStringLiteral( "'ProjectCrs'" ) );
   QCOMPARE( def->valueAsPythonString( QStringLiteral( "c:\\test\\new data\\test.dat" ), context ), QStringLiteral( "'c:\\\\test\\\\new data\\\\test.dat'" ) );
   QCOMPARE( def->valueAsPythonString( raster1, context ), QString( QString( "'" ) + testDataDir + QStringLiteral( "landsat_4326.tif'" ) ) );
@@ -3216,7 +3216,7 @@ void TestQgsProcessing::parameterCrs()
   QCOMPARE( def->valueAsJsonObject( QVariant(), context ), QVariant() );
   QCOMPARE( def->valueAsJsonObject( QgsCoordinateReferenceSystem( "EPSG:3111" ), context ), QVariant( QStringLiteral( "EPSG:3111" ) ) );
   QCOMPARE( def->valueAsJsonObject( QgsCoordinateReferenceSystem(), context ), QVariant( QString() ) );
-  QCOMPARE( def->valueAsJsonObject( "EPSG:12003", context ), QVariant( QStringLiteral( "EPSG:12003" ) ) );
+  QCOMPARE( def->valueAsJsonObject( "EPSG:3857", context ), QVariant( QStringLiteral( "EPSG:3857" ) ) );
   QCOMPARE( def->valueAsJsonObject( "ProjectCrs", context ), QVariant( QStringLiteral( "ProjectCrs" ) ) );
   QCOMPARE( def->valueAsJsonObject( QStringLiteral( "c:\\test\\new data\\test.dat" ), context ), QVariant( QStringLiteral( "c:\\test\\new data\\test.dat" ) ) );
   QCOMPARE( def->valueAsJsonObject( raster1, context ), QVariant( QString( testDataDir + QStringLiteral( "landsat_4326.tif" ) ) ) );
@@ -3230,7 +3230,7 @@ void TestQgsProcessing::parameterCrs()
   QVERIFY( ok );
   QCOMPARE( def->valueAsString( QgsCoordinateReferenceSystem(), context, ok ), QString() );
   QVERIFY( ok );
-  QCOMPARE( def->valueAsString( "EPSG:12003", context, ok ), QStringLiteral( "EPSG:12003" ) );
+  QCOMPARE( def->valueAsString( "EPSG:3857", context, ok ), QStringLiteral( "EPSG:3857" ) );
   QVERIFY( ok );
   QCOMPARE( def->valueAsString( "ProjectCrs", context, ok ), QStringLiteral( "ProjectCrs" ) );
   QVERIFY( ok );
@@ -8027,6 +8027,11 @@ void TestQgsProcessing::parameterVectorOut()
   QCOMPARE( context.layersToLoadOnCompletion().values().at( 0 ).name, QStringLiteral( "desc" ) );
   QCOMPARE( context.layersToLoadOnCompletion().values().at( 0 ).layerTypeHint, QgsProcessingUtils::LayerHint::Vector );
 
+  // if we set testOnly = true, then layer should not be loaded on completion
+  context.setLayersToLoadOnCompletion( {} );
+  QCOMPARE( QgsProcessingParameters::parameterAsOutputLayer( def.get(), QVariant::fromValue( fs ), context, true ), QStringLiteral( "test.shp" ) );
+  QCOMPARE( context.layersToLoadOnCompletion().size(), 0 );
+
   // with name overloading
   QgsProcessingContext context2;
   fs = QgsProcessingOutputLayerDefinition( QStringLiteral( "test.shp" ) );
@@ -8054,19 +8059,21 @@ void TestQgsProcessing::parameterVectorOut()
   def.reset( new QgsProcessingParameterVectorDestination( "with_geom", QString(), QgsProcessing::TypeVectorAnyGeometry, QString(), true ) );
   DummyProvider3 provider;
   QString error;
+  context.setLayersToLoadOnCompletion( {} );
   QVERIFY( provider.isSupportedOutputValue( QVariant(), def.get(), context, error ) ); // optional
   QVERIFY( provider.isSupportedOutputValue( QString(), def.get(), context, error ) ); // optional
   QVERIFY( !provider.isSupportedOutputValue( "d:/test.shp", def.get(), context, error ) );
   QVERIFY( !provider.isSupportedOutputValue( "d:/test.SHP", def.get(), context, error ) );
   QVERIFY( !provider.isSupportedOutputValue( "ogr:d:/test.shp", def.get(), context, error ) );
-  QVERIFY( !provider.isSupportedOutputValue( QgsProcessingOutputLayerDefinition( "d:/test.SHP" ), def.get(), context, error ) );
+  QVERIFY( !provider.isSupportedOutputValue( QgsProcessingOutputLayerDefinition( "d:/test.SHP", &p ), def.get(), context, error ) );
   QVERIFY( provider.isSupportedOutputValue( "d:/test.mif", def.get(), context, error ) );
   QVERIFY( provider.isSupportedOutputValue( "d:/test.MIF", def.get(), context, error ) );
   QVERIFY( provider.isSupportedOutputValue( "ogr:d:/test.MIF", def.get(), context, error ) );
-  QVERIFY( provider.isSupportedOutputValue( QgsProcessingOutputLayerDefinition( "d:/test.MIF" ), def.get(), context, error ) );
+  QVERIFY( provider.isSupportedOutputValue( QgsProcessingOutputLayerDefinition( "d:/test.MIF", &p ), def.get(), context, error ) );
   def.reset( new QgsProcessingParameterVectorDestination( "with_geom", QString(), QgsProcessing::TypeVectorAnyGeometry, QString(), false ) );
   QVERIFY( !provider.isSupportedOutputValue( QVariant(), def.get(), context, error ) ); // non-optional
   QVERIFY( !provider.isSupportedOutputValue( QString(), def.get(), context, error ) ); // non-optional
+  QVERIFY( context.layersToLoadOnCompletion().isEmpty() );
 
   provider.loadAlgorithms();
   def->mOriginalProvider = &provider;
@@ -9548,25 +9555,25 @@ void TestQgsProcessing::parameterCoordinateOperation()
 
   QCOMPARE( def->valueAsPythonString( QVariant(), context ), QStringLiteral( "None" ) );
   QCOMPARE( def->valueAsPythonString( 5, context ), QStringLiteral( "'5'" ) );
-  QCOMPARE( def->valueAsPythonString( QStringLiteral( "abc" ), context ), QStringLiteral( "'abc'" ) );
-  QCOMPARE( def->valueAsPythonString( QStringLiteral( "abc\ndef" ), context ), QStringLiteral( "'abc\\ndef'" ) );
+  QCOMPARE( def->valueAsPythonString( QStringLiteral( "+proj=pipeline +proj=webmerc +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84" ), context ), QStringLiteral( "'+proj=pipeline +proj=webmerc +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84'" ) );
+  QCOMPARE( def->valueAsPythonString( QStringLiteral( "+proj=pipeline +proj=webmerc +lat_0=0\n+lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84" ), context ), QStringLiteral( "'+proj=pipeline +proj=webmerc +lat_0=0\\n+lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84'" ) );
   QCOMPARE( def->valueAsPythonString( QVariant::fromValue( QgsProperty::fromExpression( "\"a\"=1" ) ), context ), QStringLiteral( "QgsProperty.fromExpression('\"a\"=1')" ) );
   QCOMPARE( def->valueAsPythonString( "uri='complex' username=\"complex\"", context ), QStringLiteral( "'uri=\\'complex\\' username=\"complex\"'" ) );
   QCOMPARE( def->valueAsPythonString( QStringLiteral( "c:\\test\\new data\\test.dat" ), context ), QStringLiteral( "'c:\\\\test\\\\new data\\\\test.dat'" ) );
 
   QCOMPARE( def->valueAsJsonObject( QVariant(), context ), QVariant() );
   QCOMPARE( def->valueAsJsonObject( 5, context ), QVariant( 5 ) );
-  QCOMPARE( def->valueAsJsonObject( QStringLiteral( "abc" ), context ), QVariant( QStringLiteral( "abc" ) ) );
-  QCOMPARE( def->valueAsJsonObject( QStringLiteral( "abc\ndef" ), context ), QVariant( QStringLiteral( "abc\ndef" ) ) );
+  QCOMPARE( def->valueAsJsonObject( QStringLiteral( "+proj=pipeline +proj=webmerc +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84" ), context ), QVariant( QStringLiteral( "+proj=pipeline +proj=webmerc +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84" ) ) );
+  QCOMPARE( def->valueAsJsonObject( QStringLiteral( "+proj=pipeline +proj=webmerc +lat_0=0\n+lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84" ), context ), QVariant( QStringLiteral( "+proj=pipeline +proj=webmerc +lat_0=0\n+lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84" ) ) );
   QCOMPARE( def->valueAsJsonObject( "uri='complex' username=\"complex\"", context ), QVariant( QStringLiteral( "uri='complex' username=\"complex\"" ) ) );
   QCOMPARE( def->valueAsJsonObject( QStringLiteral( "c:\\test\\new data\\test.dat" ), context ), QVariant( QStringLiteral( "c:\\test\\new data\\test.dat" ) ) );
 
   bool ok = false;
   QCOMPARE( def->valueAsString( QVariant(), context, ok ), QString() );
   QVERIFY( ok );
-  QCOMPARE( def->valueAsString( QStringLiteral( "abc" ), context, ok ), QStringLiteral( "abc" ) );
+  QCOMPARE( def->valueAsString( QStringLiteral( "+proj=pipeline +proj=webmerc +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84" ), context, ok ), QStringLiteral( "+proj=pipeline +proj=webmerc +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84" ) );
   QVERIFY( ok );
-  QCOMPARE( def->valueAsString( QStringLiteral( "abc\ndef" ), context, ok ),  QStringLiteral( "abc\ndef" ) );
+  QCOMPARE( def->valueAsString( QStringLiteral( "+proj=pipeline +proj=webmerc +lat_0=0\n+lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84" ), context, ok ),  QStringLiteral( "+proj=pipeline +proj=webmerc +lat_0=0\n+lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84" ) );
   QVERIFY( ok );
   QCOMPARE( def->valueAsString( "uri='complex' username=\"complex\"", context, ok ), QStringLiteral( "uri='complex' username=\"complex\"" ) );
   QVERIFY( ok );
@@ -9606,16 +9613,16 @@ void TestQgsProcessing::parameterCoordinateOperation()
   QCOMPARE( fromCode->flags(), def->flags() );
   QVERIFY( !fromCode->defaultValue().isValid() );
 
-  fromCode.reset( dynamic_cast< QgsProcessingParameterCoordinateOperation * >( QgsProcessingParameters::parameterFromScriptCode( QStringLiteral( "##non_optional=coordinateoperation it's mario" ) ) ) );
+  fromCode.reset( dynamic_cast< QgsProcessingParameterCoordinateOperation * >( QgsProcessingParameters::parameterFromScriptCode( QStringLiteral( "##non_optional=coordinateoperation +proj=pipeline +proj=webmerc +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +ellps='WGS84'" ) ) ) );
   QVERIFY( fromCode.get() );
   QCOMPARE( fromCode->name(), def->name() );
   QCOMPARE( fromCode->description(), QStringLiteral( "non optional" ) );
   QCOMPARE( fromCode->flags(), def->flags() );
-  QCOMPARE( fromCode->defaultValue().toString(), QStringLiteral( "it's mario" ) );
+  QCOMPARE( fromCode->defaultValue().toString(), QStringLiteral( "+proj=pipeline +proj=webmerc +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +ellps='WGS84'" ) );
 
-  def->setDefaultValue( QStringLiteral( "it's mario" ) );
+  def->setDefaultValue( QStringLiteral( "+proj=pipeline +proj=webmerc +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +ellps='WGS84'" ) );
   pythonCode = def->asPythonString();
-  QCOMPARE( pythonCode, QStringLiteral( "QgsProcessingParameterCoordinateOperation('non_optional', '', sourceCrsParameterName='src', destinationCrsParameterName='dest', staticSourceCrs=QgsCoordinateReferenceSystem('EPSG:7855'), staticDestinationCrs=QgsCoordinateReferenceSystem('EPSG:28355'), defaultValue=\"it's mario\")" ) );
+  QCOMPARE( pythonCode, QStringLiteral( "QgsProcessingParameterCoordinateOperation('non_optional', '', sourceCrsParameterName='src', destinationCrsParameterName='dest', staticSourceCrs=QgsCoordinateReferenceSystem('EPSG:7855'), staticDestinationCrs=QgsCoordinateReferenceSystem('EPSG:28355'), defaultValue=\"+proj=pipeline +proj=webmerc +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +ellps='WGS84'\")" ) );
   code = def->asScriptCode();
   fromCode.reset( dynamic_cast< QgsProcessingParameterCoordinateOperation * >( QgsProcessingParameters::parameterFromScriptCode( code ) ) );
   QVERIFY( fromCode.get() );
@@ -9631,30 +9638,30 @@ void TestQgsProcessing::parameterCoordinateOperation()
   QCOMPARE( fromCode->flags(), def->flags() );
   QCOMPARE( fromCode->defaultValue().toString(), QStringLiteral( "my val" ) );
 
-  fromCode.reset( dynamic_cast< QgsProcessingParameterCoordinateOperation * >( QgsProcessingParameters::parameterFromScriptCode( QStringLiteral( "##non_optional=coordinateoperation \"my val\"" ) ) ) );
+  fromCode.reset( dynamic_cast< QgsProcessingParameterCoordinateOperation * >( QgsProcessingParameters::parameterFromScriptCode( QStringLiteral( "##non_optional=coordinateoperation \"+proj=pipeline +proj=webmerc +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84\"" ) ) ) );
   QVERIFY( fromCode.get() );
   QCOMPARE( fromCode->name(), def->name() );
   QCOMPARE( fromCode->description(), QStringLiteral( "non optional" ) );
   QCOMPARE( fromCode->flags(), def->flags() );
-  QCOMPARE( fromCode->defaultValue().toString(), QStringLiteral( "my val" ) );
+  QCOMPARE( fromCode->defaultValue().toString(), QStringLiteral( "+proj=pipeline +proj=webmerc +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84" ) );
 
   // optional
-  def.reset( new QgsProcessingParameterCoordinateOperation( "optional", QString(), QString( "default" ), QString(), QString(), QVariant(), QVariant(), true ) );
+  def.reset( new QgsProcessingParameterCoordinateOperation( "optional", QString(), QString( "+proj=pipeline +proj=webmerc +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84" ), QString(), QString(), QVariant(), QVariant(), true ) );
   QVERIFY( def->checkValueIsAcceptable( 1 ) );
   QVERIFY( def->checkValueIsAcceptable( "test" ) );
   QVERIFY( def->checkValueIsAcceptable( "" ) );
   QVERIFY( def->checkValueIsAcceptable( QVariant() ) );
 
   params.insert( "optional",  QVariant() );
-  QCOMPARE( QgsProcessingParameters::parameterAsString( def.get(), params, context ), QString( "default" ) );
+  QCOMPARE( QgsProcessingParameters::parameterAsString( def.get(), params, context ), QString( "+proj=pipeline +proj=webmerc +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84" ) );
   params.insert( "optional",  QString() ); //empty string should not result in default value
   QCOMPARE( QgsProcessingParameters::parameterAsString( def.get(), params, context ), QString() );
 
   pythonCode = def->asPythonString();
-  QCOMPARE( pythonCode, QStringLiteral( "QgsProcessingParameterCoordinateOperation('optional', '', optional=True, defaultValue='default')" ) );
+  QCOMPARE( pythonCode, QStringLiteral( "QgsProcessingParameterCoordinateOperation('optional', '', optional=True, defaultValue='+proj=pipeline +proj=webmerc +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84')" ) );
 
   code = def->asScriptCode();
-  QCOMPARE( code, QStringLiteral( "##optional=optional coordinateoperation default" ) );
+  QCOMPARE( code, QStringLiteral( "##optional=optional coordinateoperation +proj=pipeline +proj=webmerc +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84" ) );
   fromCode.reset( dynamic_cast< QgsProcessingParameterCoordinateOperation * >( QgsProcessingParameters::parameterFromScriptCode( code ) ) );
   QVERIFY( fromCode.get() );
   QCOMPARE( fromCode->name(), def->name() );
@@ -9663,7 +9670,7 @@ void TestQgsProcessing::parameterCoordinateOperation()
   QCOMPARE( fromCode->defaultValue(), def->defaultValue() );
 
   // not optional, valid default!
-  def.reset( new QgsProcessingParameterCoordinateOperation( "non_optional", QString(), QString( "def" ), QString(), QString(), QVariant(), QVariant(), false ) );
+  def.reset( new QgsProcessingParameterCoordinateOperation( "non_optional", QString(), QString( "+proj=pipeline +proj=webmerc +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84" ), QString(), QString(), QVariant(), QVariant(), false ) );
   QVERIFY( def->checkValueIsAcceptable( 1 ) );
   QVERIFY( def->checkValueIsAcceptable( "test" ) );
   QVERIFY( !def->checkValueIsAcceptable( "" ) );
@@ -12446,6 +12453,44 @@ void TestQgsProcessing::convertCompatible()
   out = QgsProcessingParameters::parameterAsCompatibleSourceLayerPathAndLayerName( def.get(), params, context, QStringList() << "shp", QString( "shp" ), &feedback, &layerName );
   QCOMPARE( out, QString( testDataDir + "points.shp" ) );
   QCOMPARE( layerName, QString() );
+}
+
+void TestQgsProcessing::convertCompatibleDuplicateFids()
+{
+  // Create a memory layer
+  QgsVectorLayer *layer = new QgsVectorLayer{"Point", "vl", "memory"};
+  // Add fields
+  QgsFields fields;
+  fields.append( QgsField( QStringLiteral( "fid" ), QVariant::Int ) );
+  fields.append( QgsField( QStringLiteral( "name" ), QVariant::String ) );
+  layer->dataProvider()->addAttributes( fields.toList() );
+  layer->updateFields();
+
+  // Add features with duplicate FIDs
+  for ( int i = 1; i <= 12; ++i )
+  {
+    QgsFeature f( fields, i );
+    f.setAttributes( {{ 123, QString::number( i ) }} );
+    f.setGeometry( QgsGeometry( new QgsPoint( i, i ) ) );
+    QVERIFY( layer->dataProvider()->addFeature( f ) );
+  }
+
+  QgsProject p;
+  p.addMapLayer( layer );
+
+  QgsProcessingContext context;
+  context.setProject( &p );
+
+  QgsProcessingFeedback feedback;
+  std::unique_ptr< QgsProcessingParameterDefinition > def( new QgsProcessingParameterFeatureSource( QStringLiteral( "source" ) ) );
+  QVariantMap params;
+  params.insert( QStringLiteral( "source" ), QgsProcessingFeatureSourceDefinition( layer->id(), false ) );
+
+  QgsProcessingParameters::parameterAsCompatibleSourceLayerPath( def.get(), params, context, QStringList() << "gpkg", QString( "gpkg" ), &feedback );
+  const QStringList logs( feedback.textLog().split( '\n', Qt::SplitBehaviorFlags::SkipEmptyParts ) );
+  QCOMPARE( logs.size(), 11 );
+  QVERIFY( logs.first().startsWith( QStringLiteral( "Error writing feature # 2" ) ) );
+  QVERIFY( logs.last().startsWith( QStringLiteral( "There were 11 errors writing features" ) ) );
 }
 
 void TestQgsProcessing::create()
