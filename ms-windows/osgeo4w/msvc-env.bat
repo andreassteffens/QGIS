@@ -76,6 +76,7 @@ if exist %OSGEO4W_ROOT%\bin\grass76.bat set GRASS7=%OSGEO4W_ROOT%\bin\grass76.ba
 if exist %OSGEO4W_ROOT%\bin\grass78.bat set GRASS7=%OSGEO4W_ROOT%\bin\grass78.bat
 if exist %OSGEO4W_ROOT%\bin\grass82.bat set GRASS7=%OSGEO4W_ROOT%\bin\grass82.bat
 if exist %OSGEO4W_ROOT%\bin\grass83.bat set GRASS7=%OSGEO4W_ROOT%\bin\grass83.bat
+if exist %OSGEO4W_ROOT%\bin\grass84.bat set GRASS7=%OSGEO4W_ROOT%\bin\grass84.bat
 if "%GRASS7%"=="" (echo GRASS7 not found & goto error)
 for /f "usebackq tokens=1" %%a in (`%GRASS7% --config path`) do set GRASS_PREFIX=%%a
 
