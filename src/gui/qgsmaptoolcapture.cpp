@@ -316,7 +316,6 @@ bool QgsMapToolCapture::tracingAddVertex( const QgsPointXY &point )
   mSnappingMatches.removeLast();
   mSnappingMatches.append( QgsPointLocator::Match() );
 
-  int pointBefore = mCaptureCurve.numPoints();
   addCurve( new QgsLineString( mapPoints ) );
 
   resetRubberBand();
@@ -324,6 +323,10 @@ bool QgsMapToolCapture::tracingAddVertex( const QgsPointXY &point )
   // Curves de-approximation
   if ( QgsSettingsRegistryCore::settingsDigitizingConvertToCurve->value() )
   {
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    int pointBefore = mCaptureCurve.numPoints();
+#endif
+
     // If the tool and the layer support curves
     QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( layer() );
     if ( vlayer && capabilities().testFlag( QgsMapToolCapture::Capability::SupportsCurves ) && vlayer->dataProvider()->capabilities().testFlag( QgsVectorDataProvider::Capability::CircularGeometries ) )
@@ -343,12 +346,20 @@ bool QgsMapToolCapture::tracingAddVertex( const QgsPointXY &point )
         mCaptureCurve = *qgsgeometry_cast<QgsCompoundCurve *>( curved.constGet() );
       }
     }
-  }
 
-  // sync the snapping matches list
-  const int pointAfter = mCaptureCurve.numPoints();
-  for ( ; pointBefore < pointAfter; ++pointBefore )
-    mSnappingMatches.append( QgsPointLocator::Match() );
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    // sync the snapping matches list
+    const int pointAfter = mCaptureCurve.numPoints();
+
+    for ( ; pointBefore < pointAfter; ++pointBefore )
+      mSnappingMatches.append( QgsPointLocator::Match() );
+
+    for ( ; pointBefore > pointAfter; --pointBefore )
+      mSnappingMatches.removeLast();
+#else
+    mSnappingMatches.resize( mCaptureCurve.numPoints() );
+#endif
+  }
 
   tracer->reportError( QgsTracer::ErrNone, true ); // clear messagebar if there was any error
 
