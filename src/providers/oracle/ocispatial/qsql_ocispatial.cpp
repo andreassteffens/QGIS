@@ -1174,10 +1174,10 @@ class QOCISpatialCols
     QOCISpatialCols( int size, QOCISpatialResultPrivate *dp );
     ~QOCISpatialCols();
     int readPiecewise( QVector<QVariant> &values, int index = 0 );
-    int readLOBs( QVector<QVariant> &values, int index = 0 );
-    int fieldFromDefine( OCIDefine *d );
+    int readLOBs( QVector<QVariant> &values, int index = 0 ) const;
+    int fieldFromDefine( OCIDefine *d ) const;
     void getValues( QVector<QVariant> &v, int index );
-    inline int size() { return fieldInf.size(); }
+    inline int size() const { return fieldInf.size(); }
     static bool execBatch( QOCISpatialResultPrivate *d, QVector<QVariant> &boundValues, bool arrayBind );
 
     QSqlRecord rec;
@@ -2250,7 +2250,7 @@ int qReadLob( T &buf, const QOCISpatialResultPrivate *d, OCILobLocator *lob )
   return r;
 }
 
-int QOCISpatialCols::readLOBs( QVector<QVariant> &values, int index )
+int QOCISpatialCols::readLOBs( QVector<QVariant> &values, int index ) const
 {
   ENTER
   OCILobLocator *lob = nullptr;
@@ -2285,7 +2285,7 @@ int QOCISpatialCols::readLOBs( QVector<QVariant> &values, int index )
   return r;
 }
 
-int QOCISpatialCols::fieldFromDefine( OCIDefine *d )
+int QOCISpatialCols::fieldFromDefine( OCIDefine *d ) const
 {
   ENTER
   for ( int i = 0; i < fieldInf.count(); ++i )

@@ -337,7 +337,7 @@ class CORE_EXPORT QgsEditFormConfig
     /**
      * Will be called by friend class QgsVectorLayer
      */
-    void onRelationsLoaded();
+    void onRelationsLoaded(); // cppcheck-suppress functionConst
 
     /**
      * Used for the backwards compatibility of the api, on setting nmrel or force-suppress-popup for relations.
@@ -346,7 +346,7 @@ class CORE_EXPORT QgsEditFormConfig
     bool legacyUpdateRelationWidgetInTabs( QgsAttributeEditorContainer *container,  const QString &widgetName, const QVariantMap &config );
 
   private:
-    void fixLegacyConfig( QDomElement &el );
+    void fixLegacyConfig( QDomElement &el ) const;
 
     QExplicitlySharedDataPointer<QgsEditFormConfigPrivate> d;
 

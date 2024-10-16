@@ -85,7 +85,7 @@ QgsLayoutItemMapGrid *QgsLayoutItemMapGridStack::grid( const int index ) const
   return qobject_cast<QgsLayoutItemMapGrid *>( item );
 }
 
-QList<QgsLayoutItemMapGrid *> QgsLayoutItemMapGridStack::asList() const
+QList<QgsLayoutItemMapGrid *> QgsLayoutItemMapGridStack::asList() const // cppcheck-suppress duplInheritedMember
 {
   QList< QgsLayoutItemMapGrid * > list;
   for ( QgsLayoutItemMapItem *item : mItems )
@@ -98,7 +98,7 @@ QList<QgsLayoutItemMapGrid *> QgsLayoutItemMapGridStack::asList() const
   return list;
 }
 
-QgsLayoutItemMapGrid &QgsLayoutItemMapGridStack::operator[]( int idx )
+QgsLayoutItemMapGrid &QgsLayoutItemMapGridStack::operator[]( int idx ) // cppcheck-suppress duplInheritedMember
 {
   QgsLayoutItemMapItem *item = mItems.at( idx );
   QgsLayoutItemMapGrid *grid = qobject_cast<QgsLayoutItemMapGrid *>( item );
