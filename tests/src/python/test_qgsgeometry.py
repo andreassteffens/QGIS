@@ -2638,14 +2638,14 @@ class TestQgsGeometry(QgisTestCase):
                     message += ' failed'
                 message_with_wkt = message + f'\nOriginal geom: {geoms[t].asWkt()}'
                 if type(parts[t]) is list:
-                    if type(parts[t][0]) == QgsPointXY:
+                    if isinstance(parts[t][0], QgsPointXY):
                         self.assertEqual(geoms[t].addPointsXY(parts[t], geom_type), expected_result, message_with_wkt)
-                    elif type(parts[t][0]) == QgsPoint:
+                    elif isinstance(parts[t][0], QgsPoint):
                         self.assertEqual(geoms[t].addPoints(parts[t]), expected_result, message_with_wkt)
                     else:
                         self.fail(message_with_wkt + '\n could not detect what Python method to use for add part')
                 else:
-                    if type(parts[t]) == QgsGeometry:
+                    if isinstance(parts[t], QgsGeometry):
                         self.assertEqual(geoms[t].addPartGeometry(parts[t]), expected_result, message)
                     else:
                         self.assertEqual(geoms[t].addPart(parts[t], geom_type), expected_result, message_with_wkt)
@@ -7412,6 +7412,22 @@ class TestQgsGeometry(QgisTestCase):
             o.asWkt(2),
             "MultiPolygon (((41.96 29.61, 41.96 30.39, 42 30, 41.96 29.61)),((41.66 31.11, 41.85 30.77, 41.96 30.39, 41.66 31.11)),((41.66 28.89, 41.96 29.61, 41.85 29.23, 41.66 28.89)),((41.41 31.41, 41.96 30.39, 41.96 29.61, 41.41 31.41)),((41.41 31.41, 41.66 31.11, 41.96 30.39, 41.41 31.41)),((41.41 28.59, 41.96 29.61, 41.66 28.89, 41.41 28.59)),((41.41 28.59, 41.41 31.41, 41.96 29.61, 41.41 28.59)),((40.39 31.96, 41.11 31.66, 41.41 31.41, 40.39 31.96)),((40.39 31.96, 40.77 31.85, 41.11 31.66, 40.39 31.96)),((40.39 28.04, 41.41 28.59, 41.11 28.34, 40.39 28.04)),((40.39 28.04, 41.11 28.34, 40.77 28.15, 40.39 28.04)),((39.61 31.96, 40.39 31.96, 41.41 31.41, 39.61 31.96)),((39.61 31.96, 40 32, 40.39 31.96, 39.61 31.96)),((39.61 28.04, 40.39 28.04, 40 28, 39.61 28.04)),((38.89 31.66, 39.23 31.85, 39.61 31.96, 38.89 31.66)),((38.89 28.34, 39.61 28.04, 39.23 28.15, 38.89 28.34)),((38.59 31.41, 41.41 31.41, 41.41 28.59, 38.59 31.41)),((38.59 31.41, 39.61 31.96, 41.41 31.41, 38.59 31.41)),((38.59 31.41, 38.89 31.66, 39.61 31.96, 38.59 31.41)),((38.59 28.59, 41.41 28.59, 40.39 28.04, 38.59 28.59)),((38.59 28.59, 40.39 28.04, 39.61 28.04, 38.59 28.59)),((38.59 28.59, 39.61 28.04, 38.89 28.34, 38.59 28.59)),((38.59 28.59, 38.59 31.41, 41.41 28.59, 38.59 28.59)),((38.04 30.39, 38.59 31.41, 38.59 28.59, 38.04 30.39)),((38.04 30.39, 38.34 31.11, 38.59 31.41, 38.04 30.39)),((38.04 30.39, 38.15 30.77, 38.34 31.11, 38.04 30.39)),((38.04 29.61, 38.59 28.59, 38.34 28.89, 38.04 29.61)),((38.04 29.61, 38.34 28.89, 38.15 29.23, 38.04 29.61)),((38.04 29.61, 38.04 30.39, 38.59 28.59, 38.04 29.61)),((38 30, 38.04 30.39, 38.04 29.61, 38 30)))"
         )
+
+    def test_orientation(self):
+        """
+        test orientation. From https://github.com/qgis/QGIS/issues/58333
+        """
+        geom = QgsLineString()
+        geom.fromWkt('LineString (1 1, 2 1, 2 2, 1 2, 1 1)')
+        self.assertEqual(geom.sumUpArea(), 1.0)
+        self.assertEqual(geom.orientation(), Qgis.AngularDirection.CounterClockwise)
+        geom.fromWkt('LineString (1 1, 1 2, 2 2, 2 1, 1 1)')
+        self.assertEqual(geom.sumUpArea(), -1.0)
+        self.assertEqual(geom.orientation(), Qgis.AngularDirection.Clockwise)
+        geom = geom.reversed()
+        self.assertEqual(geom.asWkt(), 'LineString (1 1, 2 1, 2 2, 1 2, 1 1)')
+        self.assertEqual(geom.sumUpArea(), 1.0)
+        self.assertEqual(geom.orientation(), Qgis.AngularDirection.CounterClockwise)
 
 
 if __name__ == '__main__':
