@@ -151,6 +151,7 @@ cmake -G "%CMAKEGEN%" -A %CMAKEARCH% ^
 	-D SETUPAPI_LIBRARY="%SETUPAPI_LIBRARY%" ^
 	-D GEOS_LIBRARY=%O4W_ROOT%/lib/geos_c.lib ^
 	-D SQLITE3_LIBRARY=%O4W_ROOT%/lib/sqlite3_i.lib ^
+	-D SQLITE3_INCLUDE_DIR=%O4W_ROOT%/include ^
 	-D SPATIALITE_LIBRARY=%O4W_ROOT%/lib/spatialite_i.lib ^
 	-D PYTHON_EXECUTABLE=%O4W_ROOT%/bin/python3.exe ^
 	-D SIP_BINARY_PATH=%PYTHONHOME:\=/%/sip.exe ^
