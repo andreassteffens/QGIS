@@ -1240,6 +1240,21 @@ bool sbAddressServicesGui::processPhotonInfoReply( const QString &strReply )
           {
             QJsonObject jsonProperties = jsonObject["properties"].toObject();
 
+            if ( !jsonProperties["extent"].isNull() )
+            {
+              if ( jsonProperties["extent"].isArray() )
+              {
+                QJsonArray jsonArray = jsonProperties["extent"].toArray();
+
+                double dMinX = jsonArray[0].toDouble();
+                double dMaxY = jsonArray[1].toDouble();
+                double dMaxX = jsonArray[2].toDouble();
+                double dMinY = jsonArray[3].toDouble();
+
+                rcBounds.set( dMinX, dMinY, dMaxX, dMaxY );
+              }
+            }
+
             if ( !jsonProperties["name"].isNull() )
               strDisplayName = jsonProperties["name"].toString();
 
