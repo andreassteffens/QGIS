@@ -198,6 +198,11 @@ namespace QgsWfs
                                           QVariant( false ) );
     save( pSbWithMapTip );
 
+    const QgsWfsParameter pSbWithSymbolName = QgsWfsParameter( QgsWfsParameter::SBWITHSYMBOLNAME,
+                                              QVariant::Bool,
+                                              QVariant( false) );
+    save( pSbWithSymbolName );
+
     const QgsWfsParameter pSbPassThroughQgisFilterExpression = QgsWfsParameter( QgsWfsParameter::SBPASSTHROUGHQGISFILTEREXPRESSION,
         QVariant::Bool,
         QVariant( false ) );
@@ -452,22 +457,27 @@ namespace QgsWfs
 
   bool QgsWfsParameters::sbJsonNoTransform() const
   {
-    return mWfsParameters[QgsWfsParameter::SBJSONNOTRANSFORM].toBool();
+    return mWfsParameters[ QgsWfsParameter::SBJSONNOTRANSFORM ].toBool();
   }
 
   bool QgsWfsParameters::sbAllowEmptyPropertyList() const
   {
-    return mWfsParameters[QgsWfsParameter::SBALLOWEMPTYPROPERTYLIST].toBool();
+    return mWfsParameters[ QgsWfsParameter::SBALLOWEMPTYPROPERTYLIST ].toBool();
   }
 
   bool QgsWfsParameters::sbWithMapTip() const
   {
-    return mWfsParameters[QgsWfsParameter::SBWITHMAPTIP].toBool();
+    return mWfsParameters[ QgsWfsParameter::SBWITHMAPTIP ].toBool();
+  }
+
+  bool QgsWfsParameters::sbWithSymbolName() const
+  {
+    return mWfsParameters[ QgsWfsParameter::SBWITHSYMBOLNAME ].toBool();
   }
 
   bool QgsWfsParameters::sbPassThroughQgisFilterExpression() const
   {
-    return mWfsParameters[QgsWfsParameter::SBPASSTHROUGHQGISFILTEREXPRESSION].toBool();
+    return mWfsParameters[ QgsWfsParameter::SBPASSTHROUGHQGISFILTEREXPRESSION ].toBool();
   }
 
   QgsProjectVersion QgsWfsParameters::versionAsNumber() const

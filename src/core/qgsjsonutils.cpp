@@ -85,6 +85,16 @@ QgsCoordinateReferenceSystem QgsJsonExporter::sbDestinationCrs() const
   return mSbDestCrs;
 }
 
+void QgsJsonExporter::sbSetSymbolName( const QString& symbolName )
+{
+  mSbSymbolName = symbolName;
+}
+
+QString QgsJsonExporter::sbSymbolName() const
+{
+  return mSbSymbolName;
+}
+
 QString QgsJsonExporter::exportFeature( const QgsFeature &feature, const QVariantMap &extraProperties,
                                         const QVariant &id, int indent ) const
 {
@@ -103,21 +113,24 @@ json QgsJsonExporter::exportFeatureToJsonObject( const QgsFeature &feature, cons
     auto intId = id.toLongLong( &ok );
     if ( ok )
     {
-      featureJson["id"] = intId;
+      featureJson[ "id" ] = intId;
     }
     else
     {
-      featureJson["id"] = id.toString().toStdString();
+      featureJson[ "id" ] = id.toString().toStdString();
     }
   }
   else if ( FID_IS_NULL( feature.id() ) )
   {
-    featureJson["id"] = nullptr;
+    featureJson[ "id" ] = nullptr;
   }
   else
   {
-    featureJson["id"] = feature.id();
+    featureJson[ "id" ] = feature.id();
   }
+
+  if ( !mSbSymbolName.isNull() && !mSbSymbolName.isEmpty() )
+    featureJson[ "symbol" ] = mSbSymbolName.toStdString();
 
   QgsGeometry geom = feature.geometry();
   if ( !geom.isNull() && mIncludeGeometry )

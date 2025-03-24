@@ -65,7 +65,8 @@ namespace QgsWfs
         SBALLOWEMPTYPROPERTYLIST,
         SBRULES,
         SBWITHMAPTIP,
-        SBPASSTHROUGHQGISFILTEREXPRESSION
+        SBPASSTHROUGHQGISFILTEREXPRESSION,
+        SBWITHSYMBOLNAME
       };
       Q_ENUM( Name )
 
@@ -308,6 +309,7 @@ namespace QgsWfs
       bool sbJsonNoTransform() const;
       bool sbAllowEmptyPropertyList() const;
       bool sbWithMapTip() const;
+      bool sbWithSymbolName() const;
       bool sbPassThroughQgisFilterExpression() const;
 
       QMultiMap<QString, QgsWfsParametersRules> sbLayerRules( const QStringList &layers ) const;

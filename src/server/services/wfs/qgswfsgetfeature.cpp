@@ -72,6 +72,8 @@ namespace QgsWfs
       bool hasAxisInverted;
 
       bool sbWithMapTip;
+
+      bool sbWithSymbolName;
     };
 
     QString createFeatureGeoJSON( const QgsFeature &feature, const createFeatureParams &params, const QgsAttributeList &pkAttributes, QgsExpressionContext &expressionContext, QgsVectorLayer *vlayer );
@@ -92,7 +94,7 @@ namespace QgsWfs
                           QgsRectangle *rect, const QStringList &typeNames, QgsCoordinateReferenceSystem &outputCrs, const QgsServerSettings *settings );
 
     void setGetFeature( QgsServerResponse &response, QgsWfsParameters::Format format, const QgsFeature &feature, int featIdx,
-                        const createFeatureParams &params, const QgsProject *project, QgsExpressionContext &expressionContext, QgsVectorLayer *vlayer, const QgsAttributeList &pkAttributes = QgsAttributeList() );
+                        const createFeatureParams &params, const QgsProject *project, QgsExpressionContext &expressionContext, QgsVectorLayer *vlayer, const QgsAttributeList &pkAttributes = QgsAttributeList(), const QString &symbolName = "" );
 
     void endGetFeature( QgsServerResponse &response, QgsWfsParameters::Format format );
 
@@ -478,7 +480,10 @@ namespace QgsWfs
 
       QgsRenderContext renderContext;
       QgsFeatureRenderer *renderer = NULL;
-      if ( mapRules.contains( typeName ) )
+
+      bool applyRules = mapRules.contains( typeName );
+
+      if ( applyRules || mWfsParameters.sbWithSymbolName() )
       {
         renderer = vlayer->renderer();
         renderContext.setRendererScale( 0 );
@@ -501,19 +506,22 @@ namespace QgsWfs
             renderContext.expressionContext().setFeature( feature );
             QSet<QString> set = renderer->legendKeysForFeature( feature, renderContext );
 
-            bool bAdd = false;
-            QMap<QString, QgsWfsParametersRules>::const_iterator iter = mapRules.constFind( typeName );
-            if ( iter != mapRules.constEnd() )
+            if ( applyRules )
             {
-              for ( int iRule = 0; iRule < iter->mRules.count() && !bAdd; iRule++ )
+              bool add = false;
+              QMap<QString, QgsWfsParametersRules>::const_iterator iter = mapRules.constFind( typeName );
+              if ( iter != mapRules.constEnd() )
               {
-                if ( iter->mRules[iRule].second )
-                  bAdd = set.contains( iter->mRules[iRule].first );
+                for ( int iRule = 0; iRule < iter->mRules.count() && !add; iRule++ )
+                {
+                  if ( iter->mRules[iRule].second )
+                    add = set.contains( iter->mRules[iRule].first );
+                }
               }
-            }
 
-            if ( !bAdd )
-              continue;
+              if ( !add )
+                continue;
+            }
           }
 
           if ( iteratedFeatures >= aRequest.startIndex )
@@ -545,7 +553,8 @@ namespace QgsWfs
                                           forceGeomToMulti,
                                           outputSrsName,
                                           invertAxis,
-                                          mWfsParameters.sbWithMapTip()
+                                          mWfsParameters.sbWithMapTip(),
+                                          mWfsParameters.sbWithSymbolName()
                                         };
 
         while ( fit.nextFeature( feature ) && ( aRequest.maxFeatures == -1 || sentFeatures < aRequest.maxFeatures ) )
@@ -555,7 +564,9 @@ namespace QgsWfs
             continue;
           }
 
-          if ( renderer || mWfsParameters.sbWithMapTip() )
+          QString symbolName;
+
+          if ( renderer || mWfsParameters.sbWithMapTip() || mWfsParameters.sbWithSymbolName() )
             renderContext.expressionContext().setFeature( feature );
 
           if ( renderer )
@@ -563,19 +574,25 @@ namespace QgsWfs
             renderContext.expressionContext().setFeature( feature );
             QSet<QString> set = renderer->legendKeysForFeature( feature, renderContext );
 
-            bool bAdd = false;
-            QMap<QString, QgsWfsParametersRules>::const_iterator iter = mapRules.constFind( typeName );
-            if ( iter !=  mapRules.constEnd() )
-            {
-              for ( int iRule = 0; iRule < iter->mRules.count() && !bAdd; iRule++ )
-              {
-                if ( iter->mRules[iRule].second )
-                  bAdd = set.contains( iter->mRules[iRule].first );
-              }
-            }
+            if ( mWfsParameters.sbWithSymbolName() )
+              symbolName = set.toList().join( ',' );
 
-            if ( !bAdd )
-              continue;
+            if ( applyRules )
+            {
+              bool add = false;
+              QMap<QString, QgsWfsParametersRules>::const_iterator iter = mapRules.constFind( typeName );
+              if ( iter !=  mapRules.constEnd() )
+              {
+                for ( int iRule = 0; iRule < iter->mRules.count() && !add; iRule++ )
+                {
+                  if ( iter->mRules[iRule].second )
+                    add = set.contains( iter->mRules[iRule].first );
+                }
+              }
+              
+              if ( !add )
+                continue;
+            }
           }
 
           if ( iteratedFeatures == aRequest.startIndex )
@@ -583,7 +600,7 @@ namespace QgsWfs
 
           if ( iteratedFeatures >= aRequest.startIndex )
           {
-            setGetFeature( response, aRequest.outputFormat, feature, sentFeatures, cfp, project, renderContext.expressionContext(), vlayer, provider->pkAttributeIndexes() );
+            setGetFeature( response, aRequest.outputFormat, feature, sentFeatures, cfp, project, renderContext.expressionContext(), vlayer, provider->pkAttributeIndexes(), symbolName );
             ++sentFeatures;
           }
           ++iteratedFeatures;
@@ -1434,7 +1451,7 @@ namespace QgsWfs
     }
 
     void setGetFeature( QgsServerResponse &response, QgsWfsParameters::Format format, const QgsFeature &feature, int featIdx,
-                        const createFeatureParams &params, const QgsProject *project, QgsExpressionContext &expressionContext, QgsVectorLayer *vlayer, const QgsAttributeList &pkAttributes )
+                        const createFeatureParams &params, const QgsProject *project, QgsExpressionContext &expressionContext, QgsVectorLayer *vlayer, const QgsAttributeList &pkAttributes, const QString &symbolName )
     {
       if ( !feature.isValid() )
         return;
@@ -1459,6 +1476,7 @@ namespace QgsWfs
         mJsonExporter.setIncludeGeometry( false );
         mJsonExporter.setIncludeAttributes( !params.attributeIndexes.isEmpty() );
         mJsonExporter.setAttributes( params.attributeIndexes );
+        mJsonExporter.sbSetSymbolName( symbolName );
 
         if ( mWfsParameters.sbJsonNoTransform() )
           mJsonExporter.sbSetDestinationCrs( params.outputCrs );
