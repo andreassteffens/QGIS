@@ -47,6 +47,9 @@
 #include "qgswmsgetlegendgraphics.h"
 #include "qjsonobject.h"
 #include "qjsonarray.h"
+#include "qgsmarkersymbol.h"
+#include "qgslinesymbol.h"
+#include "qgsfillsymbol.h"
 
 namespace QgsWms
 {
@@ -1776,9 +1779,9 @@ namespace QgsWms
                 {
                   QDomElement symbolsElem = doc.createElement( QStringLiteral( "sbLegendSymbols" ) );
 
-                  for ( int symbol = 0; symbol < symbolsList.count(); symbol++ )
+                  for ( int symbolIndex = 0; symbolIndex < symbolsList.count(); symbolIndex++ )
                   {
-                    QgsLegendSymbolItem &legendItem = symbolsList[ symbol ];
+                    QgsLegendSymbolItem &legendItem = symbolsList[ symbolIndex ];
 
                     QDomElement symbolElem = doc.createElement( QStringLiteral( "sbLegendSymbol" ) );
                     symbolElem.setAttribute( "name", legendItem.ruleKey() );
@@ -1803,18 +1806,36 @@ namespace QgsWms
                       symbolElem.setAttribute( "height", image.height() );
                     }
 
-                    if ( legendItem.symbol() != NULL )
+                    QgsSymbol *symbol = legendItem.symbol();
+                    if ( symbol != NULL )
                     {
-                      switch ( legendItem.symbol()->type() )
+                      switch ( symbol->type() )
                       {
                         case Qgis::SymbolType::Marker:
-                          symbolElem.setAttribute( "type", "Marker" );
+                          {
+                            symbolElem.setAttribute( "type", "Marker" );
+
+                            QgsMarkerSymbol *markerSymbol = static_cast<QgsMarkerSymbol *>( symbol );
+                            symbolElem.setAttribute( "unit", QString::number( (int) markerSymbol->outputUnit() ) );
+                            symbolElem.setAttribute( "size", QString::number( markerSymbol->size() ) );
+                          }
                           break;
                         case Qgis::SymbolType::Line:
-                          symbolElem.setAttribute( "type", "Line" );
+                          {
+                            symbolElem.setAttribute("type", "Line");
+
+                            QgsLineSymbol *lineSymbol = static_cast<QgsLineSymbol *>( symbol );
+                            symbolElem.setAttribute( "unit", QString::number( (int) lineSymbol->outputUnit() ) );
+                            symbolElem.setAttribute( "size", QString::number( lineSymbol->width() ) );
+                          }
                           break;
                         case Qgis::SymbolType::Fill:
-                          symbolElem.setAttribute( "type", "Fill" );
+                          {
+                            symbolElem.setAttribute("type", "Fill");
+
+                            QgsFillSymbol *fillSymbol = static_cast<QgsFillSymbol *>( symbol );
+                            symbolElem.setAttribute( "unit", QString::number( (int) fillSymbol->outputUnit() ) );
+                          }
                           break;
                         case Qgis::SymbolType::Hybrid:
                           symbolElem.setAttribute( "type", "Hybrid" );
