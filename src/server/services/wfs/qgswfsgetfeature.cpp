@@ -504,6 +504,7 @@ namespace QgsWfs
           if ( renderer )
           {
             renderContext.expressionContext().setFeature( feature );
+
             QSet<QString> set = renderer->legendKeysForFeature( feature, renderContext );
 
             if ( applyRules )
@@ -566,16 +567,11 @@ namespace QgsWfs
 
           QString symbolName;
 
-          if ( renderer || mWfsParameters.sbWithMapTip() || mWfsParameters.sbWithSymbolName() )
-            renderContext.expressionContext().setFeature( feature );
-
           if ( renderer )
           {
             renderContext.expressionContext().setFeature( feature );
-            QSet<QString> set = renderer->legendKeysForFeature( feature, renderContext );
 
-            if ( mWfsParameters.sbWithSymbolName() )
-              symbolName = set.toList().join( ',' );
+            QSet<QString> set = renderer->legendKeysForFeature( feature, renderContext );
 
             if ( applyRules )
             {
@@ -593,6 +589,9 @@ namespace QgsWfs
               if ( !add )
                 continue;
             }
+
+            if ( mWfsParameters.sbWithSymbolName() )
+              symbolName = set.toList().join( ',' );
           }
 
           if ( iteratedFeatures == aRequest.startIndex )
