@@ -22,6 +22,7 @@
 #include "qgswmsgetmap.h"
 #include "qgswmsrenderer.h"
 #include "qgswmsserviceexception.h"
+#include "qgsruntimeprofiler.h"
 
 #include "libProfiler.h"
 
@@ -34,6 +35,8 @@ namespace QgsWms
                     const QgsWmsRequest &request,
                     QgsServerResponse &response )
   {
+    const QgsScopedRuntimeProfile profiler1{ QStringLiteral("writeGetMap"), QStringLiteral("server") };
+
     if ( request.serverParameters().version().isEmpty() )
     {
       throw QgsServiceException( QgsServiceException::OGC_OperationNotSupported,
@@ -139,7 +142,7 @@ namespace QgsWms
     // rendering
 
     PROFILER_START( writeGetMap_setup );
-    QgsRenderer renderer( context );
+    QgsRenderer renderer(context);
     PROFILER_END();
 
     PROFILER_START( writeGetMap_getMap );
@@ -148,6 +151,8 @@ namespace QgsWms
 
     if ( result )
     {
+      const QgsScopedRuntimeProfile profiler2{ QStringLiteral("writeGetMap_writeImage"), QStringLiteral("server") };
+
       PROFILER_START( writeGetMap_writeImage );
       const QString format = request.parameters().value( QStringLiteral( "FORMAT" ), QStringLiteral( "PNG" ) );
       writeImage( response, *result, format, context.imageQuality() );

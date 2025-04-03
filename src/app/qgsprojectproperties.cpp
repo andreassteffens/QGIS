@@ -2487,7 +2487,6 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
   else
     strContent += "<h3>" + tr( "([a]tapa) No layer contains file based symbology with an invalid path" ) + "</h3>";
 
-
   strMessage = "";
   for ( int iResult = 0; iResult < validationResults.count(); iResult++ )
   {
@@ -2501,6 +2500,20 @@ void QgsProjectProperties::pbnLaunchOWSChecker_clicked()
   }
   else
     strContent += "<h3>" + tr( "([a]tapa) Object count is disabled for all layers" ) + "</h3>";
+
+  strMessage = "";
+  for ( int iResult = 0; iResult < validationResults.count(); iResult++ )
+  {
+    if ( validationResults[iResult].error == QgsProjectServerValidator::sbVectorLayerPrimaryKeyUnicityCheckEnabled )
+      strMessage += "<li><b>" + validationResults[iResult].identifier.toString() + "</b></li>";
+  }
+  if ( !strMessage.isEmpty() )
+  {
+    strMessage = "<h3 style='color: #f00;'>" + tr( "([a]tapa) Primary key unicity check is enabled for som PostgreSQL base layers possibly slowing down project loading:" ) + "</h3><ul>" + strMessage + "</ul>";
+    strContent += strMessage;
+  }
+  else
+    strContent += "<h3>" + tr( "([a]tapa) Primary key unicity check is disabled for all PostgreSQL based layers" ) + "</h3>";
 
   strContent += "<hr><h1>" + tr( "([a]tapa) QGIS Server check done! Hat still on?" ) + "</h1>";
 

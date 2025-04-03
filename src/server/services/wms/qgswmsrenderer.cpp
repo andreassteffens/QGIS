@@ -69,6 +69,7 @@
 #include "qgsattributeeditorelement.h"
 #include "qgsattributeeditorfield.h"
 #include "qgsdimensionfilter.h"
+#include "qgsruntimeprofiler.h"
 
 #include <QImage>
 #include <QPainter>
@@ -1035,6 +1036,8 @@ namespace QgsWms
 
   QImage *QgsRenderer::getMap()
   {
+    const QgsScopedRuntimeProfile profiler1{ QStringLiteral("getMap"), QStringLiteral("server") };
+
     // check size
     if ( ! mContext.isValidWidthHeight() )
     {
@@ -1046,7 +1049,11 @@ namespace QgsWms
 
     // init layer restorer before doing anything
     std::unique_ptr<QgsWmsRestorer> restorer;
-    restorer.reset( new QgsWmsRestorer( mContext ) );
+    {
+      const QgsScopedRuntimeProfile profiler2{ QStringLiteral("getMap_restorer.reset"), QStringLiteral("server") };
+
+      restorer.reset( new QgsWmsRestorer( mContext ) );
+    }
 
     PROFILER_END();
 
@@ -1090,25 +1097,41 @@ namespace QgsWms
     PROFILER_END();
 
     PROFILER_START( getMap_BULK_2 );
-    // rendering step for layers
-    painter.reset( layersRendering( mapSettings, *image ) );
+    {
+      const QgsScopedRuntimeProfile profiler3{ QStringLiteral("getMap_BULK_2"), QStringLiteral("server") };
+
+      // rendering step for layers
+      painter.reset(layersRendering(mapSettings, *image));
+    }
     PROFILER_END();
 
     PROFILER_START( getMap_BULK_3 );
-    // rendering step for annotations
-    annotationsRendering( painter.get(), mapSettings );
+    {
+      const QgsScopedRuntimeProfile profiler4{ QStringLiteral("getMap_BULK_3"), QStringLiteral("server") };
+
+      // rendering step for annotations
+      annotationsRendering(painter.get(), mapSettings);
+    }
     PROFILER_END();
 
     PROFILER_START( getMap_BULK_4 );
-    // painting is terminated
-    painter->end();
+    {
+      const QgsScopedRuntimeProfile profiler4{ QStringLiteral("getMap_BULK_4"), QStringLiteral("server") };
+
+      // painting is terminated
+      painter->end();
+    }
     PROFILER_END();
 
     PROFILER_START( getMap_scaleImage );
-    // scale output image if necessary (required by WMS spec)
-    QImage *scaledImage = scaleImage( image.get() );
-    if ( scaledImage )
-      image.reset( scaledImage );
+    {
+      const QgsScopedRuntimeProfile profiler5{ QStringLiteral("getMap_scaleImage"), QStringLiteral("server") };
+
+      // scale output image if necessary (required by WMS spec)
+      QImage *scaledImage = scaleImage( image.get() );
+      if ( scaledImage )
+        image.reset( scaledImage );
+    }
     PROFILER_END();
 
     // return

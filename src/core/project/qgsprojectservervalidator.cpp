@@ -27,6 +27,7 @@
 #include "qgsmarkersymbollayer.h"
 #include "qgslinesymbollayer.h"
 #include "qgsfillsymbollayer.h"
+#include "qgsmessagelog.h"
 
 #include <QRegularExpression>
 
@@ -105,11 +106,13 @@ QString QgsProjectServerValidator::displayValidationError( QgsProjectServerValid
       return QObject::tr( "The layer contains file based symbology whose location cannot be validated!" );
     case QgsProjectServerValidator::sbVectorLayerObjectCountEnabled:
       return QObject::tr( "The layers object count is enabled. Consider disabling the to speed up project loading!" );
+    case QgsProjectServerValidator::sbVectorLayerPrimaryKeyUnicityCheckEnabled:
+      return QObject::tr( "The layers check for primary key unicity is enabled. Consider disabling the to speed up project loading!" );
   }
   return QString();
 }
 
-void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &owsNames, QStringList &encodingMessages, QStringList &checkLegendMessages, QStringList &insecureSourceMessages, QStringList &tiledSourceMessages, QStringList &clientSidePublishingMessages, QStringList &missingWfsLayerMessages, QStringList &missingSearchTermMessages, QStringList &duplicateRuleKeyMessages, QStringList &absoluteSymbolPathMessages, QStringList &base64SymbolMessages, QStringList &invalidSymbolPathMessages, QStringList &layerObjectCountMessages )
+void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTreeGroup *treeGroup, QList<QPair<QString, QString>> &owsNames, QStringList &encodingMessages, QStringList &checkLegendMessages, QStringList &insecureSourceMessages, QStringList &tiledSourceMessages, QStringList &clientSidePublishingMessages, QStringList &missingWfsLayerMessages, QStringList &missingSearchTermMessages, QStringList &duplicateRuleKeyMessages, QStringList &absoluteSymbolPathMessages, QStringList &base64SymbolMessages, QStringList &invalidSymbolPathMessages, QStringList &layerObjectCountMessages, QStringList &primaryKeyUnicityCheckMessage )
 {
   const QList< QgsLayerTreeNode * > treeGroupChildren = treeGroup->children();
   for ( int i = 0; i < treeGroupChildren.size(); ++i )
@@ -127,7 +130,7 @@ void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTr
       else
         owsNames.append( QPair<QString, QString>( shortName, strPath ) );
 
-      browseLayerTree( project, treeGroupChild, owsNames, encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages, duplicateRuleKeyMessages, absoluteSymbolPathMessages, base64SymbolMessages, invalidSymbolPathMessages, layerObjectCountMessages );
+      browseLayerTree( project, treeGroupChild, owsNames, encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages, duplicateRuleKeyMessages, absoluteSymbolPathMessages, base64SymbolMessages, invalidSymbolPathMessages, layerObjectCountMessages, primaryKeyUnicityCheckMessage );
     }
     else
     {
@@ -156,6 +159,12 @@ void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTr
             else
               encodingMessages << layer->name();
           }
+
+          QString dataSourceUri = vl->dataProvider()->dataSourceUri();
+          if ( dataSourceUri.contains( "checkPrimaryKeyUnicity='1'" ) )
+            primaryKeyUnicityCheckMessage << layer->name() + " (" + strPath + ")";
+
+          QgsMessageLog::logMessage(vl->dataProvider()->name() + " | " + vl->dataProvider()->dataSourceUri(), QStringLiteral("BLAH"), Qgis::MessageLevel::Critical);
 
           bool showFeatureCount = treeLayer->customProperty( QStringLiteral( "showFeatureCount" ), 0 ).toBool();
           if ( showFeatureCount )
@@ -358,8 +367,8 @@ bool QgsProjectServerValidator::validate( QgsProject *project, QList<QgsProjectS
     return false;
 
   QList<QPair<QString, QString>> owsNames;
-  QStringList encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages, duplicateRuleKeyMessages, absoluteSymbolPathMessages, base64SymbolMessages, invalidSymbolPathMessages, layerObjectCountMessages;
-  browseLayerTree( project, project->layerTreeRoot(), owsNames, encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages, duplicateRuleKeyMessages, absoluteSymbolPathMessages, base64SymbolMessages, invalidSymbolPathMessages, layerObjectCountMessages );
+  QStringList encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages, duplicateRuleKeyMessages, absoluteSymbolPathMessages, base64SymbolMessages, invalidSymbolPathMessages, layerObjectCountMessages, primaryKeyUnicityCheckMessages;
+  browseLayerTree( project, project->layerTreeRoot(), owsNames, encodingMessages, checkLegendMessages, insecureSourceMessages, tiledSourceMessages, clientSidePublishingMessages, missingWfsLayerMessages, missingSearchTermMessages, duplicateRuleKeyMessages, absoluteSymbolPathMessages, base64SymbolMessages, invalidSymbolPathMessages, layerObjectCountMessages, primaryKeyUnicityCheckMessages );
 
   QStringList duplicateNames, regExpMessages;
   const thread_local QRegularExpression snRegExp = QgsApplication::shortNameRegularExpression();
@@ -493,6 +502,14 @@ bool QgsProjectServerValidator::validate( QgsProject *project, QList<QgsProjectS
 
     for ( int i = 0; i < layerObjectCountMessages.count(); i++ )
       results << ValidationResult( QgsProjectServerValidator::sbVectorLayerObjectCountEnabled, layerObjectCountMessages[i] );
+  }
+
+  if ( !primaryKeyUnicityCheckMessages.empty() )
+  {
+    result = false;
+
+    for ( int i = 0; i < primaryKeyUnicityCheckMessages.count(); i++ )
+      results << ValidationResult( QgsProjectServerValidator::sbVectorLayerPrimaryKeyUnicityCheckEnabled, primaryKeyUnicityCheckMessages[i] );
   }
 
   // Determine the root layername
