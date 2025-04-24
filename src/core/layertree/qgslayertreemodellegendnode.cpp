@@ -39,6 +39,7 @@
 #include "qgslayertreelayer.h"
 #include "qgstextdocument.h"
 #include "qgstextdocumentmetrics.h"
+#include "qgsmessagelog.h"
 
 #include <QBuffer>
 #include <optional>
@@ -407,7 +408,7 @@ QSize QgsSymbolLegendNode::minimumIconSize( QgsRenderContext *context ) const
                                        ? *model()->targetScreenProperties().begin() : QgsScreenProperties();
 
     minSz = QgsImageOperation::nonTransparentImageRect(
-              QgsSymbolLayerUtils::symbolPreviewPixmap( symbol ? symbol.get() : mItem.symbol(), size, 0,
+              QgsSymbolLayerUtils::symbolPreviewPixmap( /*symbol ? symbol.get() :*/ mItem.symbol(), size, 0,
                   context, false, nullptr, nullptr, targetScreen ).toImage(),
               minSz,
               true ).size() / targetScreen.devicePixelRatio();
@@ -423,6 +424,54 @@ QSize QgsSymbolLegendNode::minimumIconSize( QgsRenderContext *context ) const
   }
 
   return minSz;
+}
+
+QImage QgsSymbolLegendNode::sbGetCroppedSymbolImage(QgsRenderContext* context) const SIP_SKIP
+{
+  QImage result;
+
+  const int iconSize = QgsLayerTreeModel::scaleIconSize(16);
+  const int largeIconSize = QgsLayerTreeModel::scaleIconSize(512);
+  QSize minSz(iconSize, iconSize);
+  if (mItem.symbol() && (mItem.symbol()->type() == Qgis::SymbolType::Marker
+    || mItem.symbol()->type() == Qgis::SymbolType::Line))
+  {
+    int maxSize = largeIconSize;
+
+    // unusued width, height variables
+    double width = 0.0;
+    double height = 0.0;
+    bool ok;
+    std::unique_ptr<QgsSymbol> symbol(QgsSymbolLayerUtils::restrictedSizeSymbol(mItem.symbol(), MINIMUM_SIZE, MAXIMUM_SIZE, context, width, height, &ok));
+
+    if (!ok && context)
+    {
+      // It's not possible to get a restricted size symbol, so we restrict
+      // pixmap target size to be sure it would fit MAXIMUM_SIZE
+      maxSize = static_cast<int>(std::round(MAXIMUM_SIZE * context->scaleFactor()));
+    }
+
+    const QSize size(mItem.symbol()->type() == Qgis::SymbolType::Marker ? maxSize : minSz.width(),
+      maxSize);
+
+    QgsScreenProperties targetScreen = model() && !model()->targetScreenProperties().isEmpty()
+      ? *model()->targetScreenProperties().begin() : QgsScreenProperties();
+
+    QImage image = QgsSymbolLayerUtils::symbolPreviewPixmap( symbol ? symbol.get() : mItem.symbol(), size, 0,
+      context, false, nullptr, nullptr, targetScreen).toImage();
+
+    QRect rc = QgsImageOperation::nonTransparentImageRect( image, minSz, false );
+
+    if ( rc.x() + rc.width() < image.width() - 1 )
+      rc.setWidth( rc.width() + 1 );
+
+    if ( rc.y() + rc.height() < image.height() - 1 )
+      rc.setHeight( rc.height() + 1 );
+
+    result = image.copy( rc );
+  }
+
+  return result;
 }
 
 const QgsSymbol *QgsSymbolLegendNode::symbol() const
@@ -504,6 +553,7 @@ QgsRenderContext *QgsLayerTreeModelLegendNode::createTemporaryRenderContext() co
   // setup temporary render context
   std::unique_ptr<QgsRenderContext> context = std::make_unique<QgsRenderContext>( );
   context->setScaleFactor( dpi / 25.4 );
+
   context->setRendererScale( scale );
   context->setMapToPixel( QgsMapToPixel( mupp ) );
   context->setFlag( Qgis::RenderContextFlag::Antialiasing, true );
@@ -585,7 +635,10 @@ QVariant QgsSymbolLegendNode::data( int role ) const
         if ( !mTextOnSymbolLabel.isEmpty() && context )
         {
           QPainter painter( &mPixmap );
-          painter.setRenderHint( QPainter::Antialiasing );
+
+          QPainter::RenderHints hints = QPainter::RenderHints();
+          hints |= QPainter::Antialiasing;
+          hints |= QPainter::SmoothPixmapTransform;
           context->setPainter( &painter );
           bool isNullSize = false;
           const QFontMetricsF fm( mTextOnSymbolTextFormat.scaledFont( *context, 1.0, &isNullSize ) );
@@ -883,8 +936,17 @@ QJsonObject QgsSymbolLegendNode::exportSymbolToJson( const QgsLegendSettings &se
   expContext.appendScopes( QgsExpressionContextUtils::globalProjectLayerScopes( nullptr ) );
   ctx.setExpressionContext( expContext );
 
-  const QPixmap pix = QgsSymbolLayerUtils::symbolPreviewPixmap( mItem.symbol(), minimumIconSize(), 0, &ctx );
-  QImage img( pix.toImage().convertToFormat( QImage::Format_ARGB32_Premultiplied ) );
+  QgsScreenProperties targetScreen = model() && !model()->targetScreenProperties().isEmpty()
+    ? *model()->targetScreenProperties().begin() : QgsScreenProperties();
+
+  QImage img = sbGetCroppedSymbolImage( &ctx );
+  if ( img.isNull() )
+  {
+    const QPixmap pix = QgsSymbolLayerUtils::symbolPreviewPixmap( mItem.symbol(), minimumIconSize( &ctx ), 0, &ctx, false, nullptr, nullptr, targetScreen );
+    img = pix.toImage();
+  }
+  
+  img = img.convertToFormat( QImage::Format_ARGB32_Premultiplied );
 
   int opacity = 255;
   if ( QgsMapLayer *layer = layerNode()->layer() )
@@ -895,7 +957,7 @@ QJsonObject QgsSymbolLegendNode::exportSymbolToJson( const QgsLegendSettings &se
     QPainter painter;
     painter.begin( &img );
     painter.setCompositionMode( QPainter::CompositionMode_DestinationIn );
-    painter.fillRect( pix.rect(), QColor( 0, 0, 0, opacity ) );
+    painter.fillRect( img.rect(), QColor( 0, 0, 0, opacity ) );
     painter.end();
   }
 

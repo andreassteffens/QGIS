@@ -856,72 +856,28 @@ QRect QgsImageOperation::nonTransparentImageRect( const QImage &image, QSize min
   int ymin = height;
   int ymax = 0;
 
-  // scan down till we hit something
-  for ( int y = 0; y < height; ++y )
+  for (int y = 0; y < height; ++y)
   {
-    bool found = false;
-    const QRgb *imgScanline = reinterpret_cast< const QRgb * >( image.constScanLine( y ) );
-    for ( int x = 0; x < width; ++x )
+    const QRgb *row = reinterpret_cast< const QRgb * >( image.constScanLine( y ) );
+    bool rowFilled = false;
+    for (int x = 0; x < width; ++x)
     {
-      if ( qAlpha( imgScanline[x] ) )
+      if ( qAlpha( row[ x ] ) )
       {
-        ymin = y;
-        ymax = y;
-        xmin = x;
-        xmax = x;
-        found = true;
-        break;
-      }
-    }
-    if ( found )
-      break;
-  }
-
-  //scan up till we hit something
-  for ( int y = height - 1; y >= ymin; --y )
-  {
-    bool found = false;
-    const QRgb *imgScanline = reinterpret_cast< const QRgb * >( image.constScanLine( y ) );
-    for ( int x = 0; x < width; ++x )
-    {
-      if ( qAlpha( imgScanline[x] ) )
-      {
-        ymax = y;
-        xmin = std::min( xmin, x );
+        rowFilled = true;
         xmax = std::max( xmax, x );
-        found = true;
-        break;
+        if ( xmin > x )
+        {
+          xmin = x;
+          x = xmax; // shortcut to only search for new right bound from here
+        }
       }
     }
-    if ( found )
-      break;
-  }
 
-  //scan left to right till we hit something, using a refined y region
-  for ( int y = ymin; y <= ymax; ++y )
-  {
-    const QRgb *imgScanline = reinterpret_cast< const QRgb * >( image.constScanLine( y ) );
-    for ( int x = 0; x < xmin; ++x )
+    if ( rowFilled )
     {
-      if ( qAlpha( imgScanline[x] ) )
-      {
-        xmin = x;
-        break;
-      }
-    }
-  }
-
-  //scan right to left till we hit something, using the refined y region
-  for ( int y = ymin; y <= ymax; ++y )
-  {
-    const QRgb *imgScanline = reinterpret_cast< const QRgb * >( image.constScanLine( y ) );
-    for ( int x = width - 1; x > xmax; --x )
-    {
-      if ( qAlpha( imgScanline[x] ) )
-      {
-        xmax = x;
-        break;
-      }
+      ymin = std::min(ymin, y);
+      ymax = y;
     }
   }
 
@@ -938,6 +894,7 @@ QRect QgsImageOperation::nonTransparentImageRect( const QImage &image, QSize min
       ymax = ymin + minSize.height();
     }
   }
+
   if ( center )
   {
     // recompute min and max to center image

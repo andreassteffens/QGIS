@@ -164,8 +164,6 @@ void QgsProjectServerValidator::browseLayerTree( QgsProject *project, QgsLayerTr
           if ( dataSourceUri.contains( "checkPrimaryKeyUnicity='1'" ) )
             primaryKeyUnicityCheckMessage << layer->name() + " (" + strPath + ")";
 
-          QgsMessageLog::logMessage(vl->dataProvider()->name() + " | " + vl->dataProvider()->dataSourceUri(), QStringLiteral("BLAH"), Qgis::MessageLevel::Critical);
-
           bool showFeatureCount = treeLayer->customProperty( QStringLiteral( "showFeatureCount" ), 0 ).toBool();
           if ( showFeatureCount )
             layerObjectCountMessages << layer->name() + " (" + strPath + ")";

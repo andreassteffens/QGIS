@@ -447,6 +447,8 @@ class CORE_EXPORT QgsSymbolLegendNode : public QgsLayerTreeModelLegendNode
      */
     QSize minimumIconSize( QgsRenderContext *context ) const;
 
+    QImage sbGetCroppedSymbolImage( QgsRenderContext *context ) const SIP_SKIP;
+
     /**
      * Returns the symbol used by the legend node.
      * \see setSymbol()
