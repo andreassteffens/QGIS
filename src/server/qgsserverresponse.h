@@ -127,6 +127,8 @@ class SERVER_EXPORT QgsServerResponse
      */
     virtual qint64 write( const char *data, qint64 maxsize ) SIP_SKIP;
 
+    virtual quint64 sbWrite ( const std::vector<uint8_t> &out_buf ) SIP_SKIP;
+
     /**
      * Writes at most maxSize bytes of data
      *

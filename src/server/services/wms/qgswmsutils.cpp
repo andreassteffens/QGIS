@@ -27,6 +27,7 @@
 #include "qgsserverprojectutils.h"
 #include "qgswmsserviceexception.h"
 #include "qgsproject.h"
+#include <fpng/fpng.h>
 
 namespace QgsWms
 {
@@ -207,10 +208,39 @@ namespace QgsWms
 
     if ( outputFormat != ImageOutputFormat::Unknown )
     {
-      response.setHeader( "Content-Type", contentType );
       if ( saveFormat == QLatin1String( "JPEG" ) || saveFormat == QLatin1String( "WEBP" ) )
       {
         result.save( response.io(), qPrintable( saveFormat ), imageQuality );
+      }  
+      else if ( saveFormat == QLatin1String( "PNG" ))
+      {
+        const uchar *pBits = img.bits();
+
+        uint32_t nChannels = 3;
+        switch ( img.format() )
+        {
+          case QImage::Format_RGB32:
+          case QImage::Format_RGB16:
+          case QImage::Format_RGB666:
+          case QImage::Format_RGB555:
+          case QImage::Format_RGB888:
+          case QImage::Format_RGB444:
+            nChannels = 3;
+            break;
+          case QImage::Format_ARGB32:
+          case QImage::Format_ARGB32_Premultiplied:
+          case QImage::Format_ARGB8565_Premultiplied:
+          case QImage::Format_ARGB6666_Premultiplied:
+          case QImage::Format_ARGB8555_Premultiplied:
+            nChannels = 4;
+            break;
+        }
+
+        std::vector<uint8_t> vecOut;
+        if ( fpng::fpng_encode_image_to_memory( (const void*)pBits, img.width(), img.height(), nChannels, vecOut ) )
+          response.sbWrite( vecOut );
+        else
+          result.save( response.io(), qPrintable( saveFormat ) );
       }
       else
       {

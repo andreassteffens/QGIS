@@ -65,6 +65,16 @@ qint64 QgsServerResponse::write( const char *data )
   return 0;
 }
 
+quint64 QgsServerResponse::sbWrite( const std::vector<uint8_t> &out_buf )
+{
+  QIODevice *iodev = io();
+  if ( iodev )
+  {
+    return iodev->write( (const char *)out_buf.data(), out_buf.size() );
+  }
+  return 0;
+}
+
 void QgsServerResponse::finish()
 {
 

@@ -35,6 +35,7 @@
 #include "qgswmsparameters.h"
 #include "qgswmsrequest.h"
 #include "qgswmsutils.h"
+#include "qgsruntimeprofiler.h"
 
 #include "libProfiler.h"
 
@@ -497,6 +498,8 @@ namespace QgsWms
           throw QgsServiceException( QgsServiceException::OGC_OperationNotSupported,
                                      QStringLiteral( "Request %1 is not supported" ).arg( req ), 501 );
         }
+
+        
       }
 
     private:
