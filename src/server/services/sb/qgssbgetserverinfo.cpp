@@ -27,11 +27,12 @@
 #include "qgsexception.h"
 #include "qgsexpressionnodeimpl.h"
 
+#include <fpng/fpng.h>
+
 #include <qfontdatabase.h>
 #include <qprocess.h>
 
 #include <cpl_conv.h>
-
 
 namespace QgsSb
 {
@@ -116,6 +117,59 @@ namespace QgsSb
       fontElem.appendChild( fontText );
       fontsElem.appendChild( fontElem );
     }
+
+
+    serverIface->sbRequestLogMessage( QStringLiteral( "writeGetServerInfo: Collecting CPU info..." ) );
+
+    QDomElement cpuInfoElem = doc.createElement( QStringLiteral( "CpuInfo" ) );
+    serverInfoElem.appendChild( cpuInfoElem );
+
+    fpng::cpu_info cpuInfo;
+    cpuInfo.init();
+
+    QDomElement hasSseElem = doc.createElement( QStringLiteral( "HasSse" ) );
+    hasSseElem.setAttribute( QStringLiteral( "value" ), cpuInfo.has_sse() ? "true" : "false" );
+    cpuInfoElem.appendChild( hasSseElem );
+
+    QDomElement hasSse2Elem = doc.createElement( QStringLiteral( "HasSse2" ) );
+    hasSse2Elem.setAttribute( QStringLiteral( "value" ), cpuInfo.has_sse2() ? "true" : "false" );
+    cpuInfoElem.appendChild( hasSse2Elem );
+
+    QDomElement hasSse3Elem = doc.createElement( QStringLiteral( "HasSse3" ) );
+    hasSse3Elem.setAttribute( QStringLiteral( "value" ), cpuInfo.has_sse3() ? "true" : "false" );
+    cpuInfoElem.appendChild( hasSse3Elem );
+
+    QDomElement hasSsse3Elem = doc.createElement( QStringLiteral( "HasSsse3" ) );
+    hasSsse3Elem.setAttribute( QStringLiteral( "value" ), cpuInfo.has_ssse3() ? "true" : "false" );
+    cpuInfoElem.appendChild( hasSsse3Elem );
+
+    QDomElement hasSse41Elem = doc.createElement( QStringLiteral( "HasSse41" ) );
+    hasSse41Elem.setAttribute( QStringLiteral( "value" ), cpuInfo.has_sse41() ? "true" : "false" );
+    cpuInfoElem.appendChild( hasSse41Elem );
+
+    QDomElement hasSse42Elem = doc.createElement( QStringLiteral( "HasSse42" ) );
+    hasSse42Elem.setAttribute( QStringLiteral( "value" ), cpuInfo.has_sse42() ? "true" : "false" );
+    cpuInfoElem.appendChild( hasSse42Elem );
+
+    QDomElement hasAvxElem = doc.createElement( QStringLiteral( "HasAvx" ) );
+    hasAvxElem.setAttribute( QStringLiteral( "value" ), cpuInfo.has_avx() ? "true" : "false" );
+    cpuInfoElem.appendChild( hasAvxElem );
+
+    QDomElement hasAvx2Elem = doc.createElement( QStringLiteral( "HasAvx2" ) );
+    hasAvx2Elem.setAttribute( QStringLiteral( "value" ), cpuInfo.has_avx2() ? "true" : "false" );
+    cpuInfoElem.appendChild( hasAvx2Elem );
+
+    QDomElement hasPclMulQdqElem = doc.createElement( QStringLiteral( "HasPclMulQdq" ) );
+    hasPclMulQdqElem.setAttribute( QStringLiteral( "value" ), cpuInfo.has_pclmulqdq() ? "true" : "false" );
+    cpuInfoElem.appendChild( hasPclMulQdqElem );
+
+    QDomElement canUsePclMulElem = doc.createElement( QStringLiteral( "CanUsePclMul" ) );
+    canUsePclMulElem.setAttribute( QStringLiteral( "value" ), cpuInfo.can_use_pclmul() ? "true" : "false" );
+    cpuInfoElem.appendChild( canUsePclMulElem );
+
+    QDomElement canUseSse41Elem = doc.createElement( QStringLiteral( "CanUseSse41" ) );
+    canUseSse41Elem.setAttribute( QStringLiteral( "value" ), cpuInfo.can_use_sse41() ? "true" : "false" );
+    cpuInfoElem.appendChild( canUseSse41Elem );
 
 
     serverIface->sbRequestLogMessage( QStringLiteral( "writeGetServerInfo: Collecting configuration parameters..." ) );

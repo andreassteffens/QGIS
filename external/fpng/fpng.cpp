@@ -311,62 +311,42 @@ namespace fpng
 	}
 #endif
 
-	struct cpu_info
+	void cpu_info::init()
 	{
-		cpu_info() { memset(this, 0, sizeof(*this)); }
+		if (m_initialized)
+			return;
 
-		bool m_initialized, m_has_fpu, m_has_mmx, m_has_sse, m_has_sse2, m_has_sse3, m_has_ssse3, m_has_sse41, m_has_sse42, m_has_avx, m_has_avx2, m_has_pclmulqdq;
-				
-		void init()
+		int regs[4];
+
+#ifdef _MSC_VER
+		__cpuid(regs, 0);
+#else
+		do_cpuid(0, 0, (uint32_t*)regs);
+#endif
+
+		const uint32_t max_eax = regs[0];
+		if (max_eax >= 1U)
 		{
-			if (m_initialized)
-				return;
-
-			int regs[4];
-
 #ifdef _MSC_VER
-			__cpuid(regs, 0);
+			__cpuid(regs, 1);
 #else
-			do_cpuid(0, 0, (uint32_t*)regs);
+			do_cpuid(1, 0, (uint32_t*)regs);
 #endif
-
-			const uint32_t max_eax = regs[0];
-			if (max_eax >= 1U)
-			{
-#ifdef _MSC_VER
-				__cpuid(regs, 1);
-#else
-				do_cpuid(1, 0, (uint32_t*)regs);
-#endif
-				extract_x86_flags(regs[2], regs[3]);
-			}
-
-			if (max_eax >= 7U)
-			{
-#ifdef _MSC_VER
-				__cpuidex(regs, 7, 0);
-#else
-				do_cpuid(7, 0, (uint32_t*)regs);
-#endif
-				extract_x86_extended_flags(regs[1]);
-			}
-
-			m_initialized = true;
+			extract_x86_flags(regs[2], regs[3]);
 		}
 
-		bool can_use_sse41() const { return m_has_sse && m_has_sse2 && m_has_sse3 && m_has_ssse3 && m_has_sse41; }
-		bool can_use_pclmul() const	{ return m_has_pclmulqdq && can_use_sse41(); }
-
-	private:
-		void extract_x86_flags(uint32_t ecx, uint32_t edx)
+		if (max_eax >= 7U)
 		{
-			m_has_fpu = (edx & (1 << 0)) != 0;	m_has_mmx = (edx & (1 << 23)) != 0;	m_has_sse = (edx & (1 << 25)) != 0; m_has_sse2 = (edx & (1 << 26)) != 0;
-			m_has_sse3 = (ecx & (1 << 0)) != 0; m_has_ssse3 = (ecx & (1 << 9)) != 0; m_has_sse41 = (ecx & (1 << 19)) != 0; m_has_sse42 = (ecx & (1 << 20)) != 0;
-			m_has_pclmulqdq = (ecx & (1 << 1)) != 0; m_has_avx = (ecx & (1 << 28)) != 0;
+#ifdef _MSC_VER
+			__cpuidex(regs, 7, 0);
+#else
+			do_cpuid(7, 0, (uint32_t*)regs);
+#endif
+			extract_x86_extended_flags(regs[1]);
 		}
 
-		void extract_x86_extended_flags(uint32_t ebx) { m_has_avx2 = (ebx & (1 << 5)) != 0; }
-	};
+		m_initialized = true;
+	}
 
 	cpu_info g_cpu_info;
 		
@@ -1635,7 +1615,7 @@ do_literals:
 			*pDst++ = 2;
 
 #if FPNG_X86_OR_X64_CPU && !FPNG_NO_SSE
-			if (g_cpu_info.can_use_sse41())
+			if (g_cpu_info.can_use_sse41() && false)
 			{
 				uint32_t bytes_to_process = w * num_chans, ofs = 0;
 				for (; bytes_to_process >= 16; bytes_to_process -= 16, ofs += 16)
@@ -3106,6 +3086,11 @@ do_literals:
 		uint32_t idat_ofs = 0, idat_len = 0;
 		return fpng_get_info_internal(pImage, image_size, width, height, channels_in_file, idat_ofs, idat_len);
 	}
+
+  cpu_info fpng_get_cpu_info()
+  {
+    return g_cpu_info;
+  }
 
 	int fpng_decode_memory(const void *pImage, uint32_t image_size, std::vector<uint8_t> &out, uint32_t& width, uint32_t& height, uint32_t &channels_in_file, uint32_t desired_channels)
 	{

@@ -12,6 +12,39 @@
 
 namespace fpng
 {
+  struct cpu_info
+  {
+  public:
+    cpu_info() { memset(this, 0, sizeof(*this)); }
+
+    void init();
+
+    bool has_sse() const { return m_has_sse; }
+    bool has_sse2() const { return m_has_sse2; }
+    bool has_sse3() const { return m_has_sse3; }
+    bool has_ssse3() const { return m_has_ssse3; }
+    bool has_sse41() const { return m_has_sse41; }
+    bool has_sse42() const { return m_has_sse42; }
+    bool has_avx() const { return m_has_avx; }
+    bool has_avx2() const { return m_has_avx2; }
+    bool has_pclmulqdq() const { return m_has_pclmulqdq; }
+
+    bool can_use_sse41() const { return m_has_sse && m_has_sse2 && m_has_sse3 && m_has_ssse3 && m_has_sse41; }
+    bool can_use_pclmul() const { return m_has_pclmulqdq && can_use_sse41(); }
+
+  private:
+    bool m_initialized, m_has_fpu, m_has_mmx, m_has_sse, m_has_sse2, m_has_sse3, m_has_ssse3, m_has_sse41, m_has_sse42, m_has_avx, m_has_avx2, m_has_pclmulqdq;
+
+    void extract_x86_flags(uint32_t ecx, uint32_t edx)
+    {
+      m_has_fpu = (edx & (1 << 0)) != 0;	m_has_mmx = (edx & (1 << 23)) != 0;	m_has_sse = (edx & (1 << 25)) != 0; m_has_sse2 = (edx & (1 << 26)) != 0;
+      m_has_sse3 = (ecx & (1 << 0)) != 0; m_has_ssse3 = (ecx & (1 << 9)) != 0; m_has_sse41 = (ecx & (1 << 19)) != 0; m_has_sse42 = (ecx & (1 << 20)) != 0;
+      m_has_pclmulqdq = (ecx & (1 << 1)) != 0; m_has_avx = (ecx & (1 << 28)) != 0;
+    }
+
+    void extract_x86_extended_flags(uint32_t ebx) { m_has_avx2 = (ebx & (1 << 5)) != 0; }
+  };
+
 	// ---- Library initialization - call once to identify if the processor supports SSE.
 	// Otherwise you'll only get scalar fallbacks.
 	void fpng_init();
@@ -89,6 +122,8 @@ namespace fpng
 	// If FPNG_DECODE_NOT_FPNG is returned, you must decompress the file with a general purpose PNG decoder.
 	// If another error occurs, the file is likely corrupted or invalid, but you can still try to decompress the file with another decoder (which will likely fail).
 	int fpng_get_info(const void* pImage, uint32_t image_size, uint32_t& width, uint32_t& height, uint32_t& channels_in_file);
+
+	cpu_info fpng_get_cpu_info();
 
 	// fpng_decode_memory() decompresses 24/32bpp PNG files ONLY encoded by this module.
 	// If the image was written by FPNG, it will decompress the image data, otherwise it will return FPNG_DECODE_NOT_FPNG in which case you should fall back to a general purpose PNG decoder (lodepng, stb_image, libpng, etc.)

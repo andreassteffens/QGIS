@@ -14,6 +14,7 @@ SET (sb_SRCS
   qgssbsetunloadprojects.cpp
   qgssbgetserverprocessid.cpp
   ${CMAKE_SOURCE_DIR}/external/SimpleCrypt/SimpleCrypt.cpp
+  ${CMAKE_SOURCE_DIR}/external/fpng/fpng.cpp
 )
 
 ########################################################

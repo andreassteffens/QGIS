@@ -36,6 +36,7 @@
 #include "qgswmsrequest.h"
 #include "qgswmsutils.h"
 #include "qgsruntimeprofiler.h"
+#include <fpng/fpng.h>
 
 #include "libProfiler.h"
 
@@ -63,7 +64,9 @@ namespace QgsWms
       Service( const QString &version, QgsServerInterface *serverIface )
         : mVersion( version )
         , mServerIface( serverIface )
-      {}
+      {
+        fpng::fpng_init();
+      }
 
       QString name()    const override { return QStringLiteral( "WMS" ); }
       QString version() const override { return mVersion; }
