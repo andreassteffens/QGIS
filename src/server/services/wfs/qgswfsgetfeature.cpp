@@ -483,7 +483,7 @@ namespace QgsWfs
 
       bool applyRules = mapRules.contains( typeName );
 
-      if ( applyRules || mWfsParameters.sbWithSymbolName() )
+      if ( applyRules || mWfsParameters.sbWithSymbolName() || mWfsParameters.sbWithMapTip() )
       {
         renderer = vlayer->renderer();
         renderContext.setRendererScale( 0 );
@@ -1552,6 +1552,8 @@ namespace QgsWfs
 
       if ( params.sbWithMapTip )
       {
+        QgsMessageLog::logMessage( QStringLiteral( "BLAH 2" ), QStringLiteral( "Server" ), Qgis::Critical );
+
         QString mapTipTemplate = vlayer->mapTipTemplate();
         if ( !mapTipTemplate.isEmpty() )
         {
@@ -1657,6 +1659,8 @@ namespace QgsWfs
 
       if ( params.sbWithMapTip )
       {
+        QgsMessageLog::logMessage( QStringLiteral( "BLAH 1" ), QStringLiteral( "Server" ), Qgis::Critical );
+
         QString mapTipTemplate = vlayer->mapTipTemplate();
         if ( !mapTipTemplate.isEmpty() )
         {
@@ -1770,6 +1774,8 @@ namespace QgsWfs
 
       if ( params.sbWithMapTip )
       {
+        QgsMessageLog::logMessage( QStringLiteral( "BLAH 3" ), QStringLiteral( "Server" ), Qgis::Critical );
+
         QString mapTipTemplate = vlayer->mapTipTemplate();
         if ( !mapTipTemplate.isEmpty() )
         {
