@@ -208,6 +208,7 @@ namespace QgsWms
 
     if ( outputFormat != ImageOutputFormat::Unknown )
     {
+      response.setHeader( "Content-Type", contentType );
       if ( saveFormat == QLatin1String( "JPEG" ) || saveFormat == QLatin1String( "WEBP" ) )
       {
         result.save( response.io(), qPrintable( saveFormat ), imageQuality );
