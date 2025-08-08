@@ -2546,6 +2546,8 @@ QString QgsProjectProperties::sbDetermineShortName( QString strTitle, QString st
   strName = strName.replace( " ", "_" );
   strName = strName.replace( ":", "_" );
   strName = strName.replace( ";", "_" );
+  strName = strName.replace( "²", "_" );
+  strName = strName.replace( "³", "_" );
 
   if ( !mapShortNames.contains( strName ) )
   {
@@ -2591,8 +2593,11 @@ void QgsProjectProperties::sbFillLayerShortNames( QgsLayerTreeGroup *treeGroup, 
       QString strShortName = treeGroupChild->customProperty( QStringLiteral( "wmsShortName" ) ).toString();
 
       bool bSetName = true;
-      if ( !strShortName.isEmpty() )
-        bSetName = !( strShortName.startsWith( "_" ) || strShortName.startsWith( "sb_" ) );
+      if (!strShortName.isEmpty())
+      {
+        bSetName = !(strShortName.startsWith("_") || strShortName.startsWith("sb_"));
+      }
+        
 
       if ( !bSetName )
         continue;
@@ -2626,9 +2631,33 @@ void QgsProjectProperties::sbFillLayerShortNames( QgsLayerTreeGroup *treeGroup, 
         QString strPath;
         treeNode->sbResolveLayerPath( strPath );
 
-        QString strTitle = l->title();
+        QString strTitle = l->title().trimmed();
+
+        if ( !strTitle.isEmpty() )
+        {
+          QString strTitleTrimmed = strTitle.trimmed();
+          if ( strTitle.compare( strTitleTrimmed ) != 0 )
+          {
+            l->setTitle( strTitleTrimmed );
+            strTitle = strTitleTrimmed;
+          }
+        }
+        
         if ( strTitle.isEmpty() || bSynchronizeTreeAndWmsTitles )
+        {
           strTitle = treeLayer->name();
+
+          if (!strTitle.isEmpty())
+          {
+            QString strTitleTrimmed = strTitle.trimmed();
+            if ( strTitle.compare( strTitleTrimmed ) != 0 )
+            {
+              treeLayer->setName( strTitleTrimmed );
+              strTitle = strTitleTrimmed;
+            }
+          }
+        }
+
         strShortName = sbDetermineShortName( strTitle, strPath, mapShortNames );
 
         l->setShortName( strShortName );
