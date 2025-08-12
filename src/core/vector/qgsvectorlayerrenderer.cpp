@@ -83,6 +83,9 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
         mSelectionSymbol.reset( selectionSymbol->clone() );
       break;
     }
+
+    case Qgis::SelectionRenderingMode::sbHalo:
+      break;
   }
 
   if ( !mainRenderer )

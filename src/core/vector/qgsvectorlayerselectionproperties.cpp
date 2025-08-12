@@ -32,6 +32,7 @@ QDomElement QgsVectorLayerSelectionProperties::writeXml( QDomElement &parentElem
   QDomElement element = document.createElement( QStringLiteral( "selection" ) );
 
   element.setAttribute( QStringLiteral( "mode" ), qgsEnumValueToKey( mSelectionRenderingMode ) );
+  element.setAttribute( QStringLiteral( "sbSelectionHaloRadius" ), mSbSelectionHaloRadius );
 
   QgsColorUtils::writeXml( mSelectionColor, QStringLiteral( "selectionColor" ), document, element, context );
 
@@ -53,6 +54,7 @@ bool QgsVectorLayerSelectionProperties::readXml( const QDomElement &element, con
     return false;
 
   mSelectionRenderingMode = qgsEnumKeyToValue( selectionElement.attribute( QStringLiteral( "mode" ) ), Qgis::SelectionRenderingMode::Default );
+  mSbSelectionHaloRadius = selectionElement.attribute( QStringLiteral( "sbSelectionHaloRadius" ), "0" ).toDouble();
   mSelectionColor = QgsColorUtils::readXml( selectionElement, QStringLiteral( "selectionColor" ), context );
 
   {
@@ -68,6 +70,7 @@ QgsVectorLayerSelectionProperties *QgsVectorLayerSelectionProperties::clone() co
   res->mSelectionRenderingMode = mSelectionRenderingMode;
   res->mSelectionColor = mSelectionColor;
   res->mSelectionSymbol.reset( mSelectionSymbol ? mSelectionSymbol->clone() : nullptr );
+  res->mSbSelectionHaloRadius = mSbSelectionHaloRadius;
   return res.release();
 }
 
@@ -99,4 +102,14 @@ Qgis::SelectionRenderingMode QgsVectorLayerSelectionProperties::selectionRenderi
 void QgsVectorLayerSelectionProperties::setSelectionRenderingMode( Qgis::SelectionRenderingMode mode )
 {
   mSelectionRenderingMode = mode;
+}
+
+double QgsVectorLayerSelectionProperties::sbSelectionHaloRadius() const
+{
+  return mSbSelectionHaloRadius;
+}
+
+void QgsVectorLayerSelectionProperties::sbSetSelectionRadius( double radius )
+{
+  mSbSelectionHaloRadius = radius;
 }

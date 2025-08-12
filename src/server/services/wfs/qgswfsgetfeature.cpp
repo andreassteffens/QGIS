@@ -1552,8 +1552,6 @@ namespace QgsWfs
 
       if ( params.sbWithMapTip )
       {
-        QgsMessageLog::logMessage( QStringLiteral( "BLAH 2" ), QStringLiteral( "Server" ), Qgis::Critical );
-
         QString mapTipTemplate = vlayer->mapTipTemplate();
         if ( !mapTipTemplate.isEmpty() )
         {
@@ -1659,8 +1657,6 @@ namespace QgsWfs
 
       if ( params.sbWithMapTip )
       {
-        QgsMessageLog::logMessage( QStringLiteral( "BLAH 1" ), QStringLiteral( "Server" ), Qgis::Critical );
-
         QString mapTipTemplate = vlayer->mapTipTemplate();
         if ( !mapTipTemplate.isEmpty() )
         {
@@ -1774,8 +1770,6 @@ namespace QgsWfs
 
       if ( params.sbWithMapTip )
       {
-        QgsMessageLog::logMessage( QStringLiteral( "BLAH 3" ), QStringLiteral( "Server" ), Qgis::Critical );
-
         QString mapTipTemplate = vlayer->mapTipTemplate();
         if ( !mapTipTemplate.isEmpty() )
         {

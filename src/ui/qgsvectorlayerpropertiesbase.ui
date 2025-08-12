@@ -1831,6 +1831,29 @@
                   <string>Selections</string>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_9">
+                  <item row="4" column="0">
+                  <widget class="QRadioButton" name="mRadioSbSelectionHalo">
+                    <property name="text">
+                     <string>([a]tapa) Selection halo with radius</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="4" column="1">
+                   <widget class="QDoubleSpinBox" name="mSbSelectionHaloRadiusSpinBox">
+                    <property name="decimals">
+                     <number>0</number>
+                    </property>
+                    <property name="minimum">
+                     <double>1</double>
+                    </property>
+                    <property name="singleStep">
+                     <double>1</double>
+                    </property>
+                    <property name="value">
+                     <double>1</double>
+                    </property>
+                   </widget>
+                  </item>
                   <item row="3" column="0">
                    <widget class="QRadioButton" name="mRadioOverrideSelectionSymbol">
                     <property name="text">
