@@ -217,6 +217,18 @@ void QgsLayoutItemMap::setScale( double scaleDenominator, bool forceUpdate )
   emit extentChanged();
 }
 
+double QgsLayoutItemMap::mapUnitsPerPixel() const
+{
+  return mMapUnitsPerPixel;
+}
+
+void QgsLayoutItemMap::setMapUnitsPerPixel(double mapUnitsPerPixel)
+{
+  mMapUnitsPerPixel = mapUnitsPerPixel;
+  invalidateCache();
+  emit changed();
+}
+
 void QgsLayoutItemMap::setExtent( const QgsRectangle &extent )
 {
   if ( mExtent == extent )
@@ -1863,6 +1875,7 @@ QgsExpressionContext QgsLayoutItemMap::createExpressionContext() const
   scope->addVariable( QgsExpressionContextScope::StaticVariable( QStringLiteral( "map_rotation" ), mMapRotation, true ) );
   const double mapScale = scale();
   scope->addVariable( QgsExpressionContextScope::StaticVariable( QStringLiteral( "map_scale" ), mapScale, true ) );
+  scope->addVariable(QgsExpressionContextScope::StaticVariable(QStringLiteral("map_units_per_pixel"), mMapUnitsPerPixel, true));
 
   scope->setVariable( QStringLiteral( "zoom_level" ), QgsVectorTileUtils::scaleToZoomLevel( mapScale, 0, 99999 ), true );
   scope->setVariable( QStringLiteral( "vector_tile_zoom" ), QgsVectorTileUtils::scaleToZoom( mapScale ), true );
@@ -1884,7 +1897,7 @@ QgsExpressionContext QgsLayoutItemMap::createExpressionContext() const
   scope->addVariable( QgsExpressionContextScope::StaticVariable( QStringLiteral( "map_crs_ellipsoid" ), mapCrs.ellipsoidAcronym(), true ) );
   scope->addVariable( QgsExpressionContextScope::StaticVariable( QStringLiteral( "map_crs_proj4" ), mapCrs.toProj(), true ) );
   scope->addVariable( QgsExpressionContextScope::StaticVariable( QStringLiteral( "map_crs_wkt" ), mapCrs.toWkt( QgsCoordinateReferenceSystem::WKT_PREFERRED ), true ) );
-
+  
   QVariantList layersIds;
   QVariantList layers;
   scope->addVariable( QgsExpressionContextScope::StaticVariable( QStringLiteral( "map_layer_ids" ), layersIds, true ) );

@@ -87,10 +87,7 @@ bool setBoundingRect(
         if ( ml->crs() == spext.extentCrs )
           layerExtent = extent;
         else
-        {
-          QgsCoordinateTransform trans( spext.extentCrs, ml->crs(), project );
-          layerExtent = trans.transformBoundingBox( extent );
-        }
+          layerExtent = QgsWmsLayerInfos::transformExtent( wmsExtent, spext.extentCrs, ml->crs(), project->transformContext() );
       }
     }
   }
@@ -138,16 +135,14 @@ bool setBoundingRect(
       QgsMessageLog::logMessage( QStringLiteral( "Error transforming extent for layer %1: %2" ).arg( ml->name() ).arg( cse.what() ), QStringLiteral( "Server" ), Qgis::MessageLevel::Warning );
       return false;
     }
-
-    if ( qgsDoubleNear( pLayer.wgs84BoundingRect.xMinimum(), pLayer.wgs84BoundingRect.xMaximum() ) || qgsDoubleNear( pLayer.wgs84BoundingRect.yMinimum(), pLayer.wgs84BoundingRect.yMaximum() ) )
-    {
-      //layer bbox cannot be empty
-      pLayer.wgs84BoundingRect.grow( 0.000001 );
-    }
   }
   else
+    pLayer.wgs84BoundingRect = QgsWmsLayerInfos::transformExtent( layerExtent, ml->crs(), wgs84, project->transformContext() );
+
+  if ( qgsDoubleNear( pLayer.wgs84BoundingRect.xMinimum(), pLayer.wgs84BoundingRect.xMaximum() ) || qgsDoubleNear( pLayer.wgs84BoundingRect.yMinimum(), pLayer.wgs84BoundingRect.yMaximum() ) )
   {
-    pLayer.wgs84BoundingRect = ml->wgs84Extent();
+    //layer bbox cannot be empty
+    pLayer.wgs84BoundingRect.grow( 0.000001 );
   }
 
   try

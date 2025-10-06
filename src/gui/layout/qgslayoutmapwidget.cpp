@@ -410,6 +410,7 @@ void QgsLayoutMapWidget::mapCrsChanged( const QgsCoordinateReferenceSystem &crs 
 
   mMapItem->layout()->undoStack()->beginCommand( mMapItem, tr( "Change Map CRS" ) );
   mMapItem->setCrs( crs );
+  mMapItem->setMapUnitsPerPixel( mMapCanvas->mapUnitsPerPixel() );
   if ( updateExtent )
     mMapItem->zoomToExtent( newExtent );
   mMapItem->layout()->undoStack()->endCommand();
@@ -702,6 +703,7 @@ void QgsLayoutMapWidget::mScaleLineEdit_editingFinished()
 
   mMapItem->layout()->undoStack()->beginCommand( mMapItem, tr( "Change Map Scale" ) );
   mMapItem->setScale( scaleDenominator );
+  mMapItem->setMapUnitsPerPixel( mMapCanvas->mapUnitsPerPixel() );
   mMapItem->layout()->undoStack()->endCommand();
 }
 
@@ -714,6 +716,7 @@ void QgsLayoutMapWidget::rotationChanged( double value )
 
   mMapItem->layout()->undoStack()->beginCommand( mMapItem, tr( "Change Map Rotation" ), QgsLayoutItem::UndoMapRotation );
   mMapItem->setMapRotation( value );
+  mMapItem->setMapUnitsPerPixel( mMapCanvas->mapUnitsPerPixel() );
   mMapItem->layout()->undoStack()->endCommand();
   mMapItem->invalidateCache();
 }
@@ -747,6 +750,7 @@ void QgsLayoutMapWidget::setToMapCanvasExtent()
 
   mMapItem->layout()->undoStack()->beginCommand( mMapItem, tr( "Change Map Extent" ) );
   mMapItem->zoomToExtent( newExtent );
+  mMapItem->setMapUnitsPerPixel( mMapCanvas->mapUnitsPerPixel() );
   mMapItem->layout()->undoStack()->endCommand();
 }
 
@@ -761,6 +765,7 @@ void QgsLayoutMapWidget::setToMapCanvasScale()
 
   mMapItem->layout()->undoStack()->beginCommand( mMapItem, tr( "Change Map Scale" ) );
   mMapItem->setScale( newScale );
+  mMapItem->setMapUnitsPerPixel( mMapCanvas->mapUnitsPerPixel() );
   mMapItem->layout()->undoStack()->endCommand();
 }
 

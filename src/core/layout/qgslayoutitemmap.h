@@ -421,6 +421,9 @@ class CORE_EXPORT QgsLayoutItemMap : public QgsLayoutItem, public QgsTemporalRan
      */
     void setScale( double scale, bool forceUpdate = true );
 
+    void setMapUnitsPerPixel( double mapUnitsPerPixel );
+    double mapUnitsPerPixel() const;
+
     /**
      * Sets a new \a extent for the map. This method may change the width or height of the map
      * item to ensure that the extent exactly matches the specified extent, with no
@@ -1026,6 +1029,9 @@ class CORE_EXPORT QgsLayoutItemMap : public QgsLayoutItem, public QgsTemporalRan
 
     //! Map rotation
     double mMapRotation = 0;
+
+    //! Map units per pixel
+    double mMapUnitsPerPixel = 0;
 
     /**
      * Temporary evaluated map rotation. Data defined rotation may mean this value

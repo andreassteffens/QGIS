@@ -582,26 +582,23 @@ namespace QgsWfs
       //transform the layers native CRS into WGS84
       const QgsCoordinateReferenceSystem wgs84 = QgsCoordinateReferenceSystem::fromOgcWmsCrs( geoEpsgCrsAuthId() );
 
-      if ( layerExtent.isNull() || layerExtent.isEmpty() )
+      QgsLayerMetadata meta = layer->metadata();
+      if ( meta.extent().spatialExtents().count() > 0 )
       {
-        QgsLayerMetadata meta = layer->metadata();
-        if ( meta.extent().spatialExtents().count() > 0 )
+        QgsLayerMetadata::SpatialExtent spext = meta.extent().spatialExtents().first();
+        bool bValid = spext.extentCrs.isValid();
+        if ( bValid )
         {
-          QgsLayerMetadata::SpatialExtent spext = meta.extent().spatialExtents().first();
-          bool bValid = spext.extentCrs.isValid();
-          if ( bValid )
+          if ( spext.bounds.width() > 0 && spext.bounds.height() > 0 )
           {
-            if ( spext.bounds.width() > 0 && spext.bounds.height() > 0 )
-            {
-              QgsRectangle rectExtent = QgsRectangle( spext.bounds.xMinimum(), spext.bounds.yMinimum(), spext.bounds.xMaximum(), spext.bounds.yMaximum() );
+            QgsRectangle rectExtent = QgsRectangle( spext.bounds.xMinimum(), spext.bounds.yMinimum(), spext.bounds.xMaximum(), spext.bounds.yMaximum() );
 
-              if ( layer->crs() == spext.extentCrs )
-                layerExtent = rectExtent;
-              else
-              {
-                QgsCoordinateTransform trans( spext.extentCrs, layer->crs(), project );
-                layerExtent = trans.transformBoundingBox( rectExtent );
-              }
+            if ( layer->crs() == spext.extentCrs )
+              layerExtent = rectExtent;
+            else
+            {
+              QgsCoordinateTransform trans( spext.extentCrs, layer->crs(), project );
+              layerExtent = trans.transformBoundingBox( rectExtent );
             }
           }
         }
