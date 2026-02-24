@@ -31,17 +31,78 @@
 #include <QFontDatabase>
 #include <QString>
 
-void Debug(const QString& strMessage)
+void sbDebug( const QString& strMessage )
 {
-  QFile file("qgis_server_debug.txt");
-  if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append))
+  QFile file( "qgis_server_debug.txt" );
+  if ( !file.open( QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append ) )
     return;
 
-  QTextStream out(&file);
-  out << "[" << QDateTime::currentDateTime().toString(Qt::ISODate) << "] " << strMessage << endl;
+  QTextStream out( &file );
+  out << "[" << QDateTime::currentDateTime().toString( Qt::ISODate ) << "] " << strMessage << endl;
 
   out.flush();
   file.close();
+}
+
+bool sbLoadEnvironmentFromFile( const QString& filePath )
+{
+  QFile file( filePath );
+
+  if ( !file.exists() )
+    return false;
+
+  if ( !file.open( QIODevice::ReadOnly | QIODevice::Text ) )
+    return false;
+
+  QTextStream in( &file );
+  int lineNumber = 0;
+
+  while ( !in.atEnd() )
+  {
+    QString line = in.readLine().trimmed();
+    lineNumber++;
+
+    if ( line.isEmpty() || line.startsWith( '#' ) )
+      continue;
+
+    int eqIndex = line.indexOf('=');
+    if (eqIndex <= 0)
+      continue;
+
+    QString key = line.left( eqIndex ).trimmed();
+    QString value = line.mid( eqIndex + 1 ).trimmed();
+
+    // remove optional quotes
+    if ( ( value.startsWith( '"' ) && value.endsWith( '"' ) ) || ( value.startsWith( '\'' ) && value.endsWith( '\'' ) ) )
+      value = value.mid( 1, value.length() - 2 );
+
+    qputenv( key.toUtf8(), value.toUtf8() );
+  }
+
+  file.close();
+
+  return true;
+}
+
+QString sbResolveEnvFileFromQgisOptionsPath( const QString& tenant )
+{
+  const char* optionsPath = getenv( "QGIS_OPTIONS_PATH" );
+
+  if ( !optionsPath )
+    return QString();
+
+  QString basePath = QString::fromUtf8( optionsPath ).trimmed();
+
+  if ( basePath.isEmpty() )
+    return QString();
+
+  // filename to append
+  const QString envFileName = QStringLiteral( "server_%1.env" ).arg( tenant );
+
+  QDir dir( basePath );
+  QString fullPath = dir.filePath( envFileName );
+
+  return fullPath;
 }
 
 #ifdef Q_OS_WIN
@@ -58,7 +119,7 @@ class sbStackWalker : public StackWalker
     virtual void OnOutput(LPCSTR szText)
     {
       QString message = QString::fromUtf8( szText );
-      Debug( message );
+      sbDebug( message );
     }
 };
 #endif
@@ -108,6 +169,14 @@ int main( int argc, char *argv[] )
     }
   }
 
+  QString tenant = "";
+  if (argc == 2)
+    tenant = argv[1];
+
+  QString envFile = sbResolveEnvFileFromQgisOptionsPath( tenant );
+  if (!envFile.isEmpty())
+    sbLoadEnvironmentFromFile(envFile);
+
   // Test if the environment variable DISPLAY is defined
   // if it's not, the server is running in offscreen mode
   // Qt supports using various QPA (Qt Platform Abstraction) back ends
@@ -132,17 +201,12 @@ int main( int argc, char *argv[] )
 
   QgsMessageLog::logMessage( QStringLiteral( "STARTING QGIS SERVER" ), QStringLiteral( "Server" ), Qgis::Info );
 
-  QString strTenant = "";
-
-  if ( argc == 2 )
-    strTenant = argv[1];
-
   try
   {
     // since version 3.0 QgsServer now needs a qApp so initialize QgsApplication
     const QgsApplication app( argc, argv, withDisplay, QString(), QStringLiteral( "server" ) );
 
-    QgsServer server( strTenant );
+    QgsServer server( tenant );
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
     server.initPython();
@@ -175,14 +239,12 @@ int main( int argc, char *argv[] )
   {
     QString message = QStringLiteral( "QgsServerException: %1" ).arg( ex.what() );
 
-    Debug( "[" + strTenant + "] " + message );
     QgsMessageLog::logMessage( message , QStringLiteral( "Server" ), Qgis::Critical );
   }
   catch ( QgsException &ex )
   {
     QString message = QStringLiteral( "QgsException: %1" ).arg( ex.what() );
 
-    Debug( "[" + strTenant + "] " + message );
     QgsMessageLog::logMessage( message, QStringLiteral( "Server" ), Qgis::Critical );
   }
   catch ( std::exception &ex )
@@ -194,7 +256,6 @@ int main( int argc, char *argv[] )
 
     QString message = QString::fromUtf8( ex.what() );
 
-    Debug( "[" + strTenant + "] " + message );
     QgsMessageLog::logMessage( QStringLiteral( "std::exception: %1" ).arg( message ), QStringLiteral( "Server" ), Qgis::Critical );
   }
   catch ( ... )
@@ -206,7 +267,6 @@ int main( int argc, char *argv[] )
 
     QString message = QStringLiteral( "Unknown exception" );
 
-    Debug( "[" + strTenant + "] " + message );
     QgsMessageLog::logMessage( message, QStringLiteral( "Server" ), Qgis::Critical );
   }
 
