@@ -629,7 +629,7 @@ void QgsVectorLayerProperties::syncToLayer()
   {
     mSelectionSymbolButton->setSymbol( symbol->clone() );
   }
-  mSbSelectionHaloRadiusSpinBox->setValue( selectionProperties->sbSelectionHaloRadius() );
+
   switch ( selectionProperties->selectionRenderingMode() )
   {
     case Qgis::SelectionRenderingMode::Default:
@@ -659,8 +659,8 @@ void QgsVectorLayerProperties::syncToLayer()
         mRadioDefaultSelectionColor->setChecked( true );
       }
       break;
-    case Qgis::SelectionRenderingMode::sbHalo:
-      mRadioSbSelectionHalo->setChecked( true );
+    case Qgis::SelectionRenderingMode::sbDisableDefault:
+      mRadioSbDisableDefault->setChecked( true );
       break;
   }
 
@@ -943,7 +943,7 @@ void QgsVectorLayerProperties::apply()
     selectionProperties->setSelectionColor( QColor() );
   if ( QgsSymbol *symbol = mSelectionSymbolButton->symbol() )
     selectionProperties->setSelectionSymbol( symbol->clone() );
-  selectionProperties->sbSetSelectionRadius( mSbSelectionHaloRadiusSpinBox->value() );
+  
   if ( mRadioOverrideSelectionSymbol->isChecked() )
   {
     selectionProperties->setSelectionRenderingMode( Qgis::SelectionRenderingMode::CustomSymbol );
@@ -952,9 +952,9 @@ void QgsVectorLayerProperties::apply()
   {
     selectionProperties->setSelectionRenderingMode( Qgis::SelectionRenderingMode::CustomColor );
   }
-  else if ( mRadioOverrideSelectionSymbol->isChecked() )
+  else if ( mRadioSbDisableDefault->isChecked() )
   {
-    selectionProperties->setSelectionRenderingMode( Qgis::SelectionRenderingMode::sbHalo );
+    selectionProperties->setSelectionRenderingMode( Qgis::SelectionRenderingMode::sbDisableDefault );
   }
   else
   {

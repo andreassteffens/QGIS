@@ -451,6 +451,9 @@ class CORE_EXPORT QgsRenderContext : public QgsTemporalRangeObject
      */
     bool showSelection() const;
 
+    bool sbDisableSelection() const { return mSbDisableSelection; } SIP_SKIP
+    void sbSetDisableSelection( bool disable ) { mSbDisableSelection = disable; } SIP_SKIP
+
     //setters
 
     /**
@@ -1250,6 +1253,8 @@ class CORE_EXPORT QgsRenderContext : public QgsTemporalRangeObject
 
     //! clip paths to be applied to the symbol layer before rendering
     QMap< QString, QList<QPainterPath> > mSymbolLayerClipPaths;
+
+    bool mSbDisableSelection = false;
 
 #ifdef QGISDEBUG
     bool mHasTransformContext = false;

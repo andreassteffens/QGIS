@@ -104,15 +104,11 @@ class CORE_EXPORT QgsVectorLayerSelectionProperties : public QgsMapLayerSelectio
      */
     void setSelectionSymbol( QgsSymbol *symbol SIP_TRANSFER );
 
-    double sbSelectionHaloRadius() const SIP_SKIP;
-    void sbSetSelectionRadius( double radius );
-
   private:
 
     Qgis::SelectionRenderingMode mSelectionRenderingMode = Qgis::SelectionRenderingMode::Default;
     QColor mSelectionColor;
     std::unique_ptr< QgsSymbol > mSelectionSymbol;
-    double mSbSelectionHaloRadius;
 };
 
 #endif // QGSVECTORLAYERSELECTIONPROPERTIES_H

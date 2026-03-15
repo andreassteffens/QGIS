@@ -1251,7 +1251,7 @@ class CORE_EXPORT Qgis
       Default, //!< Use default symbol and selection colors
       CustomColor, //!< Use default symbol with a custom selection color
       CustomSymbol, //!< Use a custom symbol
-      sbHalo
+      sbDisableDefault
     };
     Q_ENUM( SelectionRenderingMode )
 

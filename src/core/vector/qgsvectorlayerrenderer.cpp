@@ -84,7 +84,8 @@ QgsVectorLayerRenderer::QgsVectorLayerRenderer( QgsVectorLayer *layer, QgsRender
       break;
     }
 
-    case Qgis::SelectionRenderingMode::sbHalo:
+    case Qgis::SelectionRenderingMode::sbDisableDefault:
+        context.sbSetDisableSelection( true );
       break;
   }
 
@@ -574,7 +575,7 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
       if ( ! mNoSetLayerExpressionContext )
         context.expressionContext().setFeature( fet );
 
-      const bool featureIsSelected = isMainRenderer && context.showSelection() && mSelectedFeatureIds.contains( fet.id() );
+      const bool featureIsSelected = isMainRenderer && context.showSelection() && !context.sbDisableSelection() && mSelectedFeatureIds.contains(fet.id());
       bool drawMarker = isMainRenderer && ( mDrawVertexMarkers && context.drawEditingInformation() && ( !mVertexMarkerOnlyForSelection || featureIsSelected ) );
 
       // render feature
@@ -908,7 +909,7 @@ void QgsVectorLayerRenderer::drawRendererLevels( QgsFeatureRenderer *renderer, Q
             return;
           }
 
-          const bool featureIsSelected = isMainRenderer && context.showSelection() && mSelectedFeatureIds.contains( feature.id() );
+          const bool featureIsSelected = isMainRenderer && context.showSelection() && !context.sbDisableSelection() && mSelectedFeatureIds.contains(feature.id());
           if ( featureIsSelected && mSelectionSymbol )
             continue; // defer rendering of selected symbols
 
