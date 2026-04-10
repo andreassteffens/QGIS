@@ -40,8 +40,8 @@ namespace QgsSb
     if ( cacheManager )
     {
       QgsServerRequest::Parameters params = request.parameters();
-      QString strDocumentsParam = params.value( "documents" );
-      QString strImagesParam = params.value( "images" );
+      QString strDocumentsParam = params.value( "DOCUMENTS" );
+      QString strImagesParam = params.value( "IMAGES" );
 
       if ( !strDocumentsParam.isEmpty() || !strImagesParam.isEmpty() )
       {
