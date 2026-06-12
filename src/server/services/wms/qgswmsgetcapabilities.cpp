@@ -28,6 +28,8 @@
 #include "qgslayoutitemmap.h"
 #include "qgslayoutitemlabel.h"
 #include "qgslayoutitemhtml.h"
+#include "qgsrulebasedrenderer.h"
+#include "qgscategorizedsymbolrenderer.h"
 #include "qgslayoutframe.h"
 #include "qgslayoutpagecollection.h"
 #include "qgsmaplayertemporalproperties.h"
@@ -1758,6 +1760,12 @@ namespace QgsWms
             {
               if ( vlayer->isSpatial() )
               {
+                QString rendererType = vlayer->renderer()->type();
+                QDomElement rendererTypeElement = doc.createElement( QStringLiteral( "sbRendererType" ) );
+                QDomText rendererTypeText = doc.createTextNode( rendererType );
+                rendererTypeElement.appendChild( rendererTypeText );
+                layerElem.appendChild( rendererTypeElement );
+
                 if ( legendItemIconMap.contains( l->id() ) )
                 {
                   QDomElement iconElem = doc.createElement( QStringLiteral( "sbIcon" ) );
@@ -1774,36 +1782,63 @@ namespace QgsWms
                 }
 
                 QgsLegendSymbolList symbolsList = vlayer->renderer()->legendSymbolItems();
+                QString rendererClassAttribute;
+
+                QMap<QString, QString> symbolConditionMap;
+
+                if ( rendererType == QLatin1String( "categorizedSymbol" ) )
+                {
+                  const QgsCategorizedSymbolRenderer *categorizedRenderer = dynamic_cast<const QgsCategorizedSymbolRenderer *>( vlayer->renderer() );
+                  rendererClassAttribute = categorizedRenderer->classAttribute();
+
+                  const QgsCategoryList categoryList = categorizedRenderer->categories();
+                  for ( QgsCategoryList::const_iterator iter = categoryList.constBegin(); iter != categoryList.constEnd(); iter++ )
+                    symbolConditionMap.insert( iter->uuid(), iter->value().toString() );
+                }
+                else if ( rendererType == QLatin1String( "RuleRenderer" ) )
+                {
+                  QgsRuleBasedRenderer *ruleBasedRenderer = dynamic_cast<QgsRuleBasedRenderer *>( vlayer->renderer() );
+                  QgsRuleBasedRenderer::Rule* rootRule = ruleBasedRenderer->rootRule();
+                  QgsRuleBasedRenderer::RuleList childList = rootRule->children();
+                  for ( QgsRuleBasedRenderer::RuleList::const_iterator iter = childList.constBegin(); iter != childList.constEnd(); iter++ )
+                    symbolConditionMap.insert( (*iter)->ruleKey(), (*iter)->filterExpression() );
+                }
 
                 if ( symbolsList.count() > 0 )
                 {
                   QDomElement symbolsElem = doc.createElement( QStringLiteral( "sbLegendSymbols" ) );
+                  if ( !rendererClassAttribute.isEmpty() )
+                    symbolsElem.setAttribute( QStringLiteral( "rendererClassAttribute" ), rendererClassAttribute );
 
                   for ( int symbolIndex = 0; symbolIndex < symbolsList.count(); symbolIndex++ )
                   {
                     QgsLegendSymbolItem &legendItem = symbolsList[ symbolIndex ];
 
                     QDomElement symbolElem = doc.createElement( QStringLiteral( "sbLegendSymbol" ) );
-                    symbolElem.setAttribute( "name", legendItem.ruleKey() );
+                    symbolElem.setAttribute( QStringLiteral( "name" ), legendItem.ruleKey() );
+
+                    QMap<QString, QString>::const_iterator iterCondition = symbolConditionMap.find( legendItem.ruleKey() );
+                    if ( iterCondition != symbolConditionMap.end() )
+                      symbolElem.setAttribute( QStringLiteral( "condition" ), *iterCondition );
 
                     if ( !legendItem.label().isEmpty() )
-                      symbolElem.setAttribute( "title", legendItem.label() );
+                      symbolElem.setAttribute( QStringLiteral( "title" ), legendItem.label() );
 
-                    symbolElem.setAttribute( "checkable", vlayer->renderer()->legendSymbolItemsCheckable() );
-                    symbolElem.setAttribute( "checked", vlayer->renderer()->legendSymbolItemChecked( legendItem.ruleKey() ) );
-                    symbolElem.setAttribute( "minScale", legendItem.scaleMinDenom() );
-                    symbolElem.setAttribute( "maxScale", legendItem.scaleMaxDenom() );
+                    symbolElem.setAttribute( QStringLiteral( "checkable" ), vlayer->renderer()->legendSymbolItemsCheckable() );
+                    symbolElem.setAttribute( QStringLiteral( "checked" ), vlayer->renderer()->legendSymbolItemChecked( legendItem.ruleKey() ) );
+                    symbolElem.setAttribute( QStringLiteral( "minScale" ), legendItem.scaleMinDenom() );
+                    symbolElem.setAttribute( QStringLiteral( "maxScale" ), legendItem.scaleMaxDenom() );
 
                     QString symbolKey = l->id() + "_" + legendItem.ruleKey();
                     if ( legendItemIconMap.contains( symbolKey ) )
                     {
-                      symbolElem.setAttribute( "icon", legendItemIconMap[ symbolKey ] );
+                      symbolElem.setAttribute( QStringLiteral( "icon" ), legendItemIconMap[symbolKey]);
 
                       QPixmap image;
                       image.loadFromData( QByteArray::fromBase64( legendItemIconMap[ symbolKey ].toUtf8() ) );
 
-                      symbolElem.setAttribute( "width", image.width() );
-                      symbolElem.setAttribute( "height", image.height() );
+                      symbolElem.setAttribute( QStringLiteral( "width" ), image.width() );
+                      symbolElem.setAttribute( QStringLiteral( "height" ), image.height() );
                     }
 
                     QgsSymbol *symbol = legendItem.symbol();
@@ -1813,37 +1848,37 @@ namespace QgsWms
                       {
                         case Qgis::SymbolType::Marker:
                           {
-                            symbolElem.setAttribute( "type", "Marker" );
+                            symbolElem.setAttribute( QStringLiteral( "type" ), QStringLiteral( "Marker" ) );
 
                             QgsMarkerSymbol *markerSymbol = static_cast<QgsMarkerSymbol *>( symbol );
-                            symbolElem.setAttribute( "unit", QString::number( (int) markerSymbol->outputUnit() ) );
-                            symbolElem.setAttribute( "size", QString::number( markerSymbol->size() ) );
+                            symbolElem.setAttribute( QStringLiteral( "unit" ), QString::number( (int) markerSymbol->outputUnit() ) );
+                            symbolElem.setAttribute( QStringLiteral( "size" ), QString::number( markerSymbol->size() ) );
                           }
                           break;
                         case Qgis::SymbolType::Line:
                           {
-                            symbolElem.setAttribute("type", "Line");
+                            symbolElem.setAttribute( QStringLiteral( "type" ), QStringLiteral( "Line" ) );
 
                             QgsLineSymbol *lineSymbol = static_cast<QgsLineSymbol *>( symbol );
-                            symbolElem.setAttribute( "unit", QString::number( (int) lineSymbol->outputUnit() ) );
-                            symbolElem.setAttribute( "size", QString::number( lineSymbol->width() ) );
+                            symbolElem.setAttribute( QStringLiteral( "unit" ), QString::number( (int) lineSymbol->outputUnit() ) );
+                            symbolElem.setAttribute( QStringLiteral( "size" ), QString::number( lineSymbol->width() ) );
                           }
                           break;
                         case Qgis::SymbolType::Fill:
                           {
-                            symbolElem.setAttribute("type", "Fill");
+                            symbolElem.setAttribute( QStringLiteral( "type" ), QStringLiteral( "Fill" ) );
 
                             QgsFillSymbol *fillSymbol = static_cast<QgsFillSymbol *>( symbol );
-                            symbolElem.setAttribute( "unit", QString::number( (int) fillSymbol->outputUnit() ) );
+                            symbolElem.setAttribute( QStringLiteral( "unit" ), QString::number( (int) fillSymbol->outputUnit() ) );
                           }
                           break;
                         case Qgis::SymbolType::Hybrid:
-                          symbolElem.setAttribute( "type", "Hybrid" );
+                          symbolElem.setAttribute( QStringLiteral( "type" ), QStringLiteral( "Hybrid" ) );
                           break;
                       }
                     }
                     else
-                      symbolElem.setAttribute( "type", "Unknown" );
+                      symbolElem.setAttribute( QStringLiteral( "type"), QStringLiteral( "Unknown" ) );
 
                     symbolsElem.appendChild( symbolElem );
                   }
