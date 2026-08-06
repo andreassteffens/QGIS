@@ -24,6 +24,16 @@
 
 
 #include <qstring.h>
+#include <qdir.h>
+
+inline bool sbIsChildPath( const QString &strParentPath, const QString &strChildPath )
+{
+  QDir parent( QDir::cleanPath( strParentPath ) );
+
+  QString strRelative = parent.relativeFilePath( QDir::cleanPath( strChildPath ) );
+
+  return !strRelative.startsWith( ".." ) && strRelative != ".." &&  !QDir::isAbsolutePath( strRelative );
+}
 
 
 inline QString sbGetStandardizedPath( const QString &strPath )

@@ -43,6 +43,7 @@
 #include "qgscoordinatetransform.h"
 #include "qgssettings.h"
 #include "sbservercachefilter.h"
+#include "sbtenantsettings.h"
 #include "sbutils.h"
 
 #include <QDomDocument>
@@ -88,6 +89,9 @@ QgsServer::QgsServer( const QString &strTenant )
 
   QString strUnloadConfig = QDir( sSettings()->cacheDirectory() ).filePath( "unload_" + strTenant );
   mSbUnloadWatcher.setWatchedPath( strUnloadConfig );
+  
+  QString strTenantConfig = QDir( sSettings()->cacheDirectory() ).filePath( "settings_" + strTenant + ".json" );
+  mSbTenantSettings.load( strTenantConfig );
 }
 
 QgsServer::QgsServer()
@@ -699,6 +703,14 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
         // Setup project (config file path)
         if ( !project )
         {
+          QString strMap = params.map();
+          if ( !strMap.isEmpty() && mSbTenantSettings.acceptEncryptedPathsOnly() )
+          {
+            bool bClear = strMap.contains( ".qgs", Qt::CaseInsensitive ) || strMap.contains( ".qgz", Qt::CaseInsensitive );
+            if ( bClear )
+              throw QgsServerException( QStringLiteral( "Project file path error: only encrypted paths are allowed!" ) );
+          }
+
           const QString configFilePath = configPath( *sConfigFilePath, params.map() );
 
           if ( configFilePath.isEmpty() )
@@ -722,6 +734,12 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
           }
           else
           {
+            if ( !mSbTenantSettings.rootDataFolder().isEmpty() )
+            {
+              if ( !sbIsChildPath( mSbTenantSettings.rootDataFolder(), configFilePath ) )
+                throw QgsServerException( QStringLiteral( "Project file path error: access to project path is not allowed!" ) );
+            }
+
             sServerInterface->sbRequestLogMessage( QStringLiteral( "Checking if project '%1' is unloaded" ).arg( configFilePath ) );
             if ( mSbUnloadWatcher.isUnloaded( configFilePath ) )
               throw QgsServerException( QStringLiteral( "Project has been marked unloaded!" ) );

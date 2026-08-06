@@ -51,6 +51,7 @@ set(QGIS_SERVER_SRCS
   qgsfeaturefilter.cpp
   qgsstorebadlayerinfo.cpp
   qgsserverquerystringparameter.cpp
+  sbtenantsettings.cpp
   sbservercachefilter.cpp
   sbUnloadProjectFileWatcher.cpp
   ${CMAKE_SOURCE_DIR}/external/SimpleCrypt/SimpleCrypt.cpp
@@ -60,6 +61,7 @@ set (QGIS_SERVER_HDRS
   qgscapabilitiescache.h
   qgsconfigcache.h
   qgsmapserviceexception.h
+  sbtenantsettings.h
   sbconstants.h
   sbutils.h
   sbServerCacheFilter.h

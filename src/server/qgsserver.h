@@ -39,7 +39,8 @@
 #include "qgis_server.h"
 #include "qgsserverrequest.h"
 #include "sbservercachefilter.h"
-#include "sbUnloadProjectFileWatcher.h"
+#include "sbunloadprojectfilewatcher.h"
+#include "sbtenantsettings.h"
 #include "SimpleCrypt.h"
 
 class QgsServerResponse;
@@ -157,6 +158,7 @@ class SERVER_EXPORT QgsServer : public QObject
 
     QString mSbTenant;
     sbUnloadProjectFileWatcher mSbUnloadWatcher;
+    sbTenantSettings mSbTenantSettings;
 
     //! Initialize locale
     static void initLocale();
