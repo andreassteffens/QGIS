@@ -173,8 +173,8 @@ if errorlevel 1 (echo cmake failed & goto error)
 if "%CONFIGONLY%"=="1" (echo Exiting after configuring build directory: %CD% & goto end)
 
 :skipcmake
-if exist ..\noclean (echo skip clean & goto skipclean)
-echo CLEAN: %DATE% %TIME%
+REM if exist ..\noclean (echo skip clean & goto skipclean)
+REM echo CLEAN: %DATE% %TIME%
 REM cmake --build %BUILDDIR% --target clean --config %BUILDCONF%
 REM if errorlevel 1 (echo clean failed & goto error)
 

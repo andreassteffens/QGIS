@@ -708,7 +708,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
           {
             bool bClear = strMap.contains( ".qgs", Qt::CaseInsensitive ) || strMap.contains( ".qgz", Qt::CaseInsensitive );
             if ( bClear )
-              throw QgsServerException( QStringLiteral( "Project file path error: only encrypted paths are allowed!" ) );
+              throw QgsServerException( QStringLiteral( "Project file path error '%1': only encrypted paths are allowed!" ).arg( strMap ) );
           }
 
           const QString configFilePath = configPath( *sConfigFilePath, params.map() );
@@ -737,12 +737,12 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
             if ( !mSbTenantSettings.rootDataFolder().isEmpty() )
             {
               if ( !sbIsChildPath( mSbTenantSettings.rootDataFolder(), configFilePath ) )
-                throw QgsServerException( QStringLiteral( "Project file path error: access to project path is not allowed!" ) );
+                throw QgsServerException( QStringLiteral( "Project file path error '%1': access to project path is not allowed!" ).arg( configFilePath ) );
             }
 
             sServerInterface->sbRequestLogMessage( QStringLiteral( "Checking if project '%1' is unloaded" ).arg( configFilePath ) );
             if ( mSbUnloadWatcher.isUnloaded( configFilePath ) )
-              throw QgsServerException( QStringLiteral( "Project has been marked unloaded!" ) );
+              throw QgsServerException( QStringLiteral( "Project '%1' has been marked unloaded!" ).arg( configFilePath ) );
 
             // load the project if needed and not empty
             // Note that  QgsConfigCache::project( ... ) call QgsProject::setInstance(...)
