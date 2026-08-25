@@ -736,7 +736,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
           {
             if ( !mSbTenantSettings.rootDataFolder().isEmpty() )
             {
-              if ( !sbIsChildPath( mSbTenantSettings.rootDataFolder(), configFilePath ) )
+              if ( !configFilePath.endsWith( QStringLiteral( ".sld" ), Qt::CaseInsensitive ) && !sbIsChildPath(mSbTenantSettings.rootDataFolder(), configFilePath))
                 throw QgsServerException( QStringLiteral( "Project file path error '%1': access to project path is not allowed!" ).arg( configFilePath ) );
             }
 
