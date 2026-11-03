@@ -43,6 +43,17 @@ namespace QgsWmts
 
     QMap< QString, tileMatrixInfo> fixedTileMatrixInfoMap = populateFixedTileMatrixInfoMap();
     QMap< QString, tileMatrixInfo> calculatedTileMatrixInfoMap; // for project without WMTSGrids configuration
+
+    bool isValidRectangle(const QgsRectangle& rect)
+    {
+      return !rect.isEmpty() &&
+        std::isfinite(rect.xMinimum()) &&
+        std::isfinite(rect.yMinimum()) &&
+        std::isfinite(rect.xMaximum()) &&
+        std::isfinite(rect.yMaximum()) &&
+        rect.xMinimum() <= rect.xMaximum() &&
+        rect.yMinimum() <= rect.yMaximum();
+    }
   }
 
   QString implementationVersion()
@@ -96,6 +107,9 @@ namespace QgsWmts
     {
       Q_UNUSED( cse )
     }
+
+    if ( !isValidRectangle( tmi.extent ) )
+      return tmi;
 
     tmi.unit = crs.mapUnits();
     tmi.hasAxisInverted = crs.hasAxisInverted();
@@ -202,7 +216,7 @@ namespace QgsWmts
     //load project scales
     const bool useProjectScales = project->viewSettings()->useProjectScales();
     const QVector< double >projectScales = project->viewSettings()->mapScales();
-    if ( useProjectScales && projectScales.empty() )
+    if ( useProjectScales && !projectScales.empty() )
     {
       scale = *std::min_element( projectScales.begin(), projectScales.end() );
     }
@@ -402,55 +416,63 @@ namespace QgsWmts
       const QgsRectangle projRect = QgsServerProjectUtils::wmsExtent( *project );
       const QgsCoordinateReferenceSystem projCrs = project->crs();
       const QgsCoordinateTransform exGeoTransform( projCrs, wgs84, project );
+
+      bool validProjectExtent = false;
+
       try
       {
         pLayer.wgs84BoundingRect = exGeoTransform.transformBoundingBox( projRect );
+        validProjectExtent = isValidRectangle( pLayer.wgs84BoundingRect );
       }
       catch ( const QgsCsException & )
       {
-        pLayer.wgs84BoundingRect = QgsRectangle( -180, -90, 180, 90 );
+        // Project extent cannot be transformed.
       }
 
-      QStringList wmtsGridConfigList = project->readListEntry( QStringLiteral( "WMTSGrids" ), QStringLiteral( "Config" ) );
-      for ( const QString &c : wmtsGridConfigList )
+      if ( validProjectExtent )
       {
-        QStringList config = c.split( ',' );
-        QString crsStr = config[0];
-
-        if ( !fixedTileMatrixInfoMap.contains( crsStr ) )
+        QStringList wmtsGridConfigList = project->readListEntry( QStringLiteral( "WMTSGrids" ), QStringLiteral( "Config" ) );
+        for ( const QString &c : wmtsGridConfigList )
         {
-          QgsCoordinateReferenceSystem gridCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( crsStr );
-          QgsCoordinateTransform gridTransform = QgsCoordinateTransform( projCrs, gridCrs, project );
-
-          try
+          QStringList config = c.split( ',' );
+          QString crsStr = config[0];
+        
+          if ( !fixedTileMatrixInfoMap.contains( crsStr ) )
           {
-            QgsRectangle gridRect = gridTransform.transformBoundingBox( projRect );
-            if ( !pLayer.sbCrsBoundingRects.contains( gridCrs.authid() ) )
-              pLayer.sbCrsBoundingRects.insert( gridCrs.authid(), gridRect );
-          }
-          catch ( const QgsCsException & )
-          {
-            // nothing to be done here for now
+            QgsCoordinateReferenceSystem gridCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( crsStr );
+            QgsCoordinateTransform gridTransform = QgsCoordinateTransform( projCrs, gridCrs, project );
+        
+            try
+            {
+              QgsRectangle gridRect = gridTransform.transformBoundingBox( projRect );
+        
+              if ( isValidRectangle( gridRect ) && !pLayer.sbCrsBoundingRects.contains( gridCrs.authid() ) )
+                pLayer.sbCrsBoundingRects.insert( gridCrs.authid(), gridRect );
+            }
+            catch ( const QgsCsException & )
+            {
+              // nothing to be done here for now
+            }
           }
         }
+        
+        // Formats
+        const bool wmtsPngProject = project->readBoolEntry( QStringLiteral( "WMTSPngLayers" ), QStringLiteral( "Project" ) );
+        if ( wmtsPngProject )
+          pLayer.formats << QStringLiteral( "image/png" );
+        const bool wmtsJpegProject = project->readBoolEntry( QStringLiteral( "WMTSJpegLayers" ), QStringLiteral( "Project" ) );
+        if ( wmtsJpegProject )
+          pLayer.formats << QStringLiteral( "image/jpeg" );
+        const bool wmtsWebpProject = project->readBoolEntry( QStringLiteral( "WMTSWebpLayers" ), QStringLiteral( "Project" ) );
+        if ( wmtsWebpProject )
+          pLayer.formats << QStringLiteral( "image/webp" );
+        
+        // Project is not queryable in WMS
+        //pLayer.queryable = ( nonIdentifiableLayers.count() != project->count() );
+        pLayer.queryable = false;
+        
+        wmtsLayers.append( pLayer );
       }
-
-      // Formats
-      const bool wmtsPngProject = project->readBoolEntry( QStringLiteral( "WMTSPngLayers" ), QStringLiteral( "Project" ) );
-      if ( wmtsPngProject )
-        pLayer.formats << QStringLiteral( "image/png" );
-      const bool wmtsJpegProject = project->readBoolEntry( QStringLiteral( "WMTSJpegLayers" ), QStringLiteral( "Project" ) );
-      if ( wmtsJpegProject )
-        pLayer.formats << QStringLiteral( "image/jpeg" );
-      const bool wmtsWebpProject = project->readBoolEntry( QStringLiteral( "WMTSWebpLayers" ), QStringLiteral( "Project" ) );
-      if ( wmtsWebpProject )
-        pLayer.formats << QStringLiteral( "image/webp" );
-
-      // Project is not queryable in WMS
-      //pLayer.queryable = ( nonIdentifiableLayers.count() != project->count() );
-      pLayer.queryable = false;
-
-      wmtsLayers.append( pLayer );
     }
 
     const QStringList wmtsGroupNameList = project->readListEntry( QStringLiteral( "WMTSLayers" ), QStringLiteral( "Group" ) );
@@ -497,11 +519,14 @@ namespace QgsWmts
           const QgsCoordinateTransform exGeoTransform( layerCrs, wgs84, project );
           try
           {
-            wgs84BoundingRect.combineExtentWith( exGeoTransform.transformBoundingBox( l->extent() ) );
+            const QgsRectangle layerRect = exGeoTransform.transformBoundingBox( l->extent() );
+
+            if ( isValidRectangle( layerRect ) )
+              wgs84BoundingRect.combineExtentWith( layerRect );
           }
           catch ( const QgsCsException & )
           {
-            wgs84BoundingRect.combineExtentWith( QgsRectangle( -180, -90, 180, 90 ) );
+            // Skip this layer's extent if transformation fails.
           }
 
           QStringList wmtsGridConfigList = project->readListEntry( QStringLiteral( "WMTSGrids" ), QStringLiteral( "Config" ) );
@@ -519,10 +544,13 @@ namespace QgsWmts
               {
                 QgsRectangle gridRect = gridTransform.transformBoundingBox( l->extent() );
 
-                if ( pLayer.sbCrsBoundingRects.contains( gridCrs.authid() ) )
-                  pLayer.sbCrsBoundingRects[gridCrs.authid()].combineExtentWith( gridRect );
-                else
-                  pLayer.sbCrsBoundingRects.insert( gridCrs.authid(), gridRect );
+                if ( isValidRectangle( gridRect ) )
+                {
+                  if ( pLayer.sbCrsBoundingRects.contains( gridCrs.authid() ) )
+                    pLayer.sbCrsBoundingRects[gridCrs.authid()].combineExtentWith( gridRect );
+                  else
+                    pLayer.sbCrsBoundingRects.insert( gridCrs.authid(), gridRect );
+                }
               }
               catch ( const QgsCsException & )
               {
@@ -550,6 +578,10 @@ namespace QgsWmts
             }
           }
         }
+
+        if ( !isValidRectangle( wgs84BoundingRect ) )
+          continue;
+
         pLayer.wgs84BoundingRect = wgs84BoundingRect;
         pLayer.queryable = queryable;
         pLayer.maxScale = maxScale;
@@ -604,8 +636,11 @@ namespace QgsWmts
       }
       catch ( const QgsCsException & )
       {
-        pLayer.wgs84BoundingRect = QgsRectangle( -180, -90, 180, 90 );
+        continue;
       }
+
+      if ( !isValidRectangle( pLayer.wgs84BoundingRect ) )
+        continue;
 
       QStringList wmtsGridConfigList = project->readListEntry( QStringLiteral( "WMTSGrids" ), QStringLiteral( "Config" ) );
       for ( const QString &c : wmtsGridConfigList )
@@ -621,7 +656,8 @@ namespace QgsWmts
           try
           {
             QgsRectangle gridRect = gridTransform.transformBoundingBox( l->extent() );
-            if ( !pLayer.sbCrsBoundingRects.contains( gridCrs.authid() ) )
+
+            if ( isValidRectangle( gridRect ) && !pLayer.sbCrsBoundingRects.contains( gridCrs.authid() ) )
               pLayer.sbCrsBoundingRects.insert( gridCrs.authid(), gridRect );
           }
           catch ( const QgsCsException & )
@@ -684,9 +720,11 @@ namespace QgsWmts
         }
       }
     }
-    tmsl.ref = tms.ref;
-
+    
     rect = rect.intersect( tms.extent );
+
+    if ( !isValidRectangle( rect ) )
+      return tmsl;
 
     int tmIdx = -1;
     for ( const tileMatrixDef &tm : tms.tileMatrixList )
@@ -702,6 +740,16 @@ namespace QgsWmts
         continue;
       }
 
+      if ( tm.col <= 0 ||
+           tm.row <= 0 ||
+           !std::isfinite( tm.resolution ) ||
+           tm.resolution <= 0.0 ||
+           !std::isfinite( tm.left ) ||
+           !std::isfinite( tm.top ) )
+      {
+        continue;
+      }
+
       const double res = tm.resolution;
 
       tileMatrixLimitDef tml;
@@ -710,9 +758,19 @@ namespace QgsWmts
       tml.minRow = std::floor( ( tm.top - rect.yMaximum() ) / ( tileSize * res ) );
       tml.maxRow = std::ceil( ( tm.top - rect.yMinimum() ) / ( tileSize * res ) ) - 1;
 
+      // Clamp limits to valid matrix dimensions.
+      tml.minCol = std::max( 0, tml.minCol );
+      tml.maxCol = std::min( tm.col - 1, tml.maxCol );
+      tml.minRow = std::max( 0, tml.minRow );
+      tml.maxRow = std::min( tm.row - 1, tml.maxRow );
+
+      if ( tml.minCol > tml.maxCol || tml.minRow > tml.maxRow )
+        continue;
+
       tileMatrixLimits[tmIdx] = tml;
     }
 
+    tmsl.ref = tms.ref;
     tmsl.tileMatrixLimits = tileMatrixLimits;
     return tmsl;
   }

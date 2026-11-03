@@ -111,18 +111,6 @@ namespace QgsWmts
     //Service identification
     QDomElement serviceElem = doc.createElement( QStringLiteral( "ows:ServiceIdentification" ) );
 
-    //Service type
-    QDomElement typeElem = doc.createElement( QStringLiteral( "ows:ServiceType" ) );
-    const QDomText typeText = doc.createTextNode( QStringLiteral( "OGC WMTS" ) );
-    typeElem.appendChild( typeText );
-    serviceElem.appendChild( typeElem );
-
-    //Service type version
-    QDomElement typeVersionElem = doc.createElement( QStringLiteral( "ows:ServiceTypeVersion" ) );
-    const QDomText typeVersionText = doc.createTextNode( implementationVersion() );
-    typeVersionElem.appendChild( typeVersionText );
-    serviceElem.appendChild( typeVersionElem );
-
     const QString title = QgsServerProjectUtils::owsServiceTitle( *project );
     QDomElement titleElem = doc.createElement( QStringLiteral( "ows:Title" ) );
     const QDomText titleText = doc.createTextNode( title );
@@ -151,6 +139,18 @@ namespace QgsWmts
       }
       serviceElem.appendChild( keywordsElem );
     }
+
+    //Service type
+    QDomElement typeElem = doc.createElement( QStringLiteral( "ows:ServiceType" ) );
+    const QDomText typeText = doc.createTextNode( QStringLiteral( "OGC WMTS" ) );
+    typeElem.appendChild( typeText );
+    serviceElem.appendChild( typeElem );
+
+    //Service type version
+    QDomElement typeVersionElem = doc.createElement( QStringLiteral( "ows:ServiceTypeVersion" ) );
+    const QDomText typeVersionText = doc.createTextNode( implementationVersion() );
+    typeVersionElem.appendChild( typeVersionText );
+    serviceElem.appendChild( typeVersionElem );
 
     QDomElement feesElem = doc.createElement( QStringLiteral( "ows:Fees" ) );
     QDomText feesText = doc.createTextNode( QStringLiteral( "None" ) ); // default value if fees are unknown
@@ -350,11 +350,6 @@ namespace QgsWmts
 
         QDomElement layerElem = doc.createElement( QStringLiteral( "Layer" ) );
 
-        QDomElement layerIdElem = doc.createElement( QStringLiteral( "ows:Identifier" ) );
-        const QDomText layerIdText = doc.createTextNode( wmtsLayer.id );
-        layerIdElem.appendChild( layerIdText );
-        layerElem.appendChild( layerIdElem );
-
         if ( !wmtsLayer.title.isEmpty() )
         {
           // Layer title
@@ -368,20 +363,36 @@ namespace QgsWmts
         {
           // Layer abstract
           QDomElement layerAbstElem = doc.createElement( QStringLiteral( "ows:Abstract" ) );
-          const QDomText layerAbstText = doc.createTextNode( project->title() );
+          const QDomText layerAbstText = doc.createTextNode( wmtsLayer.abstract );
           layerAbstElem.appendChild( layerAbstText );
           layerElem.appendChild( layerAbstElem );
         }
+
+        QgsRectangle wgs84Rect = wmtsLayer.wgs84BoundingRect;
+
+        if ( wgs84Rect.isEmpty() ||
+             !std::isfinite( wgs84Rect.xMinimum() ) ||
+             !std::isfinite( wgs84Rect.yMinimum() ) ||
+             !std::isfinite( wgs84Rect.xMaximum() ) ||
+             !std::isfinite( wgs84Rect.yMaximum() ) )
+        {
+          continue;
+        }
+
+        wgs84Rect = wgs84Rect.intersect( QgsRectangle( -180, -90, 180, 90 ) );
+
+        if ( wgs84Rect.isEmpty() )
+          continue;
 
         // WGS84 bounding box
         const int wgs84precision = 6;
         QDomElement wgs84BBoxElement = doc.createElement( QStringLiteral( "ows:WGS84BoundingBox" ) );
         QDomElement wgs84LowerCornerElement = doc.createElement( QStringLiteral( "ows:LowerCorner" ) );
-        const QDomText wgs84LowerCornerText = doc.createTextNode( qgsDoubleToString( QgsServerProjectUtils::floorWithPrecision( wmtsLayer.wgs84BoundingRect.xMinimum(), wgs84precision ), wgs84precision ) + ' ' + qgsDoubleToString( QgsServerProjectUtils::floorWithPrecision( wmtsLayer.wgs84BoundingRect.yMinimum(), wgs84precision ), wgs84precision ) );
+        const QDomText wgs84LowerCornerText = doc.createTextNode( qgsDoubleToString( QgsServerProjectUtils::floorWithPrecision(wgs84Rect.xMinimum(), wgs84precision ), wgs84precision ) + ' ' + qgsDoubleToString( QgsServerProjectUtils::floorWithPrecision( wgs84Rect.yMinimum(), wgs84precision ), wgs84precision ) );
         wgs84LowerCornerElement.appendChild( wgs84LowerCornerText );
         wgs84BBoxElement.appendChild( wgs84LowerCornerElement );
         QDomElement wgs84UpperCornerElement = doc.createElement( QStringLiteral( "ows:UpperCorner" ) );
-        const QDomText wgs84UpperCornerText = doc.createTextNode( qgsDoubleToString( QgsServerProjectUtils::ceilWithPrecision( wmtsLayer.wgs84BoundingRect.xMaximum(), wgs84precision ), wgs84precision ) + ' ' + qgsDoubleToString( QgsServerProjectUtils::ceilWithPrecision( wmtsLayer.wgs84BoundingRect.yMaximum(), wgs84precision ), wgs84precision ) );
+        const QDomText wgs84UpperCornerText = doc.createTextNode( qgsDoubleToString( QgsServerProjectUtils::ceilWithPrecision( wgs84Rect.xMaximum(), wgs84precision ), wgs84precision ) + ' ' + qgsDoubleToString( QgsServerProjectUtils::ceilWithPrecision( wgs84Rect.yMaximum(), wgs84precision ), wgs84precision ) );
         wgs84UpperCornerElement.appendChild( wgs84UpperCornerText );
         wgs84BBoxElement.appendChild( wgs84UpperCornerElement );
         layerElem.appendChild( wgs84BBoxElement );
@@ -408,6 +419,28 @@ namespace QgsWmts
             {
               continue;
             }
+          }
+
+          if ( rect.isEmpty() ||
+               !std::isfinite( rect.xMinimum() ) ||
+               !std::isfinite( rect.yMinimum() ) ||
+               !std::isfinite( rect.xMaximum() ) ||
+               !std::isfinite( rect.yMaximum() ) )
+          {
+            continue;
+          }
+
+          // Clip the layer extent to the TileMatrixSet extent.
+          rect = rect.intersect( tms.extent );
+
+          // Reject invalid or empty intersections.
+          if ( rect.isEmpty() ||
+               !std::isfinite( rect.xMinimum() ) ||
+               !std::isfinite( rect.yMinimum() ) ||
+               !std::isfinite( rect.xMaximum() ) ||
+               !std::isfinite( rect.yMaximum() ) )
+          {
+            continue;
           }
 
           int precision = 3;
@@ -457,6 +490,11 @@ namespace QgsWmts
           layerElem.appendChild( bboxElement );
         }
 
+        QDomElement layerIdElem = doc.createElement( QStringLiteral( "ows:Identifier" ) );
+        const QDomText layerIdText = doc.createTextNode( wmtsLayer.id );
+        layerIdElem.appendChild( layerIdText );
+        layerElem.appendChild( layerIdElem );
+
         // Layer Style
         QDomElement layerStyleElem = doc.createElement( QStringLiteral( "Style" ) );
         layerStyleElem.setAttribute( QStringLiteral( "isDefault" ), QStringLiteral( "true" ) );
@@ -490,7 +528,7 @@ namespace QgsWmts
         for ( const tileMatrixSetDef &tms : tmsList )
         {
           tileMatrixSetLinkDef tmsl = getLayerTileMatrixSetLink( wmtsLayer, tms, project );
-          if ( tmsl.ref.isEmpty() || tmsl.ref != tms.ref )
+          if ( tmsl.ref.isEmpty() || tmsl.ref != tms.ref || tmsl.tileMatrixLimits.isEmpty() )
           {
             continue;
           }
