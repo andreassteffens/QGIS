@@ -397,6 +397,11 @@ namespace QgsWmts
         wgs84BBoxElement.appendChild( wgs84UpperCornerElement );
         layerElem.appendChild( wgs84BBoxElement );
 
+        QDomElement layerIdElem = doc.createElement(QStringLiteral("ows:Identifier"));
+        const QDomText layerIdText = doc.createTextNode(wmtsLayer.id);
+        layerIdElem.appendChild(layerIdText);
+        layerElem.appendChild(layerIdElem);
+
         // Other bounding boxes
         for ( const tileMatrixSetDef &tms : tmsList )
         {
@@ -490,11 +495,6 @@ namespace QgsWmts
           layerElem.appendChild( bboxElement );
         }
 
-        QDomElement layerIdElem = doc.createElement( QStringLiteral( "ows:Identifier" ) );
-        const QDomText layerIdText = doc.createTextNode( wmtsLayer.id );
-        layerIdElem.appendChild( layerIdText );
-        layerElem.appendChild( layerIdElem );
-
         // Layer Style
         QDomElement layerStyleElem = doc.createElement( QStringLiteral( "Style" ) );
         layerStyleElem.setAttribute( QStringLiteral( "isDefault" ), QStringLiteral( "true" ) );
@@ -555,6 +555,16 @@ namespace QgsWmts
 
             const tileMatrixLimitDef tml = it.value();
 
+            QDomElement minTileRowElem = doc.createElement(QStringLiteral("MinTileRow"));
+            const QDomText minTileRowText = doc.createTextNode(QString::number(tml.minRow));
+            minTileRowElem.appendChild(minTileRowText);
+            tmLimitsElement.appendChild(minTileRowElem);
+
+            QDomElement maxTileRowElem = doc.createElement(QStringLiteral("MaxTileRow"));
+            const QDomText maxTileRowText = doc.createTextNode(QString::number(tml.maxRow));
+            maxTileRowElem.appendChild(maxTileRowText);
+            tmLimitsElement.appendChild(maxTileRowElem);
+
             QDomElement minTileColElem = doc.createElement( QStringLiteral( "MinTileCol" ) );
             const QDomText minTileColText = doc.createTextNode( QString::number( tml.minCol ) );
             minTileColElem.appendChild( minTileColText );
@@ -564,16 +574,6 @@ namespace QgsWmts
             const QDomText maxTileColText = doc.createTextNode( QString::number( tml.maxCol ) );
             maxTileColElem.appendChild( maxTileColText );
             tmLimitsElement.appendChild( maxTileColElem );
-
-            QDomElement minTileRowElem = doc.createElement( QStringLiteral( "MinTileRow" ) );
-            const QDomText minTileRowText = doc.createTextNode( QString::number( tml.minRow ) );
-            minTileRowElem.appendChild( minTileRowText );
-            tmLimitsElement.appendChild( minTileRowElem );
-
-            QDomElement maxTileRowElem = doc.createElement( QStringLiteral( "MaxTileRow" ) );
-            const QDomText maxTileRowText = doc.createTextNode( QString::number( tml.maxRow ) );
-            maxTileRowElem.appendChild( maxTileRowText );
-            tmLimitsElement.appendChild( maxTileRowElem );
 
             tmsLimitsElement.appendChild( tmLimitsElement );
           }
