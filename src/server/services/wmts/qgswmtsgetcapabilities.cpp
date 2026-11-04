@@ -227,15 +227,6 @@ namespace QgsWmts
            !contactPhone.isEmpty() )
       {
         QDomElement contactInfoElem = doc.createElement( QStringLiteral( "ows:ContactInfo" ) );
-        if ( !contactMail.isEmpty() )
-        {
-          QDomElement contactAddressElem = doc.createElement( QStringLiteral( "ows:Address" ) );
-          QDomElement contactAddressMailElem = doc.createElement( QStringLiteral( "ows:ElectronicMailAddress" ) );
-          const QDomText contactAddressMailText = doc.createTextNode( contactMail );
-          contactAddressMailElem.appendChild( contactAddressMailText );
-          contactAddressElem.appendChild( contactAddressMailElem );
-          contactInfoElem.appendChild( contactAddressElem );
-        }
         if ( !contactPhone.isEmpty() )
         {
           QDomElement contactPhoneElem = doc.createElement( QStringLiteral( "ows:Phone" ) );
@@ -244,6 +235,15 @@ namespace QgsWmts
           contactVoiceElem.appendChild( contactVoiceText );
           contactPhoneElem.appendChild( contactVoiceElem );
           contactInfoElem.appendChild( contactPhoneElem );
+        }
+        if ( !contactMail.isEmpty() )
+        {
+          QDomElement contactAddressElem = doc.createElement( QStringLiteral( "ows:Address" ) );
+          QDomElement contactAddressMailElem = doc.createElement( QStringLiteral( "ows:ElectronicMailAddress" ) );
+          const QDomText contactAddressMailText = doc.createTextNode( contactMail );
+          contactAddressMailElem.appendChild( contactAddressMailText );
+          contactAddressElem.appendChild( contactAddressMailElem );
+          contactInfoElem.appendChild( contactAddressElem );
         }
         serviceContactElem.appendChild( contactInfoElem );
       }
@@ -498,14 +498,17 @@ namespace QgsWmts
         // Layer Style
         QDomElement layerStyleElem = doc.createElement( QStringLiteral( "Style" ) );
         layerStyleElem.setAttribute( QStringLiteral( "isDefault" ), QStringLiteral( "true" ) );
-        QDomElement layerStyleIdElem = doc.createElement( QStringLiteral( "ows:Identifier" ) );
-        const QDomText layerStyleIdText = doc.createTextNode( QStringLiteral( "default" ) );
-        layerStyleIdElem.appendChild( layerStyleIdText );
-        layerStyleElem.appendChild( layerStyleIdElem );
+        
         QDomElement layerStyleTitleElem = doc.createElement( QStringLiteral( "ows:Title" ) );
         const QDomText layerStyleTitleText = doc.createTextNode( QStringLiteral( "default" ) );
         layerStyleTitleElem.appendChild( layerStyleTitleText );
         layerStyleElem.appendChild( layerStyleTitleElem );
+
+        QDomElement layerStyleIdElem = doc.createElement( QStringLiteral( "ows:Identifier" ) );
+        const QDomText layerStyleIdText = doc.createTextNode( QStringLiteral( "default" ) );
+        layerStyleIdElem.appendChild( layerStyleIdText );
+        layerStyleElem.appendChild( layerStyleIdElem );
+
         layerElem.appendChild( layerStyleElem );
 
         for ( const QString &format : wmtsLayer.formats )
