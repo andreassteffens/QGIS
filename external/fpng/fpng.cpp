@@ -40,6 +40,7 @@
 	#include <xmmintrin.h>		// SSE
 	#include <emmintrin.h>		// SSE2
 	#include <smmintrin.h>		// SSE4.1
+	#include <tmmintrin.h>		// SSSE3 (_mm_shuffle_epi8)
 	#include <wmmintrin.h>		// pclmul
 #endif
 
@@ -1569,95 +1570,173 @@ do_literals:
 		}
 	}
 		
+#if FPNG_X86_OR_X64_CPU && !FPNG_NO_SSE
+	// Convert 16 BGR pixels (48 bytes) to 16 RGB pixels. If pPrev is
+	// non-null, first apply PNG's Up filter (current row - previous row).
+	//
+	// The 48 input bytes are loaded into three 128-bit registers. The
+	// shuffle masks distribute the reordered bytes into three output
+	// registers without requiring an intermediate image buffer.
+	static inline void apply_bgr24_simd_block(const uint8_t* pSrc, const uint8_t* pPrev, uint8_t* pDst)
+	{
+		static const int8_t shuffle_masks[3][3][16] =
+		{
+			{
+				{  2,  1,  0,  5,  4,  3,  8,  7,  6, 11, 10,  9, 14, 13, 12, -128 },
+				{ -128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128, 1 },
+				{ -128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128 }
+			},
+			{
+				{ -128, 15,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128 },
+				{  0,-128,  4,  3,  2,  7,  6,  5, 10,  9,  8, 13, 12, 11,-128, 15 },
+				{ -128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,  0,-128 }
+			},
+			{
+				{ -128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128 },
+				{ 14,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128 },
+				{ -128,  3,  2,  1,  6,  5,  4,  9,  8,  7, 12, 11, 10, 15, 14, 13 }
+			}
+		};
+
+		__m128i src[3];
+		for (uint32_t i = 0; i < 3; ++i)
+		{
+			src[i] = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pSrc + i * 16));
+			if (pPrev)
+			{
+				const __m128i prev = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pPrev + i * 16));
+				src[i] = _mm_sub_epi8(src[i], prev);
+			}
+		}
+
+		for (uint32_t o = 0; o < 3; ++o)
+		{
+			__m128i result = _mm_setzero_si128();
+			for (uint32_t i = 0; i < 3; ++i)
+			{
+				const __m128i mask = _mm_loadu_si128(reinterpret_cast<const __m128i*>(shuffle_masks[o][i]));
+				result = _mm_or_si128(result, _mm_shuffle_epi8(src[i], mask));
+			}
+			_mm_storeu_si128(reinterpret_cast<__m128i*>(pDst + o * 16), result);
+		}
+	}
+#endif
+
 	static void apply_filter(uint32_t filter, int w, int h, uint32_t num_chans, uint32_t bpl, const uint8_t* pSrc, const uint8_t* pPrev_src, uint8_t* pDst)
 	{
 		(void)h;
+		(void)bpl;
+		assert((num_chans == 3) || (num_chans == 4));
 
 		switch (filter)
 		{
 		case 0:
 		{
 			*pDst++ = 0;
-
-      if (num_chans == 3)
-      {
-        for (uint32_t x = 0; x < (uint32_t)w; x++)
-        {
-          pDst[2] = (uint8_t)(pSrc[0]);
-          pDst[1] = (uint8_t)(pSrc[1]);
-          pDst[0] = (uint8_t)(pSrc[2]);
-
-          pSrc += 3;
-          pDst += 3;
-        }
-      }
-      else
-      {
-        for (uint32_t x = 0; x < (uint32_t)w; x++)
-        {
-          pDst[2] = (uint8_t)(pSrc[0]);
-          pDst[1] = (uint8_t)(pSrc[1]);
-          pDst[0] = (uint8_t)(pSrc[2]);
-          pDst[3] = (uint8_t)(pSrc[3]);
-
-          pSrc += 4;
-          pDst += 4;
-        }
-      }
-			
-			break;
-		}
-		case 2:
-		{
-			assert(pPrev_src);
-
-			// Previous scanline
-			*pDst++ = 2;
+			uint32_t x = 0;
 
 #if FPNG_X86_OR_X64_CPU && !FPNG_NO_SSE
-			if (g_cpu_info.can_use_sse41() && false)
-			{
-				uint32_t bytes_to_process = w * num_chans, ofs = 0;
-				for (; bytes_to_process >= 16; bytes_to_process -= 16, ofs += 16)
-					_mm_storeu_si128((__m128i*)(pDst + ofs), _mm_sub_epi8(_mm_loadu_si128((const __m128i*)(pSrc + ofs)), _mm_loadu_si128((const __m128i*)(pPrev_src + ofs))));
-
-				for (; bytes_to_process; bytes_to_process--, ofs++)
-					pDst[ofs] = (uint8_t)(pSrc[ofs] - pPrev_src[ofs]);
-			}
-			else
-#endif
+			if (g_cpu_info.can_use_sse41())
 			{
 				if (num_chans == 3)
 				{
-					for (uint32_t x = 0; x < (uint32_t)w; x++)
-					{
-						pDst[2] = (uint8_t)(pSrc[0] - pPrev_src[0]);
-						pDst[1] = (uint8_t)(pSrc[1] - pPrev_src[1]);
-						pDst[0] = (uint8_t)(pSrc[2] - pPrev_src[2]);
-
-						pSrc += 3;
-						pPrev_src += 3;
-						pDst += 3;
-					}
+					for (; (uint32_t)w - x >= 16; x += 16)
+						apply_bgr24_simd_block(pSrc + x * 3, nullptr, pDst + x * 3);
 				}
 				else
 				{
-					for (uint32_t x = 0; x < (uint32_t)w; x++)
+					const __m128i shuffle_mask = _mm_setr_epi8(
+						2, 1, 0, 3, 6, 5, 4, 7,
+						10, 9, 8, 11, 14, 13, 12, 15);
+					for (; (uint32_t)w - x >= 4; x += 4)
 					{
-						pDst[2] = (uint8_t)(pSrc[0] - pPrev_src[0]);
-						pDst[1] = (uint8_t)(pSrc[1] - pPrev_src[1]);
-						pDst[0] = (uint8_t)(pSrc[2] - pPrev_src[2]);
-						pDst[3] = (uint8_t)(pSrc[3] - pPrev_src[3]);
-
-						pSrc += 4;
-						pPrev_src += 4;
-						pDst += 4;
+						__m128i pixels = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pSrc + x * 4));
+						pixels = _mm_shuffle_epi8(pixels, shuffle_mask);
+						_mm_storeu_si128(reinterpret_cast<__m128i*>(pDst + x * 4), pixels);
 					}
 				}
 			}
+#endif
 
+			if (num_chans == 3)
+			{
+				for (; x < (uint32_t)w; ++x)
+				{
+					const uint8_t* s = pSrc + x * 3;
+					uint8_t* d = pDst + x * 3;
+					d[0] = s[2]; d[1] = s[1]; d[2] = s[0];
+				}
+			}
+			else
+			{
+				for (; x < (uint32_t)w; ++x)
+				{
+					const uint8_t* s = pSrc + x * 4;
+					uint8_t* d = pDst + x * 4;
+					d[0] = s[2]; d[1] = s[1]; d[2] = s[0]; d[3] = s[3];
+				}
+			}
 			break;
 		}
+
+		case 2:
+		{
+			assert(pPrev_src);
+			*pDst++ = 2;
+			uint32_t x = 0;
+
+#if FPNG_X86_OR_X64_CPU && !FPNG_NO_SSE
+			if (g_cpu_info.can_use_sse41())
+			{
+				if (num_chans == 3)
+				{
+					for (; (uint32_t)w - x >= 16; x += 16)
+						apply_bgr24_simd_block(pSrc + x * 3, pPrev_src + x * 3, pDst + x * 3);
+				}
+				else
+				{
+					const __m128i shuffle_mask = _mm_setr_epi8(
+						2, 1, 0, 3, 6, 5, 4, 7,
+						10, 9, 8, 11, 14, 13, 12, 15);
+					for (; (uint32_t)w - x >= 4; x += 4)
+					{
+						const __m128i current = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pSrc + x * 4));
+						const __m128i previous = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pPrev_src + x * 4));
+						const __m128i diff = _mm_shuffle_epi8(_mm_sub_epi8(current, previous), shuffle_mask);
+						_mm_storeu_si128(reinterpret_cast<__m128i*>(pDst + x * 4), diff);
+					}
+				}
+			}
+#endif
+
+			if (num_chans == 3)
+			{
+				for (; x < (uint32_t)w; ++x)
+				{
+					const uint8_t* s = pSrc + x * 3;
+					const uint8_t* p = pPrev_src + x * 3;
+					uint8_t* d = pDst + x * 3;
+					d[0] = (uint8_t)(s[2] - p[2]);
+					d[1] = (uint8_t)(s[1] - p[1]);
+					d[2] = (uint8_t)(s[0] - p[0]);
+				}
+			}
+			else
+			{
+				for (; x < (uint32_t)w; ++x)
+				{
+					const uint8_t* s = pSrc + x * 4;
+					const uint8_t* p = pPrev_src + x * 4;
+					uint8_t* d = pDst + x * 4;
+					d[0] = (uint8_t)(s[2] - p[2]);
+					d[1] = (uint8_t)(s[1] - p[1]);
+					d[2] = (uint8_t)(s[0] - p[0]);
+					d[3] = (uint8_t)(s[3] - p[3]);
+				}
+			}
+			break;
+		}
+
 		default:
 			assert(0);
 			break;

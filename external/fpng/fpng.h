@@ -75,7 +75,8 @@ namespace fpng
 	};
 
 	// Fast PNG encoding. The resulting file can be decoded either using a standard PNG decoder or by the fpng_decode_memory() function below.
-	// pImage: pointer to RGB or RGBA image pixels, R first in memory, B/A last.
+	// pImage: pointer to BGR or BGRA image pixels, B first in memory, R third, A last (4 channels).
+	// The encoder converts the channel order to standard RGB/RGBA in the PNG output.
 	// w/h - image dimensions. Image's row pitch in bytes must is w*num_chans.
 	// num_chans must be 3 or 4. 
 	bool fpng_encode_image_to_memory(const void* pImage, uint32_t w, uint32_t h, uint32_t num_chans, std::vector<uint8_t>& out_buf, uint32_t flags = 0);
