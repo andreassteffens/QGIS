@@ -171,6 +171,9 @@ namespace QgsSb
     canUseSse41Elem.setAttribute( QStringLiteral( "value" ), cpuInfo.can_use_sse41() ? "true" : "false" );
     cpuInfoElem.appendChild( canUseSse41Elem );
 
+    QDomElement canUseAvx2Elem = doc.createElement(QStringLiteral("CanUseAvx2"));
+    canUseAvx2Elem.setAttribute(QStringLiteral("value"), cpuInfo.can_use_avx2() ? "true" : "false");
+    cpuInfoElem.appendChild(canUseAvx2Elem);
 
     serverIface->sbRequestLogMessage( QStringLiteral( "writeGetServerInfo: Collecting configuration parameters..." ) );
 

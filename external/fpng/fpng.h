@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <vector>
+#include <string.h>
 
 #ifndef FPNG_TRAIN_HUFFMAN_TABLES
 	// Set to 1 when using the -t (training) option in fpng_test to generate new opaque/alpha Huffman tables for the single pass encoder.
@@ -18,6 +19,7 @@ namespace fpng
     cpu_info() { memset(this, 0, sizeof(*this)); }
 
     void init();
+    bool is_initialized() const { return m_initialized; }
 
     bool has_sse() const { return m_has_sse; }
     bool has_sse2() const { return m_has_sse2; }
@@ -30,23 +32,27 @@ namespace fpng
     bool has_pclmulqdq() const { return m_has_pclmulqdq; }
 
     bool can_use_sse41() const { return m_has_sse && m_has_sse2 && m_has_sse3 && m_has_ssse3 && m_has_sse41; }
+    // AVX2 is usable only when both the CPU and OS support saving YMM state.
+    bool can_use_avx2() const { return m_has_avx && m_has_avx2 && m_has_os_avx_state; }
     bool can_use_pclmul() const { return m_has_pclmulqdq && can_use_sse41(); }
 
   private:
     bool m_initialized, m_has_fpu, m_has_mmx, m_has_sse, m_has_sse2, m_has_sse3, m_has_ssse3, m_has_sse41, m_has_sse42, m_has_avx, m_has_avx2, m_has_pclmulqdq;
+    bool m_has_osxsave, m_has_os_avx_state;
 
     void extract_x86_flags(uint32_t ecx, uint32_t edx)
     {
       m_has_fpu = (edx & (1 << 0)) != 0;	m_has_mmx = (edx & (1 << 23)) != 0;	m_has_sse = (edx & (1 << 25)) != 0; m_has_sse2 = (edx & (1 << 26)) != 0;
       m_has_sse3 = (ecx & (1 << 0)) != 0; m_has_ssse3 = (ecx & (1 << 9)) != 0; m_has_sse41 = (ecx & (1 << 19)) != 0; m_has_sse42 = (ecx & (1 << 20)) != 0;
       m_has_pclmulqdq = (ecx & (1 << 1)) != 0; m_has_avx = (ecx & (1 << 28)) != 0;
+      m_has_osxsave = (ecx & (1 << 27)) != 0;
     }
 
     void extract_x86_extended_flags(uint32_t ebx) { m_has_avx2 = (ebx & (1 << 5)) != 0; }
   };
 
-	// ---- Library initialization - call once to identify if the processor supports SSE.
-	// Otherwise you'll only get scalar fallbacks.
+	// ---- Library initialization - call once to detect available SIMD features.
+	// SSE4.1 and AVX2 paths are selected at runtime when supported by both CPU and OS.
 	void fpng_init();
 
 	// ---- Useful Utilities

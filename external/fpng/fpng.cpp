@@ -334,6 +334,21 @@ namespace fpng
 			do_cpuid(1, 0, (uint32_t*)regs);
 #endif
 			extract_x86_flags(regs[2], regs[3]);
+
+            // AVX/AVX2 instructions require OSXSAVE and XCR0 bits 1 and 2
+            // (XMM and YMM state) to be enabled by the operating system.
+            if (m_has_osxsave && m_has_avx)
+            {
+                uint64_t xcr0 = 0;
+#ifdef _MSC_VER
+                xcr0 = _xgetbv(0);
+#else
+                uint32_t xcr0_lo = 0, xcr0_hi = 0;
+                __asm__ volatile ("xgetbv" : "=a"(xcr0_lo), "=d"(xcr0_hi) : "c"(0));
+                xcr0 = (static_cast<uint64_t>(xcr0_hi) << 32) | xcr0_lo;
+#endif
+                m_has_os_avx_state = (xcr0 & 0x6) == 0x6;
+            }
 		}
 
 		if (max_eax >= 7U)
@@ -364,7 +379,7 @@ namespace fpng
 	bool fpng_cpu_supports_sse41()
 	{
 #if FPNG_X86_OR_X64_CPU && !FPNG_NO_SSE 
-		assert(g_cpu_info.m_initialized);
+		assert(g_cpu_info.is_initialized());
 		return g_cpu_info.can_use_sse41();
 #else
 		return false;
@@ -1571,6 +1586,10 @@ do_literals:
 	}
 		
 #if FPNG_X86_OR_X64_CPU && !FPNG_NO_SSE
+    // Implemented in fpng_avx2.cpp, compiled separately with AVX2 enabled.
+    // Runtime dispatch in apply_filter() guarantees it is only called when safe.
+    void fpng_apply_bgra32_avx2(const uint8_t* pSrc, const uint8_t* pPrev, uint8_t* pDst, uint32_t width);
+
 	// Convert 16 BGR pixels (48 bytes) to 16 RGB pixels. If pPrev is
 	// non-null, first apply PNG's Up filter (current row - previous row).
 	//
@@ -1636,7 +1655,15 @@ do_literals:
 			uint32_t x = 0;
 
 #if FPNG_X86_OR_X64_CPU && !FPNG_NO_SSE
-			if (g_cpu_info.can_use_sse41())
+            // AVX2 path is currently specialized for BGRA32. BGR24 keeps
+            // the existing SSSE3 implementation because 3-byte pixels
+            // require more expensive cross-lane rearrangement.
+            if ((num_chans == 4) && g_cpu_info.can_use_avx2())
+            {
+                fpng_apply_bgra32_avx2(pSrc, nullptr, pDst, static_cast<uint32_t>(w));
+                x = static_cast<uint32_t>(w);
+            }
+            else if (g_cpu_info.can_use_sse41())
 			{
 				if (num_chans == 3)
 				{
@@ -1686,7 +1713,12 @@ do_literals:
 			uint32_t x = 0;
 
 #if FPNG_X86_OR_X64_CPU && !FPNG_NO_SSE
-			if (g_cpu_info.can_use_sse41())
+            if ((num_chans == 4) && g_cpu_info.can_use_avx2())
+            {
+                fpng_apply_bgra32_avx2(pSrc, pPrev_src, pDst, static_cast<uint32_t>(w));
+                x = static_cast<uint32_t>(w);
+            }
+            else if (g_cpu_info.can_use_sse41())
 			{
 				if (num_chans == 3)
 				{

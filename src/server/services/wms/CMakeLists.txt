@@ -25,6 +25,7 @@ set (WMS_SRCS
   qgswmslayerinfos.cpp
   libProfiler.cpp
   ${CMAKE_SOURCE_DIR}/external/fpng/fpng.cpp
+  ${CMAKE_SOURCE_DIR}/external/fpng/fpng_avx2.cpp
 )
 
 set (WMS_HDRS
