@@ -51,6 +51,10 @@ set(QGIS_SERVER_SRCS
   qgsfeaturefilter.cpp
   qgsstorebadlayerinfo.cpp
   qgsserverquerystringparameter.cpp
+  sbtenantsettings.cpp
+  sbservercachefilter.cpp
+  sbUnloadProjectFileWatcher.cpp
+  ${CMAKE_SOURCE_DIR}/external/SimpleCrypt/SimpleCrypt.cpp
 )
 
 set (QGIS_SERVER_HDRS
@@ -68,8 +72,17 @@ set (QGIS_SERVER_HDRS
   qgsserverquerystringparameter.h
   qgsserversettings.h
   qgsservicemodule.h
+  sbtenantsettings.h
+  sbconstants.h
+  sbservercachefilter.h
+  sbunloadprojectfilewatcher.h
+  sbutils.h
+  ${CMAKE_SOURCE_DIR}/external/SimpleCrypt/SimpleCrypt.h
 )
 
+include_directories(
+  ${CMAKE_SOURCE_DIR}/external/SimpleCrypt
+)
 
 #############################################################
 # qgis_server library
