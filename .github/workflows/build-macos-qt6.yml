@@ -38,7 +38,7 @@ jobs:
           persist-credentials: false
 
       - name: 🐩 Install CMake and Ninja
-        uses: lukka/get-cmake@a89e43e22a96abafcd7a62db652a65ecd33052c9 # latest
+        uses: lukka/get-cmake@16e8153a8b4918849d92aad131befe67a3705daa # latest
         with:
           # Pin to specific version to avoid rebuilding too often
           # Also helps to avoid spurious build failures like https://github.com/qgis/QGIS/pull/47098
@@ -72,7 +72,7 @@ jobs:
         run: xcodebuild -downloadComponent MetalToolchain
 
       - name: 🛍️ Setup ccache
-        uses: hendrikmuhs/ccache-action@f09c25b45002a07be2955cbe52e8cee55643f89d  # v1.2.24
+        uses: hendrikmuhs/ccache-action@e91f31892a1d1b8c44424b1a94c0b7f52d337168  # v1.2.26
         with:
           max-size: 500M
           key: build-ccache-${{ matrix.triplet }}-qt6-${{ github.event.pull_request.base.ref || github.ref_name }}
