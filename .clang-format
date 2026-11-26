@@ -75,7 +75,6 @@ BreakBeforeConceptDeclarations: Always
 BreakBeforeBraces: Custom
 BreakBeforeInheritanceComma: false
 BreakBeforeTernaryOperators: true
-BreakBinaryOperations: RespectPrecedence
 BreakConstructorInitializers: BeforeComma
 BreakStringLiterals: true
 ColumnLimit: 200
@@ -149,7 +148,6 @@ ObjCSpaceBeforeProtocolList: true
 PackConstructorInitializers: Never
 PenaltyBreakAssignment: 150
 PenaltyBreakBeforeFirstCallParameter: 5000
-PenaltyBreakBeforeMemberAccess: 500
 PenaltyBreakComment: 500
 PenaltyBreakFirstLessLess: 400
 PenaltyBreakOpenParenthesis: 0

@@ -36,6 +36,10 @@
 #include "qgsserverrequest.h"
 #include "qgsserversettings.h"
 #include "qgsserviceregistry.h"
+#include "sbservercachefilter.h"
+#include "sbunloadprojectfilewatcher.h"
+#include "sbtenantsettings.h"
+#include "SimpleCrypt.h"
 
 #include <QFileInfo>
 
@@ -53,7 +57,11 @@ class SERVER_EXPORT QgsServer
      * Creates the server instance
      */
     QgsServer();
+    QgsServer( const QString &tenant );
 
+    const QString &sbTenant() SIP_SKIP;
+    int sbPreloadProjects();
+    
     /**
      * Set environment variable
      * \param var environment variable name
@@ -120,10 +128,15 @@ class SERVER_EXPORT QgsServer
      */
     static void setupNetworkAccessManager();
 
+    static QString sbGetDecryptedProjectPath( QString path );
+
     // Status
     static QString *sConfigFilePath;
     static QgsCapabilitiesCache *sCapabilitiesCache;
     static QgsServerInterfaceImpl *sServerInterface;
+    static sbServerCacheFilter *sSbServerCacheFilter;
+    static SimpleCrypt sCrypto;
+
     //! Initialization must run once for all servers
     static bool sInitialized;
 
@@ -132,6 +145,10 @@ class SERVER_EXPORT QgsServer
 
     //! cache
     QgsConfigCache *mConfigCache = nullptr;
+
+    QString mSbTenant;
+    sbUnloadProjectFileWatcher mSbUnloadWatcher;
+    sbTenantSettings mSbTenantSettings;
 
     //! Initialize locale
     static void initLocale();
